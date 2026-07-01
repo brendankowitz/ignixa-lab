@@ -4,6 +4,12 @@
     <TargetFramework>net9.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <!--
+      xUnit convention uses Method_Scenario_Expectation names with underscores
+      (CA1707), and InlineData arrays for parameterised assertions (CA1861).
+      Both are idiomatic in tests and add no value to flag here.
+    -->
+    <NoWarn>$(NoWarn);CA1707;CA1861</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
