@@ -1,0 +1,77 @@
+/*
+ * Structural skeleton styles for the Ignixa Lab SPA. Intentionally minimal —
+ * layout and status affordances only — so the detailed visual design can be
+ * iterated on separately. Shared design tokens live in `index.css`.
+ */
+
+:root {
+  --status-pass: #16a34a;
+  --status-fail: #dc2626;
+  --status-error: #b91c1c;
+  --status-skipped: #9ca3af;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  width: 100%;
+  flex-grow: 1;
+}
+
+.app__header {
+  padding: 32px;
+  border-bottom: 1px solid var(--border);
+}
+
+.app__header h1 {
+  margin: 0 0 8px;
+}
+
+.app__main {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 32px;
+}
+
+.app__config {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.app__results {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Status color hooks shared by summary cards, category headers, and rows. */
+.summary-cards__card--pass .summary-cards__value,
+.category-group--pass .category-group__name,
+.result-row--pass .result-row__status,
+.step-trace__step--pass .step-trace__status {
+  color: var(--status-pass);
+}
+
+.summary-cards__card--fail .summary-cards__value,
+.category-group--fail .category-group__name,
+.result-row--fail .result-row__status,
+.step-trace__step--fail .step-trace__status {
+  color: var(--status-fail);
+}
+
+.summary-cards__card--error .summary-cards__value,
+.category-group--error .category-group__name,
+.result-row--error .result-row__status,
+.step-trace__step--error .step-trace__status {
+  color: var(--status-error);
+}
+
+.summary-cards__card--skipped .summary-cards__value,
+.category-group--skipped .category-group__name,
+.result-row--skipped .result-row__status,
+.step-trace__step--skipped .step-trace__status {
+  color: var(--status-skipped);
+}
