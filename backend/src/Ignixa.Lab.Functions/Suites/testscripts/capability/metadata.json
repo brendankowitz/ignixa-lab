@@ -1,0 +1,44 @@
+{
+  "resourceType": "TestScript",
+  "id": "capability-metadata",
+  "name": "CapabilityStatement metadata",
+  "status": "active",
+  "version": "4.0",
+  "description": "Smoke test for the FHIR capability endpoint. Fetches /metadata and asserts the server returns a CapabilityStatement declaring FHIR R4. Requires no fixtures, so it is a safe first check against any server.",
+  "test": [
+    {
+      "name": "metadata returns a CapabilityStatement",
+      "description": "GET /metadata must return 200 with a CapabilityStatement resource",
+      "action": [
+        {
+          "operation": {
+            "type": {
+              "code": "capabilities"
+            },
+            "url": "metadata",
+            "responseId": "capabilities-response",
+            "description": "Fetch the server CapabilityStatement"
+          }
+        },
+        {
+          "assert": {
+            "description": "Metadata request must return HTTP 200",
+            "response": "okay"
+          }
+        },
+        {
+          "assert": {
+            "description": "Response body must be a CapabilityStatement",
+            "resource": "CapabilityStatement"
+          }
+        },
+        {
+          "assert": {
+            "description": "CapabilityStatement must declare a FHIR version",
+            "expression": "CapabilityStatement.fhirVersion.exists()"
+          }
+        }
+      ]
+    }
+  ]
+}

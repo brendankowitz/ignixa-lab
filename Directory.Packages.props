@@ -1,0 +1,27 @@
+<Project>
+
+  <!--
+    Central Package Management (CPM).
+    All NuGet versions for the solution are declared here so that backend
+    and test projects stay in lockstep. See:
+    https://learn.microsoft.com/nuget/consume-packages/central-package-management
+  -->
+  <ItemGroup>
+    <!-- FHIR TestScript execution engine (published from ignixa-fhir) -->
+    <PackageVersion Include="Ignixa.TestScript" Version="0.5.6-beta" />
+
+    <!-- Azure Functions .NET isolated worker (ASP.NET Core integration) -->
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker" Version="2.0.0" />
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Sdk" Version="2.0.5" />
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" Version="2.0.2" />
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker.ApplicationInsights" Version="2.0.0" />
+    <PackageVersion Include="Microsoft.ApplicationInsights.WorkerService" Version="2.23.0" />
+
+    <!-- Testing -->
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageVersion Include="xunit" Version="2.9.2" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageVersion Include="FluentAssertions" Version="6.12.2" />
+  </ItemGroup>
+
+</Project>
