@@ -14,12 +14,13 @@
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <!--
-      High-performance logging (CA1848) and micro-allocation return-type rules
-      (CA1859) add noise without value for a small I/O-bound Functions app.
-      CA1711 flags the deliberate FHIR "Impl" wire field name that we must keep
-      for report compatibility with the ignixa-fhir dashboard.
+      High-performance logging (CA1848/CA1873) and micro-allocation return-type
+      rules (CA1859) add noise without value for a small I/O-bound Functions app
+      whose log calls are low-frequency, not hot paths. CA1711 flags the
+      deliberate FHIR "Impl" wire field name that we must keep for report
+      compatibility with the ignixa-fhir dashboard.
     -->
-    <NoWarn>$(NoWarn);CA1848;CA1859;CA1711</NoWarn>
+    <NoWarn>$(NoWarn);CA1848;CA1859;CA1711;CA1873</NoWarn>
   </PropertyGroup>
 
 </Project>
