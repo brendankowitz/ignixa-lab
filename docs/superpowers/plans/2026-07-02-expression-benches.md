@@ -2254,7 +2254,7 @@ export const DEFAULT_VIEW_DEFINITION_TEXT = JSON.stringify(
         ],
       },
       {
-        forEach: "name.where(use = 'official')",
+        forEachOrNull: "name.where(use = 'official')",
         column: [
           { name: 'family', path: 'family' },
           { name: 'given', path: "given.join(' ')" },
