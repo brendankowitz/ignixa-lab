@@ -10,6 +10,12 @@ public sealed class EndpointClassifierTests
     [InlineData("Suites", EndpointClass.Suites)]
     [InlineData("Capability", EndpointClass.Capability)]
     [InlineData("Run", EndpointClass.Run)]
+    [InlineData("FhirPathMetadata", EndpointClass.Capability)]
+    [InlineData("FhirPathStu3", EndpointClass.Capability)]
+    [InlineData("FhirPathR4", EndpointClass.Capability)]
+    [InlineData("FhirPathR4B", EndpointClass.Capability)]
+    [InlineData("FhirPathR5", EndpointClass.Capability)]
+    [InlineData("FhirPathR6", EndpointClass.Capability)]
     [InlineData("SomeFutureEndpoint", EndpointClass.Run)]
     public void Classify_MapsFunctionNameToClass(string functionName, EndpointClass expected)
     {
