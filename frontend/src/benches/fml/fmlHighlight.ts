@@ -12,7 +12,7 @@ const KEYWORD_PATTERN =
 
 const TOKEN_PATTERN = /("[^"]*")|('[^']*')|(->)|([A-Za-z_][\w]*)|(\d+)|(\s+)|(.)/g;
 
-/** Line-by-line syntax highlighter for the FML editor pane, mockup-identical rules. */
+/** Line-by-line syntax highlighter for the FML editor pane. */
 export function highlightFml(text: string): FmlHighlightLine[] {
   return text.split('\n').map((line) => {
     const segments: FmlHighlightSegment[] = [];

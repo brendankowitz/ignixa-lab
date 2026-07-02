@@ -21,6 +21,11 @@ export interface FmlRunResult {
   skipped: number;
 }
 
+function toSingleOrArray(values: unknown[]): unknown {
+  if (values.length === 0) return undefined;
+  return values.length === 1 ? values[0] : values;
+}
+
 function setPath(target: Record<string, unknown>, path: string, value: unknown): void {
   const parts = path.split('.');
   let cursor: Record<string, unknown> = target;
@@ -32,12 +37,16 @@ function setPath(target: Record<string, unknown>, path: string, value: unknown):
   cursor[parts[parts.length - 1]] = value;
 }
 
+// Non-greedy body capture: a nested `}` (e.g. inside a quoted string literal
+// within a rule) will terminate the match early and silently truncate the
+// body. Not handled — a full brace-aware parser is out of scope for this
+// mock interpreter.
 const GROUP_PATTERN =
   /group\s+(\w+)\s*\(\s*source\s+(\w+)\s*(?::\s*(\w+))?\s*,\s*target\s+(\w+)\s*(?::\s*(\w+))?\s*\)\s*\{([\s\S]*?)\}/g;
 
 const RULE_PATTERN = /^(\w+)(?:\.([\w.]+))?(?:\s+as\s+(\w+))?\s*->\s*(\w+)\.([\w.]+)(?:\s*=\s*(.+))?$/;
 
-/** Applies a small StructureMap-subset (`group ... { rules }`) against a source resource, producing a target object and a per-rule execution log. Mockup-identical mini-interpreter. */
+/** Applies a small StructureMap-subset (`group ... { rules }`) against a source resource, producing a target object and a per-rule execution log. */
 export function runFml(mapText: string, sourceText: string): FmlRunResult {
   let source: unknown;
   try {
@@ -69,7 +78,11 @@ export function runFml(mapText: string, sourceText: string): FmlRunResult {
 
       for (const rawLine of body.split('\n')) {
         const noComment = rawLine.replace(/\/\/.*$/, '').trim();
-        if (!noComment || !noComment.endsWith(';')) continue;
+        if (!noComment) continue;
+        if (!noComment.endsWith(';')) {
+          log.push({ rule: '(parse)', group: groupName, src: noComment.slice(0, 40), tgt: '', val: '', status: 'error' });
+          continue;
+        }
         const line = noComment.slice(0, -1).trim();
         const ruleMatch = line.match(RULE_PATTERN);
         if (!ruleMatch) {
@@ -91,7 +104,7 @@ export function runFml(mapText: string, sourceText: string): FmlRunResult {
 
         let value: unknown;
         if (!rhs || rhs === alias) {
-          value = sourceValues.length === 0 ? undefined : sourceValues.length === 1 ? sourceValues[0] : sourceValues;
+          value = toSingleOrArray(sourceValues);
         } else if (/^'.*'$/.test(rhs)) {
           value = rhs.slice(1, -1);
         } else {
@@ -100,7 +113,7 @@ export function runFml(mapText: string, sourceText: string): FmlRunResult {
             const first = sourceValues[0];
             value = first === undefined ? undefined : String(first).slice(0, Number.parseInt(truncateMatch[2], 10));
           } else {
-            value = sourceValues.length ? (sourceValues.length === 1 ? sourceValues[0] : sourceValues) : undefined;
+            value = toSingleOrArray(sourceValues);
           }
         }
 

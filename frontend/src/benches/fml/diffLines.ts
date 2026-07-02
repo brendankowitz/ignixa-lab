@@ -3,7 +3,7 @@ export interface DiffRow {
   text: string;
 }
 
-/** Longest-common-subsequence line diff between two texts, mockup-identical algorithm. */
+/** Longest-common-subsequence line diff between two texts. */
 export function diffLines(a: string, b: string): DiffRow[] {
   const linesA = a.split('\n');
   const linesB = b.split('\n');

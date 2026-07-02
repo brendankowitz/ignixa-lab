@@ -1,4 +1,5 @@
 import { useMemo, useState, type CSSProperties } from 'react';
+import { HighlightedTextarea } from '../components/HighlightedTextarea';
 import { Card, ErrorBanner, Pills, type PillItem } from '../components/primitives';
 import { engineBadgeStyle, monoFont, monoTextareaStyle, primaryButtonStyle, sectionLabelStyle } from '../components/styles';
 import { diffLines } from './diffLines';
@@ -29,8 +30,8 @@ export function FmlBench() {
   const [result, setResult] = useState(() => runFml(DEFAULT_MAP_TEXT, DEFAULT_SOURCE_TEXT));
 
   const highlightedLines = useMemo(() => highlightFml(mapText), [mapText]);
-  const outputText = result.output ? JSON.stringify(result.output, null, 2) : '—';
-  const diffRows = result.output ? diffLines(outputText, expectedText) : [];
+  const outputText = useMemo(() => (result.output ? JSON.stringify(result.output, null, 2) : '—'), [result.output]);
+  const diffRows = useMemo(() => (result.output ? diffLines(outputText, expectedText) : []), [result.output, outputText, expectedText]);
 
   const runMap = () => setResult(runFml(mapText, sourceText));
 
@@ -52,24 +53,7 @@ export function FmlBench() {
             <span style={{ ...sectionLabelStyle, flex: 1 }}>Map source · .fml</span>
             <span style={{ fontFamily: monoFont, fontSize: 10.5, color: 'var(--text3)' }}>{result.mapName}</span>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '4px 0' }}>
-            {highlightedLines.map((line, index) => (
-              <div key={index} style={{ height: 19, whiteSpace: 'pre', fontFamily: monoFont, fontSize: 12 }}>
-                {line.segments.map((segment, segmentIndex) => (
-                  <span key={segmentIndex} style={{ color: segment.color, whiteSpace: 'pre' }}>
-                    {segment.text}
-                  </span>
-                ))}
-              </div>
-            ))}
-          </div>
-          <textarea
-            value={mapText}
-            onChange={(event) => setMapText(event.target.value)}
-            spellCheck={false}
-            wrap="off"
-            style={{ ...monoTextareaStyle, height: 300 }}
-          />
+          <HighlightedTextarea value={mapText} onChange={setMapText} lines={highlightedLines} style={{ height: 300 }} />
         </Card>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
