@@ -6,7 +6,7 @@ TestScripts, and a React **frontend** that drives it.
 ```
 ┌─────────────────────┐        HTTP/JSON        ┌──────────────────────────────┐
 │  Frontend (SPA)     │  ───────────────────▶   │  Backend (Azure Functions)   │
-│  Vite + React 19    │   /api/health           │  .NET 9 isolated worker      │
+│  Vite + React 19    │   /api/health           │  .NET 10 isolated worker     │
 │                     │   /api/suites           │                              │
 │  HostForm           │   /api/run              │  HealthFunction              │
 │  SuitePicker        │  ◀───────────────────   │  SuitesFunction              │
@@ -26,7 +26,7 @@ TestScripts, and a React **frontend** that drives it.
 
 ## Backend
 
-The backend is a **.NET 9 isolated-worker Azure Functions** app using the
+The backend is a **.NET 10 isolated-worker Azure Functions** app using the
 ASP.NET Core integration (`FunctionsApplication.CreateBuilder` +
 `ConfigureFunctionsWebApplication`). Wiring lives in `Program.cs`.
 

@@ -1,6 +1,6 @@
 # Ignixa Lab — Backend
 
-A **.NET 9 isolated-worker Azure Functions** app that executes FHIR TestScript
+A **.NET 10 isolated-worker Azure Functions** app that executes FHIR TestScript
 suites against a target server and returns a conformance report.
 
 ## Endpoints

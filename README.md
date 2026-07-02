@@ -3,7 +3,7 @@
 A FHIR **TestScript conformance runner**. Point it at a FHIR server, pick one or
 more test suites, run them, and read a category-based results matrix.
 
-- **Backend** — a .NET 9 isolated-worker Azure Functions app that executes
+- **Backend** — a .NET 10 isolated-worker Azure Functions app that executes
   [FHIR TestScript](https://www.hl7.org/fhir/testscript.html) suites against a
   target server (via the `Ignixa.TestScript` engine) and returns a conformance
   report.
@@ -19,7 +19,7 @@ so reports are interchangeable between the two projects.
 
 ```
 .
-├── backend/                     .NET 9 Azure Functions (isolated worker)
+├── backend/                     .NET 10 Azure Functions (isolated worker)
 │   ├── src/Ignixa.Lab.Functions/
 │   │   ├── Conformance/          Report schema records (report, result, step, error, http)
 │   │   ├── Configuration/        IgnixaLabOptions
@@ -41,7 +41,7 @@ so reports are interchangeable between the two projects.
 
 ## Quick start
 
-Prerequisites: **.NET SDK 9**, **Node.js 20+**, and the
+Prerequisites: **.NET SDK 10**, **Node.js 20+**, and the
 [Azure Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local).
 
 **Backend**
