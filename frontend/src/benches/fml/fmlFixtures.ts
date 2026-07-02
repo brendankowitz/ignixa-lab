@@ -23,7 +23,7 @@ export const DEFAULT_SOURCE_TEXT = JSON.stringify(PATIENT_EXAMPLE, null, 2);
 export const DEFAULT_EXPECTED_TEXT = JSON.stringify(
   {
     resourceType: 'Person',
-    identifier: [{ value: 'example' }],
+    identifier: 'example',
     gender: 'male',
     birthDate: '1974-12-25',
     active: true,
