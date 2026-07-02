@@ -52,4 +52,10 @@ public sealed class IgnixaLabOptions
     /// replace origins per environment.
     /// </summary>
     public string CorsAllowedOrigins { get; set; } = "https://brendankowitz.github.io,http://localhost:5173";
+
+    /// <summary>
+    /// Per-endpoint abuse-protection rate limits (ADR-2608). Bound from
+    /// <c>IgnixaLab:RateLimiting</c>; set <c>Enabled = false</c> to bypass.
+    /// </summary>
+    public RateLimitingOptions RateLimiting { get; set; } = new();
 }

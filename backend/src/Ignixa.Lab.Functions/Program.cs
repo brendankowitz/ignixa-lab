@@ -14,12 +14,15 @@ var builder = FunctionsApplication.CreateBuilder(args);
 builder.ConfigureFunctionsWebApplication();
 
 builder.UseMiddleware<CorsMiddleware>();
+builder.UseMiddleware<RateLimitMiddleware>();
 
 builder.Services
     .AddOptions<IgnixaLabOptions>()
     .Bind(builder.Configuration.GetSection(IgnixaLabOptions.SectionName));
 
 builder.Services.AddSingleton<CorsMiddleware>();
+builder.Services.AddSingleton<RateLimitPolicy>();
+builder.Services.AddSingleton<RateLimitMiddleware>();
 
 builder.Services.AddSingleton<IHttpExchangeScope, HttpExchangeScope>();
 builder.Services.AddTransient<RecordingHttpHandler>();

@@ -36,7 +36,8 @@ src/Ignixa.Lab.Functions/
   Functions/       HealthFunction, SuitesFunction, RunFunction, CapabilityFunction
   Http/            RecordingHttpHandler, IHttpExchangeScope/HttpExchangeScope,
                    HttpExchangeCollector, CapturedExchange
-  Middleware/      CorsMiddleware
+  Middleware/      CorsMiddleware, RateLimitMiddleware (RateLimitPolicy,
+                   EndpointClassifier, ClientIpKeyExtractor — ADR-2608)
   Models/          RunRequest, SuiteDescriptor, CapabilityResponse
   Suites/          SuiteCatalog (reads testscripts/<category>/*.json restored
                    from the Ignixa.TestScript.Suites package — see Suites below)
@@ -50,6 +51,8 @@ test/Ignixa.Lab.Functions.Tests/
   Execution/       TargetUrlValidatorTests, ConformanceReportMapperTests,
                    ConformanceStepCorrelatorTests, CapabilityStatementParserTests
   Functions/       CapabilityFunctionTests
+  Middleware/      RateLimitPolicyTests, EndpointClassifierTests,
+                   ClientIpKeyExtractorTests
   Http/            RecordingHttpHandlerTests, HttpExchangeScopeTests
   Suites/          SuiteCatalogTests
 ```
@@ -88,6 +91,59 @@ app settings (Azure) or `local.settings.json` (local dev):
 
 Enforced in-process by `Middleware/CorsMiddleware`, since the isolated worker
 has no Kestrel pipeline to attach `app.UseCors()` to.
+
+## Rate limiting
+
+Abuse protection ([ADR-2608](../docs/features/abuse-protection/adr-2608-abuse-protection.md))
+runs as `Middleware/RateLimitMiddleware`, registered immediately after
+`CorsMiddleware` and built on the in-box `System.Threading.RateLimiting`
+primitives (no new package or Azure resource). Requests are classified by
+function name, not URL parsing:
+
+| Class | Endpoints | Per-IP limit | Global limit |
+| ----- | --------- | ------------ | ------------ |
+| Exempt | `Health`, CORS preflight `OPTIONS` | — | — |
+| Suites | `Suites` | 30 / min (sliding) | — |
+| Capability | `Capability` | 12 / min (sliding) | — |
+| Run | `Run` | 4 / min **and** 20 / hour (sliding) | 100 / hour (fixed, clock-aligned) **and** max 4 concurrent |
+
+An unrecognized function name fails safe to the strictest (`Run`) tier.
+
+Configured via `IgnixaLab:RateLimiting:*` (app settings on Azure,
+`local.settings.json` locally):
+
+| Setting | Default | Meaning |
+| ------- | ------- | ------- |
+| `Enabled` | `true` | Master kill switch — `false` bypasses all limiting. |
+| `SuitesPerMinutePerIp` | `30` | Per-IP sliding-window limit for `/api/suites`. |
+| `CapabilityPerMinutePerIp` | `12` | Per-IP sliding-window limit for `/api/capability`. |
+| `RunPerMinutePerIp` | `4` | Per-IP sliding-window limit for `/api/run`, per minute. |
+| `RunPerHourPerIp` | `20` | Per-IP sliding-window limit for `/api/run`, per hour. |
+| `RunGlobalPerHour` | `100` | Process-wide clock-aligned hourly cap for `/api/run`. |
+| `RunMaxConcurrent` | `4` | Max simultaneous `/api/run` invocations in this process. |
+
+Client IP is taken from the **right-most** `X-Forwarded-For` entry (App Service
+appends the true client IP, so only that hop is trustworthy; entries to its left
+are client-supplied and ignored), with the `:port` suffix stripped and IPv6
+clients collapsed to their **/64 prefix** so rotating within a delegated prefix
+maps to one key. If `X-Forwarded-For` is absent it falls back to the socket peer;
+an unparseable IP buckets under a single `"unknown"` key rather than being
+exempted.
+
+On rejection the middleware returns **429 Too Many Requests**, a `Retry-After`
+header (whole seconds), and a JSON body matching the API's error shape:
+
+```json
+{ "error": "Rate limit exceeded for this endpoint. Retry after 42 seconds." }
+```
+
+**In-memory / per-instance limitation:** all counters live in process memory, so
+under scale-out the effective limits are multiplied by the instance count (the
+"global" hourly cap becomes `RunGlobalPerHour × instanceCount`). This is
+acceptable only while scale-out is pinned small — operators **must** cap the App
+Service plan / Flex `maximumInstanceCount` at a low number for the numbers above
+to mean what they say (ADR-2608 §6). A true cross-instance cap requires the
+Phase 2 shared-store counter, which is not implemented here.
 
 ## Suites
 
