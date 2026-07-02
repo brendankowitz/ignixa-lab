@@ -1,13 +1,20 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, getSuites, runConformance } from '../api/client';
-import type {
-  ConformanceReport,
-  RunRequest,
-  SuiteDescriptor,
-} from '../types/conformance';
+import { mergeReports } from '../lib/conformance';
+import type { ConformanceReport, RunRequest, SuiteDescriptor } from '../types/conformance';
 
 /** Lifecycle phase of a conformance run. */
 export type RunPhase = 'idle' | 'running' | 'complete' | 'error';
+
+/** Per-suite progress within a run, tracked as each `/api/run` call lands. */
+export type SuiteRunStatus = 'queued' | 'running' | 'complete' | 'error';
+
+/** Request to start a run: target server, FHIR version, and the suites to execute. */
+export interface StartRunRequest {
+  targetUrl: string;
+  fhirVersion: string;
+  suiteIds: string[];
+}
 
 /** Public shape returned by {@link useConformanceRun}. */
 export interface ConformanceRunState {
@@ -19,25 +26,40 @@ export interface ConformanceRunState {
   suitesError: string | null;
   /** Current run lifecycle phase. */
   phase: RunPhase;
-  /** The most recent report, or null before the first successful run. */
+  /** The report merged so far across completed suites, or null before the first result lands. */
   report: ConformanceReport | null;
-  /** Error message from the most recent run, if it failed. */
+  /** Error message from the most recent failed suite, if any (the run may still continue). */
   runError: string | null;
-  /** Starts a run with the given request body. */
-  start: (request: RunRequest) => Promise<void>;
-  /** Cancels an in-flight run. */
+  /** Per-suite status for the suite IDs included in the current/most recent run. */
+  suiteStatuses: ReadonlyMap<string, SuiteRunStatus>;
+  /** Suite ID currently in flight, or null when idle/between suites. */
+  currentSuiteId: string | null;
+  /** Total number of suites in the current/most recent run. */
+  totalSuiteCount: number;
+  /** Number of suites that have finished (complete or error). */
+  completedSuiteCount: number;
+  /** Starts a run: calls `POST /api/run` once per suite, sequentially. */
+  start: (request: StartRunRequest) => Promise<void>;
+  /** Aborts the in-flight suite and cancels the remaining queue. */
   cancel: () => void;
-  /** Clears the current report and error, returning to the idle state. */
+  /** Clears the current report and returns to the idle state. */
   reset: () => void;
 }
 
 /**
- * Owns the state for loading the suite catalog and executing a conformance run.
+ * Owns the suite catalog and drives a conformance run.
  *
- * NOTE: `POST /api/run` currently returns a single report once the whole run
- * completes, so `phase` moves `idle -> running -> complete`. When the backend
- * grows a streaming/progress channel, per-suite progress can be surfaced here
- * without changing the component API.
+ * `POST /api/run` returns a single report once a suite completes and has no
+ * streaming channel, so `start` issues **one call per selected suite**,
+ * sequentially, under a shared `AbortController`, merging each result as it
+ * arrives (see {@link mergeReports}). This gives real, coarse-grained (per
+ * suite, not per test) live progress with no backend change: the suite tree
+ * and status bar can show queued -> running -> complete/error per suite as
+ * the run proceeds.
+ *
+ * A single suite failing (a real error, not a user cancel) does not abort the
+ * rest of the queue — it's recorded via `suiteStatuses` and `runError`, and
+ * the run continues so the remaining suites still get a chance to execute.
  */
 export function useConformanceRun(): ConformanceRunState {
   const [suites, setSuites] = useState<SuiteDescriptor[]>([]);
@@ -47,7 +69,13 @@ export function useConformanceRun(): ConformanceRunState {
   const [phase, setPhase] = useState<RunPhase>('idle');
   const [report, setReport] = useState<ConformanceReport | null>(null);
   const [runError, setRunError] = useState<string | null>(null);
-  const [controller, setController] = useState<AbortController | null>(null);
+  const [suiteStatuses, setSuiteStatuses] = useState<Map<string, SuiteRunStatus>>(new Map());
+  const [currentSuiteId, setCurrentSuiteId] = useState<string | null>(null);
+  const [totalSuiteCount, setTotalSuiteCount] = useState(0);
+
+  // Mutable ref rather than state: the abort controller is an imperative
+  // handle for `cancel`, not something that should trigger a re-render itself.
+  const controllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const abort = new AbortController();
@@ -69,38 +97,73 @@ export function useConformanceRun(): ConformanceRunState {
     return () => abort.abort();
   }, []);
 
-  const start = useCallback(async (request: RunRequest) => {
+  const start = useCallback(async ({ targetUrl, fhirVersion, suiteIds }: StartRunRequest) => {
     const abort = new AbortController();
-    setController(abort);
+    controllerRef.current = abort;
+
     setPhase('running');
     setRunError(null);
+    setReport(null);
+    setSuiteStatuses(new Map(suiteIds.map((id) => [id, 'queued' as SuiteRunStatus])));
+    setTotalSuiteCount(suiteIds.length);
+    setCurrentSuiteId(null);
 
-    try {
-      const result = await runConformance(request, abort.signal);
-      setReport(result);
-      setPhase('complete');
-    } catch (error: unknown) {
+    let merged: ConformanceReport | null = null;
+    let sawFailure = false;
+
+    for (const suiteId of suiteIds) {
       if (abort.signal.aborted) {
-        setPhase('idle');
-        return;
+        break;
       }
-      setRunError(describeError(error));
-      setPhase('error');
-    } finally {
-      setController(null);
+
+      setCurrentSuiteId(suiteId);
+      setSuiteStatuses((previous) => new Map(previous).set(suiteId, 'running'));
+
+      const request: RunRequest = { targetUrl, fhirVersion, suiteIds: [suiteId] };
+      try {
+        const suiteReport = await runConformance(request, abort.signal);
+        merged = mergeReports(merged, suiteReport);
+        setReport(merged);
+        setSuiteStatuses((previous) => new Map(previous).set(suiteId, 'complete'));
+      } catch (error) {
+        // A user-initiated stop surfaces here as an AbortError; treat the
+        // interrupted suite as not completed and leave the rest of the queue
+        // untouched (still 'queued') rather than marking every remaining
+        // suite as failed.
+        setSuiteStatuses((previous) => new Map(previous).set(suiteId, 'error'));
+        if (abort.signal.aborted) {
+          break;
+        }
+        sawFailure = true;
+        setRunError(describeError(error));
+      }
     }
+
+    setCurrentSuiteId(null);
+    controllerRef.current = null;
+    // A run "completes" once at least one suite produced a report, even if it
+    // was stopped early or another suite failed along the way — there's real
+    // data worth viewing. Only report 'error' when nothing came back at all.
+    setPhase(merged ? 'complete' : sawFailure ? 'error' : 'idle');
   }, []);
 
   const cancel = useCallback(() => {
-    controller?.abort();
-  }, [controller]);
+    controllerRef.current?.abort();
+  }, []);
 
   const reset = useCallback(() => {
-    controller?.abort();
+    controllerRef.current?.abort();
     setReport(null);
     setRunError(null);
+    setSuiteStatuses(new Map());
+    setCurrentSuiteId(null);
+    setTotalSuiteCount(0);
     setPhase('idle');
-  }, [controller]);
+  }, []);
+
+  const completedSuiteCount = Array.from(suiteStatuses.values()).filter(
+    (status) => status === 'complete' || status === 'error',
+  ).length;
 
   return {
     suites,
@@ -109,6 +172,10 @@ export function useConformanceRun(): ConformanceRunState {
     phase,
     report,
     runError,
+    suiteStatuses,
+    currentSuiteId,
+    totalSuiteCount,
+    completedSuiteCount,
     start,
     cancel,
     reset,

@@ -30,4 +30,26 @@ public sealed class IgnixaLabOptions
 
     /// <summary>Per-run HTTP timeout, in seconds, applied to the FHIR client.</summary>
     public int HttpTimeoutSeconds { get; set; } = 100;
+
+    /// <summary>
+    /// When <see langword="true"/>, HTTP requests/responses made against the
+    /// target server are recorded onto their conformance steps so the
+    /// dashboard can display real traces. Defaults to <see langword="true"/>.
+    /// </summary>
+    public bool HttpCaptureEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Maximum number of bytes retained per captured request/response body
+    /// before it is truncated with a "…[truncated N bytes]" marker.
+    /// </summary>
+    public int HttpCaptureMaxBodyBytes { get; set; } = 65536;
+
+    /// <summary>
+    /// Comma-separated list of origins permitted to call this API cross-origin.
+    /// Defaults to the hosted GitHub Pages frontend plus the local Vite dev
+    /// server, so a self-hosted deployment does not need to reconfigure this
+    /// to work out of the box, while still allowing operators to add or
+    /// replace origins per environment.
+    /// </summary>
+    public string CorsAllowedOrigins { get; set; } = "https://brendankowitz.github.io,http://localhost:5173";
 }

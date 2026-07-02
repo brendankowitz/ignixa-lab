@@ -1,5 +1,7 @@
 using Ignixa.Lab.Functions.Configuration;
 using Ignixa.Lab.Functions.Execution;
+using Ignixa.Lab.Functions.Http;
+using Ignixa.Lab.Functions.Middleware;
 using Ignixa.Lab.Functions.Suites;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Builder;
@@ -11,11 +13,20 @@ var builder = FunctionsApplication.CreateBuilder(args);
 
 builder.ConfigureFunctionsWebApplication();
 
+builder.UseMiddleware<CorsMiddleware>();
+
 builder.Services
     .AddOptions<IgnixaLabOptions>()
     .Bind(builder.Configuration.GetSection(IgnixaLabOptions.SectionName));
 
-builder.Services.AddHttpClient(HttpEvaluatorFactory.HttpClientName);
+builder.Services.AddSingleton<CorsMiddleware>();
+
+builder.Services.AddSingleton<IHttpExchangeScope, HttpExchangeScope>();
+builder.Services.AddTransient<RecordingHttpHandler>();
+
+builder.Services
+    .AddHttpClient(HttpEvaluatorFactory.HttpClientName)
+    .AddHttpMessageHandler<RecordingHttpHandler>();
 
 builder.Services.AddSingleton<ISuiteCatalog, SuiteCatalog>();
 builder.Services.AddSingleton<IEvaluatorFactory, HttpEvaluatorFactory>();

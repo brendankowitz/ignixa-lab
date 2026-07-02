@@ -84,3 +84,51 @@ Common causes: missing/relative/non-http `targetUrl`; a target that resolves to
 a private/loopback address (unless `AllowPrivateTargets` is enabled); an unknown
 suite ID; an unparseable uploaded TestScript; an empty selection; or more than
 `MaxSuitesPerRun` suites.
+
+## `GET /api/capability`
+
+Fetches `{target}/metadata` from the target FHIR server and normalizes its
+declared `CapabilityStatement` into the fixed resource/interaction shape the
+frontend renders as a capability coverage map.
+
+**Query parameters**
+
+| Parameter | Required | Description |
+| --------- | -------- | ----------- |
+| `target` | yes | Absolute `http`/`https` base URL of the server under test (same SSRF guard as `POST /api/run`). |
+| `fhirVersion` | no | Recorded on the response; defaults to the server configuration. |
+
+**200 OK**
+
+```json
+{
+  "target": "https://hapi.fhir.org/baseR4",
+  "fhirVersion": "4.0",
+  "resources": [
+    { "type": "Patient", "interactions": ["read", "vread", "create", "update", "delete", "search", "history"] }
+  ]
+}
+```
+
+Raw FHIR interaction codes are mapped onto a fixed column set: `read`, `vread`,
+`create`, `update`, `patch`, `delete`, `search` (from `search-type`), and
+`history` (from `history-instance` and `history-type`, de-duplicated). Codes
+with no mapping (e.g. `capabilities`, `transaction`, `batch`,
+`history-system`) are dropped.
+
+**400 Bad Request** — the same target-validation failure shape as `POST /api/run`:
+
+```json
+{ "error": "The target URL resolves to a private, loopback, or link-local address, which is not permitted." }
+```
+
+**502 Bad Gateway** / **504 Gateway Timeout** — the target could not be
+reached, returned a non-2xx status for `/metadata`, or returned an
+unparseable body:
+
+```json
+{ "error": "https://example.org returned HTTP 500 for /metadata." }
+```
+
+The frontend degrades to observed-only coverage rendering when this endpoint
+fails.

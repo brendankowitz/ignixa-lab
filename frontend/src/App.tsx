@@ -1,70 +1,85 @@
-import { useMemo } from 'react';
+import { useCallback, useState } from 'react';
 import './App.css';
-import { HostForm } from './components/HostForm';
-import { ProgressPanel } from './components/ProgressPanel';
-import { ResultsMatrix } from './components/ResultsMatrix';
-import { SuitePicker } from './components/SuitePicker';
-import { SummaryCards } from './components/SummaryCards';
+import { ReportScreen } from './components/ReportScreen';
+import { RunnerScreen } from './components/RunnerScreen';
+import { SetupScreen } from './components/SetupScreen';
+import { TopBar, type TabId } from './components/TopBar';
 import { useConformanceRun } from './hooks/useConformanceRun';
-import { useSuiteSelection } from './hooks/useSuiteSelection';
-import { countByStatus } from './lib/conformance';
+import { useRunConfig } from './hooks/useRunConfig';
+import { useTheme } from './hooks/useTheme';
 
 /**
- * Top-level application shell wiring the run workflow together:
- * pick a target server + suites, run them, and view the results matrix.
- *
- * This is the structural skeleton; detailed visual design lives in the CSS and
- * is iterated on separately.
+ * Top-level application shell: a tabbed Setup / Runner / Report workflow over
+ * a single shared run configuration and conformance-run state. Tab state is
+ * component-local (no router) since the app has no need for deep-linkable
+ * screens.
  */
 function App() {
+  const theme = useTheme();
+  const config = useRunConfig();
   const run = useConformanceRun();
-  const selection = useSuiteSelection();
 
-  const suiteIds = useMemo(() => run.suites.map((suite) => suite.id), [run.suites]);
+  const [activeTab, setActiveTab] = useState<TabId>('setup');
+  const [failingOnly, setFailingOnly] = useState(false);
+
   const running = run.phase === 'running';
+  const canStart = config.targetUrl !== '' && config.selection.selected.size > 0 && !running;
 
-  const handleSubmit = (targetUrl: string) => {
-    void run.start({ targetUrl, suiteIds: Array.from(selection.selected) });
-  };
+  const startRun = useCallback(() => {
+    if (!canStart) {
+      return;
+    }
+    void run.start({
+      targetUrl: config.targetUrl,
+      fhirVersion: config.fhirVersion,
+      suiteIds: Array.from(config.selection.selected),
+    });
+    setActiveTab('runner');
+  }, [canStart, config, run]);
 
-  const summaryCounts = run.report ? countByStatus(run.report.results) : null;
+  const viewFailing = useCallback(() => {
+    setFailingOnly(true);
+    setActiveTab('runner');
+  }, []);
 
   return (
-    <div className="app">
-      <header className="app__header">
-        <h1>Ignixa Lab</h1>
-        <p>FHIR TestScript conformance runner</p>
-      </header>
+    <div className="app-shell" style={theme.variables}>
+      <TopBar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        serverHost={config.endpoint}
+        fhirVersion={config.fhirVersion}
+        theme={theme}
+        running={running}
+        canStart={canStart}
+        onStart={startRun}
+        onStop={run.cancel}
+      />
 
-      <main className="app__main">
-        <section className="app__config" aria-label="Run configuration">
-          <HostForm
-            running={running}
-            canSubmit={selection.selected.size > 0}
-            onSubmit={handleSubmit}
-            onCancel={run.cancel}
-          />
-          <SuitePicker
+      <main className="app-shell__main">
+        {activeTab === 'setup' ? (
+          <SetupScreen
+            config={config}
             suites={run.suites}
-            selected={selection.selected}
-            loading={run.suitesLoading}
-            error={run.suitesError}
-            onToggle={selection.toggle}
-            onToggleAll={(select) => selection.toggleAll(suiteIds, select)}
+            suitesLoading={run.suitesLoading}
+            suitesError={run.suitesError}
+            canStart={canStart}
+            onStart={startRun}
           />
-        </section>
+        ) : null}
 
-        <ProgressPanel
-          phase={run.phase}
-          suiteCount={selection.selected.size}
-          error={run.runError}
-        />
+        {activeTab === 'runner' ? (
+          <RunnerScreen
+            run={run}
+            suites={run.suites}
+            failingOnly={failingOnly}
+            onFailingOnlyChange={setFailingOnly}
+            onViewReport={() => setActiveTab('report')}
+          />
+        ) : null}
 
-        {run.report && summaryCounts ? (
-          <section className="app__results" aria-label="Results">
-            <SummaryCards counts={summaryCounts} durationMs={run.report.duration_ms} />
-            <ResultsMatrix report={run.report} />
-          </section>
+        {activeTab === 'report' ? (
+          <ReportScreen report={run.report} suites={run.suites} onViewFailing={viewFailing} />
         ) : null}
       </main>
     </div>

@@ -1,3 +1,4 @@
+import type { CapabilitySummary } from '../types/capability';
 import type {
   ConformanceReport,
   HealthResponse,
@@ -69,4 +70,23 @@ export function runConformance(
     body: JSON.stringify(body),
     signal,
   });
+}
+
+/**
+ * Retrieves the target server's declared capabilities (via its
+ * `CapabilityStatement`), used to build the Report screen's coverage map.
+ * Callers should treat rejection as a normal, expected case — not every
+ * server exposes a working `/metadata` endpoint — and fall back to
+ * observed-only coverage.
+ */
+export function getCapability(
+  target: string,
+  fhirVersion: string | undefined,
+  signal?: AbortSignal,
+): Promise<CapabilitySummary> {
+  const params = new URLSearchParams({ target });
+  if (fhirVersion) {
+    params.set('fhirVersion', fhirVersion);
+  }
+  return request<CapabilitySummary>(`/api/capability?${params.toString()}`, { signal });
 }
