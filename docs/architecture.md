@@ -67,6 +67,19 @@ that could be used to probe internal infrastructure:
 is used as its **category**. Suites are parsed lazily and exposed as
 `SuiteDescriptor`s through `GET /api/suites`.
 
+### FHIRPath evaluator
+
+`FhirPathFunctions` exposes the FHIRPath expression evaluator ported from
+Brian's fhirpath-lab-dotnet — six routes unchanged from that repo
+(`metadata`, `$fhirpath-{stu3,r4,r4b,r5,r6}`) so fhirpath-lab.com's UI can
+repoint at this app without a UI-side change. `FhirPathService` orchestrates
+parsing (`ExpressionAnalyzer`), evaluation (`ExpressionEvaluator`), and
+result formatting (`ResultFormatter`) against the `Ignixa.FhirPath` engine;
+its resource-fetch-by-URL path shares the `TargetUrlValidator` SSRF guard
+with the TestScript endpoints, using its own dedicated, non-redirect-following
+`HttpClient` (`FhirPathService.HttpClientName`) so redirect targets are
+re-validated rather than followed blindly. See `docs/features/fhirpath-evaluator/`.
+
 ## Frontend
 
 A **Vite 8 + React 19 + TypeScript** single-page app. State is owned by two

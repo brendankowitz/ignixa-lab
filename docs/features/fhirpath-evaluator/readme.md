@@ -66,4 +66,8 @@ Other approaches worth their own investigation before deciding:
 
 ## Decision
 
-*No ADR yet - investigations in progress*
+Ported into the same `ignixa-lab` Function App (see
+[same-function-app-merge](./investigations/same-function-app-merge.md)).
+Decommissioning `fhirpath-lab-dotnet`/`ignixafhirpath`, the fhirpath-lab.com
+UI cutover, and the production CORS origin remain open follow-ups — none of
+this deployment's traffic is live yet.
