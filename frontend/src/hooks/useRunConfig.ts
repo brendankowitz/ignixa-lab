@@ -24,14 +24,29 @@ export interface RunConfig {
 }
 
 /**
+ * Matches a leading `http://` or `https://` a user may have typed or pasted
+ * into the endpoint field. The field always renders a fixed `https://`
+ * prefix, so any scheme the user included would otherwise be prepended a
+ * second time (`https://http://host`), producing a URL whose host is the
+ * literal string `http` — see `useRunConfig.ts` targetUrl construction.
+ */
+const LEADING_SCHEME = /^https?:\/\//i;
+
+/**
  * Owns the Setup screen's run configuration: target endpoint, FHIR version,
  * and selected suite IDs. Deliberately holds no auth field — `RunRequest`
  * carries none, so a Bearer-token control would have nothing to wire up.
  */
 export function useRunConfig(): RunConfig {
-  const [endpoint, setEndpoint] = useState('');
+  const [endpoint, setEndpointRaw] = useState('');
   const [fhirVersion, setFhirVersion] = useState<FhirVersion>('R4');
   const selection = useSuiteSelection();
+
+  // Strip any scheme the user typed or pasted so it can never combine with
+  // the field's fixed `https://` prefix into a malformed double-scheme URL
+  // (e.g. pasting `http://hapi.fhir.org/baseR4` must not become
+  // `https://http://hapi.fhir.org/baseR4`, which resolves to host `http`).
+  const setEndpoint = (value: string) => setEndpointRaw(value.replace(LEADING_SCHEME, ''));
 
   return {
     endpoint,
