@@ -89,6 +89,10 @@ public sealed class SuiteCatalog : ISuiteCatalog
             ? Path.GetFileNameWithoutExtension(file)
             : metadata!.Name;
 
+        var tests = definition.Tests
+            .Select(test => new SuiteTest(test.Name, test.Description))
+            .ToArray();
+
         return new SuiteDescriptor(
             Id: relative,
             Name: name,
@@ -96,7 +100,8 @@ public sealed class SuiteCatalog : ISuiteCatalog
             Category: category,
             FhirVersion: metadata?.Version ?? string.Empty,
             File: relative,
-            TestCount: definition.Tests.Count);
+            TestCount: tests.Length,
+            Tests: tests);
     }
 
     private static string CategoryFromRelativePath(string relativePath)

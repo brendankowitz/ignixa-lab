@@ -74,6 +74,12 @@ export interface ConformanceReport {
   results: ConformanceResult[];
 }
 
+/** A single test case defined within a suite. */
+export interface SuiteTest {
+  name: string;
+  description: string | null;
+}
+
 /** Metadata describing a bundled TestScript suite (`GET /api/suites`). */
 export interface SuiteDescriptor {
   id: string;
@@ -84,6 +90,8 @@ export interface SuiteDescriptor {
   file: string;
   /** Number of test cases defined in the suite (before any runtime parametrization). */
   testCount: number;
+  /** The individual test cases defined in the suite, listed when the row is expanded. */
+  tests: SuiteTest[];
 }
 
 /** Response from the `GET /api/health` liveness endpoint. */

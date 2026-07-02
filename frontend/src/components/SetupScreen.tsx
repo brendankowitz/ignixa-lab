@@ -195,7 +195,25 @@ export function SetupScreen({ config, suites, suitesLoading, suitesError, canSta
                             <span className="suite-row__expand-spacer" />
                           )}
                         </div>
-                        {isOpen ? <div className="suite-row__notes">{suite.description}</div> : null}
+                        {isOpen ? (
+                          <div className="suite-row__notes">
+                            {suite.description ? (
+                              <p className="suite-row__notes-text">{suite.description}</p>
+                            ) : null}
+                            {suite.tests.length > 0 ? (
+                              <ul className="suite-tests">
+                                {suite.tests.map((test, index) => (
+                                  <li key={index} className="suite-tests__item">
+                                    <span className="suite-tests__name">{test.name}</span>
+                                    {test.description ? (
+                                      <span className="suite-tests__desc">{test.description}</span>
+                                    ) : null}
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : null}
+                          </div>
+                        ) : null}
                       </div>
                     );
                   })}

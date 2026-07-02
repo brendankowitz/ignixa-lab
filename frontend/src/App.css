@@ -429,6 +429,39 @@
   color: var(--text2);
 }
 
+.suite-row__notes-text {
+  margin: 0 0 8px;
+}
+
+.suite-tests {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.suite-tests__item {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 4px 0;
+  border-top: 1px solid var(--border);
+}
+
+.suite-tests__name {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--text);
+  flex: none;
+}
+
+.suite-tests__desc {
+  font-size: 11px;
+  color: var(--text3);
+}
+
 .setup-screen__actions {
   display: flex;
   align-items: center;
