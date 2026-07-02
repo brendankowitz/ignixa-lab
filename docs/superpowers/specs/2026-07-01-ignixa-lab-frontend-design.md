@@ -12,12 +12,11 @@ mockup, wired to the real .NET Functions backend (`/api/health`, `/api/suites`, 
 
 ## Scope decisions
 
-- **Real data only.** Everything rendered comes from actual `ConformanceReport`s. Design features
-  that require data the backend does not keep are **omitted** for v1, each with a clean extension
-  point:
-  - Pass-rate trend / "last 10 runs" sparkline (needs run history)
-  - Recent CI runs (sha, commit, delta) (needs history / git integration)
-  - Capability coverage map (needs CapabilityStatement fetch + coverage computation)
+- **Real data only.** Everything rendered comes from actual backend data. Design features that
+  require data the backend does not keep are **omitted** for v1, each with a clean extension point:
+  - Pass-rate trend / "last 10 runs" sparkline (needs persisted run history)
+  - Recent CI runs (sha, commit, delta) (needs persisted history / git integration)
+- **Capability coverage map: in scope**, via a small backend addition (see "Backend additions").
 - **Visual fidelity: faithful.** IBM Plex Sans/Mono, rounded panels, pill chips, the design's
   light/dark variable sets.
 - **Accent: violet only.** The ember/teal accent switcher and the words-vs-icons chip switcher
@@ -78,11 +77,30 @@ Granularity is per-suite, not per-test — acceptable for the ~4 bundled suites 
 - Header: overall conformance % (pass rate), PASS/FAIL/SKIP pills, `target · version · duration`,
   "View N failing →" (jumps to Runner with failing-only enabled).
 - Suites card: per-suite pass bars (report grouped by suite).
-- Omitted: trend sparkline, capability coverage map, recent CI runs.
+- **Capability coverage map:** resource type (rows) × interaction (columns) grid, four cell states —
+  proven (all observed pass) / partial (mixed) / declared-failing (all observed fail) / not-declared.
+  Built by merging the target's declared capabilities (from `GET /api/capability`) with observed
+  coverage derived from the report's operation-step HTTP requests. Degrades gracefully to
+  observed-only if the capability fetch fails (e.g. server exposes no `/metadata`).
+- Omitted: trend sparkline, recent CI runs.
+
+### Backend additions
+- **`GET /api/capability`** (`CapabilityFunction`): query params `target` (+ optional `fhirVersion`).
+  Reuses `TargetUrlValidator` (SSRF guard) and the existing HTTP client to `GET {target}/metadata`,
+  parses the `CapabilityStatement` (`rest[].resource[].{type, interaction[].code}`), and returns a
+  normalized camelCase DTO — `{ target, fhirVersion, resources: [{ type, interactions: string[] }] }`
+  — mapping FHIR interaction codes onto the fixed column set (read, vread, create, update, patch,
+  delete, search, history). On upstream failure returns a clear error the frontend can fall back on.
+- This is the only backend behavior change; the run/report contract is untouched.
 
 ### State & data
 - `useRunConfig` hook: endpoint, fhirVersion, selected suite IDs (reuses existing
   `useSuiteSelection`).
+- Capability coverage: `types/capability.ts` (DTO mirror), `api/client.ts#getCapability`, and
+  `lib/coverage.ts` — `observedCoverage(report)` parses each operation step's request into a
+  resource×interaction cell coloured by aggregate pass/fail; `mergeCoverage(declared, observed)`
+  produces the four-state grid. Report screen fetches capability once a report exists, with
+  loading/error/observed-only fallback states.
 - `useConformanceRun` (existing) reworked: `start` loops selected suite IDs, calls `runConformance`
   per suite under a shared `AbortController`, accumulates a **merged report** + a **per-suite status
   map** (`queued | running | complete | error`). Phase `idle → running → complete/error`, now with
@@ -123,9 +141,11 @@ Granularity is per-suite, not per-test — acceptable for the ~4 bundled suites 
   later if desired.
 - Verify via: `npm run build` (tsc typecheck + vite build), `npm run lint` (oxlint), and a manual
   run of the app against a running Functions host.
-- Backend unchanged in behavior; existing xUnit tests continue to pass (`backend-check`).
+- Backend gains one endpoint (`/api/capability`). Add xUnit coverage for the CapabilityStatement
+  parser (interaction-code mapping, missing/empty `rest`) and the SSRF guard path, alongside the
+  existing suite. `backend-check` continues to gate.
 
 ## Out of scope (v1)
 
-Run history & trend, recent CI runs, capability coverage map, per-test streaming, Bearer auth,
-per-suite counts/estimates on Setup, raw TestScript tab. All left as clean extension points.
+Run history & trend, recent CI runs, per-test streaming, Bearer auth, per-suite counts/estimates on
+Setup, raw TestScript tab. All left as clean extension points.
