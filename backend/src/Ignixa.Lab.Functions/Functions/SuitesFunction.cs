@@ -10,7 +10,7 @@ public sealed class SuitesFunction(ISuiteCatalog catalog)
 {
     [Function("Suites")]
     public IActionResult Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "suites")] HttpRequest request)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "options", Route = "suites")] HttpRequest request)
     {
         return new OkObjectResult(catalog.GetSuites());
     }

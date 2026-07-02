@@ -19,7 +19,7 @@ public sealed class RunFunction(TestScriptRunner runner, ILogger<RunFunction> lo
 
     [Function("Run")]
     public async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "run")] HttpRequest request,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", "options", Route = "run")] HttpRequest request,
         CancellationToken cancellationToken)
     {
         RunRequest? runRequest;

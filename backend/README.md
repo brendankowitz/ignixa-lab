@@ -75,14 +75,19 @@ being recorded.
 
 Configurable via `IgnixaLab:CorsAllowedOrigins` — a comma-separated list of
 origins permitted to call the API cross-origin. Defaults to the hosted
-frontend (`https://brendankowitz.github.io`) plus the local Vite dev server
+frontend (`https://brendankowitz.github.io`), the fhirpath-lab sites
+(`https://fhirpath-lab.com`, `https://dev.fhirpath-lab.com`,
+`https://hackweek.fhirpath-lab.com`) plus the local Vite dev server
 (`http://localhost:5173`), so both a hosted deployment and local development
 work without extra configuration. Add or replace origins per environment via
 app settings (Azure) or `local.settings.json` (local dev):
 
 ```json
-"IgnixaLab:CorsAllowedOrigins": "https://brendankowitz.github.io,http://localhost:5173"
+"IgnixaLab:CorsAllowedOrigins": "https://brendankowitz.github.io,https://fhirpath-lab.com,https://dev.fhirpath-lab.com,https://hackweek.fhirpath-lab.com,http://localhost:5173"
 ```
+
+Entries must match the browser's `Origin` header exactly (scheme + host +
+port, no path or trailing slash).
 
 Enforced in-process by `Middleware/CorsMiddleware`, since the isolated worker
 has no Kestrel pipeline to attach `app.UseCors()` to.
