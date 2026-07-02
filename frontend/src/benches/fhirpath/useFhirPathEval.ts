@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { buildFhirPathRequest, parseFhirPathResponse, runFhirPath } from './fhirPathApi';
 import type { FhirVersion, FpEvalResult, FpVariable } from './fhirPathTypes';
+import { getErrorMessage } from '../shared/errorMessage';
 
 export interface FhirPathEvalInput {
   version: FhirVersion;
@@ -41,7 +42,7 @@ export function useFhirPathEval(input: FhirPathEvalInput): { result: FpEvalResul
         body = buildFhirPathRequest(input);
       } catch (error) {
         setIsLoading(false);
-        setResult({ ...EMPTY_RESULT, error: `Resource JSON — ${(error as Error).message}` });
+        setResult({ ...EMPTY_RESULT, error: `Resource JSON — ${getErrorMessage(error)}` });
         return;
       }
 

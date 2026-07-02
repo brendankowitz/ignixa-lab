@@ -1,4 +1,5 @@
 import { evaluateMiniFhirPath, parseMiniFhirPath } from '../shared/miniFhirPath';
+import { getErrorMessage } from '../shared/errorMessage';
 
 interface SofColumn {
   name: string;
@@ -95,12 +96,12 @@ export function runSof(viewDefinitionText: string, resourcesText: string): SofRu
   try {
     viewDefinition = JSON.parse(viewDefinitionText) as SofViewDefinition;
   } catch (error) {
-    return { error: `ViewDefinition JSON — ${(error as Error).message}`, columns: [], rows: [], meta: '' };
+    return { error: `ViewDefinition JSON — ${getErrorMessage(error)}`, columns: [], rows: [], meta: '' };
   }
   try {
     resources = JSON.parse(resourcesText);
   } catch (error) {
-    return { error: `Resources JSON — ${(error as Error).message}`, columns: [], rows: [], meta: '' };
+    return { error: `Resources JSON — ${getErrorMessage(error)}`, columns: [], rows: [], meta: '' };
   }
 
   const resourceList = Array.isArray(resources) ? resources : [resources];
@@ -117,7 +118,7 @@ export function runSof(viewDefinitionText: string, resourcesText: string): SofRu
       rows.push(...selectRows(viewDefinition.select ?? [], resource));
     }
   } catch (error) {
-    return { error: (error as Error).message, columns, rows: [], meta: '' };
+    return { error: getErrorMessage(error), columns, rows: [], meta: '' };
   }
 
   const meta = `${rows.length} ${rows.length === 1 ? 'row' : 'rows'} · ${columns.length} cols · ${scanned} resources`;

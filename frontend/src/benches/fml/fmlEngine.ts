@@ -1,4 +1,5 @@
 import { evaluateMiniFhirPath, parseMiniFhirPath } from '../shared/miniFhirPath';
+import { getErrorMessage } from '../shared/errorMessage';
 
 export type FmlRuleStatus = 'applied' | 'skipped' | 'error';
 
@@ -42,7 +43,7 @@ export function runFml(mapText: string, sourceText: string): FmlRunResult {
   try {
     source = JSON.parse(sourceText);
   } catch (error) {
-    return { error: `Source JSON — ${(error as Error).message}`, log: [], output: null, mapName: '', applied: 0, skipped: 0 };
+    return { error: `Source JSON — ${getErrorMessage(error)}`, log: [], output: null, mapName: '', applied: 0, skipped: 0 };
   }
 
   const output: Record<string, unknown> = {};
@@ -118,7 +119,7 @@ export function runFml(mapText: string, sourceText: string): FmlRunResult {
       }
     }
   } catch (error) {
-    return { error: (error as Error).message, log, output, mapName, applied, skipped };
+    return { error: getErrorMessage(error), log, output, mapName, applied, skipped };
   }
 
   if (!foundGroup) {
