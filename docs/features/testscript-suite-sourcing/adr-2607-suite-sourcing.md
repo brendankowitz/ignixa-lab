@@ -41,6 +41,15 @@ This wins because it gives explicit version pinning and reproducible builds, kee
 CI simple (no submodule recursion), avoids cloning the whole upstream repo for a
 subset, and matches the engine's existing distribution model.
 
+**Interim (until `ignixa-fhir` publishes the artifact):** the TestScript files are
+kept in this repo and packed into a **local** versioned NuGet content package by a
+dedicated packaging project, published to a repo-local feed. The Functions project
+consumes it via `PackageReference`, restoring the suites into the `testscripts/`
+output that `SuiteCatalog` already reads (no catalog change). This builds and
+proves the exact consumption seam now; the upstream integration later is just
+repointing that `PackageReference` at the published `ignixa-fhir` package (and
+retiring the local feed).
+
 ## Consequences
 
 - The backend build gains a package reference (or download step) for the suites
