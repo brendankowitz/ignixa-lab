@@ -8,6 +8,8 @@ export interface SuiteSelection {
   toggle: (suiteId: string) => void;
   /** Selects or clears every suite from `allIds`. */
   toggleAll: (allIds: readonly string[], select: boolean) => void;
+  /** Adds or removes a subset of IDs, leaving the rest of the selection intact (used for group toggles). */
+  setMany: (ids: readonly string[], select: boolean) => void;
   /** Clears the selection. */
   clear: () => void;
 }
@@ -32,7 +34,21 @@ export function useSuiteSelection(): SuiteSelection {
     setSelected(select ? new Set(allIds) : new Set());
   }, []);
 
+  const setMany = useCallback((ids: readonly string[], select: boolean) => {
+    setSelected((previous) => {
+      const next = new Set(previous);
+      for (const id of ids) {
+        if (select) {
+          next.add(id);
+        } else {
+          next.delete(id);
+        }
+      }
+      return next;
+    });
+  }, []);
+
   const clear = useCallback(() => setSelected(new Set()), []);
 
-  return { selected, toggle, toggleAll, clear };
+  return { selected, toggle, toggleAll, setMany, clear };
 }

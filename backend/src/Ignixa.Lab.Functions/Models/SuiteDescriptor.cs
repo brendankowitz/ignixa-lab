@@ -12,4 +12,5 @@ public sealed record SuiteDescriptor(
     [property: JsonPropertyName("description")] string Description,
     [property: JsonPropertyName("category")] string Category,
     [property: JsonPropertyName("fhirVersion")] string FhirVersion,
-    [property: JsonPropertyName("file")] string File);
+    [property: JsonPropertyName("file")] string File,
+    [property: JsonPropertyName("testCount")] int TestCount);

@@ -82,6 +82,8 @@ export interface SuiteDescriptor {
   category: string;
   fhirVersion: string;
   file: string;
+  /** Number of test cases defined in the suite (before any runtime parametrization). */
+  testCount: number;
 }
 
 /** Response from the `GET /api/health` liveness endpoint. */

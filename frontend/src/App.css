@@ -248,84 +248,185 @@
   color: var(--text);
 }
 
-.suite-checklist__toolbar {
+.suite-picker__header {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
 }
 
-.suite-checklist__select-all {
+.suite-picker__header .setup-panel__title {
+  flex: 1;
+}
+
+.suite-picker__count {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--text3);
+}
+
+.suite-picker__action {
   font-size: 12px;
   font-weight: 600;
   color: var(--accent);
+  cursor: pointer;
 }
 
-.suite-checklist__count {
-  font-size: 12px;
+.suite-picker__action--muted {
   color: var(--text3);
 }
 
-.suite-checklist__category {
-  display: flex;
-  flex-direction: column;
+.suite-picker__action:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
-.suite-checklist__category-label {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 9.5px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text3);
-  padding: 10px 2px 4px;
-}
-
-.suite-checklist__item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 11px 10px;
-  border-radius: 8px;
-  border-bottom: 1px solid var(--border);
-}
-
-.suite-checklist__item:hover {
-  background: var(--panel2);
-}
-
-.suite-checklist__box {
+/* Shared checkbox used for both group and suite rows. */
+.suite-check {
   width: 18px;
   height: 18px;
+  padding: 0;
   border-radius: 5px;
   display: grid;
   place-items: center;
   font-size: 11px;
+  line-height: 1;
   font-weight: 700;
   color: #fff;
+  background: var(--panel);
   border: 1.5px solid var(--border2);
+  box-sizing: border-box;
   flex: none;
+  cursor: pointer;
 }
 
-.suite-checklist__box--checked {
+.suite-check--all,
+.suite-check--some {
   background: var(--accent);
   border-color: var(--accent);
 }
 
-.suite-checklist__text {
+.suite-group {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  padding: 6px 0 8px;
+  border-top: 1px solid var(--border);
 }
 
-.suite-checklist__name {
+.suite-group__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 10px;
+}
+
+.suite-group__header .suite-check {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  font-size: 10px;
+}
+
+.suite-group__name {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text2);
+}
+
+.suite-group__meta {
+  font-size: 10.5px;
+  color: var(--text4);
+}
+
+.suite-group__sel {
+  margin-left: auto;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--text3);
+}
+
+.suite-row-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.suite-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 10px;
+  border-radius: 8px;
+}
+
+.suite-row:hover {
+  background: var(--panel2);
+}
+
+.suite-row__name {
+  padding: 0;
   font-size: 13px;
   font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  flex: none;
+  cursor: pointer;
 }
 
-.suite-checklist__description {
+.suite-row__summary {
+  flex: 1;
+  min-width: 0;
   font-size: 11.5px;
   color: var(--text3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suite-row__count {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10.5px;
+  color: var(--text3);
+  flex: none;
+  width: 62px;
+  text-align: right;
+}
+
+.suite-row__expand {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--text3);
+  border: 1px solid var(--border);
+  flex: none;
+  cursor: pointer;
+}
+
+.suite-row__expand:hover {
+  background: var(--panel2);
+}
+
+.suite-row__expand-spacer {
+  width: 22px;
+  flex: none;
+}
+
+.suite-row__notes {
+  margin: 2px 10px 8px 40px;
+  padding: 10px 14px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 11.5px;
+  line-height: 1.65;
+  color: var(--text2);
 }
 
 .setup-screen__actions {
@@ -1008,6 +1109,22 @@
   border-radius: 12px;
   padding: 16px 20px;
   box-shadow: var(--shadow);
+}
+
+.coverage-map__toggle {
+  margin-top: 12px;
+  padding: 6px 12px;
+  border-radius: 7px;
+  border: 1px solid var(--border2);
+  background: var(--panel);
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.coverage-map__toggle:hover {
+  background: var(--panel2);
 }
 
 .report-panel__title {

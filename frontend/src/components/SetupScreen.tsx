@@ -1,6 +1,15 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { FHIR_VERSIONS, type RunConfig } from '../hooks/useRunConfig';
 import type { SuiteDescriptor } from '../types/conformance';
+
+/** Tri-state of a group's checkbox derived from how many of its suites are selected. */
+type GroupState = 'none' | 'some' | 'all';
+
+/** Strips a leading "Category/" prefix so suites read cleanly under their group heading. */
+function shortName(suite: SuiteDescriptor): string {
+  const slash = suite.name.indexOf('/');
+  return slash >= 0 ? suite.name.slice(slash + 1) : suite.name;
+}
 
 /** Props for {@link SetupScreen}. */
 export interface SetupScreenProps {
@@ -19,7 +28,24 @@ export interface SetupScreenProps {
  */
 export function SetupScreen({ config, suites, suitesLoading, suitesError, canStart, onStart }: SetupScreenProps) {
   const categories = useMemo(() => groupByCategory(suites), [suites]);
-  const allSelected = suites.length > 0 && config.selection.selected.size === suites.length;
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const selected = config.selection.selected;
+  const allIds = useMemo(() => suites.map((suite) => suite.id), [suites]);
+  const selectedTestTotal = useMemo(
+    () => suites.reduce((sum, suite) => (selected.has(suite.id) ? sum + suite.testCount : sum), 0),
+    [suites, selected],
+  );
+
+  const toggleExpanded = (id: string) =>
+    setExpanded((previous) => {
+      const next = new Set(previous);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
 
   return (
     <div className="setup-screen">
@@ -72,7 +98,26 @@ export function SetupScreen({ config, suites, suitesLoading, suitesError, canSta
       </section>
 
       <section className="setup-panel" aria-label="Test suites">
-        <span className="setup-panel__title">Test suites</span>
+        <div className="suite-picker__header">
+          <span className="setup-panel__title">Test suites</span>
+          <span className="suite-picker__count">{selected.size} selected</span>
+          <button
+            type="button"
+            className="suite-picker__action"
+            disabled={suites.length === 0}
+            onClick={() => config.selection.toggleAll(allIds, true)}
+          >
+            Select all
+          </button>
+          <button
+            type="button"
+            className="suite-picker__action suite-picker__action--muted"
+            disabled={selected.size === 0}
+            onClick={config.selection.clear}
+          >
+            Clear
+          </button>
+        </div>
 
         {suitesLoading ? <p className="setup-panel__status">Loading suites…</p> : null}
         {suitesError ? <p className="setup-panel__status setup-panel__status--error">{suitesError}</p> : null}
@@ -80,63 +125,90 @@ export function SetupScreen({ config, suites, suitesLoading, suitesError, canSta
           <p className="setup-panel__status">No suites available.</p>
         ) : null}
 
-        {!suitesLoading && !suitesError && suites.length > 0 ? (
-          <>
-            <div className="suite-checklist__toolbar">
-              <button
-                type="button"
-                className="suite-checklist__select-all"
-                onClick={() =>
-                  config.selection.toggleAll(
-                    suites.map((suite) => suite.id),
-                    !allSelected,
-                  )
-                }
-              >
-                {allSelected ? 'Clear all' : 'Select all'}
-              </button>
-              <span className="suite-checklist__count">{config.selection.selected.size} selected</span>
-            </div>
-
-            {categories.map(([category, categorySuites]) => (
-              <div key={category} className="suite-checklist__category">
-                <span className="suite-checklist__category-label">{category}</span>
-                {categorySuites.map((suite) => {
-                  const checked = config.selection.selected.has(suite.id);
-                  return (
-                    <div
-                      key={suite.id}
-                      className="suite-checklist__item"
+        {!suitesLoading && !suitesError && suites.length > 0
+          ? categories.map(([category, categorySuites]) => {
+              const groupIds = categorySuites.map((suite) => suite.id);
+              const selCount = groupIds.filter((id) => selected.has(id)).length;
+              const groupState: GroupState =
+                selCount === 0 ? 'none' : selCount === groupIds.length ? 'all' : 'some';
+              return (
+                <div key={category} className="suite-group">
+                  <div className="suite-group__header">
+                    <button
+                      type="button"
                       role="checkbox"
-                      aria-checked={checked}
-                      tabIndex={0}
-                      onClick={() => config.selection.toggle(suite.id)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          config.selection.toggle(suite.id);
-                        }
-                      }}
+                      aria-checked={groupState === 'all'}
+                      aria-label={`Select all ${category} suites`}
+                      className={`suite-check suite-check--${groupState}`}
+                      onClick={() => config.selection.setMany(groupIds, groupState !== 'all')}
                     >
-                      <span className={`suite-checklist__box${checked ? ' suite-checklist__box--checked' : ''}`}>
-                        {checked ? '✓' : ''}
-                      </span>
-                      <div className="suite-checklist__text">
-                        <span className="suite-checklist__name">{suite.name}</span>
-                        <span className="suite-checklist__description">{suite.description}</span>
+                      {groupState === 'all' ? '✓' : groupState === 'some' ? '–' : ''}
+                    </button>
+                    <span className="suite-group__name">{category}</span>
+                    <span className="suite-group__meta">
+                      {categorySuites.length} {categorySuites.length === 1 ? 'suite' : 'suites'}
+                    </span>
+                    <span className="suite-group__sel">
+                      {selCount}/{groupIds.length}
+                    </span>
+                  </div>
+
+                  {categorySuites.map((suite) => {
+                    const checked = selected.has(suite.id);
+                    const isOpen = expanded.has(suite.id);
+                    const hasNotes = Boolean(suite.description);
+                    return (
+                      <div key={suite.id} className="suite-row-wrap">
+                        <div className="suite-row">
+                          <button
+                            type="button"
+                            role="checkbox"
+                            aria-checked={checked}
+                            aria-label={suite.name}
+                            className={`suite-check${checked ? ' suite-check--all' : ''}`}
+                            onClick={() => config.selection.toggle(suite.id)}
+                          >
+                            {checked ? '✓' : ''}
+                          </button>
+                          <button
+                            type="button"
+                            className="suite-row__name"
+                            onClick={() => config.selection.toggle(suite.id)}
+                          >
+                            {shortName(suite)}
+                          </button>
+                          <span className="suite-row__summary">{suite.description}</span>
+                          <span className="suite-row__count">
+                            {suite.testCount} {suite.testCount === 1 ? 'test' : 'tests'}
+                          </span>
+                          {hasNotes ? (
+                            <button
+                              type="button"
+                              className="suite-row__expand"
+                              aria-expanded={isOpen}
+                              title="Implementation notes"
+                              onClick={() => toggleExpanded(suite.id)}
+                            >
+                              {isOpen ? '▾' : '▸'}
+                            </button>
+                          ) : (
+                            <span className="suite-row__expand-spacer" />
+                          )}
+                        </div>
+                        {isOpen ? <div className="suite-row__notes">{suite.description}</div> : null}
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
-          </>
-        ) : null}
+                    );
+                  })}
+                </div>
+              );
+            })
+          : null}
       </section>
 
       <div className="setup-screen__actions">
         <button type="button" className="setup-screen__start-button" disabled={!canStart} onClick={onStart}>
-          ▶ Start run · {config.selection.selected.size} {config.selection.selected.size === 1 ? 'suite' : 'suites'}
+          ▶ Start run · {selected.size} {selected.size === 1 ? 'suite' : 'suites'} ·{' '}
+          {selectedTestTotal} {selectedTestTotal === 1 ? 'test' : 'tests'}
         </button>
       </div>
     </div>

@@ -95,7 +95,8 @@ public sealed class SuiteCatalog : ISuiteCatalog
             Description: metadata?.Description ?? string.Empty,
             Category: category,
             FhirVersion: metadata?.Version ?? string.Empty,
-            File: relative);
+            File: relative,
+            TestCount: definition.Tests.Count);
     }
 
     private static string CategoryFromRelativePath(string relativePath)
