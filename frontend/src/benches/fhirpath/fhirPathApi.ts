@@ -71,8 +71,9 @@ export async function runFhirPath(
   });
 
   const json = (await response.json()) as FhirParameters;
-  if (!response.ok) {
-    throw new Error(readOperationOutcomeMessage(json) ?? `Request failed with status ${response.status}`);
+  const operationOutcomeMessage = readOperationOutcomeMessage(json);
+  if (!response.ok || operationOutcomeMessage !== null) {
+    throw new Error(operationOutcomeMessage ?? `Request failed with status ${response.status}`);
   }
   return json;
 }

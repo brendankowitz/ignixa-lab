@@ -60,7 +60,10 @@ export function useFhirPathEval(input: FhirPathEvalInput): { result: FpEvalResul
         });
     }, DEBOUNCE_MS);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      abortControllerRef.current?.abort();
+    };
     // input.variables is a fresh array each render; variablesKey is the stable dependency for it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input.version, input.expression, input.context, input.resourceText, variablesKey]);
