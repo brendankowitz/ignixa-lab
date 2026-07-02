@@ -15,10 +15,12 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 env:
   DOTNET_PROJECT_PATH: backend/src/Ignixa.Lab.Functions/Ignixa.Lab.Functions.csproj
   DOTNET_PUBLISH_PATH: backend/src/Ignixa.Lab.Functions/publish
+  AZURE_FUNCTIONAPP_NAME: ignixa-lab
 
 jobs:
   build-and-deploy:
@@ -48,9 +50,16 @@ jobs:
           --no-build
           -o "${{ env.DOTNET_PUBLISH_PATH }}"
 
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
       - name: Deploy to Azure Functions
         uses: Azure/functions-action@v1
         with:
-          app-name: ${{ secrets.AZURE_FUNCTIONAPP_NAME }}
+          app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
           package: ${{ env.DOTNET_PUBLISH_PATH }}
-          publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+          remote-build: false

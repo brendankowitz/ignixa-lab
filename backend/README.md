@@ -170,13 +170,24 @@ that `SuiteCatalog` reads. Bumping the suites means editing the JSON under
 ## Deploy
 
 `.github/workflows/backend-deploy.yml` builds and publishes the Functions app
-and deploys it to an Azure App Service via `Azure/functions-action@v1` on
-every push to `main` touching `backend/**` (plus manual dispatch). It expects
-two repo secrets, set by the maintainer — this workflow does not create or
-modify any Azure resources:
+and deploys it to the `ignixa-lab` Azure Function App (Flex Consumption,
+`Ingixa` resource group) via `Azure/functions-action@v1` on every push to
+`main` touching `backend/**` (plus manual dispatch). It authenticates via
+OIDC (`azure/login@v2`), not a stored publish profile — Flex Consumption
+treats RBAC as the primary deploy path, and publish-profile auth would
+require enabling SCM basic-auth publishing credentials on the app just to
+work. This workflow does not create or modify any Azure resources; it only
+deploys to the app that already exists.
 
-- `AZURE_FUNCTIONAPP_NAME` — the Function App name.
-- `AZURE_FUNCTIONAPP_PUBLISH_PROFILE` — its publish profile.
+The deploy identity is an Entra app registration (`gh-ignixa-lab-deploy`)
+with a GitHub OIDC federated credential scoped to
+`repo:brendankowitz/ignixa-lab:ref:refs/heads/main`, granted `Website
+Contributor` on the `Ingixa` resource group. Three repo secrets carry its
+identity — no credential value is ever stored:
+
+- `AZURE_CLIENT_ID` — the app registration's client ID.
+- `AZURE_TENANT_ID` — the Entra tenant ID.
+- `AZURE_SUBSCRIPTION_ID` — the Azure subscription ID.
 
 ## Notes
 
