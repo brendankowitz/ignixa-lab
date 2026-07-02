@@ -10,7 +10,7 @@ public sealed class HealthFunction
 {
     [Function("Health")]
     public static IActionResult Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "health")] HttpRequest request)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "options", Route = "health")] HttpRequest request)
     {
         var engineVersion = typeof(Ignixa.TestScript.Parsing.TestScriptParser).Assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
