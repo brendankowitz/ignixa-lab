@@ -33,6 +33,7 @@ export interface FpEvalResult {
   groups: FpResultGroup[];
   trace: FpTraceRow[];
   ast: FpAstNode | null;
+  astParseFailed: boolean;
 }
 
 /** A generic FHIR `Parameters.parameter[]` entry — permissive enough to cover every `value[x]`/`resource`/`part` shape the backend emits. */

@@ -73,4 +73,4 @@ export const EXAMPLE_EXPRESSIONS: Record<SampleId, string[]> = {
   ],
 };
 
-export const DEFAULT_EXPRESSION = "name.where(use = 'official').given.first()";
+export const DEFAULT_EXPRESSION = EXAMPLE_EXPRESSIONS.patient[0];

@@ -13,7 +13,7 @@ export interface FhirPathEvalInput {
 
 const DEBOUNCE_MS = 450;
 
-const EMPTY_RESULT: FpEvalResult = { error: null, evaluator: '', groups: [], trace: [], ast: null };
+const EMPTY_RESULT: FpEvalResult = { error: null, evaluator: '', groups: [], trace: [], ast: null, astParseFailed: false };
 
 /** Debounced, abortable evaluator: re-POSTs to the FHIRPath backend ~450ms after the last change to any input field, cancelling any still-in-flight request first. */
 export function useFhirPathEval(input: FhirPathEvalInput): { result: FpEvalResult; isLoading: boolean } {

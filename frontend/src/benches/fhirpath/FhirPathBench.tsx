@@ -1,6 +1,9 @@
-import { useState, type CSSProperties } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import { Card, ErrorBanner, Pills, type PillItem } from '../components/primitives';
-import { engineBadgeStyle, monoFont, monoInputStyle, monoTextareaStyle, sectionLabelStyle, chipStyle } from '../components/styles';
+import { HighlightedTextarea } from '../components/HighlightedTextarea';
+import { engineBadgeStyle, monoInputStyle, monoFont, sectionLabelStyle, chipStyle } from '../components/styles';
+import { highlightFhirPathExpression } from './fhirPathHighlight';
+import { highlightJson } from './jsonHighlight';
 import { DEFAULT_EXPRESSION, EXAMPLE_EXPRESSIONS, SAMPLE_RESOURCES, type SampleId } from './sampleResources';
 import { useFhirPathEval } from './useFhirPathEval';
 import type { FhirVersion, FpAstNode, FpVariable } from './fhirPathTypes';
@@ -90,6 +93,9 @@ export function FhirPathBench() {
 
   const { result, isLoading } = useFhirPathEval({ version, expression, context, resourceText, variables });
 
+  const expressionHighlight = useMemo(() => highlightFhirPathExpression(expression), [expression]);
+  const resourceHighlight = useMemo(() => highlightJson(resourceText), [resourceText]);
+
   const updateVariable = (index: number, patch: Partial<FpVariable>) =>
     setVariables((current) => current.map((variable, i) => (i === index ? { ...variable, ...patch } : variable)));
 
@@ -109,12 +115,11 @@ export function FhirPathBench() {
       <Card>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <span style={sectionLabelStyle}>Expression</span>
-          <textarea
+          <HighlightedTextarea
             value={expression}
-            onChange={(event) => setExpression(event.target.value)}
-            spellCheck={false}
-            rows={2}
-            style={monoTextareaStyle}
+            onChange={setExpression}
+            lines={expressionHighlight}
+            style={{ height: 54, fontSize: 13.5 }}
           />
         </div>
 
@@ -134,8 +139,9 @@ export function FhirPathBench() {
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', paddingBottom: 2 }}>
             <span style={{ fontSize: 11, color: 'var(--text4)' }}>Examples</span>
             {EXAMPLE_EXPRESSIONS[sampleId].map((example) => (
-              <span
+              <button
                 key={example}
+                type="button"
                 onClick={() => setExpression(example)}
                 style={{
                   fontFamily: monoFont,
@@ -149,7 +155,7 @@ export function FhirPathBench() {
                 }}
               >
                 {example.length > 44 ? `${example.slice(0, 44)}…` : example}
-              </span>
+              </button>
             ))}
           </div>
         </div>
@@ -158,12 +164,22 @@ export function FhirPathBench() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={sectionLabelStyle}>Variables</span>
             <span style={{ fontFamily: monoFont, fontSize: 10, color: 'var(--text4)' }}>%resource · %context built-in</span>
-            <span
+            <button
+              type="button"
               onClick={() => setVariables((current) => [...current, { name: '', value: '' }])}
-              style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--accent)', cursor: 'pointer' }}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                padding: 0,
+                font: 'inherit',
+                fontSize: 11.5,
+                fontWeight: 600,
+                color: 'var(--accent)',
+                cursor: 'pointer',
+              }}
             >
               + Add variable
-            </span>
+            </button>
           </div>
           {variables.map((variable, index) => (
             <div key={index} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -182,12 +198,26 @@ export function FhirPathBench() {
                 spellCheck={false}
                 style={{ ...monoInputStyle, flex: 1 }}
               />
-              <span
+              <button
+                type="button"
                 onClick={() => removeVariable(index)}
-                style={{ width: 24, height: 24, display: 'grid', placeItems: 'center', borderRadius: 6, color: 'var(--text4)', cursor: 'pointer', fontSize: 12 }}
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  padding: 0,
+                  font: 'inherit',
+                  width: 24,
+                  height: 24,
+                  display: 'grid',
+                  placeItems: 'center',
+                  borderRadius: 6,
+                  color: 'var(--text4)',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                }}
               >
                 ✕
-              </span>
+              </button>
             </div>
           ))}
         </div>
@@ -203,13 +233,15 @@ export function FhirPathBench() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ ...sectionLabelStyle, flex: 1 }}>Test resource</span>
             {SAMPLE_RESOURCES.map((sample) => (
-              <span
+              <button
                 key={sample.id}
+                type="button"
                 onClick={() => {
                   setSampleId(sample.id);
                   setResourceText(JSON.stringify(sample.data, null, 2));
                 }}
                 style={{
+                  font: 'inherit',
                   fontSize: 11,
                   fontWeight: 600,
                   padding: '4px 11px',
@@ -221,14 +253,14 @@ export function FhirPathBench() {
                 }}
               >
                 {sample.label}
-              </span>
+              </button>
             ))}
           </div>
-          <textarea
+          <HighlightedTextarea
             value={resourceText}
-            onChange={(event) => setResourceText(event.target.value)}
-            spellCheck={false}
-            style={{ ...monoTextareaStyle, minHeight: 520, fontSize: 11.5 }}
+            onChange={setResourceText}
+            lines={resourceHighlight}
+            style={{ minHeight: 520, fontSize: 11.5 }}
           />
         </Card>
 
@@ -239,9 +271,9 @@ export function FhirPathBench() {
             {isLoading ? <span style={{ fontFamily: monoFont, fontSize: 10.5, color: 'var(--text3)' }}>evaluating…</span> : null}
           </div>
 
-          {result.error ? <ErrorBanner message={result.error} /> : null}
+          {result.error !== null ? <ErrorBanner message={result.error} /> : null}
 
-          {!result.error && resultTab === 'results'
+          {result.error === null && resultTab === 'results'
             ? result.groups.map((group, groupIndex) => (
                 <div key={groupIndex} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {group.label ? (
@@ -288,7 +320,7 @@ export function FhirPathBench() {
               ))
             : null}
 
-          {!result.error && resultTab === 'trace'
+          {result.error === null && resultTab === 'trace'
             ? result.trace.map((row, rowIndex) => (
                 <div key={rowIndex} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <span style={{ fontFamily: monoFont, fontSize: 11, fontWeight: 600, color: 'var(--chip-amb-fg)' }}>trace('{row.label}')</span>
@@ -300,18 +332,23 @@ export function FhirPathBench() {
                 </div>
               ))
             : null}
-          {!result.error && resultTab === 'trace' && result.trace.length === 0 ? (
+          {result.error === null && resultTab === 'trace' && result.trace.length === 0 ? (
             <span style={{ fontSize: 11, color: 'var(--text4)' }}>
               No trace output — add <span style={{ fontFamily: monoFont }}>.trace('label')</span> anywhere in the expression to log a checkpoint.
             </span>
           ) : null}
 
-          {!result.error && resultTab === 'ast' && result.ast ? (
+          {result.error === null && resultTab === 'ast' && result.ast ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '4px 2px' }}>
               <AstRows node={result.ast} depth={0} />
             </div>
           ) : null}
-          {!result.error && resultTab === 'ast' && !result.ast ? (
+          {result.error === null && resultTab === 'ast' && !result.ast && result.astParseFailed ? (
+            <span style={{ fontSize: 11, color: 'var(--text4)' }}>
+              The parse tree couldn't be rendered for this response.
+            </span>
+          ) : null}
+          {result.error === null && resultTab === 'ast' && !result.ast && !result.astParseFailed ? (
             <span style={{ fontSize: 11, color: 'var(--text4)' }}>
               No parse tree yet — evaluate an expression to see its structure.
             </span>

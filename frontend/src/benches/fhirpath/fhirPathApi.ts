@@ -25,7 +25,7 @@ export interface FhirPathRequestInput {
   variables: FpVariable[];
 }
 
-/** Builds the FHIR `Parameters` request body per `server-api.md`. Throws if `resourceText` isn't valid JSON — callers should catch and surface it as a resource-JSON error. */
+/** Builds the FHIR `Parameters` request body per the wire format documented in docs/superpowers/specs/2026-07-02-expression-benches-design.md. Throws if `resourceText` isn't valid JSON — callers should catch and surface it as a resource-JSON error. */
 export function buildFhirPathRequest(input: FhirPathRequestInput): FhirParameters {
   const parameter: FhirParameter[] = [{ name: 'expression', valueString: input.expression }];
 
@@ -53,10 +53,10 @@ function readOperationOutcomeMessage(body: unknown): string | null {
     return null;
   }
   const issue = outcome.issue[0];
-  return issue.details?.text ?? issue.diagnostics ?? null;
+  return issue.details?.text?.trim() || issue.diagnostics?.trim() || null;
 }
 
-/** POSTs to the FHIRPath evaluator route for the given version and returns the raw `Parameters` response. Throws on a non-2xx response or a network/abort error. */
+/** POSTs to the FHIRPath evaluator route for the given version and returns the raw `Parameters` response. Throws if the body is an `OperationOutcome` (the backend reports evaluation/parse errors this way even on HTTP 200) or the response is non-2xx, or on a network/abort error. */
 export async function runFhirPath(
   version: FhirVersion,
   body: FhirParameters,
@@ -70,7 +70,14 @@ export async function runFhirPath(
     signal,
   });
 
-  const json = (await response.json()) as FhirParameters;
+  const text = await response.text();
+  let json: FhirParameters;
+  try {
+    json = JSON.parse(text) as FhirParameters;
+  } catch {
+    throw new Error(`Request failed with status ${response.status} ${response.statusText}`);
+  }
+
   const operationOutcomeMessage = readOperationOutcomeMessage(json);
   if (!response.ok || operationOutcomeMessage !== null) {
     throw new Error(operationOutcomeMessage ?? `Request failed with status ${response.status}`);
@@ -78,7 +85,7 @@ export async function runFhirPath(
   return json;
 }
 
-/** Reads a result/trace part's value from `value{Type}`, `resource`, or the json-value extension fallback. */
+/** Reads a result/trace part's value, preferring `resource`, then the json-value extension, then `value{Type}`, in that priority order. */
 function readPartValue(part: FhirParameter): string {
   if (part.resource !== undefined) {
     return JSON.stringify(part.resource, null, 2);
@@ -125,7 +132,7 @@ function parseAstNode(raw: RawAstNode): FpAstNode {
 /** Parses the FHIRPath evaluator's `Parameters` response into the shape the bench UI renders. */
 export function parseFhirPathResponse(response: FhirParameters): FpEvalResult {
   const parameters = response.parameter ?? [];
-  const emptyResult: FpEvalResult = { error: null, evaluator: '', groups: [], trace: [], ast: null };
+  const emptyResult: FpEvalResult = { error: null, evaluator: '', groups: [], trace: [], ast: null, astParseFailed: false };
 
   const errorParameter = parameters.find((parameter) => parameter.name === 'error');
   if (errorParameter) {
@@ -138,11 +145,14 @@ export function parseFhirPathResponse(response: FhirParameters): FpEvalResult {
 
   const astPart = configPart?.part?.find((part) => part.name === 'parseDebugTree');
   let ast: FpAstNode | null = null;
+  let astParseFailed = false;
   if (typeof astPart?.valueString === 'string') {
     try {
       ast = parseAstNode(JSON.parse(astPart.valueString) as RawAstNode);
-    } catch {
+    } catch (error) {
+      console.warn('Failed to parse parseDebugTree payload', error, astPart.valueString);
       ast = null;
+      astParseFailed = true;
     }
   }
 
@@ -160,5 +170,5 @@ export function parseFhirPathResponse(response: FhirParameters): FpEvalResult {
     groups.push({ label: (resultParameter.valueString as string) ?? null, items });
   }
 
-  return { error: null, evaluator, groups, trace, ast };
+  return { error: null, evaluator, groups, trace, ast, astParseFailed };
 }
