@@ -62,6 +62,10 @@ export function TopBar({
         ))}
       </nav>
 
+      <a href="benches.html" className="top-bar__nav-item" style={{ textDecoration: 'none' }}>
+        Expression Benches ↗
+      </a>
+
       <div className="top-bar__spacer" />
 
       <span className="top-bar__readout">
