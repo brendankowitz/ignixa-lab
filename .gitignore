@@ -434,3 +434,8 @@ local.settings.json
 # Playwright MCP output + local run screenshots (dev-only)
 .playwright-mcp/
 /ignixa-*.png
+
+# Local ad-hoc scripts (dev-only, not part of the build)
+claude-*.ps1
+
+.worktrees/

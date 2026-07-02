@@ -28,6 +28,10 @@ public static class EndpointClassifier
             "Suites" => EndpointClass.Suites,
             "Capability" => EndpointClass.Capability,
             "Run" => EndpointClass.Run,
+            // FHIRPath evaluation is a single unit of work per call (like
+            // Capability), not a fan-out run — classify at the same tier.
+            "FhirPathMetadata" or "FhirPathStu3" or "FhirPathR4" or "FhirPathR4B"
+                or "FhirPathR5" or "FhirPathR6" => EndpointClass.Capability,
             // Fail safe: an unrecognized (e.g. newly added) endpoint gets the
             // strictest tier rather than silently running unlimited.
             _ => EndpointClass.Run,

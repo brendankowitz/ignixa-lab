@@ -14,9 +14,13 @@
     <PackageReference Include="Ignixa.TestScript" />
     <PackageReference Include="Ignixa.TestScript.FhirFakes" />
     <PackageReference Include="IgnixaLab.TestScript.Suites" />
+    <PackageReference Include="Ignixa.FhirPath" />
+    <PackageReference Include="Ignixa.Serialization" />
+    <PackageReference Include="Ignixa.Specification" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Timer" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.ApplicationInsights" />
     <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" />
   </ItemGroup>
