@@ -18,6 +18,16 @@ spec covers building that tool as a second page in the existing frontend,
 with the FHIRPath bench wired to the real backend and the other two shipped
 as interactive client-side mocks (their backends don't exist yet).
 
+**Hard constraint**: `ignixa-lab`'s FHIRPath endpoints are meant to serve
+fhirpath-lab.com as a first-class "Ignixa" engine option (see
+`docs/features/fhirpath-evaluator/readme.md`), not just this repo's own UI.
+This work is frontend-only and must not touch `FhirPathFunctions.cs` /
+`ResultFormatter.cs` / `JsonAstVisitor.cs` in any way that changes the shape
+or meaning of existing fields or routes — the Expression Benches frontend
+only *reads* the contract documented in `server-api.md`. Additive,
+backwards-compatible backend extensions remain fine in general, but none are
+needed or in scope for this spec.
+
 ## Sources of truth
 
 - **Visual/interaction design**: `Ignixa Expression Benches.dc.html`
