@@ -194,6 +194,32 @@ identity — no credential value is ever stored:
 - `AZURE_TENANT_ID` — the Entra tenant ID.
 - `AZURE_SUBSCRIPTION_ID` — the Azure subscription ID.
 
+## Capability-aware test gating
+
+Suites can gate a whole `TestScript` or an individual `test[]` entry on the
+target server's declared `CapabilityStatement` via a
+`http://ignixa.io/testscript/requiresCapability` extension, whose `valueString`
+is a FHIRPath expression evaluated against the target's `GET /metadata`
+response (fetched once per run and reused across every job). If the expression
+evaluates to `false`, the gated test (or, for a metadata-level extension, every
+test in the suite) is recorded as `skipped` rather than executed:
+
+```json
+{
+  "extension": [{
+    "url": "http://ignixa.io/testscript/requiresCapability",
+    "valueString": "rest.resource.where(type='Patient').operation.where(name='everything').exists()"
+  }]
+}
+```
+
+If the CapabilityStatement can't be fetched or parsed, gating fails open (every
+gated test still runs as if ungated) and `ConformanceReport.capabilityWarning`
+explains why, rather than silently skipping potentially large parts of a run
+because `/metadata` happened to be flaky. See
+`Execution/CapabilityStatementFetcher.cs` and the engine's
+`TestScriptEvaluator.IsCapabilityRequirementMet`.
+
 ## Notes
 
 - The engine is the `Ignixa.TestScript` NuGet package (published from

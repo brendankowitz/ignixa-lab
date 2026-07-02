@@ -3,6 +3,7 @@ using Ignixa.Lab.Functions.Conformance;
 using Ignixa.Lab.Functions.Configuration;
 using Ignixa.Lab.Functions.Models;
 using Ignixa.Lab.Functions.Suites;
+using Ignixa.Serialization.SourceNodes;
 using Ignixa.TestScript.Evaluation;
 using Ignixa.TestScript.FhirFakes;
 using Ignixa.TestScript.Fixtures;
@@ -23,6 +24,7 @@ namespace Ignixa.Lab.Functions.Execution;
 public sealed class TestScriptRunner(
     ISuiteCatalog catalog,
     IEvaluatorFactory evaluatorFactory,
+    CapabilityStatementFetcher capabilityFetcher,
     IOptions<IgnixaLabOptions> options,
     ILogger<TestScriptRunner> logger)
 {
@@ -60,6 +62,8 @@ public sealed class TestScriptRunner(
             ? _options.DefaultFhirVersion
             : request.FhirVersion!;
 
+        var (capabilityStatement, capabilityWarning) = await FetchCapabilityStatementAsync(target, cancellationToken);
+
         var startedAt = DateTimeOffset.UtcNow;
         var stopwatch = Stopwatch.StartNew();
         var results = new List<ConformanceResult>();
@@ -84,7 +88,7 @@ public sealed class TestScriptRunner(
         foreach (var job in jobs)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            results.AddRange(await ExecuteJobAsync(evaluator, job, fhirVersion, cancellationToken));
+            results.AddRange(await ExecuteJobAsync(evaluator, job, fhirVersion, capabilityStatement, cancellationToken));
         }
 
         stopwatch.Stop();
@@ -95,20 +99,50 @@ public sealed class TestScriptRunner(
             FhirVersion: fhirVersion,
             StartedAt: startedAt,
             DurationMs: stopwatch.ElapsedMilliseconds,
-            Results: results);
+            Results: results,
+            CapabilityWarning: capabilityWarning);
 
         return RunOutcome.Completed(report);
+    }
+
+    /// <summary>
+    /// Fetches the target's CapabilityStatement once per run so every job's
+    /// <c>requiresCapability</c>-gated tests can be evaluated against the same
+    /// snapshot. Fetch/parse failures fail open (returns a null statement, so
+    /// gated tests run as if ungated) with a warning surfaced on the report
+    /// rather than silently skipping potentially large parts of the run.
+    /// </summary>
+    private async Task<(ResourceJsonNode? Statement, string? Warning)> FetchCapabilityStatementAsync(
+        Uri target, CancellationToken cancellationToken)
+    {
+        var fetchResult = await capabilityFetcher.FetchAsync(target, cancellationToken);
+        if (!fetchResult.Success)
+        {
+            logger.LogWarning("Capability fetch failed for {Target}: {Error}", target, fetchResult.Error);
+            return (null, $"requiresCapability checks were not enforced: {fetchResult.Error}");
+        }
+
+        try
+        {
+            return (ResourceJsonNode.Parse(fetchResult.Json!), null);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to parse CapabilityStatement for {Target}.", target);
+            return (null, $"requiresCapability checks were not enforced: the target's CapabilityStatement could not be parsed ({ex.Message})");
+        }
     }
 
     private async Task<IReadOnlyList<ConformanceResult>> ExecuteJobAsync(
         TestScriptEvaluator evaluator,
         SuiteJob job,
         string fhirVersion,
+        ResourceJsonNode? capabilityStatement,
         CancellationToken cancellationToken)
     {
         try
         {
-            var report = await evaluator.ExecuteAsync(job.Definition, cancellationToken, fhirVersion);
+            var report = await evaluator.ExecuteAsync(job.Definition, cancellationToken, fhirVersion, capabilityStatement);
             return ConformanceReportMapper.Map(report, job.Id, job.Category, job.File);
         }
         catch (OperationCanceledException)

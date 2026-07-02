@@ -1,4 +1,3 @@
-using System.Net.Http.Headers;
 using Ignixa.Lab.Functions.Configuration;
 using Ignixa.Lab.Functions.Execution;
 using Ignixa.Lab.Functions.Models;
@@ -19,12 +18,10 @@ namespace Ignixa.Lab.Functions.Functions;
 /// can fall back to observed-only rendering.
 /// </summary>
 public sealed class CapabilityFunction(
-    IHttpClientFactory httpClientFactory,
+    CapabilityStatementFetcher capabilityFetcher,
     IOptions<IgnixaLabOptions> options,
     ILogger<CapabilityFunction> logger)
 {
-    private static readonly MediaTypeWithQualityHeaderValue FhirJsonAccept = new("application/fhir+json");
-
     private readonly IgnixaLabOptions _options = options.Value;
 
     [Function("Capability")]
@@ -43,48 +40,23 @@ public sealed class CapabilityFunction(
         var fhirVersion = request.Query["fhirVersion"].ToString();
         var resolvedFhirVersion = string.IsNullOrWhiteSpace(fhirVersion) ? _options.DefaultFhirVersion : fhirVersion;
 
-        var metadataUri = new Uri(target.ToString().TrimEnd('/') + "/metadata");
-
-        using var client = httpClientFactory.CreateClient(HttpEvaluatorFactory.HttpClientName);
-        client.Timeout = TimeSpan.FromSeconds(_options.HttpTimeoutSeconds);
-
-        using var metadataRequest = new HttpRequestMessage(HttpMethod.Get, metadataUri);
-        metadataRequest.Headers.Accept.Add(FhirJsonAccept);
-
-        HttpResponseMessage response;
-        try
+        var fetchResult = await capabilityFetcher.FetchAsync(target, cancellationToken);
+        if (!fetchResult.Success)
         {
-            response = await client.SendAsync(metadataRequest, cancellationToken);
-        }
-        catch (HttpRequestException ex)
-        {
-            logger.LogWarning(ex, "Capability fetch failed for {Target}.", target);
-            return UpstreamError($"Could not reach {target} for capability metadata: {ex.Message}");
-        }
-        catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
-        {
-            logger.LogWarning(ex, "Capability fetch timed out for {Target}.", target);
-            return UpstreamError($"Request to {target} timed out while fetching capability metadata.", StatusCodes.Status504GatewayTimeout);
+            logger.LogWarning("Capability fetch failed for {Target}: {Error}", target, fetchResult.Error);
+            var statusCode = fetchResult.FailureKind == CapabilityStatementFetchFailureKind.Timeout
+                ? StatusCodes.Status504GatewayTimeout
+                : StatusCodes.Status502BadGateway;
+            return UpstreamError(fetchResult.Error!, statusCode);
         }
 
-        using (response)
+        if (!CapabilityStatementParser.TryParse(fetchResult.Json, out var resources, out var parseError))
         {
-            if (!response.IsSuccessStatusCode)
-            {
-                logger.LogWarning("Capability fetch for {Target} returned {StatusCode}.", target, (int)response.StatusCode);
-                return UpstreamError($"{target} returned HTTP {(int)response.StatusCode} for /metadata.");
-            }
-
-            var body = await response.Content.ReadAsStringAsync(cancellationToken);
-
-            if (!CapabilityStatementParser.TryParse(body, out var resources, out var parseError))
-            {
-                logger.LogWarning("Capability fetch for {Target} returned an unparseable CapabilityStatement: {Error}", target, parseError);
-                return UpstreamError(parseError);
-            }
-
-            return new OkObjectResult(new CapabilityResponse(target.ToString(), resolvedFhirVersion, resources));
+            logger.LogWarning("Capability fetch for {Target} returned an unparseable CapabilityStatement: {Error}", target, parseError);
+            return UpstreamError(parseError);
         }
+
+        return new OkObjectResult(new CapabilityResponse(target.ToString(), resolvedFhirVersion, resources));
     }
 
     private static IActionResult UpstreamError(string message, int statusCode = StatusCodes.Status502BadGateway) =>
