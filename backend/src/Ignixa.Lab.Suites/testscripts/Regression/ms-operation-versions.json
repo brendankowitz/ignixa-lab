@@ -1,0 +1,78 @@
+{
+  "resourceType": "TestScript",
+  "name": "Regression/ms-operation-versions",
+  "description": "Content-negotiation conformance for the '$versions' operation, ported from fhir-server's Microsoft.Health.Fhir.Shared.Tests.E2E OperationVersionsTests.cs. IMPORTANT: '$versions' is a Microsoft FHIR Server-specific system operation (GET {base}/$versions returning the server's supported FHIR versions) — it is NOT part of the core FHIR specification, so every assertion in this suite is warningOnly. A target server that does not implement this operation will typically return 404, which is itself a perfectly conformant response and should not be treated as a failure. InlineData rows collapsed: 'application/json' + 'application/fhir+json' -> one representative JSON test; 'application/xml' + 'application/fhir+xml' -> one representative XML test; the two invalid Accept values ('application/json1', 'applicaiton/xml') -> one representative invalid-Accept test (both are equally malformed media types and exercise the same 406 code path).",
+  "status": "active",
+  "test": [
+    {
+      "name": "$versions honors a valid JSON Accept header",
+      "description": "GET {base}/$versions with Accept: application/fhir+json must return HTTP 200 with a Content-Type that echoes the requested media type exactly (source test also covers the bare 'application/json' alias, which is behaviorally equivalent and collapsed here). warningOnly: '$versions' is a proprietary operation that may not exist on the target server.",
+      "action": [
+        {
+          "operation": {
+            "type": { "code": "$versions" },
+            "url": "$versions",
+            "method": "GET",
+            "accept": "application/fhir+json",
+            "responseId": "versions-json-response",
+            "description": "GET /$versions with Accept: application/fhir+json"
+          }
+        },
+        { "assert": { "description": "Server should return HTTP 200 (warningOnly: operation may be unimplemented)", "response": "okay", "warningOnly": true } },
+        { "assert": { "description": "Response Content-Type should echo 'application/fhir+json' exactly (warningOnly, see above)", "contentType": "application/fhir+json", "warningOnly": true } }
+      ]
+    },
+    {
+      "name": "$versions honors a valid XML Accept header",
+      "description": "GET {base}/$versions with Accept: application/fhir+xml must return HTTP 200 with a Content-Type that echoes the requested media type exactly (source test also covers the bare 'application/xml' alias, collapsed here). warningOnly: '$versions' is a proprietary operation that may not exist on the target server, and some servers only support the JSON format.",
+      "action": [
+        {
+          "operation": {
+            "type": { "code": "$versions" },
+            "url": "$versions",
+            "method": "GET",
+            "accept": "application/fhir+xml",
+            "responseId": "versions-xml-response",
+            "description": "GET /$versions with Accept: application/fhir+xml"
+          }
+        },
+        { "assert": { "description": "Server should return HTTP 200 (warningOnly: operation and/or XML format may be unimplemented)", "response": "okay", "warningOnly": true } },
+        { "assert": { "description": "Response Content-Type should echo 'application/fhir+xml' exactly (warningOnly, see above)", "contentType": "application/fhir+xml", "warningOnly": true } }
+      ]
+    },
+    {
+      "name": "$versions with no Accept header defaults to application/fhir+json",
+      "description": "GET {base}/$versions with no Accept header at all must return HTTP 200 with Content-Type application/fhir+json (the server's default representation). warningOnly: '$versions' is a proprietary operation that may not exist on the target server.",
+      "action": [
+        {
+          "operation": {
+            "type": { "code": "$versions" },
+            "url": "$versions",
+            "method": "GET",
+            "responseId": "versions-no-accept-response",
+            "description": "GET /$versions with no Accept header"
+          }
+        },
+        { "assert": { "description": "Server should return HTTP 200 (warningOnly: operation may be unimplemented)", "response": "okay", "warningOnly": true } },
+        { "assert": { "description": "Response Content-Type should default to application/fhir+json (warningOnly, see above)", "contentType": "application/fhir+json", "warningOnly": true } }
+      ]
+    },
+    {
+      "name": "$versions rejects an invalid Accept header with 406",
+      "description": "GET {base}/$versions with a malformed Accept header (e.g. 'application/json1') must return HTTP 406 Not Acceptable (source test also covers the typo'd 'applicaiton/xml' value, collapsed here since both exercise the same invalid-media-type rejection path). warningOnly: '$versions' is a proprietary operation that may not exist on the target server (in which case 404 is expected instead of 406).",
+      "action": [
+        {
+          "operation": {
+            "type": { "code": "$versions" },
+            "url": "$versions",
+            "method": "GET",
+            "accept": "application/json1",
+            "responseId": "versions-invalid-accept-response",
+            "description": "GET /$versions with an invalid Accept header value"
+          }
+        },
+        { "assert": { "description": "Server should return HTTP 406 Not Acceptable (warningOnly: operation may be unimplemented, or may 404 instead)", "responseCode": "406", "warningOnly": true } }
+      ]
+    }
+  ]
+}

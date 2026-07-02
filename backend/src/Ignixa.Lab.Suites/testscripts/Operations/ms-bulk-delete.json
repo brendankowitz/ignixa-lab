@@ -1,0 +1,252 @@
+{
+  "resourceType": "TestScript",
+  "name": "Operations/ms-bulk-delete",
+  "description": "$bulk-delete conformance tests ported from Microsoft.Health.Fhir.Shared.Tests.E2E.Rest.BulkDeleteTests. $bulk-delete is an async long-running job (DELETE with Prefer: respond-async -> 202 Accepted + Content-Location job-status URL); this engine has no wait-for-completion/polling-loop primitive, so job completion (ResourceDeletedCount Parameters) is NOT verified. What IS reliably testable and asserted here: kick-off acceptance (202 + non-empty Content-Location) at system and type scope, a single best-effort status poll (warningOnly, since the job may finish before or after this one check), and the fully synchronous invalid-search-parameter validation failure (400, no async involved). All fixtures use meta.tag http://ignixa.io/testscript/suite/test|<unique-tag-per-scenario> so each kicked-off job only ever targets its own scenario's resources on a shared server; a defensive teardown re-deletes anything the async jobs may not have finished deleting yet.",
+  "status": "active",
+  "fixture": [
+    {
+      "id": "basic-pat1",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Patient",
+        "id": "fhir262-bd-basic-pat1",
+        "meta": { "tag": [{ "system": "http://ignixa.io/testscript/suite/test", "code": "fhir262-bd-basic" }] },
+        "name": [{ "family": "BulkDeleteBasic", "given": ["One"] }]
+      }
+    },
+    {
+      "id": "basic-pat2",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Patient",
+        "id": "fhir262-bd-basic-pat2",
+        "meta": { "tag": [{ "system": "http://ignixa.io/testscript/suite/test", "code": "fhir262-bd-basic" }] },
+        "name": [{ "family": "BulkDeleteBasic", "given": ["Two"] }]
+      }
+    },
+    {
+      "id": "basic-org1",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Organization",
+        "id": "fhir262-bd-basic-org1",
+        "meta": { "tag": [{ "system": "http://ignixa.io/testscript/suite/test", "code": "fhir262-bd-basic" }] },
+        "name": "BulkDeleteBasic Org"
+      }
+    },
+    {
+      "id": "typeorg-1",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Organization",
+        "id": "fhir262-bd-typeorg-1",
+        "meta": { "tag": [{ "system": "http://ignixa.io/testscript/suite/test", "code": "fhir262-bd-typeorg" }] },
+        "name": "BulkDeleteTypeScoped Org 1"
+      }
+    },
+    {
+      "id": "typeorg-2",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Organization",
+        "id": "fhir262-bd-typeorg-2",
+        "meta": { "tag": [{ "system": "http://ignixa.io/testscript/suite/test", "code": "fhir262-bd-typeorg" }] },
+        "name": "BulkDeleteTypeScoped Org 2"
+      }
+    },
+    {
+      "id": "hard-pat1",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Patient",
+        "id": "fhir262-bd-hard-pat1",
+        "meta": { "tag": [{ "system": "http://ignixa.io/testscript/suite/test", "code": "fhir262-bd-hard" }] },
+        "name": [{ "family": "BulkHardDelete", "given": ["Pat"] }]
+      }
+    },
+    {
+      "id": "purge-pat1",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Patient",
+        "id": "fhir262-bd-purge-pat1",
+        "meta": { "tag": [{ "system": "http://ignixa.io/testscript/suite/test", "code": "fhir262-bd-purge" }] },
+        "name": [{ "family": "BulkPurgeHistory", "given": ["Pat"] }]
+      }
+    },
+    {
+      "id": "excl-pat1",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Patient",
+        "id": "fhir262-bd-excl-pat1",
+        "meta": { "tag": [{ "system": "http://ignixa.io/testscript/suite/test", "code": "fhir262-bd-excl" }] },
+        "name": [{ "family": "BulkExcluded", "given": ["Pat"] }]
+      }
+    },
+    {
+      "id": "excl-obs1",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Observation",
+        "id": "fhir262-bd-excl-obs1",
+        "meta": { "tag": [{ "system": "http://ignixa.io/testscript/suite/test", "code": "fhir262-bd-excl" }] },
+        "status": "final",
+        "code": { "coding": [{ "system": "http://loinc.org", "code": "8867-4", "display": "Heart rate" }] },
+        "subject": { "reference": "Patient/fhir262-bd-excl-pat1" }
+      }
+    },
+    {
+      "id": "incl-obs1",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Observation",
+        "id": "fhir262-bd-incl-obs1",
+        "meta": { "tag": [{ "system": "http://ignixa.io/testscript/suite/test", "code": "fhir262-bd-incl" }] },
+        "status": "final",
+        "code": { "coding": [{ "system": "http://loinc.org", "code": "8867-4", "display": "Heart rate" }] },
+        "subject": { "reference": "Patient/fhir262-bd-incl-pat1" }
+      }
+    },
+    {
+      "id": "incl-pat1",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Patient",
+        "id": "fhir262-bd-incl-pat1",
+        "meta": { "tag": [{ "system": "http://ignixa.io/testscript/suite/test", "code": "fhir262-bd-incl" }] },
+        "name": [{ "family": "BulkIncludeReferenced", "given": ["Pat"] }]
+      }
+    },
+    {
+      "id": "revincl-pat1",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Patient",
+        "id": "fhir262-bd-revincl-pat1",
+        "meta": { "tag": [{ "system": "http://ignixa.io/testscript/suite/test", "code": "fhir262-bd-revincl" }] },
+        "name": [{ "family": "BulkRevInclude", "given": ["Pat"] }]
+      }
+    },
+    {
+      "id": "remref-pat1",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Patient",
+        "id": "fhir262-bd-remref-pat1",
+        "meta": { "tag": [{ "system": "http://ignixa.io/testscript/suite/test", "code": "fhir262-bd-remref" }] },
+        "name": [{ "family": "BulkRemoveReferences", "given": ["Pat"] }]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "name": "bulkDeleteBasicLocation",
+      "sourceId": "bulk-delete-basic-kickoff",
+      "headerField": "Content-Location",
+      "defaultValue": "$bulk-delete",
+      "description": "Job-status URL from the Content-Location header of the basic kickoff response; falls back to GET $bulk-delete if the header was absent."
+    }
+  ],
+  "setup": {
+    "action": [
+      { "operation": { "type": { "code": "update" }, "url": "Patient/fhir262-bd-basic-pat1", "sourceId": "basic-pat1", "description": "PUT Patient/fhir262-bd-basic-pat1 (tag=fhir262-bd-basic)" } },
+      { "operation": { "type": { "code": "update" }, "url": "Patient/fhir262-bd-basic-pat2", "sourceId": "basic-pat2", "description": "PUT Patient/fhir262-bd-basic-pat2 (tag=fhir262-bd-basic)" } },
+      { "operation": { "type": { "code": "update" }, "url": "Organization/fhir262-bd-basic-org1", "sourceId": "basic-org1", "description": "PUT Organization/fhir262-bd-basic-org1 (tag=fhir262-bd-basic)" } },
+      { "operation": { "type": { "code": "update" }, "url": "Organization/fhir262-bd-typeorg-1", "sourceId": "typeorg-1", "description": "PUT Organization/fhir262-bd-typeorg-1 (tag=fhir262-bd-typeorg)" } },
+      { "operation": { "type": { "code": "update" }, "url": "Organization/fhir262-bd-typeorg-2", "sourceId": "typeorg-2", "description": "PUT Organization/fhir262-bd-typeorg-2 (tag=fhir262-bd-typeorg)" } },
+      { "operation": { "type": { "code": "update" }, "url": "Patient/fhir262-bd-hard-pat1", "sourceId": "hard-pat1", "description": "PUT Patient/fhir262-bd-hard-pat1 (tag=fhir262-bd-hard)" } },
+      { "operation": { "type": { "code": "update" }, "url": "Patient/fhir262-bd-purge-pat1", "sourceId": "purge-pat1", "description": "PUT Patient/fhir262-bd-purge-pat1 (tag=fhir262-bd-purge)" } },
+      { "operation": { "type": { "code": "update" }, "url": "Patient/fhir262-bd-excl-pat1", "sourceId": "excl-pat1", "description": "PUT Patient/fhir262-bd-excl-pat1 (tag=fhir262-bd-excl)" } },
+      { "operation": { "type": { "code": "update" }, "url": "Observation/fhir262-bd-excl-obs1", "sourceId": "excl-obs1", "description": "PUT Observation/fhir262-bd-excl-obs1 (tag=fhir262-bd-excl, subject=excl-pat1)" } },
+      { "operation": { "type": { "code": "update" }, "url": "Patient/fhir262-bd-incl-pat1", "sourceId": "incl-pat1", "description": "PUT Patient/fhir262-bd-incl-pat1 (tag=fhir262-bd-incl)" } },
+      { "operation": { "type": { "code": "update" }, "url": "Observation/fhir262-bd-incl-obs1", "sourceId": "incl-obs1", "description": "PUT Observation/fhir262-bd-incl-obs1 (tag=fhir262-bd-incl, subject=incl-pat1)" } },
+      { "operation": { "type": { "code": "update" }, "url": "Patient/fhir262-bd-revincl-pat1", "sourceId": "revincl-pat1", "description": "PUT Patient/fhir262-bd-revincl-pat1 (tag=fhir262-bd-revincl)" } },
+      { "operation": { "type": { "code": "update" }, "url": "Patient/fhir262-bd-remref-pat1", "sourceId": "remref-pat1", "description": "PUT Patient/fhir262-bd-remref-pat1 (tag=fhir262-bd-remref)" } }
+    ]
+  },
+  "test": [
+    {
+      "name": "$bulk-delete kick-off: system-level, multiple resource types",
+      "description": "DELETE /$bulk-delete?_tag=http://ignixa.io/testscript/suite/test|fhir262-bd-basic with Prefer: respond-async must return 202 Accepted with a non-empty Content-Location job-status header, matching GivenVariousResourcesOfDifferentTypes_WhenBulkDeleted_ThenAllAreDeleted (job completion itself is not verified; see suite description).",
+      "action": [
+        { "operation": { "type": { "code": "$bulk-delete" }, "method": "DELETE", "url": "$bulk-delete?_tag=http://ignixa.io/testscript/suite/test|fhir262-bd-basic", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-delete-basic-kickoff", "description": "DELETE $bulk-delete?_tag=http://ignixa.io/testscript/suite/test|fhir262-bd-basic" } },
+        { "assert": { "description": "Kick-off must return 202 Accepted", "responseCode": "202" } },
+        { "assert": { "description": "Content-Location header must be present and non-empty", "headerField": "Content-Location" } }
+      ]
+    },
+    {
+      "name": "$bulk-delete: single best-effort status poll",
+      "description": "GET the Content-Location captured from the basic kickoff. This is a single request, not a wait loop; the job may already be complete (200 + Parameters) or still running (202) by the time this runs, so the whole assertion is warningOnly.",
+      "action": [
+        { "operation": { "type": { "code": "read" }, "method": "GET", "url": "${bulkDeleteBasicLocation}", "responseId": "bulk-delete-basic-poll", "description": "GET the bulk-delete job status URL" } },
+        { "assert": { "description": "Status poll should return a 2xx status, either 202 (still running) or 200 (complete) (warningOnly: timing-dependent)", "response": "okay", "warningOnly": true } }
+      ]
+    },
+    {
+      "name": "$bulk-delete: invalid search parameter is rejected with 400",
+      "description": "DELETE /$bulk-delete?_tag=...&invalidParam=badRequest supplies a query parameter that is not a valid search parameter; this is fully synchronous validation (no job is created) and must return 400, matching GivenBulkDeleteRequestWithInvalidSearchParameters_WhenRequested_ThenBadRequestIsReturned.",
+      "action": [
+        { "operation": { "type": { "code": "$bulk-delete" }, "method": "DELETE", "url": "$bulk-delete?_tag=http://ignixa.io/testscript/suite/test|fhir262-bd-badreq&invalidParam=badRequest", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-delete-bad-request", "description": "DELETE $bulk-delete?_tag=...&invalidParam=badRequest" } },
+        { "assert": { "description": "Must return HTTP 400", "response": "bad" } }
+      ]
+    },
+    {
+      "name": "$bulk-delete kick-off: type-scoped (Organization/$bulk-delete)",
+      "description": "DELETE /Organization/$bulk-delete?_tag=http://ignixa.io/testscript/suite/test|fhir262-bd-typeorg must return 202 Accepted with a Content-Location header, matching GivenResourcesOfOneType_WhenBulkDeletedByType_ThenAllOfThatTypeAreDeleted.",
+      "action": [
+        { "operation": { "type": { "code": "$bulk-delete" }, "method": "DELETE", "url": "Organization/$bulk-delete?_tag=http://ignixa.io/testscript/suite/test|fhir262-bd-typeorg", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-delete-type-scoped-kickoff", "description": "DELETE Organization/$bulk-delete?_tag=http://ignixa.io/testscript/suite/test|fhir262-bd-typeorg" } },
+        { "assert": { "description": "Type-scoped kick-off must return 202 Accepted", "response": "okay" } },
+        { "assert": { "description": "Content-Location header must be present and non-empty", "headerField": "Content-Location" } }
+      ]
+    },
+    {
+      "name": "$bulk-delete kick-off accepts hardDelete / purgeHistory / excludedResourceTypes / _include / _revinclude / _remove-references options",
+      "description": "Each of BulkDeleteTests' documented optional query parameters must be accepted at kick-off time and return 202 Accepted: _hardDelete=true (GivenHardBulkDeleteRequest...), _purgeHistory=true (GivenPurgeBulkDeleteRequest...), excludedResourceTypes (GivenBulkDeleteRequestWithMultipleExcludedResourceTypes...), _include=Observation:* (GivenBulkDeleteJobWithIncludeSearch...), _revinclude=*:* (GivenBulkDeleteJobWithRevincludeSearch...), and _hardDelete=true&_remove-references=true together (GivenABulkDeleteJob_WhenRemovingReferences_ThenReferencesAreRemoved). Only kick-off acceptance is checked; the resulting deletion counts are not verified (no polling-until-complete primitive).",
+      "action": [
+        { "operation": { "type": { "code": "$bulk-delete" }, "method": "DELETE", "url": "Patient/$bulk-delete?_tag=http://ignixa.io/testscript/suite/test|fhir262-bd-hard&_hardDelete=true", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-delete-hard-kickoff", "description": "DELETE Patient/$bulk-delete?_tag=...&_hardDelete=true" } },
+        { "assert": { "description": "_hardDelete=true kick-off must return 202 Accepted", "sourceId": "bulk-delete-hard-kickoff", "response": "okay" } },
+        { "operation": { "type": { "code": "$bulk-delete" }, "method": "DELETE", "url": "Patient/$bulk-delete?_tag=http://ignixa.io/testscript/suite/test|fhir262-bd-purge&_purgeHistory=true", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-delete-purge-kickoff", "description": "DELETE Patient/$bulk-delete?_tag=...&_purgeHistory=true" } },
+        { "assert": { "description": "_purgeHistory=true kick-off must return 202 Accepted", "sourceId": "bulk-delete-purge-kickoff", "response": "okay" } },
+        { "operation": { "type": { "code": "$bulk-delete" }, "method": "DELETE", "url": "$bulk-delete?_tag=http://ignixa.io/testscript/suite/test|fhir262-bd-excl&excludedResourceTypes=Observation", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-delete-excluded-kickoff", "description": "DELETE $bulk-delete?_tag=...&excludedResourceTypes=Observation" } },
+        { "assert": { "description": "excludedResourceTypes kick-off must return 202 Accepted", "sourceId": "bulk-delete-excluded-kickoff", "response": "okay" } },
+        { "operation": { "type": { "code": "$bulk-delete" }, "method": "DELETE", "url": "Observation/$bulk-delete?_tag=http://ignixa.io/testscript/suite/test|fhir262-bd-incl&_include=Observation:*", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-delete-include-kickoff", "description": "DELETE Observation/$bulk-delete?_tag=...&_include=Observation:*" } },
+        { "assert": { "description": "_include kick-off must return 202 Accepted", "sourceId": "bulk-delete-include-kickoff", "response": "okay" } },
+        { "operation": { "type": { "code": "$bulk-delete" }, "method": "DELETE", "url": "Patient/$bulk-delete?_tag=http://ignixa.io/testscript/suite/test|fhir262-bd-revincl&_revinclude=*:*", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-delete-revinclude-kickoff", "description": "DELETE Patient/$bulk-delete?_tag=...&_revinclude=*:*" } },
+        { "assert": { "description": "_revinclude kick-off must return 202 Accepted", "sourceId": "bulk-delete-revinclude-kickoff", "response": "okay" } },
+        { "operation": { "type": { "code": "$bulk-delete" }, "method": "DELETE", "url": "Patient/$bulk-delete?_tag=http://ignixa.io/testscript/suite/test|fhir262-bd-remref&_hardDelete=true&_remove-references=true", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-delete-remove-references-kickoff", "description": "DELETE Patient/$bulk-delete?_tag=...&_hardDelete=true&_remove-references=true" } },
+        { "assert": { "description": "_remove-references kick-off must return 202 Accepted", "sourceId": "bulk-delete-remove-references-kickoff", "response": "okay" } }
+      ]
+    }
+  ],
+  "teardown": {
+    "action": [
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/fhir262-bd-basic-pat1", "description": "Teardown (defensive, in case the async job had not yet deleted it): delete basic-pat1" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/fhir262-bd-basic-pat2", "description": "Teardown (defensive): delete basic-pat2" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Organization/fhir262-bd-basic-org1", "description": "Teardown (defensive): delete basic-org1" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Organization/fhir262-bd-typeorg-1", "description": "Teardown (defensive): delete typeorg-1" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Organization/fhir262-bd-typeorg-2", "description": "Teardown (defensive): delete typeorg-2" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/fhir262-bd-hard-pat1", "description": "Teardown (defensive): delete hard-pat1" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/fhir262-bd-purge-pat1", "description": "Teardown (defensive): delete purge-pat1" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Observation/fhir262-bd-excl-obs1", "description": "Teardown (defensive): delete excl-obs1" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/fhir262-bd-excl-pat1", "description": "Teardown (defensive): delete excl-pat1" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Observation/fhir262-bd-incl-obs1", "description": "Teardown (defensive): delete incl-obs1" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/fhir262-bd-incl-pat1", "description": "Teardown (defensive): delete incl-pat1" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/fhir262-bd-revincl-pat1", "description": "Teardown (defensive): delete revincl-pat1" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/fhir262-bd-remref-pat1", "description": "Teardown (defensive): delete remref-pat1" } }
+    ]
+  }
+}

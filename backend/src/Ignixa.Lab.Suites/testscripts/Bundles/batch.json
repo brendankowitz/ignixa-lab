@@ -1,0 +1,177 @@
+{
+  "resourceType": "TestScript",
+  "name": "Bundles/batch",
+  "description": "Bundle type=batch conformance tests, ported from the Microsoft FHIR Server E2E suite (BundleBatchTests.cs). Unlike a transaction, a batch Bundle processes each entry independently: one entry's failure must not abort or roll back the others. POSTs a type=batch Bundle to the FHIR base URL (same POST-to-base-URL mechanism as Bundles/transaction.json — the engine has no dedicated batch operation code, so type.code='batch' is unrecognised by DeriveMethod and falls through to POST, and with no url/resource/params the request URL resolves to the server base). Bundle bodies are static fixtures using either server-assigned ids (plain POST) or a fixed client-supplied id (PUT), per the engine's static-fixture-body constraint.",
+  "status": "active",
+  "fixture": [
+    {
+      "id": "batch-bundle",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Bundle",
+        "type": "batch",
+        "entry": [
+          {
+            "resource": {
+              "resourceType": "Patient",
+              "identifier": [{ "system": "http://ignixa.io/testscript/suite/bundle-batch", "value": "BATCH-1" }],
+              "name": [{ "family": "Batch", "given": ["Alpha"] }]
+            },
+            "request": { "method": "POST", "url": "Patient" }
+          },
+          {
+            "request": { "method": "GET", "url": "Patient/fhir262-batch-missing-id" }
+          },
+          {
+            "resource": {
+              "resourceType": "Patient",
+              "identifier": [{ "system": "http://ignixa.io/testscript/suite/bundle-batch", "value": "BATCH-2" }],
+              "name": [{ "family": "Batch", "given": ["Beta"] }]
+            },
+            "request": { "method": "POST", "url": "Patient" }
+          },
+          {
+            "resource": {
+              "resourceType": "Patient",
+              "id": "fhir262-batch-client-id",
+              "identifier": [{ "system": "http://ignixa.io/testscript/suite/bundle-batch", "value": "BATCH-3" }],
+              "name": [{ "family": "Batch", "given": ["Gamma"] }]
+            },
+            "request": { "method": "PUT", "url": "Patient/fhir262-batch-client-id" }
+          }
+        ]
+      }
+    },
+    {
+      "id": "batch-conditional-bundle",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Bundle",
+        "type": "batch",
+        "entry": [
+          {
+            "resource": {
+              "resourceType": "Patient",
+              "identifier": [{ "system": "http://ignixa.io/testscript/suite/bundle-batch", "value": "BATCH-4" }],
+              "name": [{ "family": "Batch", "given": ["Delta"] }]
+            },
+            "request": {
+              "method": "POST",
+              "url": "Patient",
+              "ifNoneExist": "identifier=http://ignixa.io/testscript/suite/bundle-batch|BATCH-4"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "nonbundle-observation",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Observation",
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/bundle-batch", "value": "BATCH-NONBUNDLE" }],
+        "status": "final",
+        "code": { "coding": [{ "system": "http://loinc.org", "code": "8310-5", "display": "Body temperature" }] }
+      }
+    },
+    {
+      "id": "typeless-bundle",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Bundle",
+        "entry": [
+          {
+            "resource": {
+              "resourceType": "Patient",
+              "identifier": [{ "system": "http://ignixa.io/testscript/suite/bundle-batch", "value": "BATCH-TYPELESS" }],
+              "name": [{ "family": "Batch", "given": ["Typeless"] }]
+            },
+            "request": { "method": "POST", "url": "Patient" }
+          }
+        ]
+      }
+    }
+  ],
+  "test": [
+    {
+      "name": "Batch processes every entry independently; a failing entry does not abort the others",
+      "description": "POST a batch Bundle of 4 entries to the base URL: (1) a Patient create, (2) a GET of a deliberately nonexistent Patient (expected to fail with 404), (3) another Patient create, (4) a Patient create-via-PUT with a client-supplied id. Unlike a transaction, the batch must return 200 with all 4 per-entry results present — the 404 in entry 2 must not prevent entries 3 and 4 from succeeding (no all-or-nothing rollback).",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        { "operation": { "type": { "code": "batch" }, "method": "POST", "sourceId": "batch-bundle", "responseId": "batch-response", "description": "POST batch Bundle (create, failing GET, create, PUT) to the base URL" } },
+        { "assert": { "description": "Batch submission itself must return HTTP 200 (per-entry failures do not fail the outer batch)", "response": "okay" } },
+        { "assert": { "description": "Response must be a Bundle", "resource": "Bundle" } },
+        { "assert": { "description": "Response Bundle must contain exactly 4 entries (one per submitted request)", "expression": "entry.count() = 4" } },
+        { "assert": { "description": "Entry 1 (Patient create) must succeed with a 2xx status", "expression": "entry[0].response.status.startsWith('2')" } },
+        { "assert": { "description": "Entry 2 (GET of a nonexistent Patient) must independently fail with 404", "expression": "entry[1].response.status.startsWith('404')" } },
+        { "assert": { "description": "Entry 3 (Patient create) must still succeed — entry 2's failure must not abort subsequent entries", "expression": "entry[2].response.status.startsWith('2')" } },
+        { "assert": { "description": "Entry 4 (Patient create-via-PUT) must still succeed", "expression": "entry[3].response.status.startsWith('2')" } }
+      ]
+    },
+    {
+      "name": "Conditional create (If-None-Exist) inside a batch is idempotent across repeated submissions",
+      "description": "POST a batch Bundle containing a single conditional-create Patient entry twice. The first submission must create the resource (201); resubmitting the identical batch must match the existing resource rather than create a duplicate (200), mirroring the Microsoft FHIR Server's GivenAValidBundle_WhenSubmittingABatchTwiceWithAndWithoutChanges_ThenVersionIsCreatedWhenDataIsChanged scenario.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        { "operation": { "type": { "code": "batch" }, "method": "POST", "sourceId": "batch-conditional-bundle", "responseId": "batch-cond-response-1", "description": "POST batch Bundle with conditional-create Patient (1st submission)" } },
+        { "assert": { "description": "First submission must return HTTP 200", "response": "okay" } },
+        { "assert": { "description": "First submission's entry must report 201 Created", "expression": "entry[0].response.status", "value": "201", "operator": "equals" } },
+        { "operation": { "type": { "code": "batch" }, "method": "POST", "sourceId": "batch-conditional-bundle", "responseId": "batch-cond-response-2", "description": "POST the identical batch Bundle again (2nd submission)" } },
+        { "assert": { "description": "Second submission must also return HTTP 200", "response": "okay" } },
+        { "assert": { "description": "Second submission's entry must report 200 (matched existing, not re-created)", "expression": "entry[0].response.status.startsWith('200')", "warningOnly": true } }
+      ]
+    },
+    {
+      "name": "No rollback: resources from before and after the failing entry both persist",
+      "description": "After the batch in the previous test ran (including its internal 404 failure), independently verify that BATCH-1 (before the failure), BATCH-2 (after the failure), and the client-id BATCH-3 Patient are all persisted, and that the conditional-create BATCH-4 Patient exists exactly once despite being submitted twice.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/bundle-batch|BATCH-1", "responseId": "search-batch1", "description": "GET /Patient?identifier=http://ignixa.io/testscript/suite/bundle-batch|BATCH-1" } },
+        { "assert": { "description": "BATCH-1 search must return HTTP 200", "response": "okay" } },
+        { "assert": { "description": "BATCH-1 (created before the failing entry) must be persisted", "expression": "entry.count() >= 1" } },
+        { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/bundle-batch|BATCH-2", "responseId": "search-batch2", "description": "GET /Patient?identifier=http://ignixa.io/testscript/suite/bundle-batch|BATCH-2" } },
+        { "assert": { "description": "BATCH-2 search must return HTTP 200", "response": "okay" } },
+        { "assert": { "description": "BATCH-2 (created after the failing entry) must also be persisted — proves no rollback", "expression": "entry.count() >= 1" } },
+        { "operation": { "type": { "code": "read" }, "url": "Patient/fhir262-batch-client-id", "responseId": "read-batch3", "description": "GET /Patient/fhir262-batch-client-id" } },
+        { "assert": { "description": "BATCH-3 (created via PUT with client id) must be readable", "response": "okay" } },
+        { "assert": { "description": "Read must return a Patient", "resource": "Patient" } },
+        { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/bundle-batch|BATCH-4", "responseId": "search-batch4", "description": "GET /Patient?identifier=http://ignixa.io/testscript/suite/bundle-batch|BATCH-4" } },
+        { "assert": { "description": "BATCH-4 search must return HTTP 200", "response": "okay" } },
+        { "assert": { "description": "BATCH-4 must exist exactly once — the conditional create must not have created a duplicate on resubmission", "expression": "entry.count() = 1" } }
+      ]
+    },
+    {
+      "name": "Posting a non-Bundle resource to the base URL is rejected",
+      "description": "POST a plain Observation (not wrapped in a Bundle) to the base URL, mirroring GivenANonBundleResource_WhenSubmittingABatch_ThenBadRequestIsReturned. The base URL only accepts batch/transaction Bundles, so the server is expected to reject this with 400. Marked warningOnly because non-Bundle-at-root handling is not explicitly mandated by the FHIR spec and some servers may respond with a different error status.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        { "operation": { "type": { "code": "batch" }, "method": "POST", "sourceId": "nonbundle-observation", "responseId": "nonbundle-response", "description": "POST a plain Observation (not a Bundle) to the base URL" } },
+        { "assert": { "description": "Server should reject a non-Bundle root submission with 400 Bad Request", "response": "bad", "warningOnly": true } }
+      ]
+    },
+    {
+      "name": "A Bundle missing the required type element is rejected",
+      "description": "POST a Bundle with no 'type' element to the base URL. The Microsoft FHIR Server returns 405 Method Not Allowed ('Bundle type is not present. Possible values are: transaction or batch'); other conformant servers may instead reject this at structural validation with 400. Both are marked warningOnly since the exact status code for this malformed submission is not spec-mandated.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        { "operation": { "type": { "code": "batch" }, "method": "POST", "sourceId": "typeless-bundle", "responseId": "typeless-response", "description": "POST a Bundle with no type element to the base URL" } },
+        { "assert": { "description": "Alternative: 405 Method Not Allowed (Microsoft FHIR Server behavior)", "response": "methodNotAllowed", "warningOnly": true } },
+        { "assert": { "description": "Alternative: 400 Bad Request (structural validation rejection)", "response": "bad", "warningOnly": true } }
+      ]
+    }
+  ],
+  "teardown": {
+    "action": [
+      { "operation": { "type": { "code": "delete" }, "url": "Patient?identifier=http://ignixa.io/testscript/suite/bundle-batch|BATCH-1", "description": "Teardown: conditional delete BATCH-1" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient?identifier=http://ignixa.io/testscript/suite/bundle-batch|BATCH-2", "description": "Teardown: conditional delete BATCH-2" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/fhir262-batch-client-id", "description": "Teardown: delete BATCH-3 (client id)" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient?identifier=http://ignixa.io/testscript/suite/bundle-batch|BATCH-4", "description": "Teardown: conditional delete BATCH-4" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient?identifier=http://ignixa.io/testscript/suite/bundle-batch|BATCH-TYPELESS", "description": "Teardown: defensive conditional delete in case a lenient server processed the typeless Bundle" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Observation?identifier=http://ignixa.io/testscript/suite/bundle-batch|BATCH-NONBUNDLE", "description": "Teardown: defensive conditional delete in case a lenient server created the non-Bundle Observation" } }
+    ]
+  }
+}

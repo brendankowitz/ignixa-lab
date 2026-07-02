@@ -1,0 +1,162 @@
+{
+  "resourceType": "TestScript",
+  "name": "Operations/docref-operation",
+  "description": "$docref operation conformance tests ported from Microsoft.Health.Fhir.Shared.Tests.E2E Rest/Conformance/DocRefOperationTests.cs. $docref is invoked at DocumentReference/$docref?patient=... (type-level, NOT an instance operation on Patient) and is fully synchronous. DocRefRequestConverter passes the 'patient' query value straight through to the 'subject' search parameter with no reference-format rewriting, so fixtures here use bare (unprefixed) patient ids in DocumentReference.subject.reference, matching how DocRefOperationTestFixture itself stores Subject = new ResourceReference(patient.Id) (no 'Patient/' prefix). Uses client-supplied IDs (PUT) for all fixtures. Patients fhir262-docref-pat0 and fhir262-docref-pat1; DocumentReferences fhir262-docref-dr0a (pat0, type 55107-7), fhir262-docref-dr0b (pat0, type 74155-3), fhir262-docref-dr1a (pat1, type 55107-7).",
+  "status": "active",
+  "fixture": [
+    {
+      "id": "pat0",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Patient",
+        "id": "fhir262-docref-pat0",
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/test", "value": "DOCREF-PAT0" }],
+        "name": [{ "family": "DocRef", "given": ["Zero"] }]
+      }
+    },
+    {
+      "id": "pat1",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Patient",
+        "id": "fhir262-docref-pat1",
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/test", "value": "DOCREF-PAT1" }],
+        "name": [{ "family": "DocRef", "given": ["One"] }]
+      }
+    },
+    {
+      "id": "dr0a",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "DocumentReference",
+        "id": "fhir262-docref-dr0a",
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/test", "value": "DOCREF-DR0A" }],
+        "status": "current",
+        "type": { "coding": [{ "system": "http://loinc.org", "code": "55107-7" }] },
+        "subject": { "reference": "fhir262-docref-pat0" },
+        "content": [{ "attachment": { "url": "https://example.org/fhir262-docref-dr0a.pdf" } }]
+      }
+    },
+    {
+      "id": "dr0b",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "DocumentReference",
+        "id": "fhir262-docref-dr0b",
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/test", "value": "DOCREF-DR0B" }],
+        "status": "current",
+        "type": { "coding": [{ "system": "http://loinc.org", "code": "74155-3" }] },
+        "subject": { "reference": "fhir262-docref-pat0" },
+        "content": [{ "attachment": { "url": "https://example.org/fhir262-docref-dr0b.pdf" } }]
+      }
+    },
+    {
+      "id": "dr1a",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "DocumentReference",
+        "id": "fhir262-docref-dr1a",
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/test", "value": "DOCREF-DR1A" }],
+        "status": "current",
+        "type": { "coding": [{ "system": "http://loinc.org", "code": "55107-7" }] },
+        "subject": { "reference": "fhir262-docref-pat1" },
+        "content": [{ "attachment": { "url": "https://example.org/fhir262-docref-dr1a.pdf" } }]
+      }
+    }
+  ],
+  "setup": {
+    "action": [
+      { "operation": { "type": { "code": "update" }, "url": "Patient/fhir262-docref-pat0", "sourceId": "pat0", "description": "PUT Patient/fhir262-docref-pat0" } },
+      { "operation": { "type": { "code": "update" }, "url": "Patient/fhir262-docref-pat1", "sourceId": "pat1", "description": "PUT Patient/fhir262-docref-pat1" } },
+      { "operation": { "type": { "code": "update" }, "url": "DocumentReference/fhir262-docref-dr0a", "sourceId": "dr0a", "description": "PUT DocumentReference/fhir262-docref-dr0a (subject=pat0, type=55107-7)" } },
+      { "operation": { "type": { "code": "update" }, "url": "DocumentReference/fhir262-docref-dr0b", "sourceId": "dr0b", "description": "PUT DocumentReference/fhir262-docref-dr0b (subject=pat0, type=74155-3)" } },
+      { "operation": { "type": { "code": "update" }, "url": "DocumentReference/fhir262-docref-dr1a", "sourceId": "dr1a", "description": "PUT DocumentReference/fhir262-docref-dr1a (subject=pat1, type=55107-7)" } }
+    ]
+  },
+  "test": [
+    {
+      "name": "$docref: single patient returns only that patient's documents",
+      "description": "GET /DocumentReference/$docref?patient=fhir262-docref-pat0 must return both of pat0's DocumentReferences and none of pat1's.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        { "operation": { "type": { "code": "$docref" }, "method": "GET", "url": "DocumentReference/$docref?patient=fhir262-docref-pat0", "responseId": "docref-single-patient", "description": "GET DocumentReference/$docref?patient=fhir262-docref-pat0" } },
+        { "assert": { "description": "Must return HTTP 200", "response": "okay" } },
+        { "assert": { "description": "Response must be a Bundle", "resource": "Bundle" } },
+        { "assert": { "description": "Must include dr0a", "expression": "entry.where(resource.id = 'fhir262-docref-dr0a').exists()" } },
+        { "assert": { "description": "Must include dr0b", "expression": "entry.where(resource.id = 'fhir262-docref-dr0b').exists()" } },
+        { "assert": { "description": "Must NOT include dr1a (belongs to pat1)", "expression": "entry.where(resource.id = 'fhir262-docref-dr1a').empty()" } }
+      ]
+    },
+    {
+      "name": "$docref: comma-separated patient list returns documents for all listed patients",
+      "description": "GET /DocumentReference/$docref?patient=fhir262-docref-pat0,fhir262-docref-pat1 must return documents for both patients.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        { "operation": { "type": { "code": "$docref" }, "method": "GET", "url": "DocumentReference/$docref?patient=fhir262-docref-pat0,fhir262-docref-pat1", "responseId": "docref-multi-patient", "description": "GET DocumentReference/$docref?patient=fhir262-docref-pat0,fhir262-docref-pat1" } },
+        { "assert": { "description": "Must return HTTP 200", "response": "okay" } },
+        { "assert": { "description": "Response must be a Bundle", "resource": "Bundle" } },
+        { "assert": { "description": "Must include dr0a", "expression": "entry.where(resource.id = 'fhir262-docref-dr0a').exists()" } },
+        { "assert": { "description": "Must include dr0b", "expression": "entry.where(resource.id = 'fhir262-docref-dr0b').exists()" } },
+        { "assert": { "description": "Must include dr1a", "expression": "entry.where(resource.id = 'fhir262-docref-dr1a').exists()" } }
+      ]
+    },
+    {
+      "name": "$docref: type filter narrows results to the matching document type",
+      "description": "GET /DocumentReference/$docref?patient=fhir262-docref-pat0&type=http://loinc.org|55107-7 must return only dr0a (type 55107-7), excluding dr0b (type 74155-3).",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        { "operation": { "type": { "code": "$docref" }, "method": "GET", "url": "DocumentReference/$docref?patient=fhir262-docref-pat0&type=http://loinc.org|55107-7", "responseId": "docref-type-filter", "description": "GET DocumentReference/$docref?patient=fhir262-docref-pat0&type=http://loinc.org|55107-7" } },
+        { "assert": { "description": "Must return HTTP 200", "response": "okay" } },
+        { "assert": { "description": "Must include dr0a (type=55107-7)", "expression": "entry.where(resource.id = 'fhir262-docref-dr0a').exists()" } },
+        { "assert": { "description": "Must NOT include dr0b (type=74155-3)", "expression": "entry.where(resource.id = 'fhir262-docref-dr0b').empty()" } }
+      ]
+    },
+    {
+      "name": "$docref: missing required 'patient' parameter returns 400",
+      "description": "GET /DocumentReference/$docref (no patient parameter) must be rejected with 400, matching the missing-required-parameter case in GivenQuery_WhenInvokingDocRef_ThenDocumentReferenceShouldBeRetrieved (query '?start=-01:01:00' with no patient).",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        { "operation": { "type": { "code": "$docref" }, "method": "GET", "url": "DocumentReference/$docref?start=-01:01:00", "responseId": "docref-missing-patient", "description": "GET DocumentReference/$docref?start=-01:01:00 (no patient parameter)" } },
+        { "assert": { "description": "Must return HTTP 400", "response": "bad" } }
+      ]
+    },
+    {
+      "name": "$docref: unsupported parameter (on-demand) short-circuits to an OperationOutcome-only bundle",
+      "description": "GET /DocumentReference/$docref?patient=fhir262-docref-pat0&on-demand=true must return an OperationOutcome-only Bundle (error severity, not-supported code) with zero DocumentReference entries, per DocRefRequestConverter's handling of the unsupported 'on-demand'/'profile' parameters.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        { "operation": { "type": { "code": "$docref" }, "method": "GET", "url": "DocumentReference/$docref?patient=fhir262-docref-pat0&on-demand=true", "responseId": "docref-unsupported-param", "description": "GET DocumentReference/$docref?patient=fhir262-docref-pat0&on-demand=true" } },
+        { "assert": { "description": "Must return HTTP 200", "response": "okay" } },
+        { "assert": { "description": "Response must be a Bundle", "resource": "Bundle" } },
+        { "assert": { "description": "Bundle must contain NO DocumentReference entries", "expression": "entry.resource.ofType(DocumentReference).empty()" } },
+        { "assert": { "description": "Bundle must contain an error-severity, not-supported OperationOutcome issue", "expression": "entry.resource.ofType(OperationOutcome).issue.where(severity = 'error' and code = 'not-supported').exists()" } }
+      ]
+    },
+    {
+      "name": "$docref: unknown parameter adds a warning outcome but real results still return",
+      "description": "GET /DocumentReference/$docref?patient=fhir262-docref-pat0&unknown=unknownvalue must still return pat0's real DocumentReference entries, plus a warning-severity not-supported OperationOutcome entry for the unrecognized 'unknown' parameter, per DocRefOperationTests' unknown-parameter case.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        { "operation": { "type": { "code": "$docref" }, "method": "GET", "url": "DocumentReference/$docref?patient=fhir262-docref-pat0&unknown=unknownvalue", "responseId": "docref-unknown-param", "description": "GET DocumentReference/$docref?patient=fhir262-docref-pat0&unknown=unknownvalue" } },
+        { "assert": { "description": "Must return HTTP 200", "response": "okay" } },
+        { "assert": { "description": "Must still include dr0a", "expression": "entry.where(resource.id = 'fhir262-docref-dr0a').exists()" } },
+        { "assert": { "description": "Must still include dr0b", "expression": "entry.where(resource.id = 'fhir262-docref-dr0b').exists()" } },
+        { "assert": { "description": "Should contain a warning-severity not-supported OperationOutcome issue (warningOnly: exact severity/handling of unknown params may vary by server)", "expression": "entry.resource.ofType(OperationOutcome).issue.where(severity = 'warning' and code = 'not-supported').exists()", "warningOnly": true } }
+      ]
+    }
+  ],
+  "teardown": {
+    "action": [
+      { "operation": { "type": { "code": "delete" }, "url": "DocumentReference/fhir262-docref-dr1a", "description": "Teardown: delete dr1a" } },
+      { "operation": { "type": { "code": "delete" }, "url": "DocumentReference/fhir262-docref-dr0b", "description": "Teardown: delete dr0b" } },
+      { "operation": { "type": { "code": "delete" }, "url": "DocumentReference/fhir262-docref-dr0a", "description": "Teardown: delete dr0a" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/fhir262-docref-pat1", "description": "Teardown: delete pat1" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/fhir262-docref-pat0", "description": "Teardown: delete pat0" } }
+    ]
+  }
+}

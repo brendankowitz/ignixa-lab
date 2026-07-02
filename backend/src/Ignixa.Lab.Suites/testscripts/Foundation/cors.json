@@ -1,0 +1,89 @@
+{
+  "resourceType": "TestScript",
+  "name": "Foundation/cors",
+  "description": "CORS preflight conformance tests ported from Microsoft.Health.Fhir.Shared.Tests.E2E Rest/CorsTests.cs. Sends an OPTIONS preflight request to the Patient endpoint with Origin/Access-Control-Request-Method/Access-Control-Request-Headers request headers and asserts the standard Access-Control-* response headers using the engine's headerField assert criteria (Ignixa.TestScript.Expressions.HeaderCriteria, JSON key 'headerField'), which reads response headers via a case-insensitive header dictionary. The two 'Access-Control-Allow-Headers' echo checks are warningOnly because header-value matching in this engine uses ordinal (case-sensitive) string comparison, while HTTP header token comparison is case-insensitive and other FHIR servers' CORS middleware may normalize casing differently than what was sent.",
+  "status": "active",
+  "test": [
+    {
+      "name": "OPTIONS preflight for Patient returns 204 with the appropriate CORS response headers",
+      "description": "An OPTIONS request with Origin, Access-Control-Request-Method: PUT, and Access-Control-Request-Headers: authorization,content-type must return HTTP 204 No Content and echo back the allowed origin/methods/headers plus a max-age of 1440 seconds.",
+      "action": [
+        {
+          "operation": {
+            "type": { "code": "read" },
+            "method": "OPTIONS",
+            "url": "Patient",
+            "requestHeader": [
+              { "field": "Origin", "value": "https://localhost:6001" },
+              { "field": "Access-Control-Request-Method", "value": "PUT" },
+              { "field": "Access-Control-Request-Headers", "value": "authorization,content-type" }
+            ],
+            "responseId": "cors-response",
+            "description": "Send a CORS preflight OPTIONS request to Patient with Origin and Access-Control-Request-* headers"
+          }
+        },
+        {
+          "assert": {
+            "description": "Preflight OPTIONS request must return HTTP 204 No Content",
+            "sourceId": "cors-response",
+            "response": "noContent"
+          }
+        },
+        {
+          "assert": {
+            "description": "Access-Control-Allow-Origin must reflect the requesting origin",
+            "sourceId": "cors-response",
+            "headerField": "Access-Control-Allow-Origin",
+            "operator": "contains",
+            "value": "https://localhost:6001"
+          }
+        },
+        {
+          "assert": {
+            "description": "Access-Control-Allow-Methods must be present and include the requested method",
+            "sourceId": "cors-response",
+            "headerField": "Access-Control-Allow-Methods",
+            "operator": "contains",
+            "value": "PUT"
+          }
+        },
+        {
+          "assert": {
+            "description": "Access-Control-Allow-Headers must be present",
+            "sourceId": "cors-response",
+            "headerField": "Access-Control-Allow-Headers"
+          }
+        },
+        {
+          "assert": {
+            "description": "Access-Control-Allow-Headers should include 'authorization' (warningOnly: engine's contains check is case-sensitive; header casing may vary by server)",
+            "sourceId": "cors-response",
+            "headerField": "Access-Control-Allow-Headers",
+            "operator": "contains",
+            "value": "authorization",
+            "warningOnly": true
+          }
+        },
+        {
+          "assert": {
+            "description": "Access-Control-Allow-Headers should include 'content-type' (warningOnly: engine's contains check is case-sensitive; header casing may vary by server)",
+            "sourceId": "cors-response",
+            "headerField": "Access-Control-Allow-Headers",
+            "operator": "contains",
+            "value": "content-type",
+            "warningOnly": true
+          }
+        },
+        {
+          "assert": {
+            "description": "Access-Control-Max-Age must be 1440 seconds",
+            "sourceId": "cors-response",
+            "headerField": "Access-Control-Max-Age",
+            "operator": "equals",
+            "value": "1440"
+          }
+        }
+      ]
+    }
+  ]
+}

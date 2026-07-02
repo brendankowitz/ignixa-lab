@@ -1,0 +1,38 @@
+{
+  "resourceType": "TestScript",
+  "name": "Operations/ms-import-rebuild-indexes",
+  "description": "Ported from Microsoft.Health.Fhir.Shared.Tests.E2E ImportRebuildIndexesTests.cs. That file has exactly one Fact, GivenImportOperationEnabled_WhenRebuildIndexesEnabled_ThenAllIndexesShouldBeRebuild, and it is already Skip-marked in source ('Disabling/rebuilding of indexes is disabled because every E2E $import test is affected. There are special tests still.'). It also only runs against an in-process test server (returns immediately if !IsUsingInProcTestServer) and asserts against an in-memory ImportJobMetricsNotification captured via a test-only _metricHandler -- there is no HTTP-observable behavior in it at all, real or otherwise. The 'rebuild indexes' behavior itself (SqlIndexRebuildThreads, DisableOptionalIndexesForImport in ImportJobConfiguration.cs) is a SQL-Server-only server configuration knob with no corresponding $import request parameter, so there is nothing for a black-box TestScript run to exercise directly. The single test below instead verifies the one adjacent, genuinely HTTP-observable fact implied by that server-config-only design: a client cannot influence index-rebuild behavior through the $import request body, because ExtractImportRequest (ImportRequestExtensions.cs) only reads a fixed set of recognized parameter names and silently ignores anything else. Everything else from ImportRebuildIndexesTests.cs is skipped for the reasons above.",
+  "status": "active",
+  "fixture": [
+    {
+      "id": "import-params-with-unrecognized-index-params",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Parameters",
+        "parameter": [
+          { "name": "inputFormat", "valueString": "application/fhir+ndjson" },
+          { "name": "storageDetail", "part": [ { "name": "type", "valueString": "azure-blob" } ] },
+          { "name": "input", "part": [
+              { "name": "type", "valueString": "Patient" },
+              { "name": "url", "valueUri": "https://unconfigured.example.org/container/patient.ndjson" }
+            ]
+          },
+          { "name": "rebuildIndexes", "valueBoolean": true },
+          { "name": "sqlIndexRebuildThreads", "valueInteger": 16 },
+          { "name": "disableOptionalIndexesForImport", "valueBoolean": true }
+        ]
+      }
+    }
+  ],
+  "test": [
+    {
+      "name": "$import does not expose any client-controllable index-rebuild parameter",
+      "description": "Index rebuild/disable behavior during import is controlled exclusively by server-side configuration (ImportJobConfiguration.SqlIndexRebuildThreads / DisableOptionalIndexesForImport) and is never read from the request body. This sends an otherwise-normal (but still unconfigured-storage-host) $import kickoff with extra, unrecognized parameter names that look like they might control indexing (rebuildIndexes, sqlIndexRebuildThreads, disableOptionalIndexesForImport) alongside the real ones, and confirms the server still returns exactly the same 400 it would for the equivalent request without them (see the unconfigured-storage-account test in ms-import-basic.json) rather than accepting the request, erroring differently, or otherwise treating the unrecognized parameters as meaningful. This demonstrates the parameter contract has no client-facing index-rebuild knob, consistent with ImportRequestExtensions.ExtractImportRequest only ever reading its fixed set of recognized parameter names.",
+      "action": [
+        { "operation": { "type": { "code": "$import" }, "method": "POST", "url": "$import", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "sourceId": "import-params-with-unrecognized-index-params", "responseId": "unrecognized-index-params-response", "description": "POST $import with unrecognized rebuildIndexes/sqlIndexRebuildThreads/disableOptionalIndexesForImport parameters alongside a normal (unconfigured-host) body" } },
+        { "assert": { "description": "Unrecognized index-rebuild parameters must not change the outcome: still 400 Bad Request, same as without them", "sourceId": "unrecognized-index-params-response", "response": "bad" } }
+      ]
+    }
+  ]
+}

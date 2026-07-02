@@ -1,0 +1,59 @@
+{
+  "resourceType": "TestScript",
+  "name": "Foundation/health",
+  "description": "Health check endpoint conformance tests ported from Microsoft.Health.Fhir.Shared.Tests.E2E Rest/HealthTests.cs. Covers GET /health/check returning HTTP 200. The source test's second assertion (that the raw response body contains the substring 'description') cannot be expressed with this engine: the health report is a plain JSON object with no 'resourceType', and the engine's only body-inspection assertions (resource/expression) require a FHIR resource body to convert via the schema-aware FHIRPath evaluator, while there is no raw substring/body-text assertion available. This is approximated by asserting the response Content-Type is application/json (confirming a structured JSON body was returned), and the limitation is documented here rather than silently dropped.",
+  "status": "active",
+  "test": [
+    {
+      "name": "health/check returns 200 OK",
+      "description": "GET /health/check must return HTTP 200 when the FHIR server has started successfully.",
+      "action": [
+        {
+          "operation": {
+            "type": { "code": "read" },
+            "method": "GET",
+            "url": "health/check",
+            "responseId": "health-response",
+            "description": "Request the health check endpoint"
+          }
+        },
+        {
+          "assert": {
+            "description": "Health check must return HTTP 200",
+            "sourceId": "health-response",
+            "response": "okay"
+          }
+        }
+      ]
+    },
+    {
+      "name": "health/check returns a JSON body (approximates the 'contains description' check)",
+      "description": "The original test asserts the raw response text contains the substring 'description'. This engine cannot inspect non-FHIR response bodies (see file description), so this is approximated by asserting the response is HTTP 200 with a Content-Type of application/json, confirming a structured health report body was returned.",
+      "action": [
+        {
+          "operation": {
+            "type": { "code": "read" },
+            "method": "GET",
+            "url": "health/check",
+            "responseId": "health-response-2",
+            "description": "Request the health check endpoint again for an independent content-type check"
+          }
+        },
+        {
+          "assert": {
+            "description": "Health check must return HTTP 200",
+            "sourceId": "health-response-2",
+            "response": "okay"
+          }
+        },
+        {
+          "assert": {
+            "description": "Health check response must be JSON (approximation for the unassertable 'description' substring check)",
+            "sourceId": "health-response-2",
+            "contentType": "application/json"
+          }
+        }
+      ]
+    }
+  ]
+}

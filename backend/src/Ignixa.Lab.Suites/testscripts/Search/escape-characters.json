@@ -1,0 +1,206 @@
+{
+  "resourceType": "TestScript",
+  "name": "Search/escape-characters",
+  "description": "Search value escape-character conformance tests. Per the FHIR search grammar, the characters comma (list separator), pipe (token system|code separator), and backslash (the escape character itself) must be backslash-escaped when they are literal data inside a single parameter value rather than acting as a separator. Ported in spirit from Microsoft.Health.Fhir.Shared.Tests.E2E EscapeCharactersSearchTests, which validates that a compound query combining :missing, :not, and _has reverse-chaining returns identical results whether the query string is written raw or pre-percent-encoded. That raw-vs-percent-encoded byte-level comparison isn't reproducible with this engine (operation.params is always encoded once by the request layer, so writing a pre-encoded copy would be double-encoded and is not a meaningful equivalence test here); instead this suite directly verifies the underlying character-escaping and modifier-combination behavior that test was protecting, using a minimal fixture set (identifier system http://ignixa.io/testscript/suite/escape) in place of the source's large synthetic HealthcareService/PractitionerRole bundle.",
+  "status": "active",
+  "fixture": [
+    {
+      "id": "patient-comma-literal",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Patient",
+        "id": "fhir262-esc-p1",
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/escape", "value": "esc-comma-literal" }],
+        "name": [{ "family": "Zephyr,Orion" }]
+      }
+    },
+    {
+      "id": "patient-comma-smith",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Patient",
+        "id": "fhir262-esc-p2",
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/escape", "value": "esc-comma-smith" }],
+        "name": [{ "family": "Smith" }]
+      }
+    },
+    {
+      "id": "patient-comma-jones",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Patient",
+        "id": "fhir262-esc-p3",
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/escape", "value": "esc-comma-jones" }],
+        "name": [{ "family": "Jones" }]
+      }
+    },
+    {
+      "id": "patient-pipe",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Patient",
+        "id": "fhir262-esc-p4",
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/escape", "value": "A|B" }]
+      }
+    },
+    {
+      "id": "patient-backslash",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Patient",
+        "id": "fhir262-esc-p5",
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/escape", "value": "back\\slash" }]
+      }
+    },
+    {
+      "id": "practitioner-1",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "fhir262-esc-prac1",
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/escape", "value": "esc-practitioner" }]
+      }
+    },
+    {
+      "id": "healthcareservice-active",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "HealthcareService",
+        "id": "fhir262-esc-hs-active",
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/escape", "value": "esc-hs-active" }],
+        "active": true,
+        "name": "Escape Active Service"
+      }
+    },
+    {
+      "id": "healthcareservice-inactive",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "HealthcareService",
+        "id": "fhir262-esc-hs-inactive",
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/escape", "value": "esc-hs-inactive" }],
+        "active": false,
+        "name": "Escape Inactive Service"
+      }
+    },
+    {
+      "id": "practitionerrole-1",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "PractitionerRole",
+        "id": "fhir262-esc-pr1",
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/escape", "value": "esc-pr1" }],
+        "active": true,
+        "practitioner": { "reference": "Practitioner/fhir262-esc-prac1" },
+        "healthcareService": [{ "reference": "HealthcareService/fhir262-esc-hs-active" }]
+      }
+    }
+  ],
+  "setup": {
+    "action": [
+      { "operation": { "type": { "code": "update" }, "url": "Patient/fhir262-esc-p1", "sourceId": "patient-comma-literal", "description": "PUT Patient p1: family 'Zephyr,Orion' (single value containing a literal comma)" } },
+      { "operation": { "type": { "code": "update" }, "url": "Patient/fhir262-esc-p2", "sourceId": "patient-comma-smith", "description": "PUT Patient p2: family 'Smith'" } },
+      { "operation": { "type": { "code": "update" }, "url": "Patient/fhir262-esc-p3", "sourceId": "patient-comma-jones", "description": "PUT Patient p3: family 'Jones'" } },
+      { "operation": { "type": { "code": "update" }, "url": "Patient/fhir262-esc-p4", "sourceId": "patient-pipe", "description": "PUT Patient p4: identifier value 'A|B' (contains a literal pipe)" } },
+      { "operation": { "type": { "code": "update" }, "url": "Patient/fhir262-esc-p5", "sourceId": "patient-backslash", "description": "PUT Patient p5: identifier value 'back\\slash' (contains a literal backslash)" } },
+      { "operation": { "type": { "code": "update" }, "url": "Practitioner/fhir262-esc-prac1", "sourceId": "practitioner-1", "description": "PUT Practitioner referenced by the PractitionerRole fixture" } },
+      { "operation": { "type": { "code": "update" }, "url": "HealthcareService/fhir262-esc-hs-active", "sourceId": "healthcareservice-active", "description": "PUT HealthcareService (active=true), referenced by PractitionerRole" } },
+      { "operation": { "type": { "code": "update" }, "url": "HealthcareService/fhir262-esc-hs-inactive", "sourceId": "healthcareservice-inactive", "description": "PUT HealthcareService (active=false), NOT referenced by any PractitionerRole" } },
+      { "operation": { "type": { "code": "update" }, "url": "PractitionerRole/fhir262-esc-pr1", "sourceId": "practitionerrole-1", "description": "PUT PractitionerRole (active=true) linking Practitioner to the active HealthcareService" } }
+    ]
+  },
+  "test": [
+    {
+      "name": "Escaped comma is treated as literal data, not an OR separator",
+      "description": "family=Zephyr\\,Orion (backslash-escaped comma) must be treated as one literal string search value 'Zephyr,Orion', matching only p1. It must not be split into an OR of 'Zephyr' and 'Orion' (which would also match p3's 'Jones' via the unescaped form tested next).",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?family=Zephyr\\,Orion&identifier=http://ignixa.io/testscript/suite/escape|&_count=100", "responseId": "escaped-comma-response", "description": "GET /Patient?family=Zephyr\\,Orion (escaped comma, literal value)" } },
+        { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
+        { "assert": { "description": "Response must be a Bundle", "resource": "Bundle" } },
+        { "assert": { "description": "Must include p1 (family starts with the literal 'Zephyr,Orion')", "expression": "entry.where(resource.id = 'fhir262-esc-p1').exists()" } },
+        { "assert": { "description": "Must NOT include p2 (Smith)", "expression": "entry.where(resource.id = 'fhir262-esc-p2').exists()", "value": "false", "operator": "equals", "warningOnly": true } },
+        { "assert": { "description": "Must NOT include p3 (Jones)", "expression": "entry.where(resource.id = 'fhir262-esc-p3').exists()", "value": "false", "operator": "equals", "warningOnly": true } }
+      ]
+    },
+    {
+      "name": "Unescaped comma is an OR-list separator",
+      "description": "family=Zephyr,Jones (unescaped comma) must be parsed as the OR of two separate prefix searches, 'Zephyr' and 'Jones'. p1 matches because its family starts with 'Zephyr'; p3 (Jones) also matches; p2 (Smith) matches neither arm.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?family=Zephyr,Jones&identifier=http://ignixa.io/testscript/suite/escape|&_count=100", "responseId": "or-comma-response", "description": "GET /Patient?family=Zephyr,Jones (unescaped comma, OR list)" } },
+        { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
+        { "assert": { "description": "Response must be a Bundle", "resource": "Bundle" } },
+        { "assert": { "description": "Must include p1 (prefix 'Zephyr' matches 'Zephyr,Orion')", "expression": "entry.where(resource.id = 'fhir262-esc-p1').exists()" } },
+        { "assert": { "description": "Must include p3 (prefix 'Jones' matches 'Jones')", "expression": "entry.where(resource.id = 'fhir262-esc-p3').exists()" } },
+        { "assert": { "description": "Must NOT include p2 (Smith matches neither 'Zephyr' nor 'Jones')", "expression": "entry.where(resource.id = 'fhir262-esc-p2').exists()", "value": "false", "operator": "equals", "warningOnly": true } }
+      ]
+    },
+    {
+      "name": "Escaped pipe is treated as literal data in the token code",
+      "description": "identifier=http://ignixa.io/testscript/suite/escape|A\\|B must treat the backslash-escaped pipe as literal data within the code portion, matching p4 whose identifier value is literally 'A|B'.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/escape|A\\|B", "responseId": "escaped-pipe-response", "description": "GET /Patient?identifier=http://ignixa.io/testscript/suite/escape|A\\|B (escaped pipe, literal 'A|B' code)" } },
+        { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
+        { "assert": { "description": "Response must be a Bundle", "resource": "Bundle" } },
+        { "assert": { "description": "Must include p4 (identifier value is literally 'A|B')", "expression": "entry.where(resource.id = 'fhir262-esc-p4').exists()" } }
+      ]
+    },
+    {
+      "name": "Unescaped pipe as system|code does not match a value containing a literal pipe",
+      "description": "Illustrative negative case: identifier=A|B without our system prefix is parsed as system='A', code='B', which does not describe p4 (system=http://ignixa.io/testscript/suite/escape, value='A|B') at all. Demonstrates why the escape in the previous test is required. Marked informational since exact handling of a bare, non-fixture system token is server-dependent.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?identifier=A|B", "responseId": "unescaped-pipe-response", "description": "GET /Patient?identifier=A|B (naive, unescaped: system='A', code='B')" } },
+        { "assert": { "description": "Search must return HTTP 200", "response": "okay", "warningOnly": true } },
+        { "assert": { "description": "Must NOT include p4 (real system is http://ignixa.io/testscript/suite/escape, not 'A')", "expression": "entry.where(resource.id = 'fhir262-esc-p4').exists()", "value": "false", "operator": "equals", "warningOnly": true } }
+      ]
+    },
+    {
+      "name": "Escaped backslash is treated as literal data",
+      "description": "identifier=http://ignixa.io/testscript/suite/escape|back\\\\slash (doubled backslash) must match p5, whose identifier value literally contains one backslash character ('back\\slash'). Doubling the backslash in the query escapes it as literal data rather than as an (undefined) escape-prefix character.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/escape|back\\\\slash", "responseId": "escaped-backslash-response", "description": "GET /Patient?identifier=http://ignixa.io/testscript/suite/escape|back\\\\slash (escaped backslash, literal 'back\\slash' value)" } },
+        { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
+        { "assert": { "description": "Response must be a Bundle", "resource": "Bundle" } },
+        { "assert": { "description": "Must include p5 (identifier value is literally 'back\\slash')", "expression": "entry.where(resource.id = 'fhir262-esc-p5').exists()" } }
+      ]
+    },
+    {
+      "name": "Compound query: :not, :missing, and _has reverse chaining together",
+      "description": "Ported from the source test's compound query shape (name:missing=false&active:not=false&_has:PractitionerRole:service:active=true). HealthcareService?active:not=false&name:missing=false&_has:PractitionerRole:service:active=true must match fhir262-esc-hs-active (active=true, named, and is the service of an active PractitionerRole) and must exclude fhir262-esc-hs-inactive (active=false, and referenced by no PractitionerRole at all).",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        { "operation": { "type": { "code": "search" }, "resource": "HealthcareService", "params": "?active:not=false&name:missing=false&_has:PractitionerRole:service:active=true&identifier=http://ignixa.io/testscript/suite/escape|&_count=100", "responseId": "compound-not-has-response", "description": "GET /HealthcareService?active:not=false&name:missing=false&_has:PractitionerRole:service:active=true" } },
+        { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
+        { "assert": { "description": "Response must be a Bundle", "resource": "Bundle" } },
+        { "assert": { "description": "Must include the active, referenced HealthcareService", "expression": "entry.where(resource.id = 'fhir262-esc-hs-active').exists()" } },
+        { "assert": { "description": "Must NOT include the inactive, unreferenced HealthcareService", "expression": "entry.where(resource.id = 'fhir262-esc-hs-inactive').exists()", "value": "false", "operator": "equals", "warningOnly": true } }
+      ]
+    }
+  ],
+  "teardown": {
+    "action": [
+      { "operation": { "type": { "code": "delete" }, "url": "PractitionerRole/fhir262-esc-pr1", "description": "Teardown: delete PractitionerRole" } },
+      { "operation": { "type": { "code": "delete" }, "url": "HealthcareService/fhir262-esc-hs-active", "description": "Teardown: delete active HealthcareService" } },
+      { "operation": { "type": { "code": "delete" }, "url": "HealthcareService/fhir262-esc-hs-inactive", "description": "Teardown: delete inactive HealthcareService" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Practitioner/fhir262-esc-prac1", "description": "Teardown: delete Practitioner" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/fhir262-esc-p1", "description": "Teardown: delete p1" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/fhir262-esc-p2", "description": "Teardown: delete p2" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/fhir262-esc-p3", "description": "Teardown: delete p3" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/fhir262-esc-p4", "description": "Teardown: delete p4" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/fhir262-esc-p5", "description": "Teardown: delete p5" } }
+    ]
+  }
+}

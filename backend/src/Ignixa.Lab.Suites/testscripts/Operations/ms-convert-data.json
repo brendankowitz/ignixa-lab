@@ -1,0 +1,225 @@
+{
+  "resourceType": "TestScript",
+  "name": "Operations/ms-convert-data",
+  "description": "$convert-data operation conformance tests ported from Microsoft.Health.Fhir.Shared.Tests.E2E.Rest.ConvertDataTests and CustomConvertDataTests (custom-template-registry variant folded in here rather than a separate file, per the request). $convert-data converts HL7v2/CCDA/JSON/legacy-FHIR payloads to FHIR R4 using Liquid templates pulled from an OCI/ACR template collection. ConvertDataController.CheckIfConvertDataIsEnabled() runs before any input validation, so on a target where the operation is disabled every request (valid or malformed) returns the same 400 RequestNotValidException; on a target where the operation does not exist at all the route itself may 404. Because of this, and because the 'custom template registry' scenarios need a real Azure Container Registry with pushed template packages (E2E test CustomConvertDataTests.PushTemplateSet uses live ACR credentials with no local emulator), every status/shape assertion in this suite is warningOnly.",
+  "status": "active",
+  "fixture": [
+    {
+      "id": "convert-non-parameters-body",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": { "resourceType": "Patient", "id": "convert-data-not-parameters" }
+    },
+    {
+      "id": "convert-hl7v2-valid",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Parameters",
+        "parameter": [
+          { "name": "inputData", "valueString": "MSH|^~\\&|AccMgr|1|||20050110045504||ADT^A01|599102|P|2.3|||\nEVN|A01|20050110045502|||||\nPID|1||10006579^^^1^MR^1||DUCK^DONALD^D||19241010|M||1|111 DUCK ST^^FOWL^CA^999990000^^M|1|8885551212|8885551212|1|2||40007716^^^AccMgr^VN^1|123121234|||||||||||NO\nPV1|1|I|PREOP^101^1^1^^^S|3|||37^DISNEY^WALT^^^^^^AccMgr^^^^CI|||01||||1|||37^DISNEY^WALT^^^^^^AccMgr^^^^CI|2|40007716^^^AccMgr^VN|4|||||||||||||||||||1||G|||20050110045253||||||\n" },
+          { "name": "inputDataType", "valueString": "hl7v2" },
+          { "name": "templateCollectionReference", "valueString": "microsofthealth/hl7v2templates:default" },
+          { "name": "rootTemplate", "valueString": "ADT_A01" }
+        ]
+      }
+    },
+    {
+      "id": "convert-ccda-valid",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Parameters",
+        "parameter": [
+          { "name": "inputData", "valueString": "<?xml version=\"1.0\"?><ClinicalDocument xmlns=\"urn:hl7-org:v3\"><realmCode code=\"US\"/><typeId root=\"2.16.840.1.113883.1.3\" extension=\"POCD_HD000040\"/><templateId root=\"2.16.840.1.113883.10.20.22.1.1\"/><code code=\"34133-9\" codeSystem=\"2.16.840.1.113883.6.1\"/><recordTarget><patientRole><patient><name><family>Nelson</family><given>Lisa</given></name></patient></patientRole></recordTarget></ClinicalDocument>" },
+          { "name": "inputDataType", "valueString": "Ccda" },
+          { "name": "templateCollectionReference", "valueString": "microsofthealth/ccdatemplates:default" },
+          { "name": "rootTemplate", "valueString": "CCD" }
+        ]
+      }
+    },
+    {
+      "id": "convert-invalid-input-data-type",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Parameters",
+        "parameter": [
+          { "name": "inputData", "valueString": "MSH|^~\\&|AccMgr|1|||20050110045504||ADT^A01|599102|P|2.3|||\n" },
+          { "name": "inputDataType", "valueString": "jpeg" },
+          { "name": "templateCollectionReference", "valueString": "microsofthealth/fhirconverter:default" },
+          { "name": "rootTemplate", "valueString": "ADT_A01" }
+        ]
+      }
+    },
+    {
+      "id": "convert-unsupported-parameter",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Parameters",
+        "parameter": [
+          { "name": "inputData", "valueString": "MSH|^~\\&|AccMgr|1|||20050110045504||ADT^A01|599102|P|2.3|||\n" },
+          { "name": "inputDataType", "valueString": "hl7v2" },
+          { "name": "templateCollectionReference", "valueString": "microsofthealth/fhirconverter:default" },
+          { "name": "rootTemplate", "valueString": "ADT_A01" },
+          { "name": "unsupportedParameter", "valueString": "test" }
+        ]
+      }
+    },
+    {
+      "id": "convert-invalid-template-reference-format",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Parameters",
+        "parameter": [
+          { "name": "inputData", "valueString": "MSH|^~\\&|AccMgr|1|||20050110045504||ADT^A01|599102|P|2.3|||\n" },
+          { "name": "inputDataType", "valueString": "hl7v2" },
+          { "name": "templateCollectionReference", "valueString": "template:default" },
+          { "name": "rootTemplate", "valueString": "ADT_A01" }
+        ]
+      }
+    },
+    {
+      "id": "convert-template-not-configured",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Parameters",
+        "parameter": [
+          { "name": "inputData", "valueString": "MSH|^~\\&|AccMgr|1|||20050110045504||ADT^A01|599102|P|2.3|||\n" },
+          { "name": "inputDataType", "valueString": "hl7v2" },
+          { "name": "templateCollectionReference", "valueString": "fakeacr.azurecr.io/template:default" },
+          { "name": "rootTemplate", "valueString": "ADT_A01" }
+        ]
+      }
+    },
+    {
+      "id": "convert-inconsistent-data-type",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Parameters",
+        "parameter": [
+          { "name": "inputData", "valueString": "MSH|^~\\&|AccMgr|1|||20050110045504||ADT^A01|599102|P|2.3|||\n" },
+          { "name": "inputDataType", "valueString": "hl7v2" },
+          { "name": "templateCollectionReference", "valueString": "microsofthealth/ccdatemplates:default" },
+          { "name": "rootTemplate", "valueString": "ADT_A01" }
+        ]
+      }
+    },
+    {
+      "id": "convert-malformed-hl7v2-input",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Parameters",
+        "parameter": [
+          { "name": "inputData", "valueString": "123" },
+          { "name": "inputDataType", "valueString": "hl7v2" },
+          { "name": "templateCollectionReference", "valueString": "microsofthealth/fhirconverter:default" },
+          { "name": "rootTemplate", "valueString": "ADT_A01" }
+        ]
+      }
+    },
+    {
+      "id": "convert-custom-template-not-found",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Parameters",
+        "parameter": [
+          { "name": "inputData", "valueString": "MSH|^~\\&|AccMgr|1|||20050110045504||ADT^A01|599102|P|2.3|||\n" },
+          { "name": "inputDataType", "valueString": "hl7v2" },
+          { "name": "templateCollectionReference", "valueString": "ignixalabtest.azurecr.io/conversiontemplatestest:test1.0" },
+          { "name": "rootTemplate", "valueString": "ADT_A01" }
+        ]
+      }
+    }
+  ],
+  "test": [
+    {
+      "name": "$convert-data rejects a non-Parameters request body with 400 Bad Request",
+      "description": "POST a plain Patient resource (not wrapped in Parameters) to $convert-data. Ported from the request-shape check implied by ConvertDataController's [ValidateResourceTypeFilter]-equivalent Parameters validation, and directly analogous to MemberMatchTests.GivenNonParametersRequestBody_WhenMemberMatchSent_ThenBadRequest. warningOnly because a non-Microsoft-FHIR-Server target may not implement $convert-data at all (404 instead of 400).",
+      "action": [
+        { "operation": { "type": { "code": "$convert-data" }, "sourceId": "convert-non-parameters-body", "responseId": "convert-non-params-response", "description": "POST $convert-data with a bare Patient body" } },
+        { "assert": { "description": "Server should reject a non-Parameters body with 400 Bad Request (warningOnly)", "response": "bad", "warningOnly": true } }
+      ]
+    },
+    {
+      "name": "$convert-data converts a valid HL7v2 ADT_A01 message to a FHIR Bundle (default templates)",
+      "description": "Ported from ConvertDataTests.GivenAHl7v2ValidRequestWithDefaultTemplateSet_WhenConvertData_CorrectResponseShouldReturn. Requires $convert-data to be enabled with the built-in default HL7v2 template collection configured. warningOnly: disabled/unconfigured on most generic targets.",
+      "action": [
+        { "operation": { "type": { "code": "$convert-data" }, "sourceId": "convert-hl7v2-valid", "responseId": "convert-hl7v2-response", "description": "POST $convert-data with a valid HL7v2 ADT_A01 message" } },
+        { "assert": { "description": "Conversion should return 200 OK (warningOnly: requires $convert-data enabled + default HL7v2 templates configured)", "response": "okay", "warningOnly": true } },
+        { "assert": { "description": "Response body should be a Bundle containing the converted resources (warningOnly)", "resource": "Bundle", "warningOnly": true } }
+      ]
+    },
+    {
+      "name": "$convert-data converts a valid CCDA document to a FHIR Bundle (default templates)",
+      "description": "Ported from ConvertDataTests.GivenACcdaValidRequestWithDefaultTemplateSet_WhenConvertData_CorrectResponseShouldReturn. warningOnly: requires $convert-data enabled + default CCDA templates configured.",
+      "action": [
+        { "operation": { "type": { "code": "$convert-data" }, "sourceId": "convert-ccda-valid", "responseId": "convert-ccda-response", "description": "POST $convert-data with a valid CCDA document" } },
+        { "assert": { "description": "Conversion should return 200 OK (warningOnly)", "response": "okay", "warningOnly": true } },
+        { "assert": { "description": "Response body should be a Bundle (warningOnly)", "resource": "Bundle", "warningOnly": true } }
+      ]
+    },
+    {
+      "name": "$convert-data rejects an invalid inputDataType with 400 Bad Request",
+      "description": "Ported from ConvertDataTests.GivenAValidRequestWithInvalidInputDataType_WhenConvertData_ShouldReturnBadRequest (inputDataType='jpeg'). Returns 400 whether $convert-data is enabled (real validation error) or disabled (operation-not-enabled error); warningOnly only because the operation/route may not exist at all on a non-Microsoft-FHIR-Server target.",
+      "action": [
+        { "operation": { "type": { "code": "$convert-data" }, "sourceId": "convert-invalid-input-data-type", "responseId": "convert-bad-datatype-response", "description": "POST $convert-data with inputDataType='jpeg'" } },
+        { "assert": { "description": "Server should reject the invalid inputDataType with 400 Bad Request (warningOnly)", "response": "bad", "warningOnly": true } }
+      ]
+    },
+    {
+      "name": "$convert-data rejects an unsupported parameter with 400 Bad Request",
+      "description": "Ported from ConvertDataTests.GivenAInvalidRequestWithUnsupportedParameter_WhenConvertData_ShouldReturnBadRequest. warningOnly: operation may not exist on a non-Microsoft-FHIR-Server target.",
+      "action": [
+        { "operation": { "type": { "code": "$convert-data" }, "sourceId": "convert-unsupported-parameter", "responseId": "convert-bad-param-response", "description": "POST $convert-data with an unrecognized parameter name" } },
+        { "assert": { "description": "Server should reject the unsupported parameter with 400 Bad Request (warningOnly)", "response": "bad", "warningOnly": true } }
+      ]
+    },
+    {
+      "name": "$convert-data rejects a malformed template collection reference with 400 Bad Request",
+      "description": "Ported from ConvertDataTests.GivenAValidRequest_ButTemplateReferenceIsInvalid_WhenConvertData_ShouldReturnBadRequest (templateCollectionReference='template:default', missing a registry host). warningOnly: operation may not exist on a non-Microsoft-FHIR-Server target.",
+      "action": [
+        { "operation": { "type": { "code": "$convert-data" }, "sourceId": "convert-invalid-template-reference-format", "responseId": "convert-bad-templateref-response", "description": "POST $convert-data with a malformed templateCollectionReference" } },
+        { "assert": { "description": "Server should reject the malformed template reference with 400 Bad Request (warningOnly)", "response": "bad", "warningOnly": true } }
+      ]
+    },
+    {
+      "name": "$convert-data rejects a syntactically valid but unconfigured template reference with 400 Bad Request",
+      "description": "Ported from ConvertDataTests.GivenAValidRequest_ButTemplateReferenceIsNotConfigured_WhenConvertData_ShouldReturnBadRequest (templateCollectionReference points at a plausible but never-registered ACR image). warningOnly: requires $convert-data enabled to reach the 'not configured' check at all; on a disabled/absent target this is indistinguishable from the other 400 scenarios.",
+      "action": [
+        { "operation": { "type": { "code": "$convert-data" }, "sourceId": "convert-template-not-configured", "responseId": "convert-not-configured-response", "description": "POST $convert-data with an unconfigured template reference" } },
+        { "assert": { "description": "Server should reject the unconfigured template reference with 400 Bad Request (warningOnly)", "response": "bad", "warningOnly": true } }
+      ]
+    },
+    {
+      "name": "$convert-data rejects an inputDataType inconsistent with the default template collection",
+      "description": "Ported from ConvertDataTests.GivenAValidRequestWithDefaultTemplateSet_ButInconsistentInputDataTypeAndDefaultTemplateSetReference_WhenConvertData_ShouldReturnBadRequest (inputDataType='hl7v2' but templateCollectionReference points at the CCDA default template collection). warningOnly: requires $convert-data enabled with default templates configured to reach this specific check.",
+      "action": [
+        { "operation": { "type": { "code": "$convert-data" }, "sourceId": "convert-inconsistent-data-type", "responseId": "convert-inconsistent-response", "description": "POST $convert-data with mismatched inputDataType and default template collection" } },
+        { "assert": { "description": "Server should reject the inconsistent input data type / template pairing with 400 Bad Request (warningOnly)", "response": "bad", "warningOnly": true } }
+      ]
+    },
+    {
+      "name": "$convert-data rejects malformed HL7v2 input data with 400 Bad Request",
+      "description": "Ported from ConvertDataTests.GivenAnHl7v2ValidRequestWithDefaultTemplateSet_ButInputDataIsNotValidHl7V2Message_WhenConvertData_ShouldReturnBadRequest (inputData='123', not a parseable HL7v2 message). warningOnly: requires $convert-data enabled with default HL7v2 templates configured to reach the parser.",
+      "action": [
+        { "operation": { "type": { "code": "$convert-data" }, "sourceId": "convert-malformed-hl7v2-input", "responseId": "convert-malformed-response", "description": "POST $convert-data with unparseable HL7v2 input" } },
+        { "assert": { "description": "Server should reject the malformed HL7v2 input with 400 Bad Request (warningOnly)", "response": "bad", "warningOnly": true } }
+      ]
+    },
+    {
+      "name": "$convert-data with a custom (non-default) template registry reference",
+      "description": "Ported from CustomConvertDataTests.GivenAValidRequest_ButTemplateSetIsNotFound_WhenConvertData_ShouldReturnError. The full custom-registry test suite requires pushing a real template package to a live Azure Container Registry (CustomConvertDataTests.PushTemplateSet uses managed-identity ACR credentials; there is no local ACR emulator), which is out of scope for a static conformance fixture. This test only checks that a plausible-shaped custom registry/template reference is handled without a server error; the expected outcome (400 'not configured', or 200 if this exact registry happens to be configured with this exact template on the target) cannot be asserted without real registry credentials, so it is entirely warningOnly and purely informational.",
+      "action": [
+        { "operation": { "type": { "code": "$convert-data" }, "sourceId": "convert-custom-template-not-found", "responseId": "convert-custom-response", "description": "POST $convert-data with a custom (non-default) ACR template reference" } },
+        { "assert": { "description": "Most likely outcome on a generic target: 400 Bad Request, because either $convert-data is disabled, or this specific ACR/repository is not configured (ContainerRegistryNotConfiguredException). warningOnly and purely informational: a 200 is also acceptable if this exact registry+template happens to be configured on the target.", "responseCode": "400", "warningOnly": true } }
+      ]
+    }
+  ]
+}

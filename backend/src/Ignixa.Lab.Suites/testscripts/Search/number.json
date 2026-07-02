@@ -1,0 +1,185 @@
+{
+  "resourceType": "TestScript",
+  "name": "Search/number",
+  "description": "Number search-parameter prefix conformance tests, ported from Microsoft.Health.Fhir.Shared.Tests.E2E NumberSearchTests. Three RiskAssessment fixtures (fhir262-num-low probability=1, fhir262-num-mid probability=5, fhir262-num-high probability=100) referencing a client-supplied Patient subject exercise the implicit (eq) default plus all number prefixes: eq, ne, lt, gt, le, ge, sa (starts-after), eb (ends-before). For point values (no range) sa/eb behave like gt/lt respectively, matching the source fixture's exact-value semantics.",
+  "status": "active",
+  "fixture": [
+    {
+      "id": "subject",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Patient",
+        "id": "fhir262-num-subj",
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/test", "value": "NUM-SUBJ" }]
+      }
+    },
+    {
+      "id": "ra-low",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "RiskAssessment",
+        "id": "fhir262-num-low",
+        "status": "final",
+        "subject": { "reference": "Patient/fhir262-num-subj" },
+        "meta": { "tag": [{ "system": "http://ignixa.io/testscript/suite/test", "code": "fhir262-num-suite" }] },
+        "prediction": [{ "probabilityDecimal": 1 }]
+      }
+    },
+    {
+      "id": "ra-mid",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "RiskAssessment",
+        "id": "fhir262-num-mid",
+        "status": "final",
+        "subject": { "reference": "Patient/fhir262-num-subj" },
+        "meta": { "tag": [{ "system": "http://ignixa.io/testscript/suite/test", "code": "fhir262-num-suite" }] },
+        "prediction": [{ "probabilityDecimal": 5 }]
+      }
+    },
+    {
+      "id": "ra-high",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "RiskAssessment",
+        "id": "fhir262-num-high",
+        "status": "final",
+        "subject": { "reference": "Patient/fhir262-num-subj" },
+        "meta": { "tag": [{ "system": "http://ignixa.io/testscript/suite/test", "code": "fhir262-num-suite" }] },
+        "prediction": [{ "probabilityDecimal": 100 }]
+      }
+    }
+  ],
+  "setup": {
+    "action": [
+      { "operation": { "type": { "code": "update" }, "url": "Patient/fhir262-num-subj", "sourceId": "subject", "description": "PUT Patient/fhir262-num-subj — client-supplied ID so RiskAssessments can reference it" } },
+      { "operation": { "type": { "code": "update" }, "url": "RiskAssessment/fhir262-num-low", "sourceId": "ra-low", "description": "PUT RiskAssessment/fhir262-num-low (probability=1)" } },
+      { "operation": { "type": { "code": "update" }, "url": "RiskAssessment/fhir262-num-mid", "sourceId": "ra-mid", "description": "PUT RiskAssessment/fhir262-num-mid (probability=5)" } },
+      { "operation": { "type": { "code": "update" }, "url": "RiskAssessment/fhir262-num-high", "sourceId": "ra-high", "description": "PUT RiskAssessment/fhir262-num-high (probability=100)" } }
+    ]
+  },
+  "test": [
+    {
+      "name": "number: implicit (no prefix) and explicit eq are equivalent",
+      "description": "RiskAssessment?probability=5 (implicit default) and ?probability=eq5 (explicit) must both match only the mid fixture (probability=5); low (1) and high (100) must not match.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        { "operation": { "type": { "code": "search" }, "resource": "RiskAssessment", "params": "?probability=5&_tag=http://ignixa.io/testscript/suite/test|fhir262-num-suite&_count=100", "responseId": "num-implicit", "description": "GET RiskAssessment?probability=5 (implicit eq)" } },
+        { "assert": { "description": "Implicit: HTTP 200", "response": "okay" } },
+        { "assert": { "description": "Implicit: returns a Bundle", "resource": "Bundle" } },
+        { "assert": { "description": "Implicit: must include mid (probability=5)", "expression": "entry.where(resource.id = 'fhir262-num-mid').exists()" } },
+        { "assert": { "description": "Implicit: must NOT include low (probability=1)", "expression": "entry.where(resource.id = 'fhir262-num-low').exists()", "value": "false", "operator": "equals", "warningOnly": true } },
+        { "assert": { "description": "Implicit: must NOT include high (probability=100)", "expression": "entry.where(resource.id = 'fhir262-num-high').exists()", "value": "false", "operator": "equals", "warningOnly": true } },
+        { "operation": { "type": { "code": "search" }, "resource": "RiskAssessment", "params": "?probability=eq5&_tag=http://ignixa.io/testscript/suite/test|fhir262-num-suite&_count=100", "responseId": "num-eq", "description": "GET RiskAssessment?probability=eq5 (explicit)" } },
+        { "assert": { "description": "eq: HTTP 200", "response": "okay", "sourceId": "num-eq" } },
+        { "assert": { "description": "eq: returns a Bundle", "resource": "Bundle", "sourceId": "num-eq" } },
+        { "assert": { "description": "eq: must include mid (probability=5)", "expression": "entry.where(resource.id = 'fhir262-num-mid').exists()", "sourceId": "num-eq" } },
+        { "assert": { "description": "eq: must NOT include low (probability=1)", "expression": "entry.where(resource.id = 'fhir262-num-low').exists()", "value": "false", "operator": "equals", "warningOnly": true, "sourceId": "num-eq" } },
+        { "assert": { "description": "eq: must NOT include high (probability=100)", "expression": "entry.where(resource.id = 'fhir262-num-high').exists()", "value": "false", "operator": "equals", "warningOnly": true, "sourceId": "num-eq" } }
+      ]
+    },
+    {
+      "name": "number: ne — matches everything except the exact value",
+      "description": "RiskAssessment?probability=ne5 must match low (1) and high (100); must not match mid (5).",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        { "operation": { "type": { "code": "search" }, "resource": "RiskAssessment", "params": "?probability=ne5&_tag=http://ignixa.io/testscript/suite/test|fhir262-num-suite&_count=100", "responseId": "num-ne", "description": "GET RiskAssessment?probability=ne5" } },
+        { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
+        { "assert": { "description": "Response must be a Bundle", "resource": "Bundle" } },
+        { "assert": { "description": "Must include low (1)", "expression": "entry.where(resource.id = 'fhir262-num-low').exists()" } },
+        { "assert": { "description": "Must include high (100)", "expression": "entry.where(resource.id = 'fhir262-num-high').exists()" } },
+        { "assert": { "description": "Must NOT include mid (5)", "expression": "entry.where(resource.id = 'fhir262-num-mid').exists()", "value": "false", "operator": "equals", "warningOnly": true } }
+      ]
+    },
+    {
+      "name": "number: lt — strictly less than",
+      "description": "RiskAssessment?probability=lt5 must match only low (1); mid (5) and high (100) are not strictly less than 5.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        { "operation": { "type": { "code": "search" }, "resource": "RiskAssessment", "params": "?probability=lt5&_tag=http://ignixa.io/testscript/suite/test|fhir262-num-suite&_count=100", "responseId": "num-lt", "description": "GET RiskAssessment?probability=lt5" } },
+        { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
+        { "assert": { "description": "Response must be a Bundle", "resource": "Bundle" } },
+        { "assert": { "description": "Must include low (1)", "expression": "entry.where(resource.id = 'fhir262-num-low').exists()" } },
+        { "assert": { "description": "Must NOT include mid (5)", "expression": "entry.where(resource.id = 'fhir262-num-mid').exists()", "value": "false", "operator": "equals", "warningOnly": true } },
+        { "assert": { "description": "Must NOT include high (100)", "expression": "entry.where(resource.id = 'fhir262-num-high').exists()", "value": "false", "operator": "equals", "warningOnly": true } }
+      ]
+    },
+    {
+      "name": "number: gt — strictly greater than",
+      "description": "RiskAssessment?probability=gt5 must match only high (100); low (1) and mid (5) are not strictly greater than 5.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        { "operation": { "type": { "code": "search" }, "resource": "RiskAssessment", "params": "?probability=gt5&_tag=http://ignixa.io/testscript/suite/test|fhir262-num-suite&_count=100", "responseId": "num-gt", "description": "GET RiskAssessment?probability=gt5" } },
+        { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
+        { "assert": { "description": "Response must be a Bundle", "resource": "Bundle" } },
+        { "assert": { "description": "Must include high (100)", "expression": "entry.where(resource.id = 'fhir262-num-high').exists()" } },
+        { "assert": { "description": "Must NOT include low (1)", "expression": "entry.where(resource.id = 'fhir262-num-low').exists()", "value": "false", "operator": "equals", "warningOnly": true } },
+        { "assert": { "description": "Must NOT include mid (5)", "expression": "entry.where(resource.id = 'fhir262-num-mid').exists()", "value": "false", "operator": "equals", "warningOnly": true } }
+      ]
+    },
+    {
+      "name": "number: le — less than or equal",
+      "description": "RiskAssessment?probability=le5 must match low (1) and mid (5); high (100) is excluded.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        { "operation": { "type": { "code": "search" }, "resource": "RiskAssessment", "params": "?probability=le5&_tag=http://ignixa.io/testscript/suite/test|fhir262-num-suite&_count=100", "responseId": "num-le", "description": "GET RiskAssessment?probability=le5" } },
+        { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
+        { "assert": { "description": "Response must be a Bundle", "resource": "Bundle" } },
+        { "assert": { "description": "Must include low (1)", "expression": "entry.where(resource.id = 'fhir262-num-low').exists()" } },
+        { "assert": { "description": "Must include mid (5)", "expression": "entry.where(resource.id = 'fhir262-num-mid').exists()" } },
+        { "assert": { "description": "Must NOT include high (100)", "expression": "entry.where(resource.id = 'fhir262-num-high').exists()", "value": "false", "operator": "equals", "warningOnly": true } }
+      ]
+    },
+    {
+      "name": "number: ge — greater than or equal",
+      "description": "RiskAssessment?probability=ge5 must match mid (5) and high (100); low (1) is excluded.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        { "operation": { "type": { "code": "search" }, "resource": "RiskAssessment", "params": "?probability=ge5&_tag=http://ignixa.io/testscript/suite/test|fhir262-num-suite&_count=100", "responseId": "num-ge", "description": "GET RiskAssessment?probability=ge5" } },
+        { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
+        { "assert": { "description": "Response must be a Bundle", "resource": "Bundle" } },
+        { "assert": { "description": "Must include mid (5)", "expression": "entry.where(resource.id = 'fhir262-num-mid').exists()" } },
+        { "assert": { "description": "Must include high (100)", "expression": "entry.where(resource.id = 'fhir262-num-high').exists()" } },
+        { "assert": { "description": "Must NOT include low (1)", "expression": "entry.where(resource.id = 'fhir262-num-low').exists()", "value": "false", "operator": "equals", "warningOnly": true } }
+      ]
+    },
+    {
+      "name": "number: sa (starts-after) — behaves like gt for point values",
+      "description": "RiskAssessment?probability=sa5 must match only high (100), same result as gt5 since these fixtures are point decimals with no inherent range.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        { "operation": { "type": { "code": "search" }, "resource": "RiskAssessment", "params": "?probability=sa5&_tag=http://ignixa.io/testscript/suite/test|fhir262-num-suite&_count=100", "responseId": "num-sa", "description": "GET RiskAssessment?probability=sa5" } },
+        { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
+        { "assert": { "description": "Response must be a Bundle", "resource": "Bundle" } },
+        { "assert": { "description": "Must include high (100)", "expression": "entry.where(resource.id = 'fhir262-num-high').exists()" } },
+        { "assert": { "description": "Must NOT include mid (5)", "expression": "entry.where(resource.id = 'fhir262-num-mid').exists()", "value": "false", "operator": "equals", "warningOnly": true } },
+        { "assert": { "description": "Must NOT include low (1)", "expression": "entry.where(resource.id = 'fhir262-num-low').exists()", "value": "false", "operator": "equals", "warningOnly": true } }
+      ]
+    },
+    {
+      "name": "number: eb (ends-before) — behaves like lt for point values",
+      "description": "RiskAssessment?probability=eb5 must match only low (1), same result as lt5 since these fixtures are point decimals with no inherent range.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        { "operation": { "type": { "code": "search" }, "resource": "RiskAssessment", "params": "?probability=eb5&_tag=http://ignixa.io/testscript/suite/test|fhir262-num-suite&_count=100", "responseId": "num-eb", "description": "GET RiskAssessment?probability=eb5" } },
+        { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
+        { "assert": { "description": "Response must be a Bundle", "resource": "Bundle" } },
+        { "assert": { "description": "Must include low (1)", "expression": "entry.where(resource.id = 'fhir262-num-low').exists()" } },
+        { "assert": { "description": "Must NOT include mid (5)", "expression": "entry.where(resource.id = 'fhir262-num-mid').exists()", "value": "false", "operator": "equals", "warningOnly": true } },
+        { "assert": { "description": "Must NOT include high (100)", "expression": "entry.where(resource.id = 'fhir262-num-high').exists()", "value": "false", "operator": "equals", "warningOnly": true } }
+      ]
+    }
+  ],
+  "teardown": {
+    "action": [
+      { "operation": { "type": { "code": "delete" }, "url": "RiskAssessment/fhir262-num-low", "description": "Teardown: delete ra-low" } },
+      { "operation": { "type": { "code": "delete" }, "url": "RiskAssessment/fhir262-num-mid", "description": "Teardown: delete ra-mid" } },
+      { "operation": { "type": { "code": "delete" }, "url": "RiskAssessment/fhir262-num-high", "description": "Teardown: delete ra-high" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/fhir262-num-subj", "description": "Teardown: delete subject patient" } }
+    ]
+  }
+}

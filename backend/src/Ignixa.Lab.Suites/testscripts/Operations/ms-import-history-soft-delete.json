@@ -1,0 +1,38 @@
+{
+  "resourceType": "TestScript",
+  "name": "Operations/ms-import-history-soft-delete",
+  "description": "Ported from Microsoft.Health.Fhir.Shared.Tests.E2E ImportHistorySoftDeleteTests.cs (5 Facts: GivenImportedResourceOverExisting_WhenImportVersionNotSpecified_ThenBothVersionsExistCorrectly, GivenImportedResourceOverExisting_WhenImportVersionInConflict_ThenOnlyOneResourceOnServer, GivenImportedWithDuplicateVersionId_WhenImportVersionInConflict_ThenOnlyOneResourceOnServer, GivenImportWithCreateAndDelete_WhenImportedWithLastUpdatedAndVersion_ThenBothVersionsExist, GivenImportWithCreateAndDelete_WhenImportedWithoutLastUpdatedAndVersion_ThenFirstInFileVersionsExist). Every one of these Facts only performs plain GET/_history/search calls; all the interesting behavior under test happens earlier, inside ImportHistorySoftDeleteTestFixture's constructor, which runs a real $import against ndjson files (some containing multiple explicit-version/explicit-lastUpdated/soft-deleted entries for the same resource id) uploaded to real Azure Storage, then waits for the job to complete. What is actually being verified -- that a client can assign meta.versionId and meta.lastUpdated for a resource, that conflicting versions/lastUpdated values are resolved deterministically, and that soft-deleted entries interleaved in the same ndjson file are honored -- is exclusive to the $import ingestion pipeline: ordinary REST create/update (POST/PUT) never lets a client set meta.versionId or meta.lastUpdated, so unlike ImportBasicSearchTests.cs (whose search-parameter-indexing behavior IS reproducible with standard PUT, see import-search.json/import-search-2.json) there is no standard-CRUD equivalent to substitute here, and no completed real import means no version/history state to assert against. All 5 Facts are therefore skipped in full. The single test below is the closest adjacent thing that IS synchronously HTTP-observable: that the $import request shape itself accepts the mode and allowNegativeVersions parameters relevant to incremental/version-conflict handling (ImportRequestExtensions.cs) without being rejected for those fields specifically. It is intentionally best-effort/environment-dependent, for the same storage-account-host reason documented in ms-import-basic.json's well-formed-kickoff test.",
+  "status": "active",
+  "fixture": [
+    {
+      "id": "import-params-incremental-with-negative-versions",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Parameters",
+        "parameter": [
+          { "name": "inputFormat", "valueString": "application/fhir+ndjson" },
+          { "name": "storageDetail", "part": [ { "name": "type", "valueString": "azure-blob" } ] },
+          { "name": "input", "part": [
+              { "name": "type", "valueString": "Patient" },
+              { "name": "url", "valueUri": "https://ignixa-lab-testscript-placeholder.blob.core.windows.net/container/patient.ndjson" }
+            ]
+          },
+          { "name": "mode", "valueString": "IncrementalLoad" },
+          { "name": "allowNegativeVersions", "valueBoolean": true }
+        ]
+      }
+    }
+  ],
+  "test": [
+    {
+      "name": "$import kickoff shape accepts mode=IncrementalLoad and allowNegativeVersions (best-effort, environment-dependent)",
+      "description": "Derived from ImportRequestExtensions.ExtractImportRequest and ImportController.Import: mode=IncrementalLoad and allowNegativeVersions=true are recognized, structurally valid parameter values (the real version-conflict-resolution and negative-version-rejection logic these fields drive only runs asynchronously while processing the ndjson content, which this suite cannot provision). As in ms-import-basic.json's well-formed-kickoff test, whether this specific request reaches 202 Accepted depends on whether the input URL's host matches the target's real configured storage account, which is unknown to a portable suite -- our placeholder host will not match on any real deployment, so the 400 branch is by far the more likely outcome in practice. Both branches are asserted as warningOnly for that reason; this test only documents that the mode/allowNegativeVersions fields themselves are accepted as valid request shape, not that a real incremental import with negative versions actually succeeds.",
+      "action": [
+        { "operation": { "type": { "code": "$import" }, "method": "POST", "url": "$import", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "sourceId": "import-params-incremental-with-negative-versions", "responseId": "incremental-negative-versions-response", "description": "POST $import with mode=IncrementalLoad and allowNegativeVersions=true" } },
+        { "assert": { "description": "Best-effort: a matching storage host would return 202 Accepted (warningOnly: host is almost never a match on a portable suite)", "sourceId": "incremental-negative-versions-response", "responseCode": "202", "warningOnly": true } },
+        { "assert": { "description": "Best-effort: a non-matching storage host returns 400 Bad Request instead, NOT a rejection of mode/allowNegativeVersions themselves (warningOnly: documents the far more likely outcome)", "sourceId": "incremental-negative-versions-response", "response": "bad", "warningOnly": true } }
+      ]
+    }
+  ]
+}

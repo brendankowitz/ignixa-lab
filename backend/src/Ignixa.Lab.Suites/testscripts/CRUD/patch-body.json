@@ -1,0 +1,338 @@
+{
+  "resourceType": "TestScript",
+  "name": "CRUD/patch-body",
+  "description": "Conformance tests adapted from the Microsoft FHIR Server E2E suite PatchBodyTests.cs, which checks PATCH behavior at the request-body-shape level (independent of the patch semantics themselves) for both 'application/json-patch+json' and 'application/fhir+json'. The two 'empty body' scenarios cannot be reproduced literally: this engine's HTTP client only attaches a Content-Type header when a request body is present, so a Content-Type header can never be sent alongside a genuinely empty body. Each is instead approximated with a syntactically valid but wrong-shaped, non-empty body (an empty JSON object for json-patch+json; a Patient resource in place of the expected Parameters resource for fhir+json) that fails ASP.NET Core model binding for the same underlying reason an empty body would, producing the same 400 Bad Request outcome. The two 'populated body succeeds' scenarios are otherwise straightforward; the JSON Patch case is approximated via an equivalent FHIRPath Patch body since raw JSON array bodies cannot be sent by this engine, while the FHIR Patch case is reproduced directly and exactly.",
+  "status": "active",
+  "fixture": [
+    {
+      "id": "patient-full",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Patient",
+        "identifier": [
+          {
+            "system": "http://ignixa.io/testscript/e2e-marker",
+            "value": "patch-body-e2e-full"
+          }
+        ],
+        "gender": "male"
+      }
+    },
+    {
+      "id": "empty-object-body",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {}
+    },
+    {
+      "id": "wrong-resource-type-body",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Patient",
+        "gender": "unknown"
+      }
+    },
+    {
+      "id": "patch-replace-gender-female",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Parameters",
+        "parameter": [
+          {
+            "name": "operation",
+            "part": [
+              {
+                "name": "type",
+                "valueString": "replace"
+              },
+              {
+                "name": "path",
+                "valueString": "Patient.gender"
+              },
+              {
+                "name": "value",
+                "valueCode": "female"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "name": "patientId1",
+      "sourceId": "create1",
+      "path": "id",
+      "description": "Server-assigned id captured from 'create1'"
+    },
+    {
+      "name": "patientId2",
+      "sourceId": "create2",
+      "path": "id",
+      "description": "Server-assigned id captured from 'create2'"
+    },
+    {
+      "name": "patientId3",
+      "sourceId": "create3",
+      "path": "id",
+      "description": "Server-assigned id captured from 'create3'"
+    },
+    {
+      "name": "patientId4",
+      "sourceId": "create4",
+      "path": "id",
+      "description": "Server-assigned id captured from 'create4'"
+    }
+  ],
+  "setup": {
+    "action": []
+  },
+  "test": [
+    {
+      "name": "json-patch+json request with a malformed (empty-object) body is rejected",
+      "description": "Approximates GivenJsonPatch_WhenBodyIsEmpty_ThenBadRequestShouldBeReturned. This engine cannot submit a truly empty request body (its HTTP client only attaches a Content-Type header when a body is present), so an empty JSON object '{}' is sent instead of an empty string. ASP.NET Core's JsonPatchDocument model binder requires the root of the body to be a JSON array, so '{}' fails to bind for the same underlying reason an empty body does, and the server must return 400 Bad Request either way.",
+      "action": [
+        {
+          "operation": {
+            "type": {
+              "code": "create"
+            },
+            "resource": "Patient",
+            "sourceId": "patient-full",
+            "responseId": "create1",
+            "description": "Create a fresh Patient from fixture 'patient-full' to patch in this test"
+          }
+        },
+        {
+          "assert": {
+            "description": "Setup create must have returned HTTP 201",
+            "response": "created",
+            "sourceId": "create1"
+          }
+        },
+        {
+          "operation": {
+            "type": {
+              "code": "patch"
+            },
+            "url": "Patient/${patientId1}",
+            "contentType": "application/json-patch+json",
+            "sourceId": "empty-object-body",
+            "responseId": "patch1",
+            "description": "Submit an empty JSON object with Content-Type: application/json-patch+json"
+          }
+        },
+        {
+          "assert": {
+            "description": "Server must return 400 Bad Request",
+            "response": "bad"
+          }
+        }
+      ]
+    },
+    {
+      "name": "fhir+json patch request with a malformed (wrong resourceType) body is rejected",
+      "description": "Approximates GivenFhirPatch_WhenBodyIsEmpty_ThenBadRequestShouldBeReturned. This engine cannot submit a truly empty request body, so a syntactically valid Patient resource is sent instead of the expected Parameters resource. The server's FHIRPath Patch action binds the body to a Parameters resource, so a Patient body fails model binding for the same underlying reason an empty body does, and the server must return 400 Bad Request either way.",
+      "action": [
+        {
+          "operation": {
+            "type": {
+              "code": "create"
+            },
+            "resource": "Patient",
+            "sourceId": "patient-full",
+            "responseId": "create2",
+            "description": "Create a fresh Patient from fixture 'patient-full' to patch in this test"
+          }
+        },
+        {
+          "assert": {
+            "description": "Setup create must have returned HTTP 201",
+            "response": "created",
+            "sourceId": "create2"
+          }
+        },
+        {
+          "operation": {
+            "type": {
+              "code": "patch"
+            },
+            "url": "Patient/${patientId2}",
+            "contentType": "application/fhir+json",
+            "sourceId": "wrong-resource-type-body",
+            "responseId": "patch2",
+            "description": "Submit a Patient resource body with Content-Type: application/fhir+json to the patch endpoint"
+          }
+        },
+        {
+          "assert": {
+            "description": "Server must return 400 Bad Request",
+            "response": "bad"
+          }
+        }
+      ]
+    },
+    {
+      "name": "json-patch-shaped edit with a populated body succeeds",
+      "description": "Approximates GivenJsonPatch_WhenBodyIsPopulated_ThenResultIsSuccessful (a JSON Patch '[{op:replace,path:/gender,value:female}]' array body) using the semantically equivalent FHIRPath Patch replace operation, since this engine cannot send a raw JSON array as a request body - only FHIR-resource-shaped JSON objects are supported.",
+      "action": [
+        {
+          "operation": {
+            "type": {
+              "code": "create"
+            },
+            "resource": "Patient",
+            "sourceId": "patient-full",
+            "responseId": "create3",
+            "description": "Create a fresh Patient from fixture 'patient-full' to patch in this test"
+          }
+        },
+        {
+          "assert": {
+            "description": "Setup create must have returned HTTP 201",
+            "response": "created",
+            "sourceId": "create3"
+          }
+        },
+        {
+          "assert": {
+            "description": "Fixture patient must start with gender male",
+            "sourceId": "create3",
+            "expression": "Patient.gender",
+            "value": "male",
+            "operator": "equals"
+          }
+        },
+        {
+          "operation": {
+            "type": {
+              "code": "patch"
+            },
+            "url": "Patient/${patientId3}",
+            "contentType": "application/fhir+json",
+            "sourceId": "patch-replace-gender-female",
+            "responseId": "patch3",
+            "description": "Submit a populated FHIRPath Patch body replacing gender with 'female'"
+          }
+        },
+        {
+          "assert": {
+            "description": "Patch must return HTTP 200 OK",
+            "response": "okay"
+          }
+        },
+        {
+          "assert": {
+            "description": "gender must now be 'female'",
+            "expression": "Patient.gender",
+            "value": "female",
+            "operator": "equals"
+          }
+        }
+      ]
+    },
+    {
+      "name": "fhir-patch edit with a populated Parameters body succeeds",
+      "description": "Direct equivalent of GivenFhirPatch_WhenBodyIsPopulated_ThenResultIsSuccessful: a real FHIRPath Patch Parameters body (built the same way AddReplacePatchParameter would) replacing Patient.gender with 'female' must succeed with 200.",
+      "action": [
+        {
+          "operation": {
+            "type": {
+              "code": "create"
+            },
+            "resource": "Patient",
+            "sourceId": "patient-full",
+            "responseId": "create4",
+            "description": "Create a fresh Patient from fixture 'patient-full' to patch in this test"
+          }
+        },
+        {
+          "assert": {
+            "description": "Setup create must have returned HTTP 201",
+            "response": "created",
+            "sourceId": "create4"
+          }
+        },
+        {
+          "assert": {
+            "description": "Fixture patient must start with gender male",
+            "sourceId": "create4",
+            "expression": "Patient.gender",
+            "value": "male",
+            "operator": "equals"
+          }
+        },
+        {
+          "operation": {
+            "type": {
+              "code": "patch"
+            },
+            "url": "Patient/${patientId4}",
+            "contentType": "application/fhir+json",
+            "sourceId": "patch-replace-gender-female",
+            "responseId": "patch4",
+            "description": "Submit a populated FHIRPath Patch body replacing gender with 'female'"
+          }
+        },
+        {
+          "assert": {
+            "description": "Patch must return HTTP 200 OK",
+            "response": "okay"
+          }
+        },
+        {
+          "assert": {
+            "description": "gender must now be 'female'",
+            "expression": "Patient.gender",
+            "value": "female",
+            "operator": "equals"
+          }
+        }
+      ]
+    }
+  ],
+  "teardown": {
+    "action": [
+      {
+        "operation": {
+          "type": {
+            "code": "delete"
+          },
+          "url": "Patient/${patientId1}",
+          "description": "Teardown: delete the Patient created for this suite (may already be gone)"
+        }
+      },
+      {
+        "operation": {
+          "type": {
+            "code": "delete"
+          },
+          "url": "Patient/${patientId2}",
+          "description": "Teardown: delete the Patient created for this suite (may already be gone)"
+        }
+      },
+      {
+        "operation": {
+          "type": {
+            "code": "delete"
+          },
+          "url": "Patient/${patientId3}",
+          "description": "Teardown: delete the Patient created for this suite (may already be gone)"
+        }
+      },
+      {
+        "operation": {
+          "type": {
+            "code": "delete"
+          },
+          "url": "Patient/${patientId4}",
+          "description": "Teardown: delete the Patient created for this suite (may already be gone)"
+        }
+      }
+    ]
+  }
+}

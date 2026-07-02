@@ -156,20 +156,20 @@ public sealed class SuiteCatalogTests : IDisposable
         new(Options.Create(new IgnixaLabOptions()), NullLogger<SuiteCatalog>.Instance);
 
     [Fact]
-    public void GetSuites_LoadsAllTwelveBundledCanonicalSuites()
+    public void GetSuites_LoadsAllBundledCanonicalSuites()
     {
         var suites = CreateBundledCatalog().GetSuites();
 
-        suites.Should().HaveCount(12);
+        suites.Should().HaveCount(71);
     }
 
     [Fact]
-    public void GetSuites_BundledCanonicalSuites_SpanExactlyFourCategories()
+    public void GetSuites_BundledCanonicalSuites_SpanExactlySevenCategories()
     {
         var suites = CreateBundledCatalog().GetSuites();
 
         suites.Select(s => s.Category).Distinct()
-            .Should().BeEquivalentTo(new[] { "Bundles", "CRUD", "Search", "Validation" });
+            .Should().BeEquivalentTo(new[] { "Bundles", "CRUD", "Foundation", "Operations", "Regression", "Search", "Validation" });
     }
 
     [Fact]

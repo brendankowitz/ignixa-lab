@@ -1,0 +1,152 @@
+{
+  "resourceType": "TestScript",
+  "name": "Foundation/metadata",
+  "description": "GET /metadata (CapabilityStatement) conformance tests ported from Microsoft.Health.Fhir.Shared.Tests.E2E Rest/MetadataTests.cs. Covers a well-formed CapabilityStatement response advertising the patient-everything operation, HTTP 406 for an unsupported _format value, and HTTP 400 for malformed _pretty/_summary/_elements query parameters. InlineData rows that exercise the same validation-error behavior (e.g. _pretty='abc'/''/'1'/'0') are collapsed into representative cases per the task's de-duplication guidance.",
+  "status": "active",
+  "test": [
+    {
+      "name": "metadata returns a well-formed CapabilityStatement advertising patient-everything",
+      "description": "GET /metadata must return HTTP 200 with a CapabilityStatement resource. The server should also advertise the patient-everything operation with its canonical definition URI (warningOnly: this specific operation/URI is a Microsoft FHIR Server extension, not a base FHIR R4 requirement, so other conformant servers may omit it).",
+      "action": [
+        {
+          "operation": {
+            "type": { "code": "capabilities" },
+            "method": "GET",
+            "url": "metadata",
+            "responseId": "metadata-response",
+            "description": "Retrieve the server's CapabilityStatement"
+          }
+        },
+        {
+          "assert": {
+            "description": "Metadata endpoint must return HTTP 200",
+            "sourceId": "metadata-response",
+            "response": "okay"
+          }
+        },
+        {
+          "assert": {
+            "description": "Response body must be a CapabilityStatement",
+            "sourceId": "metadata-response",
+            "resource": "CapabilityStatement"
+          }
+        },
+        {
+          "assert": {
+            "description": "CapabilityStatement should advertise the patient-everything operation with its canonical definition URI (warningOnly: server-specific extension)",
+            "sourceId": "metadata-response",
+            "expression": "CapabilityStatement.rest.operation.where(name='patient-everything').definition",
+            "value": "https://www.hl7.org/fhir/patient-operation-everything.html",
+            "operator": "equals",
+            "warningOnly": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "metadata with an unsupported _format value returns 406 Not Acceptable",
+      "description": "GET /metadata?_format=blah must return HTTP 406 Not Acceptable. 406 is not one of the standard FHIR TestScript 'response' codes, so it is asserted via the numeric responseCode criteria instead.",
+      "action": [
+        {
+          "operation": {
+            "type": { "code": "capabilities" },
+            "method": "GET",
+            "url": "metadata?_format=blah",
+            "responseId": "invalid-format-response",
+            "description": "Request metadata with an invalid _format value"
+          }
+        },
+        {
+          "assert": {
+            "description": "Invalid _format must return HTTP 406 Not Acceptable",
+            "sourceId": "invalid-format-response",
+            "responseCode": "406"
+          }
+        }
+      ]
+    },
+    {
+      "name": "metadata with an invalid _pretty value returns 400 Bad Request",
+      "description": "GET /metadata?_pretty=<value> must return HTTP 400 Bad Request for values that are not valid booleans. Two representative classes are covered: a clearly non-boolean token ('abc', which also stands in for the equivalent '' case), and a near-miss boolean-like token ('1', which also stands in for '0'). The near-miss case is warningOnly because leniently accepting '1'/'0' as truthy is a plausible, spec-adjacent choice for other FHIR servers.",
+      "action": [
+        {
+          "operation": {
+            "type": { "code": "capabilities" },
+            "method": "GET",
+            "url": "metadata?_pretty=abc",
+            "responseId": "pretty-abc-response",
+            "description": "Request metadata with a non-boolean _pretty value ('abc'; '' collapses to the same behavior)"
+          }
+        },
+        {
+          "assert": {
+            "description": "Non-boolean _pretty value must return HTTP 400",
+            "sourceId": "pretty-abc-response",
+            "response": "bad"
+          }
+        },
+        {
+          "operation": {
+            "type": { "code": "capabilities" },
+            "method": "GET",
+            "url": "metadata?_pretty=1",
+            "responseId": "pretty-1-response",
+            "description": "Request metadata with a near-miss boolean-like _pretty value ('1'; '0' collapses to the same behavior)"
+          }
+        },
+        {
+          "assert": {
+            "description": "Near-miss boolean-like _pretty value must return HTTP 400 (warningOnly: some servers may leniently accept '1'/'0')",
+            "sourceId": "pretty-1-response",
+            "response": "bad",
+            "warningOnly": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "metadata with an invalid _summary value returns 400 Bad Request",
+      "description": "GET /metadata?_summary=<value> must return HTTP 400 Bad Request for an unrecognized summary token ('abc'; the empty-string case '' collapses to the same behavior).",
+      "action": [
+        {
+          "operation": {
+            "type": { "code": "capabilities" },
+            "method": "GET",
+            "url": "metadata?_summary=abc",
+            "responseId": "summary-response",
+            "description": "Request metadata with an invalid _summary value"
+          }
+        },
+        {
+          "assert": {
+            "description": "Invalid _summary value must return HTTP 400",
+            "sourceId": "summary-response",
+            "response": "bad"
+          }
+        }
+      ]
+    },
+    {
+      "name": "metadata with an invalid _elements value returns 400 Bad Request",
+      "description": "GET /metadata?_elements=<value> must return HTTP 400 Bad Request for an empty elements list (the whitespace-only ' ' case collapses to the same behavior).",
+      "action": [
+        {
+          "operation": {
+            "type": { "code": "capabilities" },
+            "method": "GET",
+            "url": "metadata?_elements=",
+            "responseId": "elements-response",
+            "description": "Request metadata with an empty _elements value"
+          }
+        },
+        {
+          "assert": {
+            "description": "Empty _elements value must return HTTP 400",
+            "sourceId": "elements-response",
+            "response": "bad"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,105 @@
+{
+  "resourceType": "TestScript",
+  "name": "Search/ms-search-parameter",
+  "description": "Coverage for a custom, non-standard search parameter as ported from Microsoft.Health.Fhir.Shared.Tests.E2E MsSearchParameterTests. That source test targets an Azure Health Data Services-specific feature: a built-in _expiryDate search parameter over the extension https://azurehealthcareapis.com/data-extensions/expiry-date, plus a CapabilityStatement check confirming the parameter is advertised as 'supported'. Since _expiryDate and its backing extension are proprietary to Azure Health Data Services rather than part of the FHIR R4 specification, this suite targets Patient resources carrying that same extension but marks every assertion warningOnly so the suite degrades gracefully (rather than failing) against a generic/vanilla FHIR R4 server that has no knowledge of this parameter.",
+  "status": "active",
+  "fixture": [
+    {
+      "id": "patient-past",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Patient",
+        "id": "fhir262-msp-past",
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/ms-param", "value": "msp-past" }],
+        "meta": {
+          "extension": [
+            {
+              "url": "https://azurehealthcareapis.com/data-extensions/expiry-date",
+              "valueDateTime": "2000-01-01"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "patient-future",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Patient",
+        "id": "fhir262-msp-future",
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/ms-param", "value": "msp-future" }],
+        "meta": {
+          "extension": [
+            {
+              "url": "https://azurehealthcareapis.com/data-extensions/expiry-date",
+              "valueDateTime": "2999-01-01"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "setup": {
+    "action": [
+      { "operation": { "type": { "code": "update" }, "url": "Patient/fhir262-msp-past", "sourceId": "patient-past", "description": "PUT Patient with meta.extension expiry-date = 2000-01-01 (in the past)" } },
+      { "operation": { "type": { "code": "update" }, "url": "Patient/fhir262-msp-future", "sourceId": "patient-future", "description": "PUT Patient with meta.extension expiry-date = 2999-01-01 (in the future)" } }
+    ]
+  },
+  "test": [
+    {
+      "name": "CapabilityStatement optionally advertises the _expiryDate search parameter on Patient",
+      "description": "Ported from the source's CheckSearchParameterStatus check, which hard-asserts _expiryDate is 'supported'. This is an Azure Health Data Services-specific capability, not guaranteed on an arbitrary FHIR R4 server, so every assertion here is warningOnly and informational only.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        { "operation": { "type": { "code": "read" }, "url": "metadata", "responseId": "capability-response", "description": "GET /metadata" } },
+        { "assert": { "description": "metadata should return HTTP 200", "response": "okay", "warningOnly": true } },
+        { "assert": { "description": "Response should be a CapabilityStatement", "resource": "CapabilityStatement", "warningOnly": true } },
+        { "assert": { "description": "CapabilityStatement should advertise a Patient search parameter for the expiry-date extension, if this server implements it", "expression": "rest.resource.where(type = 'Patient').searchParam.where(definition = 'https://azurehealthcareapis.com/data-extensions/expiry-date').exists()", "warningOnly": true } }
+      ]
+    },
+    {
+      "name": "_expiryDate=lt2025 matches only the past-expiry patient",
+      "description": "Patient?_expiryDate=lt2025 should match fhir262-msp-past (expiry 2000-01-01) and exclude fhir262-msp-future (expiry 2999-01-01), if the server implements this MS-specific parameter. warningOnly throughout since _expiryDate is not a standard FHIR search parameter.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?_expiryDate=lt2025&identifier=http://ignixa.io/testscript/suite/ms-param|&_count=100", "responseId": "expiry-lt-response", "description": "GET /Patient?_expiryDate=lt2025" } },
+        { "assert": { "description": "Search should return HTTP 200 (or 400 if _expiryDate is unrecognized)", "response": "okay", "warningOnly": true } },
+        { "assert": { "description": "Response should be a Bundle", "resource": "Bundle", "warningOnly": true } },
+        { "assert": { "description": "Should include the past-expiry patient", "expression": "entry.where(resource.id = 'fhir262-msp-past').exists()", "warningOnly": true } },
+        { "assert": { "description": "Should NOT include the future-expiry patient", "expression": "entry.where(resource.id = 'fhir262-msp-future').exists()", "value": "false", "operator": "equals", "warningOnly": true } }
+      ]
+    },
+    {
+      "name": "_expiryDate=gt2025 matches only the future-expiry patient",
+      "description": "Patient?_expiryDate=gt2025 should match fhir262-msp-future and exclude fhir262-msp-past, if the server implements this MS-specific parameter. warningOnly throughout since _expiryDate is not a standard FHIR search parameter.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?_expiryDate=gt2025&identifier=http://ignixa.io/testscript/suite/ms-param|&_count=100", "responseId": "expiry-gt-response", "description": "GET /Patient?_expiryDate=gt2025" } },
+        { "assert": { "description": "Search should return HTTP 200 (or 400 if _expiryDate is unrecognized)", "response": "okay", "warningOnly": true } },
+        { "assert": { "description": "Response should be a Bundle", "resource": "Bundle", "warningOnly": true } },
+        { "assert": { "description": "Should include the future-expiry patient", "expression": "entry.where(resource.id = 'fhir262-msp-future').exists()", "warningOnly": true } },
+        { "assert": { "description": "Should NOT include the past-expiry patient", "expression": "entry.where(resource.id = 'fhir262-msp-past').exists()", "value": "false", "operator": "equals", "warningOnly": true } }
+      ]
+    },
+    {
+      "name": "Baseline: both patients are retrievable by identifier regardless of _expiryDate support",
+      "description": "Sanity check independent of _expiryDate support: both fixtures must be findable via the standard identifier search, confirming the fixtures themselves loaded correctly even on servers with no knowledge of the custom parameter.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/ms-param|&_count=100", "responseId": "baseline-response", "description": "GET /Patient?identifier=http://ignixa.io/testscript/suite/ms-param|" } },
+        { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
+        { "assert": { "description": "Response must be a Bundle", "resource": "Bundle" } },
+        { "assert": { "description": "Must include the past-expiry patient", "expression": "entry.where(resource.id = 'fhir262-msp-past').exists()" } },
+        { "assert": { "description": "Must include the future-expiry patient", "expression": "entry.where(resource.id = 'fhir262-msp-future').exists()" } }
+      ]
+    }
+  ],
+  "teardown": {
+    "action": [
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/fhir262-msp-past", "description": "Teardown: delete past-expiry patient" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/fhir262-msp-future", "description": "Teardown: delete future-expiry patient" } }
+    ]
+  }
+}

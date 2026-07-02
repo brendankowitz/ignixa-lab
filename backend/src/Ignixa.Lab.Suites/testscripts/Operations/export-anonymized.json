@@ -1,0 +1,67 @@
+{
+  "resourceType": "TestScript",
+  "name": "Operations/export-anonymized",
+  "description": "Anonymized $export request-validation conformance tests ported from AnonymizedExportTests.cs and AnonymizedExportUsingAcrTests.cs. These source files are almost entirely about verifying that exported *data* was actually redacted (they poll the job to completion and download/parse the resulting ndjson blobs from Azure Storage), which is not something a black-box HTTP TestScript run can do -- there is no polling-until-terminal construct in TestScript and exported blob content cannot be read. What IS reliably HTTP-verifiable is the synchronous request validation performed by ExportController before any job is created: kicking off an anonymized export with syntactically valid parameters returns 202 Accepted (job creation always succeeds immediately; whether the referenced config/container/image actually exist is only checked later, during async job processing), while a set of parameter-shape problems (missing _container, missing _anonymizationConfig, and conflicting _anonymizationConfigCollectionReference/_anonymizationConfigEtag) are rejected synchronously with 400 by ExportController.ValidateForAnonymizedExport. See test-level descriptions for exactly which source test each scenario maps to, and what had to be skipped.",
+  "status": "active",
+  "variable": [
+    { "name": "systemAnonExportLocation", "sourceId": "system-anon-export-kickoff", "headerField": "Content-Location", "description": "Content-Location returned by the system-level anonymized export kickoff" },
+    { "name": "patientAnonExportLocation", "sourceId": "patient-anon-export-kickoff", "headerField": "Content-Location", "description": "Content-Location returned by the Patient/$export anonymized export kickoff" },
+    { "name": "groupAnonExportLocation", "sourceId": "group-anon-export-kickoff", "headerField": "Content-Location", "description": "Content-Location returned by the Group/123456/$export anonymized export kickoff" }
+  ],
+  "test": [
+    {
+      "name": "anonymized system-level export kick-off returns 202 Accepted with Content-Location",
+      "description": "Ported (kick-off step only) from GivenAValidConfigurationWithETag_WhenExportingAnonymizedData_ResourceShouldBeAnonymized(\"\"). The source test uploads a real anonymization config blob, waits for job completion, downloads the exported ndjson, and asserts every resource carries a REDACTED security label -- all of that requires real blob-storage infra and is skipped. Only the synchronous 202 kick-off is verified here. Requires the AnonymizedExport feature to be enabled on the target server; if disabled, the server would return 400 instead.",
+      "action": [
+        { "operation": { "type": { "code": "$export" }, "method": "GET", "url": "$export?_container=test-container&_anonymizationConfig=redact-config.json&_anonymizationConfigEtag=%220x1%22", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "system-anon-export-kickoff", "description": "GET /$export?_container=test-container&_anonymizationConfig=redact-config.json&_anonymizationConfigEtag=\"0x1\"" } },
+        { "assert": { "description": "Anonymized system-level export kick-off must return 202 Accepted", "sourceId": "system-anon-export-kickoff", "responseCode": "202" } },
+        { "assert": { "description": "Content-Location header must be present and non-empty", "sourceId": "system-anon-export-kickoff", "headerField": "Content-Location" } },
+        { "operation": { "type": { "code": "delete" }, "method": "DELETE", "url": "${systemAnonExportLocation}", "description": "Best-effort cancel so the job doesn't actually run to completion" } }
+      ]
+    },
+    {
+      "name": "anonymized Patient-level export kick-off returns 202 Accepted with Content-Location",
+      "description": "Ported (kick-off step only) from GivenAValidConfigurationWithETag_WhenExportingAnonymizedData_ResourceShouldBeAnonymized(\"Patient/\"). Blob content verification is skipped (see suite description).",
+      "action": [
+        { "operation": { "type": { "code": "$export" }, "method": "GET", "url": "Patient/$export?_container=test-container&_anonymizationConfig=redact-config.json&_anonymizationConfigEtag=%220x1%22", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "patient-anon-export-kickoff", "description": "GET /Patient/$export?_container=test-container&_anonymizationConfig=redact-config.json&_anonymizationConfigEtag=\"0x1\"" } },
+        { "assert": { "description": "Anonymized Patient-level export kick-off must return 202 Accepted", "sourceId": "patient-anon-export-kickoff", "responseCode": "202" } },
+        { "assert": { "description": "Content-Location header must be present and non-empty", "sourceId": "patient-anon-export-kickoff", "headerField": "Content-Location" } },
+        { "operation": { "type": { "code": "delete" }, "method": "DELETE", "url": "${patientAnonExportLocation}", "description": "Best-effort cancel so the job doesn't actually run to completion" } }
+      ]
+    },
+    {
+      "name": "anonymized Group-level export kick-off returns 202 Accepted with Content-Location",
+      "description": "Ported (kick-off step only) from GivenAValidConfigurationWithETag_WhenExportingGroupAnonymizedData_ResourceShouldBeAnonymized. The source test creates a real Group with a Patient member and asserts exactly 2 anonymized resources are exported; that requires completion + blob download and is skipped. The group id here is a placeholder, matching the same-scope kick-off tests in Operations/export-data.json.",
+      "action": [
+        { "operation": { "type": { "code": "$export" }, "method": "GET", "url": "Group/123456/$export?_container=test-container&_anonymizationConfig=redact-config.json&_anonymizationConfigEtag=%220x1%22", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "group-anon-export-kickoff", "description": "GET /Group/123456/$export?_container=test-container&_anonymizationConfig=redact-config.json&_anonymizationConfigEtag=\"0x1\"" } },
+        { "assert": { "description": "Anonymized Group-level export kick-off must return 202 Accepted", "sourceId": "group-anon-export-kickoff", "responseCode": "202" } },
+        { "assert": { "description": "Content-Location header must be present and non-empty", "sourceId": "group-anon-export-kickoff", "headerField": "Content-Location" } },
+        { "operation": { "type": { "code": "delete" }, "method": "DELETE", "url": "${groupAnonExportLocation}", "description": "Best-effort cancel so the job doesn't actually run to completion" } }
+      ]
+    },
+    {
+      "name": "anonymized export without a _container returns 400 Bad Request",
+      "description": "Adapted from GivenAnAnonymizedExportRequestWithoutContainerName_WhenExportingAnonymizedData_ThenFhirExceptionShouldBeThrewFromFhirClient. The source test only asserts that the FHIR client SDK throws when the server rejects the request; the underlying server behavior (confirmed in ExportController.CheckContainerNameAndConfigLocationForAnonymizedExport) is a synchronous 400 when _anonymizationConfig is present but _container is missing, which is what is asserted directly here.",
+      "action": [
+        { "operation": { "type": { "code": "$export" }, "method": "GET", "url": "$export?_anonymizationConfig=redact-config.json", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "anon-missing-container-response", "description": "GET /$export?_anonymizationConfig=redact-config.json (no _container)" } },
+        { "assert": { "description": "Missing _container with an anonymization config present must return 400 Bad Request", "sourceId": "anon-missing-container-response", "response": "bad" } }
+      ]
+    },
+    {
+      "name": "anonymized export without an _anonymizationConfig location returns 400 Bad Request",
+      "description": "Derived directly from ExportController.CheckContainerNameAndConfigLocationForAnonymizedExport: whenever any anonymization parameter is present (here, only _anonymizationConfigEtag), _anonymizationConfig (the config location) is required and its absence is rejected synchronously with 400, before _container is even checked. Not a 1:1 port of a specific xUnit test, but the same validation path GivenAContainerNotExisted/GivenInvalidEtagProvided rely on before they start polling.",
+      "action": [
+        { "operation": { "type": { "code": "$export" }, "method": "GET", "url": "$export?_container=test-container&_anonymizationConfigEtag=%220x1%22", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "anon-missing-config-response", "description": "GET /$export?_container=test-container&_anonymizationConfigEtag=\"0x1\" (no _anonymizationConfig)" } },
+        { "assert": { "description": "Missing _anonymizationConfig with an etag present must return 400 Bad Request", "sourceId": "anon-missing-config-response", "response": "bad" } }
+      ]
+    },
+    {
+      "name": "anonymized export with both an ACR collection reference and an etag returns 400 Bad Request",
+      "description": "Derived directly from ExportController.CheckReferenceAndETagParameterConflictForAnonymizedExport: _anonymizationConfigCollectionReference (ACR-based config) and _anonymizationConfigEtag (blob-based config) are mutually exclusive ways of pinning a config version; supplying both is rejected synchronously with 400. This complements AnonymizedExportUsingAcrTests, whose ACR-reference scenarios otherwise all require pushing a real image to a container registry and polling to completion, which is skipped.",
+      "action": [
+        { "operation": { "type": { "code": "$export" }, "method": "GET", "url": "$export?_container=test-container&_anonymizationConfig=redact-config.json&_anonymizationConfigCollectionReference=myregistry.azurecr.io%2Fconfigs:v1&_anonymizationConfigEtag=%220x1%22", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "anon-reference-etag-conflict-response", "description": "GET /$export with both _anonymizationConfigCollectionReference and _anonymizationConfigEtag set" } },
+        { "assert": { "description": "Supplying both an ACR collection reference and an etag must return 400 Bad Request", "sourceId": "anon-reference-etag-conflict-response", "response": "bad" } }
+      ]
+    }
+  ]
+}

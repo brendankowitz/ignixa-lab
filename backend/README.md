@@ -41,7 +41,8 @@ src/Ignixa.Lab.Functions/
   Program.cs       Host + DI wiring
 
 src/Ignixa.Lab.Suites/
-  testscripts/     The 12 canonical TestScript suites, packed into the
+  testscripts/     The 71 canonical TestScript suites (Bundles/CRUD/Foundation/
+                   Operations/Regression/Search/Validation), packed into the
                    IgnixaLab.TestScript.Suites content package (ADR-2607)
 
 test/Ignixa.Lab.Functions.Tests/
@@ -147,13 +148,40 @@ Phase 2 shared-store counter, which is not implemented here.
 
 ## Suites
 
-The 12 canonical FHIR TestScript suites (`backend/src/Ignixa.Lab.Suites/testscripts/{Bundles,CRUD,Search,Validation}/*.json`)
+The 71 canonical FHIR TestScript suites (`backend/src/Ignixa.Lab.Suites/testscripts/{Bundles,CRUD,Foundation,Operations,Regression,Search,Validation}/*.json`)
 are packed into a local NuGet content package, `IgnixaLab.TestScript.Suites`, by
 the `Ignixa.Lab.Suites` project and consumed by `Ignixa.Lab.Functions` (and
 its test project) via `PackageReference`. This is an interim step —
 see [ADR-2607](../docs/features/testscript-suite-sourcing/adr-2607-suite-sourcing.md)
 — for the upstream `ignixa-fhir` suites artifact; the `PackageReference`
 will be repointed there once it ships, and the local feed retired.
+
+Suites map to the e2e test coverage of the Microsoft FHIR Server
+(`microsoft/fhir-server`), organized by category (the immediate subfolder
+name under `testscripts/` — no code change needed for discovery, see
+`SuiteCatalog`): `Bundles` (batch/transaction), `CRUD` (create/read/vread/
+update/delete/history/patch/conditional operations), `Foundation`
+(metadata/health/CORS/custom headers), `Operations` (FHIR $-operations —
+$export, $everything, $expand, $docref, $member-match, plus Microsoft-specific
+`ms-*` operations like $import/$reindex/$convert-data/$bulk-delete/
+$bulk-update), `Regression` (exception handling, version parity, reference
+resolution), `Search` (search-parameter types and modifiers, with
+Microsoft-specific modifiers/params prefixed `ms-*`), and `Validation`
+(`$validate`). Suites representing genuinely non-standard, Microsoft
+FHIR Server-proprietary operations/modifiers/headers are prefixed `ms-`
+in their filename.
+
+**Deliberately not covered** — these areas of the upstream e2e suite need
+infrastructure a black-box HTTP TestScript run can't provide, so no suites
+were authored for them: `Rest/Audit/*` (requires inspecting a custom trace
+logger), `Rest/Metric/*` (requires a custom in-proc metric handler),
+`BasicAuthTests`/`TokenIntrospectionTests` (need multiple OAuth identities —
+`RunRequest` has no per-request auth support), `Microsoft.Health.Fhir.
+Shared.Tests.Smart` (SMART-on-FHIR OAuth proxy infrastructure),
+`Microsoft.Health.Fhir.Shared.Tests.Crucible` (integration with the external
+Crucible tool), `CreateAllFhirResourcesTests` (enumerates every resource
+type per FHIR version — too large/low-signal for a curated suite), and
+`*.Tests.E2E.CLI` (tooling only, no tests).
 
 Because restore needs the package to already exist, it must be packed before
 every restore/build/test:
