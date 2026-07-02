@@ -17,6 +17,11 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 $project = Join-Path $repoRoot 'backend/src/Ignixa.Lab.Suites/Ignixa.Lab.Suites.csproj'
 $outputDir = Join-Path $repoRoot 'artifacts/local-feed'
 
+# nuget.config references this folder unconditionally as a package source;
+# NuGet fails restore with NU1301 if a local source doesn't exist on disk yet,
+# so it must exist before the pack command below triggers its own restore.
+New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
+
 dotnet pack $project -c Release -o $outputDir /nodeReuse:false
 
 # MSBuild's node-reuse server can cache glob/directory-enumeration results
