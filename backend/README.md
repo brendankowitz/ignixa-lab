@@ -31,11 +31,8 @@ src/Ignixa.Lab.Functions/
   Conformance/     Report schema records (report, result, step, error, http req/res)
   Configuration/   IgnixaLabOptions (bound from the "IgnixaLab" section)
   Execution/       TestScriptRunner, TargetUrlValidator (SSRF), ConformanceReportMapper,
-                   ConformanceStepCorrelator, HttpEvaluatorFactory, RunOutcome,
-                   CapabilityStatementParser
+                   HttpEvaluatorFactory, RunOutcome, CapabilityStatementParser
   Functions/       HealthFunction, SuitesFunction, RunFunction, CapabilityFunction
-  Http/            RecordingHttpHandler, IHttpExchangeScope/HttpExchangeScope,
-                   HttpExchangeCollector, CapturedExchange
   Middleware/      CorsMiddleware, RateLimitMiddleware (RateLimitPolicy,
                    EndpointClassifier, ClientIpKeyExtractor — ADR-2608)
   Models/          RunRequest, SuiteDescriptor, CapabilityResponse
@@ -49,11 +46,10 @@ src/Ignixa.Lab.Suites/
 
 test/Ignixa.Lab.Functions.Tests/
   Execution/       TargetUrlValidatorTests, ConformanceReportMapperTests,
-                   ConformanceStepCorrelatorTests, CapabilityStatementParserTests
+                   CapabilityStatementParserTests
   Functions/       CapabilityFunctionTests
   Middleware/      RateLimitPolicyTests, EndpointClassifierTests,
                    ClientIpKeyExtractorTests
-  Http/            RecordingHttpHandlerTests, HttpExchangeScopeTests
   Suites/          SuiteCatalogTests
 ```
 
@@ -66,15 +62,14 @@ dotnet test Ignixa.Lab.sln
 ## HTTP capture
 
 `GET /api/run` traces each step's real HTTP request/response so the dashboard's
-Request/Response tabs and capability coverage map have real data. Controlled
-via `IgnixaLab:HttpCaptureEnabled` (default `true`) and
-`IgnixaLab:HttpCaptureMaxBodyBytes` (default `65536`) — bodies larger than the
-cap are truncated with a `…[truncated N bytes]` marker. `Authorization` and
-`Proxy-Authorization` header values are always redacted before being recorded.
-Captured via `Http/RecordingHttpHandler`, a `DelegatingHandler` on the
-`fhir-target` client that records into an ambient `IHttpExchangeScope`
-collector; `ConformanceReportMapper` then correlates the ordered exchanges
-back onto the operation steps that produced them.
+Request/Response tabs and capability coverage map have real data. As of the
+`Ignixa.TestScript` 0.5.11-beta engine, this comes natively from each action's
+`ActionResult` — `Kind` (`Operation`/`Assertion`) tells `ConformanceReportMapper`
+whether a step is an operation or an assertion, and `Exchange` (when present)
+carries the actual `TestRequest`/`TestResponse` the engine made, which the
+mapper copies onto `ConformanceStep.Request`/`Response`. `Authorization` and
+`Proxy-Authorization` header values are always redacted by the mapper before
+being recorded.
 
 ## CORS
 

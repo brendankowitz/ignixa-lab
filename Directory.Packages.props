@@ -8,10 +8,10 @@
   -->
   <ItemGroup>
     <!-- FHIR TestScript execution engine (published from ignixa-fhir) -->
-    <PackageVersion Include="Ignixa.TestScript" Version="0.5.6-beta" />
+    <PackageVersion Include="Ignixa.TestScript" Version="0.5.11-beta" />
 
     <!-- Generates fixture resources for the canonical suites' fhirfakes markers -->
-    <PackageVersion Include="Ignixa.TestScript.FhirFakes" Version="0.5.6-beta" />
+    <PackageVersion Include="Ignixa.TestScript.FhirFakes" Version="0.5.11-beta" />
 
     <!--
       Canonical TestScript suites (ADR-2607). Interim local package built by

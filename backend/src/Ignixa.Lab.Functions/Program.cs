@@ -1,6 +1,5 @@
 using Ignixa.Lab.Functions.Configuration;
 using Ignixa.Lab.Functions.Execution;
-using Ignixa.Lab.Functions.Http;
 using Ignixa.Lab.Functions.Middleware;
 using Ignixa.Lab.Functions.Suites;
 using Microsoft.Azure.Functions.Worker;
@@ -24,12 +23,7 @@ builder.Services.AddSingleton<CorsMiddleware>();
 builder.Services.AddSingleton<RateLimitPolicy>();
 builder.Services.AddSingleton<RateLimitMiddleware>();
 
-builder.Services.AddSingleton<IHttpExchangeScope, HttpExchangeScope>();
-builder.Services.AddTransient<RecordingHttpHandler>();
-
-builder.Services
-    .AddHttpClient(HttpEvaluatorFactory.HttpClientName)
-    .AddHttpMessageHandler<RecordingHttpHandler>();
+builder.Services.AddHttpClient(HttpEvaluatorFactory.HttpClientName);
 
 builder.Services.AddSingleton<ISuiteCatalog, SuiteCatalog>();
 builder.Services.AddSingleton<IEvaluatorFactory, HttpEvaluatorFactory>();

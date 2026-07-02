@@ -1,7 +1,6 @@
 using Ignixa.Lab.Functions.Conformance;
-using Ignixa.Lab.Functions.Http;
+using Ignixa.TestScript.Client;
 using Ignixa.TestScript.Reporting;
-using Microsoft.Extensions.Logging;
 
 namespace Ignixa.Lab.Functions.Execution;
 
@@ -13,36 +12,24 @@ namespace Ignixa.Lab.Functions.Execution;
 /// </summary>
 public static class ConformanceReportMapper
 {
+    private const string RedactedValue = "***redacted***";
+
+    private static readonly IReadOnlySet<string> RedactedHeaderNames =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Authorization", "Proxy-Authorization" };
+
     /// <summary>
     /// Converts a single suite's <paramref name="report"/> into conformance
     /// results. A suite that defines multiple test cases yields multiple
     /// results; a suite with no test cases yields a single synthetic result so
     /// setup/teardown outcomes are still surfaced.
     /// </summary>
-    /// <param name="exchanges">
-    /// HTTP request/response pairs captured while the engine executed
-    /// <paramref name="report"/>'s TestScript, in call order. The engine runs
-    /// setup once, then each test case's actions, then teardown once, and
-    /// only "operation" actions make an HTTP call — so exchanges are
-    /// attached to operation steps in that same execution order. Omit (or
-    /// pass an empty list) when no capture was performed; steps are then left
-    /// without a request/response, matching the previous behaviour.
-    /// </param>
-    /// <param name="logger">
-    /// Optional logger used to record a warning when the number of operation
-    /// steps does not match the number of captured exchanges (classification
-    /// of operation vs. assertion is heuristic). Never used to throw.
-    /// </param>
     public static IReadOnlyList<ConformanceResult> Map(
         TestScriptReport report,
         string suiteId,
         string category,
-        string file,
-        IReadOnlyList<CapturedExchange>? exchanges = null,
-        ILogger? logger = null)
+        string file)
     {
         ArgumentNullException.ThrowIfNull(report);
-        exchanges ??= Array.Empty<CapturedExchange>();
 
         var setupSteps = MapPhase(report.SetupResult, TestPhaseType.Setup);
         var teardownSteps = MapPhase(report.TeardownResult, TestPhaseType.Teardown);
@@ -50,12 +37,7 @@ public static class ConformanceReportMapper
 
         if (report.TestResults.Count == 0)
         {
-            LogCountMismatch(suiteId, CountOperations(setupSteps) + CountOperations(teardownSteps), exchanges.Count, logger);
-
-            var exchangeQueue = new Queue<CapturedExchange>(exchanges);
-            var attachedSetup = ConformanceStepCorrelator.Attach(setupSteps, exchangeQueue);
-            var attachedTeardown = ConformanceStepCorrelator.Attach(teardownSteps, exchangeQueue);
-            var steps = Concat(attachedSetup, Array.Empty<ConformanceStep>(), attachedTeardown);
+            var steps = Concat(setupSteps, Array.Empty<ConformanceStep>(), teardownSteps);
 
             results.Add(BuildResult(
                 id: report.TestScriptName,
@@ -68,34 +50,10 @@ public static class ConformanceReportMapper
             return results;
         }
 
-        var testStepsByCase = new List<IReadOnlyList<ConformanceStep>>(report.TestResults.Count);
-        var operationCount = CountOperations(setupSteps) + CountOperations(teardownSteps);
         foreach (var testCase in report.TestResults)
         {
             var testSteps = MapActions(testCase.Actions, TestPhaseType.Test);
-            testStepsByCase.Add(testSteps);
-            operationCount += CountOperations(testSteps);
-        }
-
-        LogCountMismatch(suiteId, operationCount, exchanges.Count, logger);
-
-        // Attach in true execution order: setup once, then each test case's
-        // actions in order, then teardown once — matching the queue built
-        // from the exchanges the engine actually made.
-        var queue = new Queue<CapturedExchange>(exchanges);
-        var attachedSetupSteps = ConformanceStepCorrelator.Attach(setupSteps, queue);
-        var attachedTestStepsByCase = new List<IReadOnlyList<ConformanceStep>>(testStepsByCase.Count);
-        foreach (var testSteps in testStepsByCase)
-        {
-            attachedTestStepsByCase.Add(ConformanceStepCorrelator.Attach(testSteps, queue));
-        }
-
-        var attachedTeardownSteps = ConformanceStepCorrelator.Attach(teardownSteps, queue);
-
-        for (var i = 0; i < report.TestResults.Count; i++)
-        {
-            var testCase = report.TestResults[i];
-            var steps = Concat(attachedSetupSteps, attachedTestStepsByCase[i], attachedTeardownSteps);
+            var steps = Concat(setupSteps, testSteps, teardownSteps);
             var id = string.IsNullOrWhiteSpace(testCase.Name)
                 ? report.TestScriptName
                 : $"{report.TestScriptName} > {testCase.Name}";
@@ -111,34 +69,6 @@ public static class ConformanceReportMapper
         }
 
         return results;
-    }
-
-    private static void LogCountMismatch(string suiteId, int operationStepCount, int exchangeCount, ILogger? logger)
-    {
-        if (operationStepCount == exchangeCount)
-        {
-            return;
-        }
-
-        logger?.LogWarning(
-            "Suite {Suite}: {OperationSteps} operation step(s) but {ExchangeCount} captured HTTP exchange(s); some steps may be missing a request/response trace.",
-            suiteId,
-            operationStepCount,
-            exchangeCount);
-    }
-
-    private static int CountOperations(IReadOnlyList<ConformanceStep> steps)
-    {
-        var count = 0;
-        foreach (var step in steps)
-        {
-            if (step.Kind == "operation")
-            {
-                count++;
-            }
-        }
-
-        return count;
     }
 
     private static ConformanceResult BuildResult(
@@ -205,28 +135,61 @@ public static class ConformanceReportMapper
             var action = actions[i];
             steps[i] = new ConformanceStep(
                 Phase: phaseType.ToString().ToLowerInvariant(),
-                Kind: InferKind(action),
+                Kind: action.Kind == TestActionKind.Operation ? "operation" : "assertion",
                 Status: ConformanceStatus.FromOutcome(action.Outcome),
                 DurationMs: (long)action.Duration.TotalMilliseconds,
                 Label: NullIfEmpty(action.Label),
                 Description: NullIfEmpty(action.Description),
                 Message: NullIfEmpty(action.Message),
-                Request: null,
-                Response: null);
+                Request: ToRequest(action.Exchange?.Request),
+                Response: ToResponse(action.Exchange?.Response));
         }
 
         return steps;
     }
 
-    /// <summary>
-    /// Infers whether an action is an assertion or an operation. The published
-    /// engine does not expose the action kind directly, so we heuristically
-    /// classify based on the label/description wording.
-    /// </summary>
-    private static string InferKind(ActionResult action)
+    private static ConformanceHttpRequest? ToRequest(TestRequest? request)
     {
-        var text = $"{action.Label} {action.Description}".ToLowerInvariant();
-        return text.Contains("assert", StringComparison.Ordinal) ? "assertion" : "operation";
+        if (request is null)
+        {
+            return null;
+        }
+
+        return new ConformanceHttpRequest(
+            Method: request.Method.Method,
+            Url: request.Url,
+            Headers: Redact(request.Headers),
+            Body: request.FormBody ?? request.Body?.MutableNode.ToJsonString());
+    }
+
+    private static ConformanceHttpResponse? ToResponse(TestResponse? response)
+    {
+        if (response is null)
+        {
+            return null;
+        }
+
+        return new ConformanceHttpResponse(
+            StatusCode: response.StatusCode,
+            Headers: Redact(response.Headers),
+            Body: response.RawBody,
+            BodyParseError: response.BodyParseError);
+    }
+
+    private static IReadOnlyDictionary<string, string> Redact(IReadOnlyDictionary<string, string> headers)
+    {
+        if (headers.Count == 0)
+        {
+            return headers;
+        }
+
+        var redacted = new Dictionary<string, string>(headers.Count, StringComparer.OrdinalIgnoreCase);
+        foreach (var (name, value) in headers)
+        {
+            redacted[name] = RedactedHeaderNames.Contains(name) ? RedactedValue : value;
+        }
+
+        return redacted;
     }
 
     private static IReadOnlyList<ConformanceStep> Concat(

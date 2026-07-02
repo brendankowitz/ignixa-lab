@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using Ignixa.Lab.Functions.Conformance;
 using Ignixa.Lab.Functions.Configuration;
-using Ignixa.Lab.Functions.Http;
 using Ignixa.Lab.Functions.Models;
 using Ignixa.Lab.Functions.Suites;
 using Ignixa.TestScript.Evaluation;
@@ -24,7 +23,6 @@ namespace Ignixa.Lab.Functions.Execution;
 public sealed class TestScriptRunner(
     ISuiteCatalog catalog,
     IEvaluatorFactory evaluatorFactory,
-    IHttpExchangeScope httpExchangeScope,
     IOptions<IgnixaLabOptions> options,
     ILogger<TestScriptRunner> logger)
 {
@@ -110,9 +108,8 @@ public sealed class TestScriptRunner(
     {
         try
         {
-            using var captureScope = httpExchangeScope.Begin(out var collector);
             var report = await evaluator.ExecuteAsync(job.Definition, cancellationToken, fhirVersion);
-            return ConformanceReportMapper.Map(report, job.Id, job.Category, job.File, collector.Exchanges, logger);
+            return ConformanceReportMapper.Map(report, job.Id, job.Category, job.File);
         }
         catch (OperationCanceledException)
         {

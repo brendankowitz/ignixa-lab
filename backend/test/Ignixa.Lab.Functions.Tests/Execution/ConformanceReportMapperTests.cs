@@ -1,6 +1,8 @@
+using System.Collections.Immutable;
 using FluentAssertions;
 using Ignixa.Lab.Functions.Conformance;
 using Ignixa.Lab.Functions.Execution;
+using Ignixa.TestScript.Client;
 using Ignixa.TestScript.Reporting;
 
 namespace Ignixa.Lab.Functions.Tests.Execution;
@@ -12,8 +14,10 @@ public sealed class ConformanceReportMapperTests
         TestScriptOutcome outcome,
         string message = "",
         string description = "",
-        double durationMs = 5) =>
-        new(label, description, outcome, message, TimeSpan.FromMilliseconds(durationMs));
+        double durationMs = 5,
+        TestActionKind kind = TestActionKind.Assertion,
+        HttpExchange? exchange = null) =>
+        new(label, description, outcome, message, TimeSpan.FromMilliseconds(durationMs), kind, exchange);
 
     private static TestScriptReport Report(
         string name,
@@ -128,7 +132,7 @@ public sealed class ConformanceReportMapperTests
     }
 
     [Fact]
-    public void Map_ClassifiesAssertionStepsByWording()
+    public void Map_MapsActionKindToStepKind()
     {
         var report = Report(
             "suite",
@@ -139,8 +143,8 @@ public sealed class ConformanceReportMapperTests
                     "desc",
                     new[]
                     {
-                        Action("GET metadata", TestScriptOutcome.Pass),
-                        Action("assert response is CapabilityStatement", TestScriptOutcome.Pass),
+                        Action("GET metadata", TestScriptOutcome.Pass, kind: TestActionKind.Operation),
+                        Action("assert response is CapabilityStatement", TestScriptOutcome.Pass, kind: TestActionKind.Assertion),
                     },
                     TestScriptOutcome.Pass),
             });
@@ -149,6 +153,72 @@ public sealed class ConformanceReportMapperTests
 
         steps[0].Kind.Should().Be("operation");
         steps[1].Kind.Should().Be("assertion");
+    }
+
+    [Fact]
+    public void Map_OperationWithExchange_PopulatesRequestAndResponse()
+    {
+        var request = new TestRequest
+        {
+            Method = HttpMethod.Post,
+            Url = "https://target.example/Patient",
+            Headers = ImmutableDictionary<string, string>.Empty
+                .Add("Content-Type", "application/fhir+json")
+                .Add("Authorization", "Bearer secret-token"),
+            FormBody = "{\"resourceType\":\"Patient\"}",
+        };
+        var response = new TestResponse
+        {
+            StatusCode = 201,
+            Headers = ImmutableDictionary<string, string>.Empty.Add("Location", "https://target.example/Patient/1"),
+            RawBody = "{\"resourceType\":\"Patient\",\"id\":\"1\"}",
+        };
+        var report = Report(
+            "suite",
+            tests: new[]
+            {
+                new TestCaseResult(
+                    "case",
+                    "desc",
+                    new[] { Action("POST Patient", TestScriptOutcome.Pass, kind: TestActionKind.Operation, exchange: new HttpExchange(request, response)) },
+                    TestScriptOutcome.Pass),
+            });
+
+        var step = ConformanceReportMapper.Map(report, "s", "cat", "s.json").Single().Steps.Single();
+
+        step.Kind.Should().Be("operation");
+        step.Request.Should().NotBeNull();
+        step.Request!.Method.Should().Be("POST");
+        step.Request.Url.Should().Be("https://target.example/Patient");
+        step.Request.Body.Should().Be("{\"resourceType\":\"Patient\"}");
+        step.Request.Headers["Authorization"].Should().Be("***redacted***");
+        step.Request.Headers["Content-Type"].Should().Be("application/fhir+json");
+
+        step.Response.Should().NotBeNull();
+        step.Response!.StatusCode.Should().Be(201);
+        step.Response.Body.Should().Be("{\"resourceType\":\"Patient\",\"id\":\"1\"}");
+        step.Response.Headers["Location"].Should().Be("https://target.example/Patient/1");
+    }
+
+    [Fact]
+    public void Map_AssertionWithoutExchange_LeavesRequestAndResponseNull()
+    {
+        var report = Report(
+            "suite",
+            tests: new[]
+            {
+                new TestCaseResult(
+                    "case",
+                    "desc",
+                    new[] { Action("assert response is CapabilityStatement", TestScriptOutcome.Pass, kind: TestActionKind.Assertion) },
+                    TestScriptOutcome.Pass),
+            });
+
+        var step = ConformanceReportMapper.Map(report, "s", "cat", "s.json").Single().Steps.Single();
+
+        step.Kind.Should().Be("assertion");
+        step.Request.Should().BeNull();
+        step.Response.Should().BeNull();
     }
 
     [Fact]
