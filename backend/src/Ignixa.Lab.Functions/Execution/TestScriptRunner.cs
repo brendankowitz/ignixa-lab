@@ -5,6 +5,7 @@ using Ignixa.Lab.Functions.Http;
 using Ignixa.Lab.Functions.Models;
 using Ignixa.Lab.Functions.Suites;
 using Ignixa.TestScript.Evaluation;
+using Ignixa.TestScript.FhirFakes;
 using Ignixa.TestScript.Fixtures;
 using Ignixa.TestScript.Model;
 using Ignixa.TestScript.Parsing;
@@ -66,9 +67,19 @@ public sealed class TestScriptRunner(
         var results = new List<ConformanceResult>();
 
         using var scope = evaluatorFactory.CreateRequestProvider(target);
+
+        // The canonical suites declare fixtures via fhirfakes markers, which the
+        // FhirFakes provider materializes into real resources; InlineFixtureProvider
+        // handles any inline fixtures. Order matters: fakes first, inline fallback.
+        var fixtureProvider = new CompositeFixtureProvider(
+        [
+            new FhirFakesFixtureProvider(),
+            new InlineFixtureProvider(),
+        ]);
+
         var evaluator = new TestScriptEvaluator(
             scope.Provider,
-            new InlineFixtureProvider(),
+            fixtureProvider,
             new R4CoreSchemaProvider(),
             new NoOpValidator());
 

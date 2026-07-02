@@ -21,10 +21,28 @@ public sealed class HttpEvaluatorFactory(
     public RequestProviderScope CreateRequestProvider(Uri target)
     {
         var client = httpClientFactory.CreateClient(HttpClientName);
-        client.BaseAddress = target;
+        client.BaseAddress = NormalizeBaseAddress(target);
         client.Timeout = TimeSpan.FromSeconds(_options.HttpTimeoutSeconds);
 
         var provider = new HttpTestRequestProvider(client);
         return new RequestProviderScope(provider, client);
+    }
+
+    /// <summary>
+    /// Ensures a FHIR base URL ends with a trailing slash. Without it, resolving
+    /// a relative request path such as "Patient" against a base like
+    /// "https://host/baseR4" drops the last segment ("baseR4") per RFC 3986,
+    /// sending every request to the wrong URL.
+    /// </summary>
+    public static Uri NormalizeBaseAddress(Uri target)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+
+        if (target.AbsolutePath.EndsWith('/'))
+        {
+            return target;
+        }
+
+        return new UriBuilder(target) { Path = target.AbsolutePath + "/" }.Uri;
     }
 }
