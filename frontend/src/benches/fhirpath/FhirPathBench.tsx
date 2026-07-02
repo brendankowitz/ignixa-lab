@@ -5,7 +5,7 @@ import { DEFAULT_EXPRESSION, EXAMPLE_EXPRESSIONS, SAMPLE_RESOURCES, type SampleI
 import { useFhirPathEval } from './useFhirPathEval';
 import type { FhirVersion, FpAstNode, FpVariable } from './fhirPathTypes';
 
-const VERSION_ITEMS: PillItem[] = [
+const VERSION_ITEMS: PillItem<FhirVersion>[] = [
   { id: 'stu3', label: 'STU3' },
   { id: 'r4', label: 'R4' },
   { id: 'r4b', label: 'R4B' },
@@ -13,13 +13,13 @@ const VERSION_ITEMS: PillItem[] = [
   { id: 'r6', label: 'R6' },
 ];
 
-const RESULT_TAB_ITEMS: PillItem[] = [
+type ResultTab = 'results' | 'trace' | 'ast';
+
+const RESULT_TAB_ITEMS: PillItem<ResultTab>[] = [
   { id: 'results', label: 'Results' },
   { id: 'trace', label: 'Trace' },
   { id: 'ast', label: 'Parse tree' },
 ];
-
-type ResultTab = 'results' | 'trace' | 'ast';
 
 function typeChipColors(type: string): { bg: string; fg: string } {
   if (['string', 'date', 'dateTime'].includes(type)) {
@@ -194,7 +194,7 @@ export function FhirPathBench() {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={sectionLabelStyle}>FHIR version</span>
-          <Pills items={VERSION_ITEMS} activeId={version} onChange={(id) => setVersion(id as FhirVersion)} />
+          <Pills items={VERSION_ITEMS} activeId={version} onChange={setVersion} />
         </div>
       </Card>
 
@@ -234,7 +234,7 @@ export function FhirPathBench() {
 
         <Card style={{ minHeight: 400 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Pills items={RESULT_TAB_ITEMS} activeId={resultTab} onChange={(id) => setResultTab(id as ResultTab)} />
+            <Pills items={RESULT_TAB_ITEMS} activeId={resultTab} onChange={setResultTab} />
             <div style={{ flex: 1 }} />
             {isLoading ? <span style={{ fontFamily: monoFont, fontSize: 10.5, color: 'var(--text3)' }}>evaluating…</span> : null}
           </div>

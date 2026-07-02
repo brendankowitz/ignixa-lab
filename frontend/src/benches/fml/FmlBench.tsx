@@ -8,7 +8,7 @@ import { highlightFml } from './fmlHighlight';
 
 type FmlTab = 'output' | 'diff' | 'log';
 
-const TAB_ITEMS: PillItem[] = [
+const TAB_ITEMS: PillItem<FmlTab>[] = [
   { id: 'output', label: 'Output' },
   { id: 'diff', label: 'Diff vs expected' },
   { id: 'log', label: 'Execution log' },
@@ -85,7 +85,7 @@ export function FmlBench() {
 
           <Card>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <Pills items={TAB_ITEMS} activeId={tab} onChange={(id) => setTab(id as FmlTab)} />
+              <Pills items={TAB_ITEMS} activeId={tab} onChange={setTab} />
               <div style={{ flex: 1 }} />
               <span style={{ fontFamily: monoFont, fontSize: 10.5, color: 'var(--text3)' }}>
                 {result.output ? `${result.applied} applied · ${result.skipped} skipped` : ''}

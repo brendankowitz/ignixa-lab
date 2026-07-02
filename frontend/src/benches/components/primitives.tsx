@@ -11,19 +11,19 @@ export function ErrorBanner({ message }: { message: string }) {
   return <div style={errorBannerStyle}>{message}</div>;
 }
 
-export interface PillItem {
-  id: string;
+export interface PillItem<T extends string = string> {
+  id: T;
   label: string;
 }
 
-export interface PillsProps {
-  items: PillItem[];
-  activeId: string;
-  onChange: (id: string) => void;
+export interface PillsProps<T extends string> {
+  items: PillItem<T>[];
+  activeId: T;
+  onChange: (id: T) => void;
 }
 
 /** Segmented pill tab group, used for both the bench switcher and each bench's result tabs. */
-export function Pills({ items, activeId, onChange }: PillsProps) {
+export function Pills<T extends string>({ items, activeId, onChange }: PillsProps<T>) {
   return (
     <div style={pillGroupStyle} role="tablist">
       {items.map((item) => (

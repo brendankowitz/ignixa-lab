@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from 'react';
 import { useTheme } from '../hooks/useTheme';
-import { Pills } from './components/primitives';
+import { Pills, type PillItem } from './components/primitives';
 import { monoFont } from './components/styles';
 import { FhirPathBench } from './fhirpath/FhirPathBench';
 import { FmlBench } from './fml/FmlBench';
@@ -8,7 +8,7 @@ import { SofBench } from './sof/SofBench';
 
 type BenchId = 'fhirpath' | 'fml' | 'sqlonfhir';
 
-const BENCH_TABS: { id: BenchId; label: string }[] = [
+const BENCH_TABS: PillItem<BenchId>[] = [
   { id: 'fhirpath', label: 'FHIRPath' },
   { id: 'fml', label: 'FML' },
   { id: 'sqlonfhir', label: 'SQL on FHIR' },
@@ -49,7 +49,7 @@ export function BenchesApp() {
         </div>
 
         <div style={{ marginLeft: 20 }}>
-          <Pills items={BENCH_TABS} activeId={bench} onChange={(id) => setBench(id as BenchId)} />
+          <Pills items={BENCH_TABS} activeId={bench} onChange={setBench} />
         </div>
 
         <a href="./" style={{ fontSize: 12, fontWeight: 600, color: 'var(--text3)', textDecoration: 'none', padding: '6px 10px' }}>
