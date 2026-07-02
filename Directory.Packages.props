@@ -13,6 +13,11 @@
     <!-- Generates fixture resources for the canonical suites' fhirfakes markers -->
     <PackageVersion Include="Ignixa.TestScript.FhirFakes" Version="0.5.11-beta" />
 
+    <!-- FHIRPath expression evaluation engine, powering the fhirpath-evaluator endpoints -->
+    <PackageVersion Include="Ignixa.FhirPath" Version="0.5.11" />
+    <PackageVersion Include="Ignixa.Serialization" Version="0.5.11" />
+    <PackageVersion Include="Ignixa.Specification" Version="0.5.11" />
+
     <!--
       Canonical TestScript suites (ADR-2607). Interim local package built by
       backend/src/Ignixa.Lab.Suites and packed to the local-feed source; will
@@ -24,6 +29,7 @@
     <PackageVersion Include="Microsoft.Azure.Functions.Worker" Version="2.0.0" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Sdk" Version="2.0.5" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" Version="2.0.2" />
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Timer" Version="4.3.1" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.ApplicationInsights" Version="2.0.0" />
     <PackageVersion Include="Microsoft.ApplicationInsights.WorkerService" Version="2.23.0" />
 
