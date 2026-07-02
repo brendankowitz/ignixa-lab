@@ -29,7 +29,7 @@ public sealed class CapabilityFunction(
 
     [Function("Capability")]
     public async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "capability")] HttpRequest request,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "options", Route = "capability")] HttpRequest request,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);

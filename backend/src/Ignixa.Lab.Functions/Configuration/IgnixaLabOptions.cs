@@ -33,12 +33,15 @@ public sealed class IgnixaLabOptions
 
     /// <summary>
     /// Comma-separated list of origins permitted to call this API cross-origin.
-    /// Defaults to the hosted GitHub Pages frontend plus the local Vite dev
-    /// server, so a self-hosted deployment does not need to reconfigure this
-    /// to work out of the box, while still allowing operators to add or
-    /// replace origins per environment.
+    /// Defaults to the hosted GitHub Pages frontend, the fhirpath-lab sites
+    /// (production, dev, and hackweek), plus the local Vite dev server, so a
+    /// self-hosted deployment does not need to reconfigure this to work out
+    /// of the box, while still allowing operators to add or replace origins
+    /// per environment. Entries must match the browser's `Origin` header
+    /// exactly (scheme + host + port, no trailing slash).
     /// </summary>
-    public string CorsAllowedOrigins { get; set; } = "https://brendankowitz.github.io,http://localhost:5173";
+    public string CorsAllowedOrigins { get; set; } =
+        "https://brendankowitz.github.io,https://fhirpath-lab.com,https://dev.fhirpath-lab.com,https://hackweek.fhirpath-lab.com,http://localhost:5173";
 
     /// <summary>
     /// Per-endpoint abuse-protection rate limits (ADR-2608). Bound from
