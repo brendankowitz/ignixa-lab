@@ -25,9 +25,24 @@ export interface PillsProps {
 /** Segmented pill tab group, used for both the bench switcher and each bench's result tabs. */
 export function Pills({ items, activeId, onChange }: PillsProps) {
   return (
-    <div style={pillGroupStyle}>
+    <div style={pillGroupStyle} role="tablist">
       {items.map((item) => (
-        <span key={item.id} onClick={() => onChange(item.id)} style={pillItemStyle(item.id === activeId)}>
+        <span
+          key={item.id}
+          role="tab"
+          tabIndex={0}
+          aria-selected={item.id === activeId}
+          onClick={() => onChange(item.id)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              onChange(item.id);
+            } else if (event.key === ' ') {
+              event.preventDefault();
+              onChange(item.id);
+            }
+          }}
+          style={pillItemStyle(item.id === activeId)}
+        >
           {item.label}
         </span>
       ))}

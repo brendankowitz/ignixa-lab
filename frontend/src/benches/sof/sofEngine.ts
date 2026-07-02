@@ -33,6 +33,14 @@ function toCellValue(values: unknown[]): SofCellValue {
   return value as SofCellValue;
 }
 
+/** Recursively sets every column name found under `selects` (at any nesting depth) to `null` in `base`. */
+function nullifyNestedColumns(selects: SofSelect[], base: Record<string, SofCellValue>): void {
+  for (const part of selects) {
+    for (const column of part.column ?? []) base[column.name] = null;
+    if (part.select) nullifyNestedColumns(part.select, base);
+  }
+}
+
 function selectRows(selects: SofSelect[], context: unknown): Record<string, SofCellValue>[] {
   let rows: Record<string, SofCellValue>[] = [{}];
 
@@ -60,6 +68,7 @@ function selectRows(selects: SofSelect[], context: unknown): Record<string, SofC
       if (part.select && item !== null) {
         for (const nested of selectRows(part.select, item)) partRows.push({ ...base, ...nested });
       } else {
+        if (part.select && item === null) nullifyNestedColumns(part.select, base);
         partRows.push(base);
       }
     }

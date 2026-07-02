@@ -311,6 +311,11 @@ export function FhirPathBench() {
               <AstRows node={result.ast} depth={0} />
             </div>
           ) : null}
+          {!result.error && resultTab === 'ast' && !result.ast ? (
+            <span style={{ fontSize: 11, color: 'var(--text4)' }}>
+              No parse tree yet — evaluate an expression to see its structure.
+            </span>
+          ) : null}
         </Card>
       </div>
     </div>
