@@ -17,6 +17,13 @@
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="FluentAssertions" />
+    <!--
+      Content packages don't flow their CopyToOutputDirectory items through a
+      ProjectReference, so SuiteCatalogTests (which reads the real bundled
+      suites from AppContext.BaseDirectory) needs its own reference to get the
+      testscripts/ folder copied into this project's own output (ADR-2607).
+    -->
+    <PackageReference Include="Ignixa.TestScript.Suites" />
   </ItemGroup>
 
   <ItemGroup>

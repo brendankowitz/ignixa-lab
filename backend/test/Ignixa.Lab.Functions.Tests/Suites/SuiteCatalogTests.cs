@@ -145,4 +145,43 @@ public sealed class SuiteCatalogTests : IDisposable
         catalog.TryGet("does/not/exist.json", out var entry).Should().BeFalse();
         entry.Should().BeNull();
     }
+
+    // The following tests exercise the real canonical suites (ADR-2607),
+    // restored from the Ignixa.TestScript.Suites content package into this
+    // project's own output under testscripts/ — not the synthetic scripts
+    // written above. They use the default SuitesDirectory (AppContext.BaseDirectory)
+    // rather than the temp root the other tests write into.
+
+    private static SuiteCatalog CreateBundledCatalog() =>
+        new(Options.Create(new IgnixaLabOptions()), NullLogger<SuiteCatalog>.Instance);
+
+    [Fact]
+    public void GetSuites_LoadsAllTwelveBundledCanonicalSuites()
+    {
+        var suites = CreateBundledCatalog().GetSuites();
+
+        suites.Should().HaveCount(12);
+    }
+
+    [Fact]
+    public void GetSuites_BundledCanonicalSuites_SpanExactlyFourCategories()
+    {
+        var suites = CreateBundledCatalog().GetSuites();
+
+        suites.Select(s => s.Category).Distinct()
+            .Should().BeEquivalentTo(new[] { "Bundles", "CRUD", "Search", "Validation" });
+    }
+
+    [Fact]
+    public void GetSuites_BundledCanonicalSuites_IncludeKnownIds()
+    {
+        var suites = CreateBundledCatalog().GetSuites();
+
+        suites.Select(s => s.Id).Should().Contain(new[]
+        {
+            "Search/chaining.json",
+            "Bundles/transaction.json",
+            "Validation/validate-op.json",
+        });
+    }
 }

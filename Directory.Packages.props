@@ -10,6 +10,13 @@
     <!-- FHIR TestScript execution engine (published from ignixa-fhir) -->
     <PackageVersion Include="Ignixa.TestScript" Version="0.5.6-beta" />
 
+    <!--
+      Canonical TestScript suites (ADR-2607). Interim local package built by
+      backend/src/Ignixa.Lab.Suites and packed to the local-feed source; will
+      be repointed at the upstream ignixa-fhir suites artifact once published.
+    -->
+    <PackageVersion Include="Ignixa.TestScript.Suites" Version="0.1.0-local" />
+
     <!-- Azure Functions .NET isolated worker (ASP.NET Core integration) -->
     <PackageVersion Include="Microsoft.Azure.Functions.Worker" Version="2.0.0" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Sdk" Version="2.0.5" />

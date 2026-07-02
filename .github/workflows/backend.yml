@@ -35,6 +35,10 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Pack local suites package
+        shell: pwsh
+        run: ./backend/pack-suites.ps1
+
       - name: Restore
         run: dotnet restore Ignixa.Lab.sln
 

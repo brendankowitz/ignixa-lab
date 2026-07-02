@@ -18,8 +18,9 @@ See the [API reference](../docs/api.md) and
 ## Run locally
 
 ```bash
+./backend/pack-suites.ps1                             # packs the suites package into artifacts/local-feed (see Suites below)
 cd backend/src/Ignixa.Lab.Functions
-cp local.settings.json.example local.settings.json   # first run only
+cp local.settings.json.example local.settings.json    # first run only
 func start                                            # http://localhost:7071
 ```
 
@@ -37,8 +38,13 @@ src/Ignixa.Lab.Functions/
                    HttpExchangeCollector, CapturedExchange
   Middleware/      CorsMiddleware
   Models/          RunRequest, SuiteDescriptor, CapabilityResponse
-  Suites/          SuiteCatalog + testscripts/<category>/*.json
+  Suites/          SuiteCatalog (reads testscripts/<category>/*.json restored
+                   from the Ignixa.TestScript.Suites package — see Suites below)
   Program.cs       Host + DI wiring
+
+src/Ignixa.Lab.Suites/
+  testscripts/     The 12 canonical TestScript suites, packed into the
+                   Ignixa.TestScript.Suites content package (ADR-2607)
 
 test/Ignixa.Lab.Functions.Tests/
   Execution/       TargetUrlValidatorTests, ConformanceReportMapperTests,
@@ -82,6 +88,33 @@ app settings (Azure) or `local.settings.json` (local dev):
 
 Enforced in-process by `Middleware/CorsMiddleware`, since the isolated worker
 has no Kestrel pipeline to attach `app.UseCors()` to.
+
+## Suites
+
+The 12 canonical FHIR TestScript suites (`backend/src/Ignixa.Lab.Suites/testscripts/{Bundles,CRUD,Search,Validation}/*.json`)
+are packed into a local NuGet content package, `Ignixa.TestScript.Suites`, by
+the `Ignixa.Lab.Suites` project and consumed by `Ignixa.Lab.Functions` (and
+its test project) via `PackageReference`. This is an interim step —
+see [ADR-2607](../docs/features/testscript-suite-sourcing/adr-2607-suite-sourcing.md)
+— for the upstream `ignixa-fhir` suites artifact; the `PackageReference`
+will be repointed there once it ships, and the local feed retired.
+
+Because restore needs the package to already exist, it must be packed before
+every restore/build/test:
+
+```bash
+./backend/pack-suites.ps1                        # -> artifacts/local-feed/Ignixa.TestScript.Suites.0.1.0-local.nupkg
+dotnet build Ignixa.Lab.sln -c Release
+dotnet test Ignixa.Lab.sln -c Release
+```
+
+`nuget.config` adds `artifacts/local-feed` as a package source (alongside
+nuget.org) and `Directory.Packages.props` pins the version. The package ships
+`build/Ignixa.TestScript.Suites.targets`, which MSBuild auto-imports for any
+consumer with the `PackageReference` — it copies the packaged JSONs to the
+consumer's output under `testscripts/`, preserving the category subfolders
+that `SuiteCatalog` reads. Bumping the suites means editing the JSON under
+`Ignixa.Lab.Suites/testscripts/` and re-running `pack-suites.ps1`.
 
 ## Deploy
 
