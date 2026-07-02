@@ -1,6 +1,5 @@
 /**
- * A small client-side FHIRPath-subset engine, ported from the Expression
- * Benches mockup. Used only to power the FML and SQL-on-FHIR *mock* benches'
+ * A small client-side FHIRPath-subset engine. Used only to power the FML and SQL-on-FHIR *mock* benches'
  * own path evaluation (`forEach`, `column.path`, FML rule right-hand sides) —
  * the real FHIRPath bench talks to the actual backend engine and does not
  * use this module. Not a full FHIRPath implementation.

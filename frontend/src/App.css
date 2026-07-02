@@ -92,6 +92,10 @@
   box-shadow: var(--shadow);
 }
 
+.top-bar__nav-item--plain {
+  text-decoration: none;
+}
+
 .top-bar__spacer {
   flex: 1;
 }
