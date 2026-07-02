@@ -20,7 +20,7 @@
       "autodelete": false,
       "resource": {
         "resourceType": "Patient",
-        "id": "fhir262-cond-upd-explicit",
+        "id": "ignixa-cond-upd-explicit",
         "name": [{ "family": "CondUpdate", "given": ["Explicit"] }],
         "gender": "male"
       }
@@ -52,7 +52,7 @@
       "autodelete": false,
       "resource": {
         "resourceType": "Patient",
-        "id": "fhir262-cond-upd-correctid",
+        "id": "ignixa-cond-upd-correctid",
         "identifier": [{ "system": "http://ignixa.io/testscript/suite/cond-update", "value": "CU-CORRECTID" }],
         "name": [{ "family": "CondUpdate", "given": ["CorrectId"] }],
         "gender": "male"
@@ -64,7 +64,7 @@
       "autodelete": false,
       "resource": {
         "resourceType": "Patient",
-        "id": "fhir262-cond-upd-correctid",
+        "id": "ignixa-cond-upd-correctid",
         "identifier": [{ "system": "http://ignixa.io/testscript/suite/cond-update", "value": "CU-CORRECTID" }],
         "name": [{ "family": "CondUpdate", "given": ["CorrectId"] }],
         "gender": "female"
@@ -76,7 +76,7 @@
       "autodelete": false,
       "resource": {
         "resourceType": "Patient",
-        "id": "fhir262-cond-upd-wrongid",
+        "id": "ignixa-cond-upd-wrongid",
         "identifier": [{ "system": "http://ignixa.io/testscript/suite/cond-update", "value": "CU-CORRECTID" }],
         "name": [{ "family": "CondUpdate", "given": ["WrongId"] }],
         "gender": "female"
@@ -123,7 +123,7 @@
   "setup": {
     "action": [
       { "operation": { "type": { "code": "create" }, "resource": "Patient", "sourceId": "patient-seed-onematch-body", "responseId": "seed-onematch-response", "description": "Unconditionally create the Patient that later conditional-update attempts should match exactly once (CU-ONEMATCH)" } },
-      { "operation": { "type": { "code": "update" }, "url": "Patient/fhir262-cond-upd-correctid", "sourceId": "patient-seed-correctid-body", "responseId": "seed-correctid-response", "description": "PUT a client-id Patient (CU-CORRECTID) so later tests can deterministically match or mismatch its id in a conditional update body" } },
+      { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-cond-upd-correctid", "sourceId": "patient-seed-correctid-body", "responseId": "seed-correctid-response", "description": "PUT a client-id Patient (CU-CORRECTID) so later tests can deterministically match or mismatch its id in a conditional update body" } },
       { "operation": { "type": { "code": "create" }, "resource": "Patient", "sourceId": "patient-seed-multi-a-body", "responseId": "seed-multi-a-response", "description": "Unconditionally create the first of two Patients sharing identifier CU-MULTI" } },
       { "operation": { "type": { "code": "create" }, "resource": "Patient", "sourceId": "patient-seed-multi-b-body", "responseId": "seed-multi-b-response", "description": "Unconditionally create the second of two Patients sharing identifier CU-MULTI" } }
     ]
@@ -151,9 +151,9 @@
       "name": "Conditional update with a client-supplied id and no existing match creates that id",
       "description": "PUT /Patient?identifier=... matching no existing resource with a body carrying a client-supplied id; the server must create the resource using that id and return 201 Created.",
       "action": [
-        { "operation": { "type": { "code": "update" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-EXPLICIT", "sourceId": "patient-explicit-id-body", "responseId": "cu-explicit-response", "description": "Conditional PUT /Patient?identifier=...CU-EXPLICIT, body carries id=fhir262-cond-upd-explicit" } },
+        { "operation": { "type": { "code": "update" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-EXPLICIT", "sourceId": "patient-explicit-id-body", "responseId": "cu-explicit-response", "description": "Conditional PUT /Patient?identifier=...CU-EXPLICIT, body carries id=ignixa-cond-upd-explicit" } },
         { "assert": { "description": "Must return HTTP 201 Created", "response": "created" } },
-        { "assert": { "description": "Server must have used the client-supplied id", "expression": "Patient.id", "value": "fhir262-cond-upd-explicit", "operator": "equals" } }
+        { "assert": { "description": "Server must have used the client-supplied id", "expression": "Patient.id", "value": "ignixa-cond-upd-explicit", "operator": "equals" } }
       ]
     },
     {
@@ -171,7 +171,7 @@
       "action": [
         { "operation": { "type": { "code": "update" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-CORRECTID", "sourceId": "patient-update-correctid-body", "responseId": "cu-correctid-response", "description": "Conditional PUT /Patient?identifier=...CU-CORRECTID, body id matches the resolved resource's id" } },
         { "assert": { "description": "Must return HTTP 200 OK", "response": "okay" } },
-        { "assert": { "description": "Id must remain fhir262-cond-upd-correctid", "expression": "Patient.id", "value": "fhir262-cond-upd-correctid", "operator": "equals" } },
+        { "assert": { "description": "Id must remain ignixa-cond-upd-correctid", "expression": "Patient.id", "value": "ignixa-cond-upd-correctid", "operator": "equals" } },
         { "assert": { "description": "Content must reflect the update (gender changed to female)", "expression": "Patient.gender", "value": "female", "operator": "equals" } }
       ]
     },

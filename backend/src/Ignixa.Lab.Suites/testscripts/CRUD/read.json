@@ -54,7 +54,7 @@
       "name": "read of a never-existing id returns 404",
       "description": "GET on an id that was never assigned by the server must return 404 Not Found.",
       "action": [
-        { "operation": { "type": { "code": "read" }, "url": "Observation/fhir262-read-never-existed", "responseId": "read-missing-response", "description": "Attempt to read an id that was never created" } },
+        { "operation": { "type": { "code": "read" }, "url": "Observation/ignixa-read-never-existed", "responseId": "read-missing-response", "description": "Attempt to read an id that was never created" } },
         { "assert": { "description": "Server must return 404 Not Found", "response": "notFound" } }
       ]
     },

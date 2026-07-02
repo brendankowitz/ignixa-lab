@@ -21,7 +21,7 @@
             "request": { "method": "POST", "url": "Patient" }
           },
           {
-            "request": { "method": "GET", "url": "Patient/fhir262-batch-missing-id" }
+            "request": { "method": "GET", "url": "Patient/ignixa-batch-missing-id" }
           },
           {
             "resource": {
@@ -34,11 +34,11 @@
           {
             "resource": {
               "resourceType": "Patient",
-              "id": "fhir262-batch-client-id",
+              "id": "ignixa-batch-client-id",
               "identifier": [{ "system": "http://ignixa.io/testscript/suite/bundle-batch", "value": "BATCH-3" }],
               "name": [{ "family": "Batch", "given": ["Gamma"] }]
             },
-            "request": { "method": "PUT", "url": "Patient/fhir262-batch-client-id" }
+            "request": { "method": "PUT", "url": "Patient/ignixa-batch-client-id" }
           }
         ]
       }
@@ -136,7 +136,7 @@
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/bundle-batch|BATCH-2", "responseId": "search-batch2", "description": "GET /Patient?identifier=http://ignixa.io/testscript/suite/bundle-batch|BATCH-2" } },
         { "assert": { "description": "BATCH-2 search must return HTTP 200", "response": "okay" } },
         { "assert": { "description": "BATCH-2 (created after the failing entry) must also be persisted — proves no rollback", "expression": "entry.count() >= 1" } },
-        { "operation": { "type": { "code": "read" }, "url": "Patient/fhir262-batch-client-id", "responseId": "read-batch3", "description": "GET /Patient/fhir262-batch-client-id" } },
+        { "operation": { "type": { "code": "read" }, "url": "Patient/ignixa-batch-client-id", "responseId": "read-batch3", "description": "GET /Patient/ignixa-batch-client-id" } },
         { "assert": { "description": "BATCH-3 (created via PUT with client id) must be readable", "response": "okay" } },
         { "assert": { "description": "Read must return a Patient", "resource": "Patient" } },
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/bundle-batch|BATCH-4", "responseId": "search-batch4", "description": "GET /Patient?identifier=http://ignixa.io/testscript/suite/bundle-batch|BATCH-4" } },
@@ -168,7 +168,7 @@
     "action": [
       { "operation": { "type": { "code": "delete" }, "url": "Patient?identifier=http://ignixa.io/testscript/suite/bundle-batch|BATCH-1", "description": "Teardown: conditional delete BATCH-1" } },
       { "operation": { "type": { "code": "delete" }, "url": "Patient?identifier=http://ignixa.io/testscript/suite/bundle-batch|BATCH-2", "description": "Teardown: conditional delete BATCH-2" } },
-      { "operation": { "type": { "code": "delete" }, "url": "Patient/fhir262-batch-client-id", "description": "Teardown: delete BATCH-3 (client id)" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/ignixa-batch-client-id", "description": "Teardown: delete BATCH-3 (client id)" } },
       { "operation": { "type": { "code": "delete" }, "url": "Patient?identifier=http://ignixa.io/testscript/suite/bundle-batch|BATCH-4", "description": "Teardown: conditional delete BATCH-4" } },
       { "operation": { "type": { "code": "delete" }, "url": "Patient?identifier=http://ignixa.io/testscript/suite/bundle-batch|BATCH-TYPELESS", "description": "Teardown: defensive conditional delete in case a lenient server processed the typeless Bundle" } },
       { "operation": { "type": { "code": "delete" }, "url": "Observation?identifier=http://ignixa.io/testscript/suite/bundle-batch|BATCH-NONBUNDLE", "description": "Teardown: defensive conditional delete in case a lenient server created the non-Bundle Observation" } }

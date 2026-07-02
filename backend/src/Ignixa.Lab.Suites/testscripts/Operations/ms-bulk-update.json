@@ -80,8 +80,8 @@
       "autodelete": false,
       "resource": {
         "resourceType": "Patient",
-        "id": "fhir262-bu-sys-pat1",
-        "meta": { "tag": [{ "system": "http://ignixa.io/testscript/suite/test", "code": "fhir262-bu-sys" }] },
+        "id": "ignixa-bu-sys-pat1",
+        "meta": { "tag": [{ "system": "http://ignixa.io/testscript/suite/test", "code": "ignixa-bu-sys" }] },
         "name": [{ "family": "BulkUpdateSystem", "given": ["Pat"] }]
       }
     },
@@ -91,8 +91,8 @@
       "autodelete": false,
       "resource": {
         "resourceType": "Patient",
-        "id": "fhir262-bu-type-pat1",
-        "meta": { "tag": [{ "system": "http://ignixa.io/testscript/suite/test", "code": "fhir262-bu-type" }] },
+        "id": "ignixa-bu-type-pat1",
+        "meta": { "tag": [{ "system": "http://ignixa.io/testscript/suite/test", "code": "ignixa-bu-type" }] },
         "name": [{ "family": "BulkUpdateTypeScoped", "given": ["Pat"] }]
       }
     }
@@ -108,8 +108,8 @@
   ],
   "setup": {
     "action": [
-      { "operation": { "type": { "code": "update" }, "url": "Patient/fhir262-bu-sys-pat1", "sourceId": "sys-pat1", "description": "PUT Patient/fhir262-bu-sys-pat1 (tag=fhir262-bu-sys)" } },
-      { "operation": { "type": { "code": "update" }, "url": "Patient/fhir262-bu-type-pat1", "sourceId": "type-pat1", "description": "PUT Patient/fhir262-bu-type-pat1 (tag=fhir262-bu-type)" } }
+      { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-bu-sys-pat1", "sourceId": "sys-pat1", "description": "PUT Patient/ignixa-bu-sys-pat1 (tag=ignixa-bu-sys)" } },
+      { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-bu-type-pat1", "sourceId": "type-pat1", "description": "PUT Patient/ignixa-bu-type-pat1 (tag=ignixa-bu-type)" } }
     ]
   },
   "test": [
@@ -117,7 +117,7 @@
       "name": "$bulk-update: invalid search parameter is rejected with 400",
       "description": "An invalid search parameter must be rejected with 400 even with a valid patch body, before any job is created.",
       "action": [
-        { "operation": { "type": { "code": "$bulk-update" }, "method": "PATCH", "url": "$bulk-update?_tag=http://ignixa.io/testscript/suite/test|fhir262-bu-badreq&invalidParam=badRequest", "sourceId": "patch-replace-gender", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-update-bad-search-param", "description": "PATCH $bulk-update?_tag=...&invalidParam=badRequest" } },
+        { "operation": { "type": { "code": "$bulk-update" }, "method": "PATCH", "url": "$bulk-update?_tag=http://ignixa.io/testscript/suite/test|ignixa-bu-badreq&invalidParam=badRequest", "sourceId": "patch-replace-gender", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-update-bad-search-param", "description": "PATCH $bulk-update?_tag=...&invalidParam=badRequest" } },
         { "assert": { "description": "Must return HTTP 400", "response": "bad" } }
       ]
     },
@@ -125,7 +125,7 @@
       "name": "$bulk-update: unsupported patch type combination is rejected with 400",
       "description": "An 'add' on a single-cardinality element (Patient.gender) combined with an 'insert' on a nonexistent list path must be rejected with 400.",
       "action": [
-        { "operation": { "type": { "code": "$bulk-update" }, "method": "PATCH", "url": "$bulk-update?_tag=http://ignixa.io/testscript/suite/test|fhir262-bu-unsupported", "sourceId": "patch-unsupported-combo", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-update-unsupported-type", "description": "PATCH $bulk-update?_tag=... with add(Patient.gender)+insert(Patient.nothing)" } },
+        { "operation": { "type": { "code": "$bulk-update" }, "method": "PATCH", "url": "$bulk-update?_tag=http://ignixa.io/testscript/suite/test|ignixa-bu-unsupported", "sourceId": "patch-unsupported-combo", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-update-unsupported-type", "description": "PATCH $bulk-update?_tag=... with add(Patient.gender)+insert(Patient.nothing)" } },
         { "assert": { "description": "Must return HTTP 400", "response": "bad" } }
       ]
     },
@@ -133,9 +133,9 @@
       "name": "$bulk-update: unsupported resource types (SearchParameter, StructureDefinition) are rejected with 400",
       "description": "$bulk-update on excluded resource types (SearchParameter, StructureDefinition) must be rejected with 400 even with an empty patch body.",
       "action": [
-        { "operation": { "type": { "code": "$bulk-update" }, "method": "PATCH", "url": "SearchParameter/$bulk-update?_tag=http://ignixa.io/testscript/suite/test|fhir262-bu-restype", "sourceId": "patch-empty", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-update-searchparameter-response", "description": "PATCH SearchParameter/$bulk-update?_tag=... with an empty Parameters body" } },
+        { "operation": { "type": { "code": "$bulk-update" }, "method": "PATCH", "url": "SearchParameter/$bulk-update?_tag=http://ignixa.io/testscript/suite/test|ignixa-bu-restype", "sourceId": "patch-empty", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-update-searchparameter-response", "description": "PATCH SearchParameter/$bulk-update?_tag=... with an empty Parameters body" } },
         { "assert": { "description": "SearchParameter/$bulk-update must return HTTP 400", "sourceId": "bulk-update-searchparameter-response", "response": "bad" } },
-        { "operation": { "type": { "code": "$bulk-update" }, "method": "PATCH", "url": "StructureDefinition/$bulk-update?_tag=http://ignixa.io/testscript/suite/test|fhir262-bu-restype", "sourceId": "patch-empty", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-update-structuredefinition-response", "description": "PATCH StructureDefinition/$bulk-update?_tag=... with an empty Parameters body" } },
+        { "operation": { "type": { "code": "$bulk-update" }, "method": "PATCH", "url": "StructureDefinition/$bulk-update?_tag=http://ignixa.io/testscript/suite/test|ignixa-bu-restype", "sourceId": "patch-empty", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-update-structuredefinition-response", "description": "PATCH StructureDefinition/$bulk-update?_tag=... with an empty Parameters body" } },
         { "assert": { "description": "StructureDefinition/$bulk-update must return HTTP 400", "sourceId": "bulk-update-structuredefinition-response", "response": "bad" } }
       ]
     },
@@ -143,7 +143,7 @@
       "name": "$bulk-update kick-off: system-level with a valid patch returns 202 Accepted",
       "description": "A valid patch submitted system-level must return 202 Accepted with a non-empty Content-Location header.",
       "action": [
-        { "operation": { "type": { "code": "$bulk-update" }, "method": "PATCH", "url": "$bulk-update?_tag=http://ignixa.io/testscript/suite/test|fhir262-bu-sys", "sourceId": "patch-replace-active", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-update-system-kickoff", "description": "PATCH $bulk-update?_tag=http://ignixa.io/testscript/suite/test|fhir262-bu-sys" } },
+        { "operation": { "type": { "code": "$bulk-update" }, "method": "PATCH", "url": "$bulk-update?_tag=http://ignixa.io/testscript/suite/test|ignixa-bu-sys", "sourceId": "patch-replace-active", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-update-system-kickoff", "description": "PATCH $bulk-update?_tag=http://ignixa.io/testscript/suite/test|ignixa-bu-sys" } },
         { "assert": { "description": "Kick-off must return 202 Accepted", "responseCode": "202" } },
         { "assert": { "description": "Content-Location header must be present and non-empty", "headerField": "Content-Location" } }
       ]
@@ -160,17 +160,17 @@
       "name": "$bulk-update kick-off: type-scoped (Patient/$bulk-update) accepts both _isParallel=true and _isParallel=false",
       "description": "A valid patch submitted type-scoped (Patient) must return 202 Accepted with both _isParallel=true and _isParallel=false.",
       "action": [
-        { "operation": { "type": { "code": "$bulk-update" }, "method": "PATCH", "url": "Patient/$bulk-update?_tag=http://ignixa.io/testscript/suite/test|fhir262-bu-type&_isParallel=true", "sourceId": "patch-replace-active", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-update-type-parallel-true-kickoff", "description": "PATCH Patient/$bulk-update?_tag=...&_isParallel=true" } },
+        { "operation": { "type": { "code": "$bulk-update" }, "method": "PATCH", "url": "Patient/$bulk-update?_tag=http://ignixa.io/testscript/suite/test|ignixa-bu-type&_isParallel=true", "sourceId": "patch-replace-active", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-update-type-parallel-true-kickoff", "description": "PATCH Patient/$bulk-update?_tag=...&_isParallel=true" } },
         { "assert": { "description": "_isParallel=true kick-off must return 202 Accepted", "sourceId": "bulk-update-type-parallel-true-kickoff", "response": "okay" } },
-        { "operation": { "type": { "code": "$bulk-update" }, "method": "PATCH", "url": "Patient/$bulk-update?_tag=http://ignixa.io/testscript/suite/test|fhir262-bu-type&_isParallel=false", "sourceId": "patch-replace-active", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-update-type-parallel-false-kickoff", "description": "PATCH Patient/$bulk-update?_tag=...&_isParallel=false" } },
+        { "operation": { "type": { "code": "$bulk-update" }, "method": "PATCH", "url": "Patient/$bulk-update?_tag=http://ignixa.io/testscript/suite/test|ignixa-bu-type&_isParallel=false", "sourceId": "patch-replace-active", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-update-type-parallel-false-kickoff", "description": "PATCH Patient/$bulk-update?_tag=...&_isParallel=false" } },
         { "assert": { "description": "_isParallel=false kick-off must return 202 Accepted", "sourceId": "bulk-update-type-parallel-false-kickoff", "response": "okay" } }
       ]
     }
   ],
   "teardown": {
     "action": [
-      { "operation": { "type": { "code": "delete" }, "url": "Patient/fhir262-bu-sys-pat1", "description": "Teardown: delete sys-pat1" } },
-      { "operation": { "type": { "code": "delete" }, "url": "Patient/fhir262-bu-type-pat1", "description": "Teardown: delete type-pat1" } }
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/ignixa-bu-sys-pat1", "description": "Teardown: delete sys-pat1" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/ignixa-bu-type-pat1", "description": "Teardown: delete type-pat1" } }
     ]
   }
 }

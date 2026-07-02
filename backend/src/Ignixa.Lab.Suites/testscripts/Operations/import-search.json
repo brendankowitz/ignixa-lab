@@ -5,17 +5,17 @@
   "status": "active",
   "fixture": [
     {
-      "id": "fhir262-impsrch-comp-temp-high",
+      "id": "ignixa-impsrch-comp-temp-high",
       "autocreate": false,
       "autodelete": false,
       "resource": {
         "resourceType": "Observation",
-        "id": "fhir262-impsrch-comp-temp-high",
+        "id": "ignixa-impsrch-comp-temp-high",
         "meta": {
           "tag": [
             {
               "system": "http://ignixa.io/testscript/suite/test",
-              "code": "fhir262-impsrch-suite"
+              "code": "ignixa-impsrch-suite"
             }
           ]
         },
@@ -38,17 +38,17 @@
       }
     },
     {
-      "id": "fhir262-impsrch-comp-temp-normal",
+      "id": "ignixa-impsrch-comp-temp-normal",
       "autocreate": false,
       "autodelete": false,
       "resource": {
         "resourceType": "Observation",
-        "id": "fhir262-impsrch-comp-temp-normal",
+        "id": "ignixa-impsrch-comp-temp-normal",
         "meta": {
           "tag": [
             {
               "system": "http://ignixa.io/testscript/suite/test",
-              "code": "fhir262-impsrch-suite"
+              "code": "ignixa-impsrch-suite"
             }
           ]
         },
@@ -71,17 +71,17 @@
       }
     },
     {
-      "id": "fhir262-impsrch-comp-eyecolor",
+      "id": "ignixa-impsrch-comp-eyecolor",
       "autocreate": false,
       "autodelete": false,
       "resource": {
         "resourceType": "Observation",
-        "id": "fhir262-impsrch-comp-eyecolor",
+        "id": "ignixa-impsrch-comp-eyecolor",
         "meta": {
           "tag": [
             {
               "system": "http://ignixa.io/testscript/suite/test",
-              "code": "fhir262-impsrch-suite"
+              "code": "ignixa-impsrch-suite"
             }
           ]
         },
@@ -99,17 +99,17 @@
       }
     },
     {
-      "id": "fhir262-impsrch-comp-eyecolor-long",
+      "id": "ignixa-impsrch-comp-eyecolor-long",
       "autocreate": false,
       "autodelete": false,
       "resource": {
         "resourceType": "Observation",
-        "id": "fhir262-impsrch-comp-eyecolor-long",
+        "id": "ignixa-impsrch-comp-eyecolor-long",
         "meta": {
           "tag": [
             {
               "system": "http://ignixa.io/testscript/suite/test",
-              "code": "fhir262-impsrch-suite"
+              "code": "ignixa-impsrch-suite"
             }
           ]
         },
@@ -127,17 +127,17 @@
       }
     },
     {
-      "id": "fhir262-impsrch-comp-bp",
+      "id": "ignixa-impsrch-comp-bp",
       "autocreate": false,
       "autodelete": false,
       "resource": {
         "resourceType": "Observation",
-        "id": "fhir262-impsrch-comp-bp",
+        "id": "ignixa-impsrch-comp-bp",
         "meta": {
           "tag": [
             {
               "system": "http://ignixa.io/testscript/suite/test",
-              "code": "fhir262-impsrch-suite"
+              "code": "ignixa-impsrch-suite"
             }
           ]
         },
@@ -190,17 +190,17 @@
       }
     },
     {
-      "id": "fhir262-impsrch-comp-apgarcolor",
+      "id": "ignixa-impsrch-comp-apgarcolor",
       "autocreate": false,
       "autodelete": false,
       "resource": {
         "resourceType": "Observation",
-        "id": "fhir262-impsrch-comp-apgarcolor",
+        "id": "ignixa-impsrch-comp-apgarcolor",
         "meta": {
           "tag": [
             {
               "system": "http://ignixa.io/testscript/suite/test",
-              "code": "fhir262-impsrch-suite"
+              "code": "ignixa-impsrch-suite"
             }
           ]
         },
@@ -239,17 +239,17 @@
       }
     },
     {
-      "id": "fhir262-impsrch-comp-docref-a",
+      "id": "ignixa-impsrch-comp-docref-a",
       "autocreate": false,
       "autodelete": false,
       "resource": {
         "resourceType": "DocumentReference",
-        "id": "fhir262-impsrch-comp-docref-a",
+        "id": "ignixa-impsrch-comp-docref-a",
         "meta": {
           "tag": [
             {
               "system": "http://ignixa.io/testscript/suite/test",
-              "code": "fhir262-impsrch-suite"
+              "code": "ignixa-impsrch-suite"
             }
           ]
         },
@@ -265,17 +265,17 @@
       }
     },
     {
-      "id": "fhir262-impsrch-comp-docref-b",
+      "id": "ignixa-impsrch-comp-docref-b",
       "autocreate": false,
       "autodelete": false,
       "resource": {
         "resourceType": "DocumentReference",
-        "id": "fhir262-impsrch-comp-docref-b",
+        "id": "ignixa-impsrch-comp-docref-b",
         "meta": {
           "tag": [
             {
               "system": "http://ignixa.io/testscript/suite/test",
-              "code": "fhir262-impsrch-suite"
+              "code": "ignixa-impsrch-suite"
             }
           ]
         },
@@ -292,24 +292,24 @@
           {
             "code": "appends",
             "target": {
-              "reference": "DocumentReference/fhir262-impsrch-comp-docref-a"
+              "reference": "DocumentReference/ignixa-impsrch-comp-docref-a"
             }
           }
         ]
       }
     },
     {
-      "id": "fhir262-impsrch-date-0",
+      "id": "ignixa-impsrch-date-0",
       "autocreate": false,
       "autodelete": false,
       "resource": {
         "resourceType": "Observation",
-        "id": "fhir262-impsrch-date-0",
+        "id": "ignixa-impsrch-date-0",
         "meta": {
           "tag": [
             {
               "system": "http://ignixa.io/testscript/suite/test",
-              "code": "fhir262-impsrch-suite"
+              "code": "ignixa-impsrch-suite"
             }
           ]
         },
@@ -318,17 +318,17 @@
       }
     },
     {
-      "id": "fhir262-impsrch-date-1",
+      "id": "ignixa-impsrch-date-1",
       "autocreate": false,
       "autodelete": false,
       "resource": {
         "resourceType": "Observation",
-        "id": "fhir262-impsrch-date-1",
+        "id": "ignixa-impsrch-date-1",
         "meta": {
           "tag": [
             {
               "system": "http://ignixa.io/testscript/suite/test",
-              "code": "fhir262-impsrch-suite"
+              "code": "ignixa-impsrch-suite"
             }
           ]
         },
@@ -337,17 +337,17 @@
       }
     },
     {
-      "id": "fhir262-impsrch-date-2",
+      "id": "ignixa-impsrch-date-2",
       "autocreate": false,
       "autodelete": false,
       "resource": {
         "resourceType": "Observation",
-        "id": "fhir262-impsrch-date-2",
+        "id": "ignixa-impsrch-date-2",
         "meta": {
           "tag": [
             {
               "system": "http://ignixa.io/testscript/suite/test",
-              "code": "fhir262-impsrch-suite"
+              "code": "ignixa-impsrch-suite"
             }
           ]
         },
@@ -356,17 +356,17 @@
       }
     },
     {
-      "id": "fhir262-impsrch-date-3",
+      "id": "ignixa-impsrch-date-3",
       "autocreate": false,
       "autodelete": false,
       "resource": {
         "resourceType": "Observation",
-        "id": "fhir262-impsrch-date-3",
+        "id": "ignixa-impsrch-date-3",
         "meta": {
           "tag": [
             {
               "system": "http://ignixa.io/testscript/suite/test",
-              "code": "fhir262-impsrch-suite"
+              "code": "ignixa-impsrch-suite"
             }
           ]
         },
@@ -375,17 +375,17 @@
       }
     },
     {
-      "id": "fhir262-impsrch-date-4",
+      "id": "ignixa-impsrch-date-4",
       "autocreate": false,
       "autodelete": false,
       "resource": {
         "resourceType": "Observation",
-        "id": "fhir262-impsrch-date-4",
+        "id": "ignixa-impsrch-date-4",
         "meta": {
           "tag": [
             {
               "system": "http://ignixa.io/testscript/suite/test",
-              "code": "fhir262-impsrch-suite"
+              "code": "ignixa-impsrch-suite"
             }
           ]
         },
@@ -394,17 +394,17 @@
       }
     },
     {
-      "id": "fhir262-impsrch-date-5",
+      "id": "ignixa-impsrch-date-5",
       "autocreate": false,
       "autodelete": false,
       "resource": {
         "resourceType": "Observation",
-        "id": "fhir262-impsrch-date-5",
+        "id": "ignixa-impsrch-date-5",
         "meta": {
           "tag": [
             {
               "system": "http://ignixa.io/testscript/suite/test",
-              "code": "fhir262-impsrch-suite"
+              "code": "ignixa-impsrch-suite"
             }
           ]
         },
@@ -413,17 +413,17 @@
       }
     },
     {
-      "id": "fhir262-impsrch-date-6",
+      "id": "ignixa-impsrch-date-6",
       "autocreate": false,
       "autodelete": false,
       "resource": {
         "resourceType": "Observation",
-        "id": "fhir262-impsrch-date-6",
+        "id": "ignixa-impsrch-date-6",
         "meta": {
           "tag": [
             {
               "system": "http://ignixa.io/testscript/suite/test",
-              "code": "fhir262-impsrch-suite"
+              "code": "ignixa-impsrch-suite"
             }
           ]
         },
@@ -435,40 +435,40 @@
       }
     },
     {
-      "id": "fhir262-impsrch-num-subj",
+      "id": "ignixa-impsrch-num-subj",
       "autocreate": false,
       "autodelete": false,
       "resource": {
         "resourceType": "Patient",
-        "id": "fhir262-impsrch-num-subj",
+        "id": "ignixa-impsrch-num-subj",
         "meta": {
           "tag": [
             {
               "system": "http://ignixa.io/testscript/suite/test",
-              "code": "fhir262-impsrch-suite"
+              "code": "ignixa-impsrch-suite"
             }
           ]
         }
       }
     },
     {
-      "id": "fhir262-impsrch-num-0",
+      "id": "ignixa-impsrch-num-0",
       "autocreate": false,
       "autodelete": false,
       "resource": {
         "resourceType": "RiskAssessment",
-        "id": "fhir262-impsrch-num-0",
+        "id": "ignixa-impsrch-num-0",
         "meta": {
           "tag": [
             {
               "system": "http://ignixa.io/testscript/suite/test",
-              "code": "fhir262-impsrch-suite"
+              "code": "ignixa-impsrch-suite"
             }
           ]
         },
         "status": "final",
         "subject": {
-          "reference": "Patient/fhir262-impsrch-num-subj"
+          "reference": "Patient/ignixa-impsrch-num-subj"
         },
         "prediction": [
           {
@@ -478,23 +478,23 @@
       }
     },
     {
-      "id": "fhir262-impsrch-num-1",
+      "id": "ignixa-impsrch-num-1",
       "autocreate": false,
       "autodelete": false,
       "resource": {
         "resourceType": "RiskAssessment",
-        "id": "fhir262-impsrch-num-1",
+        "id": "ignixa-impsrch-num-1",
         "meta": {
           "tag": [
             {
               "system": "http://ignixa.io/testscript/suite/test",
-              "code": "fhir262-impsrch-suite"
+              "code": "ignixa-impsrch-suite"
             }
           ]
         },
         "status": "final",
         "subject": {
-          "reference": "Patient/fhir262-impsrch-num-subj"
+          "reference": "Patient/ignixa-impsrch-num-subj"
         },
         "prediction": [
           {
@@ -504,23 +504,23 @@
       }
     },
     {
-      "id": "fhir262-impsrch-num-2",
+      "id": "ignixa-impsrch-num-2",
       "autocreate": false,
       "autodelete": false,
       "resource": {
         "resourceType": "RiskAssessment",
-        "id": "fhir262-impsrch-num-2",
+        "id": "ignixa-impsrch-num-2",
         "meta": {
           "tag": [
             {
               "system": "http://ignixa.io/testscript/suite/test",
-              "code": "fhir262-impsrch-suite"
+              "code": "ignixa-impsrch-suite"
             }
           ]
         },
         "status": "final",
         "subject": {
-          "reference": "Patient/fhir262-impsrch-num-subj"
+          "reference": "Patient/ignixa-impsrch-num-subj"
         },
         "prediction": [
           {
@@ -530,23 +530,23 @@
       }
     },
     {
-      "id": "fhir262-impsrch-num-3",
+      "id": "ignixa-impsrch-num-3",
       "autocreate": false,
       "autodelete": false,
       "resource": {
         "resourceType": "RiskAssessment",
-        "id": "fhir262-impsrch-num-3",
+        "id": "ignixa-impsrch-num-3",
         "meta": {
           "tag": [
             {
               "system": "http://ignixa.io/testscript/suite/test",
-              "code": "fhir262-impsrch-suite"
+              "code": "ignixa-impsrch-suite"
             }
           ]
         },
         "status": "final",
         "subject": {
-          "reference": "Patient/fhir262-impsrch-num-subj"
+          "reference": "Patient/ignixa-impsrch-num-subj"
         },
         "prediction": [
           {
@@ -556,23 +556,23 @@
       }
     },
     {
-      "id": "fhir262-impsrch-num-4",
+      "id": "ignixa-impsrch-num-4",
       "autocreate": false,
       "autodelete": false,
       "resource": {
         "resourceType": "RiskAssessment",
-        "id": "fhir262-impsrch-num-4",
+        "id": "ignixa-impsrch-num-4",
         "meta": {
           "tag": [
             {
               "system": "http://ignixa.io/testscript/suite/test",
-              "code": "fhir262-impsrch-suite"
+              "code": "ignixa-impsrch-suite"
             }
           ]
         },
         "status": "final",
         "subject": {
-          "reference": "Patient/fhir262-impsrch-num-subj"
+          "reference": "Patient/ignixa-impsrch-num-subj"
         },
         "prediction": [
           {
@@ -582,17 +582,17 @@
       }
     },
     {
-      "id": "fhir262-impsrch-qty-0",
+      "id": "ignixa-impsrch-qty-0",
       "autocreate": false,
       "autodelete": false,
       "resource": {
         "resourceType": "Observation",
-        "id": "fhir262-impsrch-qty-0",
+        "id": "ignixa-impsrch-qty-0",
         "meta": {
           "tag": [
             {
               "system": "http://ignixa.io/testscript/suite/test",
-              "code": "fhir262-impsrch-suite"
+              "code": "ignixa-impsrch-suite"
             }
           ]
         },
@@ -615,17 +615,17 @@
       }
     },
     {
-      "id": "fhir262-impsrch-qty-1",
+      "id": "ignixa-impsrch-qty-1",
       "autocreate": false,
       "autodelete": false,
       "resource": {
         "resourceType": "Observation",
-        "id": "fhir262-impsrch-qty-1",
+        "id": "ignixa-impsrch-qty-1",
         "meta": {
           "tag": [
             {
               "system": "http://ignixa.io/testscript/suite/test",
-              "code": "fhir262-impsrch-suite"
+              "code": "ignixa-impsrch-suite"
             }
           ]
         },
@@ -648,17 +648,17 @@
       }
     },
     {
-      "id": "fhir262-impsrch-qty-2",
+      "id": "ignixa-impsrch-qty-2",
       "autocreate": false,
       "autodelete": false,
       "resource": {
         "resourceType": "Observation",
-        "id": "fhir262-impsrch-qty-2",
+        "id": "ignixa-impsrch-qty-2",
         "meta": {
           "tag": [
             {
               "system": "http://ignixa.io/testscript/suite/test",
-              "code": "fhir262-impsrch-suite"
+              "code": "ignixa-impsrch-suite"
             }
           ]
         },
@@ -681,17 +681,17 @@
       }
     },
     {
-      "id": "fhir262-impsrch-qty-3",
+      "id": "ignixa-impsrch-qty-3",
       "autocreate": false,
       "autodelete": false,
       "resource": {
         "resourceType": "Observation",
-        "id": "fhir262-impsrch-qty-3",
+        "id": "ignixa-impsrch-qty-3",
         "meta": {
           "tag": [
             {
               "system": "http://ignixa.io/testscript/suite/test",
-              "code": "fhir262-impsrch-suite"
+              "code": "ignixa-impsrch-suite"
             }
           ]
         },
@@ -714,17 +714,17 @@
       }
     },
     {
-      "id": "fhir262-impsrch-qty-4",
+      "id": "ignixa-impsrch-qty-4",
       "autocreate": false,
       "autodelete": false,
       "resource": {
         "resourceType": "Observation",
-        "id": "fhir262-impsrch-qty-4",
+        "id": "ignixa-impsrch-qty-4",
         "meta": {
           "tag": [
             {
               "system": "http://ignixa.io/testscript/suite/test",
-              "code": "fhir262-impsrch-suite"
+              "code": "ignixa-impsrch-suite"
             }
           ]
         },
@@ -747,17 +747,17 @@
       }
     },
     {
-      "id": "fhir262-impsrch-qty-5",
+      "id": "ignixa-impsrch-qty-5",
       "autocreate": false,
       "autodelete": false,
       "resource": {
         "resourceType": "Observation",
-        "id": "fhir262-impsrch-qty-5",
+        "id": "ignixa-impsrch-qty-5",
         "meta": {
           "tag": [
             {
               "system": "http://ignixa.io/testscript/suite/test",
-              "code": "fhir262-impsrch-suite"
+              "code": "ignixa-impsrch-suite"
             }
           ]
         },
@@ -780,17 +780,17 @@
       }
     },
     {
-      "id": "fhir262-impsrch-qty-6",
+      "id": "ignixa-impsrch-qty-6",
       "autocreate": false,
       "autodelete": false,
       "resource": {
         "resourceType": "Observation",
-        "id": "fhir262-impsrch-qty-6",
+        "id": "ignixa-impsrch-qty-6",
         "meta": {
           "tag": [
             {
               "system": "http://ignixa.io/testscript/suite/test",
-              "code": "fhir262-impsrch-suite"
+              "code": "ignixa-impsrch-suite"
             }
           ]
         },
@@ -820,8 +820,8 @@
           "type": {
             "code": "update"
           },
-          "url": "Observation/fhir262-impsrch-comp-temp-high",
-          "sourceId": "fhir262-impsrch-comp-temp-high",
+          "url": "Observation/ignixa-impsrch-comp-temp-high",
+          "sourceId": "ignixa-impsrch-comp-temp-high",
           "description": "PUT Observation comp-temp-high (LOINC 8310-5 body temperature = 39.1 Cel)"
         }
       },
@@ -830,8 +830,8 @@
           "type": {
             "code": "update"
           },
-          "url": "Observation/fhir262-impsrch-comp-temp-normal",
-          "sourceId": "fhir262-impsrch-comp-temp-normal",
+          "url": "Observation/ignixa-impsrch-comp-temp-normal",
+          "sourceId": "ignixa-impsrch-comp-temp-normal",
           "description": "PUT Observation comp-temp-normal (LOINC 8310-5 body temperature = 37.0 Cel)"
         }
       },
@@ -840,8 +840,8 @@
           "type": {
             "code": "update"
           },
-          "url": "Observation/fhir262-impsrch-comp-eyecolor",
-          "sourceId": "fhir262-impsrch-comp-eyecolor",
+          "url": "Observation/ignixa-impsrch-comp-eyecolor",
+          "sourceId": "ignixa-impsrch-comp-eyecolor",
           "description": "PUT Observation comp-eyecolor (SNOMED 162806009 eye color = blue)"
         }
       },
@@ -850,8 +850,8 @@
           "type": {
             "code": "update"
           },
-          "url": "Observation/fhir262-impsrch-comp-eyecolor-long",
-          "sourceId": "fhir262-impsrch-comp-eyecolor-long",
+          "url": "Observation/ignixa-impsrch-comp-eyecolor-long",
+          "sourceId": "ignixa-impsrch-comp-eyecolor-long",
           "description": "PUT Observation comp-eyecolor-long (SNOMED 162806009 eye color = long Lorem-ipsum value)"
         }
       },
@@ -860,8 +860,8 @@
           "type": {
             "code": "update"
           },
-          "url": "Observation/fhir262-impsrch-comp-bp",
-          "sourceId": "fhir262-impsrch-comp-bp",
+          "url": "Observation/ignixa-impsrch-comp-bp",
+          "sourceId": "ignixa-impsrch-comp-bp",
           "description": "PUT Observation comp-bp (blood pressure panel, systolic/diastolic components)"
         }
       },
@@ -870,8 +870,8 @@
           "type": {
             "code": "update"
           },
-          "url": "Observation/fhir262-impsrch-comp-apgarcolor",
-          "sourceId": "fhir262-impsrch-comp-apgarcolor",
+          "url": "Observation/ignixa-impsrch-comp-apgarcolor",
+          "sourceId": "ignixa-impsrch-comp-apgarcolor",
           "description": "PUT Observation comp-apgarcolor (Apgar score, component color=coded concept)"
         }
       },
@@ -880,8 +880,8 @@
           "type": {
             "code": "update"
           },
-          "url": "DocumentReference/fhir262-impsrch-comp-docref-a",
-          "sourceId": "fhir262-impsrch-comp-docref-a",
+          "url": "DocumentReference/ignixa-impsrch-comp-docref-a",
+          "sourceId": "ignixa-impsrch-comp-docref-a",
           "description": "PUT DocumentReference comp-docref-a (target document)"
         }
       },
@@ -890,8 +890,8 @@
           "type": {
             "code": "update"
           },
-          "url": "DocumentReference/fhir262-impsrch-comp-docref-b",
-          "sourceId": "fhir262-impsrch-comp-docref-b",
+          "url": "DocumentReference/ignixa-impsrch-comp-docref-b",
+          "sourceId": "ignixa-impsrch-comp-docref-b",
           "description": "PUT DocumentReference comp-docref-b (relatesTo appends comp-docref-a)"
         }
       },
@@ -900,8 +900,8 @@
           "type": {
             "code": "update"
           },
-          "url": "Observation/fhir262-impsrch-date-0",
-          "sourceId": "fhir262-impsrch-date-0",
+          "url": "Observation/ignixa-impsrch-date-0",
+          "sourceId": "ignixa-impsrch-date-0",
           "description": "PUT Observation date-0 (effectiveDateTime=1979-06-15, day precision, in 1979 (before 1980))"
         }
       },
@@ -910,8 +910,8 @@
           "type": {
             "code": "update"
           },
-          "url": "Observation/fhir262-impsrch-date-1",
-          "sourceId": "fhir262-impsrch-date-1",
+          "url": "Observation/ignixa-impsrch-date-1",
+          "sourceId": "ignixa-impsrch-date-1",
           "description": "PUT Observation date-1 (effectiveDateTime=1980, year precision, covers all of 1980)"
         }
       },
@@ -920,8 +920,8 @@
           "type": {
             "code": "update"
           },
-          "url": "Observation/fhir262-impsrch-date-2",
-          "sourceId": "fhir262-impsrch-date-2",
+          "url": "Observation/ignixa-impsrch-date-2",
+          "sourceId": "ignixa-impsrch-date-2",
           "description": "PUT Observation date-2 (effectiveDateTime=1980-05, month precision, covers May 1980)"
         }
       },
@@ -930,8 +930,8 @@
           "type": {
             "code": "update"
           },
-          "url": "Observation/fhir262-impsrch-date-3",
-          "sourceId": "fhir262-impsrch-date-3",
+          "url": "Observation/ignixa-impsrch-date-3",
+          "sourceId": "ignixa-impsrch-date-3",
           "description": "PUT Observation date-3 (effectiveDateTime=1980-05-11, day precision, a single day in May 1980)"
         }
       },
@@ -940,8 +940,8 @@
           "type": {
             "code": "update"
           },
-          "url": "Observation/fhir262-impsrch-date-4",
-          "sourceId": "fhir262-impsrch-date-4",
+          "url": "Observation/ignixa-impsrch-date-4",
+          "sourceId": "ignixa-impsrch-date-4",
           "description": "PUT Observation date-4 (effectiveDateTime=1980-05-11T16:32:15, datetime precision, a single second on 1980-05-11)"
         }
       },
@@ -950,8 +950,8 @@
           "type": {
             "code": "update"
           },
-          "url": "Observation/fhir262-impsrch-date-5",
-          "sourceId": "fhir262-impsrch-date-5",
+          "url": "Observation/ignixa-impsrch-date-5",
+          "sourceId": "ignixa-impsrch-date-5",
           "description": "PUT Observation date-5 (effectiveDateTime=1981-11-20, day precision, in 1981)"
         }
       },
@@ -960,8 +960,8 @@
           "type": {
             "code": "update"
           },
-          "url": "Observation/fhir262-impsrch-date-6",
-          "sourceId": "fhir262-impsrch-date-6",
+          "url": "Observation/ignixa-impsrch-date-6",
+          "sourceId": "ignixa-impsrch-date-6",
           "description": "PUT Observation date-6 (effectivePeriod 1980-05-16..1980-05-17)"
         }
       },
@@ -970,8 +970,8 @@
           "type": {
             "code": "update"
           },
-          "url": "Patient/fhir262-impsrch-num-subj",
-          "sourceId": "fhir262-impsrch-num-subj",
+          "url": "Patient/ignixa-impsrch-num-subj",
+          "sourceId": "ignixa-impsrch-num-subj",
           "description": "PUT Patient num-subj (subject referenced by the RiskAssessment fixtures)"
         }
       },
@@ -980,8 +980,8 @@
           "type": {
             "code": "update"
           },
-          "url": "RiskAssessment/fhir262-impsrch-num-0",
-          "sourceId": "fhir262-impsrch-num-0",
+          "url": "RiskAssessment/ignixa-impsrch-num-0",
+          "sourceId": "ignixa-impsrch-num-0",
           "description": "PUT RiskAssessment num-0 (probability=1)"
         }
       },
@@ -990,8 +990,8 @@
           "type": {
             "code": "update"
           },
-          "url": "RiskAssessment/fhir262-impsrch-num-1",
-          "sourceId": "fhir262-impsrch-num-1",
+          "url": "RiskAssessment/ignixa-impsrch-num-1",
+          "sourceId": "ignixa-impsrch-num-1",
           "description": "PUT RiskAssessment num-1 (probability=4)"
         }
       },
@@ -1000,8 +1000,8 @@
           "type": {
             "code": "update"
           },
-          "url": "RiskAssessment/fhir262-impsrch-num-2",
-          "sourceId": "fhir262-impsrch-num-2",
+          "url": "RiskAssessment/ignixa-impsrch-num-2",
+          "sourceId": "ignixa-impsrch-num-2",
           "description": "PUT RiskAssessment num-2 (probability=5)"
         }
       },
@@ -1010,8 +1010,8 @@
           "type": {
             "code": "update"
           },
-          "url": "RiskAssessment/fhir262-impsrch-num-3",
-          "sourceId": "fhir262-impsrch-num-3",
+          "url": "RiskAssessment/ignixa-impsrch-num-3",
+          "sourceId": "ignixa-impsrch-num-3",
           "description": "PUT RiskAssessment num-3 (probability=6)"
         }
       },
@@ -1020,8 +1020,8 @@
           "type": {
             "code": "update"
           },
-          "url": "RiskAssessment/fhir262-impsrch-num-4",
-          "sourceId": "fhir262-impsrch-num-4",
+          "url": "RiskAssessment/ignixa-impsrch-num-4",
+          "sourceId": "ignixa-impsrch-num-4",
           "description": "PUT RiskAssessment num-4 (probability=100)"
         }
       },
@@ -1030,8 +1030,8 @@
           "type": {
             "code": "update"
           },
-          "url": "Observation/fhir262-impsrch-qty-0",
-          "sourceId": "fhir262-impsrch-qty-0",
+          "url": "Observation/ignixa-impsrch-qty-0",
+          "sourceId": "ignixa-impsrch-qty-0",
           "description": "PUT Observation qty-0 (valueQuantity=0.002 unit1 system1)"
         }
       },
@@ -1040,8 +1040,8 @@
           "type": {
             "code": "update"
           },
-          "url": "Observation/fhir262-impsrch-qty-1",
-          "sourceId": "fhir262-impsrch-qty-1",
+          "url": "Observation/ignixa-impsrch-qty-1",
+          "sourceId": "ignixa-impsrch-qty-1",
           "description": "PUT Observation qty-1 (valueQuantity=1.0 unit1 system1)"
         }
       },
@@ -1050,8 +1050,8 @@
           "type": {
             "code": "update"
           },
-          "url": "Observation/fhir262-impsrch-qty-2",
-          "sourceId": "fhir262-impsrch-qty-2",
+          "url": "Observation/ignixa-impsrch-qty-2",
+          "sourceId": "ignixa-impsrch-qty-2",
           "description": "PUT Observation qty-2 (valueQuantity=4.0 unit1 system1)"
         }
       },
@@ -1060,8 +1060,8 @@
           "type": {
             "code": "update"
           },
-          "url": "Observation/fhir262-impsrch-qty-3",
-          "sourceId": "fhir262-impsrch-qty-3",
+          "url": "Observation/ignixa-impsrch-qty-3",
+          "sourceId": "ignixa-impsrch-qty-3",
           "description": "PUT Observation qty-3 (valueQuantity=5.0 unit1 system1)"
         }
       },
@@ -1070,8 +1070,8 @@
           "type": {
             "code": "update"
           },
-          "url": "Observation/fhir262-impsrch-qty-4",
-          "sourceId": "fhir262-impsrch-qty-4",
+          "url": "Observation/ignixa-impsrch-qty-4",
+          "sourceId": "ignixa-impsrch-qty-4",
           "description": "PUT Observation qty-4 (valueQuantity=5.0 unit2 system2)"
         }
       },
@@ -1080,8 +1080,8 @@
           "type": {
             "code": "update"
           },
-          "url": "Observation/fhir262-impsrch-qty-5",
-          "sourceId": "fhir262-impsrch-qty-5",
+          "url": "Observation/ignixa-impsrch-qty-5",
+          "sourceId": "ignixa-impsrch-qty-5",
           "description": "PUT Observation qty-5 (valueQuantity=6.0 unit2 system2)"
         }
       },
@@ -1090,8 +1090,8 @@
           "type": {
             "code": "update"
           },
-          "url": "Observation/fhir262-impsrch-qty-6",
-          "sourceId": "fhir262-impsrch-qty-6",
+          "url": "Observation/ignixa-impsrch-qty-6",
+          "sourceId": "ignixa-impsrch-qty-6",
           "description": "PUT Observation qty-6 (valueQuantity=10.0 unit1 system1)"
         }
       }
@@ -1114,7 +1114,7 @@
               "code": "search"
             },
             "resource": "Observation",
-            "params": "?code-value-quantity=http://loinc.org|8310-5$gt38|http://unitsofmeasure.org|Cel&_tag=http://ignixa.io/testscript/suite/test|fhir262-impsrch-suite&_count=100",
+            "params": "?code-value-quantity=http://loinc.org|8310-5$gt38|http://unitsofmeasure.org|Cel&_tag=http://ignixa.io/testscript/suite/test|ignixa-impsrch-suite&_count=100",
             "responseId": "comp-cvq",
             "description": "GET Observation?code-value-quantity=8310-5$gt38|Cel"
           }
@@ -1134,13 +1134,13 @@
         {
           "assert": {
             "description": "Must include comp-temp-high (39.1 Cel > 38)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-comp-temp-high').exists()"
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-comp-temp-high').exists()"
           }
         },
         {
           "assert": {
             "description": "Must NOT include comp-temp-normal (37.0 Cel, not > 38)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-comp-temp-normal').exists()",
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-comp-temp-normal').exists()",
             "value": "false",
             "operator": "equals",
             "warningOnly": true
@@ -1164,7 +1164,7 @@
               "code": "search"
             },
             "resource": "Observation",
-            "params": "?code-value-string=162806009$Lorem&_tag=http://ignixa.io/testscript/suite/test|fhir262-impsrch-suite&_count=100",
+            "params": "?code-value-string=162806009$Lorem&_tag=http://ignixa.io/testscript/suite/test|ignixa-impsrch-suite&_count=100",
             "responseId": "comp-cvs",
             "description": "GET Observation?code-value-string=162806009$Lorem"
           }
@@ -1184,13 +1184,13 @@
         {
           "assert": {
             "description": "Must include comp-eyecolor-long (valueString starts with Lorem)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-comp-eyecolor-long').exists()"
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-comp-eyecolor-long').exists()"
           }
         },
         {
           "assert": {
             "description": "Must NOT include comp-eyecolor (valueString=blue)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-comp-eyecolor').exists()",
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-comp-eyecolor').exists()",
             "value": "false",
             "operator": "equals",
             "warningOnly": true
@@ -1214,7 +1214,7 @@
               "code": "search"
             },
             "resource": "Observation",
-            "params": "?combo-code-value-quantity=http://loinc.org|8480-6$120|http://unitsofmeasure.org|mmHg&_tag=http://ignixa.io/testscript/suite/test|fhir262-impsrch-suite&_count=100",
+            "params": "?combo-code-value-quantity=http://loinc.org|8480-6$120|http://unitsofmeasure.org|mmHg&_tag=http://ignixa.io/testscript/suite/test|ignixa-impsrch-suite&_count=100",
             "responseId": "comp-combo-match",
             "description": "GET Observation?combo-code-value-quantity=8480-6$120|mmHg (same component)"
           }
@@ -1234,7 +1234,7 @@
         {
           "assert": {
             "description": "Must include comp-bp (systolic 8480-6=120 in the same component)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-comp-bp').exists()"
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-comp-bp').exists()"
           }
         },
         {
@@ -1243,7 +1243,7 @@
               "code": "search"
             },
             "resource": "Observation",
-            "params": "?combo-code-value-quantity=http://loinc.org|8480-6$80|http://unitsofmeasure.org|mmHg&_tag=http://ignixa.io/testscript/suite/test|fhir262-impsrch-suite&_count=100",
+            "params": "?combo-code-value-quantity=http://loinc.org|8480-6$80|http://unitsofmeasure.org|mmHg&_tag=http://ignixa.io/testscript/suite/test|ignixa-impsrch-suite&_count=100",
             "responseId": "comp-combo-cross",
             "description": "GET Observation?combo-code-value-quantity=8480-6$80|mmHg (cross-component)"
           }
@@ -1258,7 +1258,7 @@
         {
           "assert": {
             "description": "Must NOT include comp-bp (8480-6 code paired with the diastolic component's value)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-comp-bp').exists()",
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-comp-bp').exists()",
             "value": "false",
             "operator": "equals",
             "warningOnly": true,
@@ -1283,7 +1283,7 @@
               "code": "search"
             },
             "resource": "Observation",
-            "params": "?combo-code-value-concept=http://snomed.info/sct|249227004$http://acme.ped/apgarcolor|2&_tag=http://ignixa.io/testscript/suite/test|fhir262-impsrch-suite&_count=100",
+            "params": "?combo-code-value-concept=http://snomed.info/sct|249227004$http://acme.ped/apgarcolor|2&_tag=http://ignixa.io/testscript/suite/test|ignixa-impsrch-suite&_count=100",
             "responseId": "comp-cvc-match",
             "description": "GET Observation?combo-code-value-concept=249227004$apgarcolor|2"
           }
@@ -1303,7 +1303,7 @@
         {
           "assert": {
             "description": "Must include comp-apgarcolor (color component coded 2)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-comp-apgarcolor').exists()"
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-comp-apgarcolor').exists()"
           }
         },
         {
@@ -1312,7 +1312,7 @@
               "code": "search"
             },
             "resource": "Observation",
-            "params": "?combo-code-value-concept=http://snomed.info/sct|249227004$http://acme.ped/apgarcolor|1&_tag=http://ignixa.io/testscript/suite/test|fhir262-impsrch-suite&_count=100",
+            "params": "?combo-code-value-concept=http://snomed.info/sct|249227004$http://acme.ped/apgarcolor|1&_tag=http://ignixa.io/testscript/suite/test|ignixa-impsrch-suite&_count=100",
             "responseId": "comp-cvc-miss",
             "description": "GET Observation?combo-code-value-concept=249227004$apgarcolor|1 (wrong coded value)"
           }
@@ -1327,7 +1327,7 @@
         {
           "assert": {
             "description": "Must NOT include comp-apgarcolor (component is coded 2, not 1)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-comp-apgarcolor').exists()",
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-comp-apgarcolor').exists()",
             "value": "false",
             "operator": "equals",
             "warningOnly": true,
@@ -1352,7 +1352,7 @@
               "code": "search"
             },
             "resource": "DocumentReference",
-            "params": "?relationship=DocumentReference/fhir262-impsrch-comp-docref-a$appends&_tag=http://ignixa.io/testscript/suite/test|fhir262-impsrch-suite&_count=100",
+            "params": "?relationship=DocumentReference/ignixa-impsrch-comp-docref-a$appends&_tag=http://ignixa.io/testscript/suite/test|ignixa-impsrch-suite&_count=100",
             "responseId": "comp-rel-match",
             "description": "GET DocumentReference?relationship=.../comp-docref-a$appends"
           }
@@ -1372,7 +1372,7 @@
         {
           "assert": {
             "description": "Must include comp-docref-b (relatesTo comp-docref-a, code=appends)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-comp-docref-b').exists()"
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-comp-docref-b').exists()"
           }
         },
         {
@@ -1381,7 +1381,7 @@
               "code": "search"
             },
             "resource": "DocumentReference",
-            "params": "?relationship=DocumentReference/fhir262-impsrch-comp-docref-a$replaces&_tag=http://ignixa.io/testscript/suite/test|fhir262-impsrch-suite&_count=100",
+            "params": "?relationship=DocumentReference/ignixa-impsrch-comp-docref-a$replaces&_tag=http://ignixa.io/testscript/suite/test|ignixa-impsrch-suite&_count=100",
             "responseId": "comp-rel-miss",
             "description": "GET DocumentReference?relationship=.../comp-docref-a$replaces (wrong code)"
           }
@@ -1396,7 +1396,7 @@
         {
           "assert": {
             "description": "Must NOT include comp-docref-b (relatesTo code is appends, not replaces)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-comp-docref-b').exists()",
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-comp-docref-b').exists()",
             "value": "false",
             "operator": "equals",
             "warningOnly": true,
@@ -1421,7 +1421,7 @@
               "code": "search"
             },
             "resource": "Observation",
-            "params": "?date=1980&_tag=http://ignixa.io/testscript/suite/test|fhir262-impsrch-suite&_count=100",
+            "params": "?date=1980&_tag=http://ignixa.io/testscript/suite/test|ignixa-impsrch-suite&_count=100",
             "responseId": "date-year",
             "description": "GET Observation?date=1980"
           }
@@ -1441,25 +1441,25 @@
         {
           "assert": {
             "description": "Must include date-1 (year 1980)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-date-1').exists()"
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-date-1').exists()"
           }
         },
         {
           "assert": {
             "description": "Must include date-3 (day within 1980)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-date-3').exists()"
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-date-3').exists()"
           }
         },
         {
           "assert": {
             "description": "Must include date-6 (period within 1980)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-date-6').exists()"
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-date-6').exists()"
           }
         },
         {
           "assert": {
             "description": "Must NOT include date-0 (1979)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-date-0').exists()",
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-date-0').exists()",
             "value": "false",
             "operator": "equals",
             "warningOnly": true
@@ -1468,7 +1468,7 @@
         {
           "assert": {
             "description": "Must NOT include date-5 (1981)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-date-5').exists()",
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-date-5').exists()",
             "value": "false",
             "operator": "equals",
             "warningOnly": true
@@ -1492,7 +1492,7 @@
               "code": "search"
             },
             "resource": "Observation",
-            "params": "?date=1980-05-11&_tag=http://ignixa.io/testscript/suite/test|fhir262-impsrch-suite&_count=100",
+            "params": "?date=1980-05-11&_tag=http://ignixa.io/testscript/suite/test|ignixa-impsrch-suite&_count=100",
             "responseId": "date-day",
             "description": "GET Observation?date=1980-05-11"
           }
@@ -1512,31 +1512,31 @@
         {
           "assert": {
             "description": "Must include date-1 (year 1980 contains May 11)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-date-1').exists()"
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-date-1').exists()"
           }
         },
         {
           "assert": {
             "description": "Must include date-2 (month 1980-05 contains May 11)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-date-2').exists()"
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-date-2').exists()"
           }
         },
         {
           "assert": {
             "description": "Must include date-3 (exact day)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-date-3').exists()"
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-date-3').exists()"
           }
         },
         {
           "assert": {
             "description": "Must include date-4 (datetime on the same day)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-date-4').exists()"
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-date-4').exists()"
           }
         },
         {
           "assert": {
             "description": "Must NOT include date-6 (period is May 16-17, a different day)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-date-6').exists()",
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-date-6').exists()",
             "value": "false",
             "operator": "equals",
             "warningOnly": true
@@ -1560,7 +1560,7 @@
               "code": "search"
             },
             "resource": "Observation",
-            "params": "?date=lt1980-05-11&_tag=http://ignixa.io/testscript/suite/test|fhir262-impsrch-suite&_count=100",
+            "params": "?date=lt1980-05-11&_tag=http://ignixa.io/testscript/suite/test|ignixa-impsrch-suite&_count=100",
             "responseId": "date-lt",
             "description": "GET Observation?date=lt1980-05-11"
           }
@@ -1580,25 +1580,25 @@
         {
           "assert": {
             "description": "Must include date-0 (1979)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-date-0').exists()"
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-date-0').exists()"
           }
         },
         {
           "assert": {
             "description": "Must include date-1 (year 1980 starts before May 11)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-date-1').exists()"
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-date-1').exists()"
           }
         },
         {
           "assert": {
             "description": "Must include date-2 (month 1980-05 starts before May 11)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-date-2').exists()"
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-date-2').exists()"
           }
         },
         {
           "assert": {
             "description": "Must NOT include date-3 (the day itself, not strictly before)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-date-3').exists()",
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-date-3').exists()",
             "value": "false",
             "operator": "equals",
             "warningOnly": true
@@ -1607,7 +1607,7 @@
         {
           "assert": {
             "description": "Must NOT include date-6 (starts May 16, after)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-date-6').exists()",
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-date-6').exists()",
             "value": "false",
             "operator": "equals",
             "warningOnly": true
@@ -1631,7 +1631,7 @@
               "code": "search"
             },
             "resource": "Observation",
-            "params": "?date=ge1981-01-01&_tag=http://ignixa.io/testscript/suite/test|fhir262-impsrch-suite&_count=100",
+            "params": "?date=ge1981-01-01&_tag=http://ignixa.io/testscript/suite/test|ignixa-impsrch-suite&_count=100",
             "responseId": "date-ge",
             "description": "GET Observation?date=ge1981-01-01"
           }
@@ -1651,13 +1651,13 @@
         {
           "assert": {
             "description": "Must include date-5 (1981-11-20)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-date-5').exists()"
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-date-5').exists()"
           }
         },
         {
           "assert": {
             "description": "Must NOT include date-1 (1980, ends before 1981)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-date-1').exists()",
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-date-1').exists()",
             "value": "false",
             "operator": "equals",
             "warningOnly": true
@@ -1666,7 +1666,7 @@
         {
           "assert": {
             "description": "Must NOT include date-6 (period ends 1980-05-17)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-date-6').exists()",
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-date-6').exists()",
             "value": "false",
             "operator": "equals",
             "warningOnly": true
@@ -1690,7 +1690,7 @@
               "code": "search"
             },
             "resource": "RiskAssessment",
-            "params": "?probability=5&_tag=http://ignixa.io/testscript/suite/test|fhir262-impsrch-suite&_count=100",
+            "params": "?probability=5&_tag=http://ignixa.io/testscript/suite/test|ignixa-impsrch-suite&_count=100",
             "responseId": "num-eq",
             "description": "GET RiskAssessment?probability=5"
           }
@@ -1710,13 +1710,13 @@
         {
           "assert": {
             "description": "Must include num-2 (probability=5)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-num-2').exists()"
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-num-2').exists()"
           }
         },
         {
           "assert": {
             "description": "Must NOT include num-1 (probability=4)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-num-1').exists()",
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-num-1').exists()",
             "value": "false",
             "operator": "equals",
             "warningOnly": true
@@ -1725,7 +1725,7 @@
         {
           "assert": {
             "description": "Must NOT include num-3 (probability=6)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-num-3').exists()",
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-num-3').exists()",
             "value": "false",
             "operator": "equals",
             "warningOnly": true
@@ -1749,7 +1749,7 @@
               "code": "search"
             },
             "resource": "RiskAssessment",
-            "params": "?probability=gt5&_tag=http://ignixa.io/testscript/suite/test|fhir262-impsrch-suite&_count=100",
+            "params": "?probability=gt5&_tag=http://ignixa.io/testscript/suite/test|ignixa-impsrch-suite&_count=100",
             "responseId": "num-gt",
             "description": "GET RiskAssessment?probability=gt5"
           }
@@ -1769,19 +1769,19 @@
         {
           "assert": {
             "description": "Must include num-3 (6 > 5)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-num-3').exists()"
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-num-3').exists()"
           }
         },
         {
           "assert": {
             "description": "Must include num-4 (100 > 5)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-num-4').exists()"
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-num-4').exists()"
           }
         },
         {
           "assert": {
             "description": "Must NOT include num-2 (5, not > 5)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-num-2').exists()",
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-num-2').exists()",
             "value": "false",
             "operator": "equals",
             "warningOnly": true
@@ -1805,7 +1805,7 @@
               "code": "search"
             },
             "resource": "RiskAssessment",
-            "params": "?probability=le5&_tag=http://ignixa.io/testscript/suite/test|fhir262-impsrch-suite&_count=100",
+            "params": "?probability=le5&_tag=http://ignixa.io/testscript/suite/test|ignixa-impsrch-suite&_count=100",
             "responseId": "num-le",
             "description": "GET RiskAssessment?probability=le5"
           }
@@ -1825,19 +1825,19 @@
         {
           "assert": {
             "description": "Must include num-0 (1)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-num-0').exists()"
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-num-0').exists()"
           }
         },
         {
           "assert": {
             "description": "Must include num-2 (5)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-num-2').exists()"
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-num-2').exists()"
           }
         },
         {
           "assert": {
             "description": "Must NOT include num-3 (6, not <= 5)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-num-3').exists()",
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-num-3').exists()",
             "value": "false",
             "operator": "equals",
             "warningOnly": true
@@ -1861,7 +1861,7 @@
               "code": "search"
             },
             "resource": "RiskAssessment",
-            "params": "?probability=ne5&_tag=http://ignixa.io/testscript/suite/test|fhir262-impsrch-suite&_count=100",
+            "params": "?probability=ne5&_tag=http://ignixa.io/testscript/suite/test|ignixa-impsrch-suite&_count=100",
             "responseId": "num-ne",
             "description": "GET RiskAssessment?probability=ne5"
           }
@@ -1881,19 +1881,19 @@
         {
           "assert": {
             "description": "Must include num-0 (1)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-num-0').exists()"
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-num-0').exists()"
           }
         },
         {
           "assert": {
             "description": "Must include num-3 (6)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-num-3').exists()"
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-num-3').exists()"
           }
         },
         {
           "assert": {
             "description": "Must NOT include num-2 (5)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-num-2').exists()",
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-num-2').exists()",
             "value": "false",
             "operator": "equals",
             "warningOnly": true
@@ -1917,7 +1917,7 @@
               "code": "search"
             },
             "resource": "Observation",
-            "params": "?value-quantity=5&_tag=http://ignixa.io/testscript/suite/test|fhir262-impsrch-suite&_count=100",
+            "params": "?value-quantity=5&_tag=http://ignixa.io/testscript/suite/test|ignixa-impsrch-suite&_count=100",
             "responseId": "qty-bare",
             "description": "GET Observation?value-quantity=5"
           }
@@ -1937,19 +1937,19 @@
         {
           "assert": {
             "description": "Must include qty-3 (5, unit1/system1)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-qty-3').exists()"
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-qty-3').exists()"
           }
         },
         {
           "assert": {
             "description": "Must include qty-4 (5, unit2/system2)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-qty-4').exists()"
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-qty-4').exists()"
           }
         },
         {
           "assert": {
             "description": "Must NOT include qty-2 (4.0)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-qty-2').exists()",
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-qty-2').exists()",
             "value": "false",
             "operator": "equals",
             "warningOnly": true
@@ -1973,7 +1973,7 @@
               "code": "search"
             },
             "resource": "Observation",
-            "params": "?value-quantity=5|system1&_tag=http://ignixa.io/testscript/suite/test|fhir262-impsrch-suite&_count=100",
+            "params": "?value-quantity=5|system1&_tag=http://ignixa.io/testscript/suite/test|ignixa-impsrch-suite&_count=100",
             "responseId": "qty-system",
             "description": "GET Observation?value-quantity=5|system1"
           }
@@ -1993,13 +1993,13 @@
         {
           "assert": {
             "description": "Must include qty-3 (5, system1)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-qty-3').exists()"
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-qty-3').exists()"
           }
         },
         {
           "assert": {
             "description": "Must NOT include qty-4 (5, system2)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-qty-4').exists()",
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-qty-4').exists()",
             "value": "false",
             "operator": "equals",
             "warningOnly": true
@@ -2023,7 +2023,7 @@
               "code": "search"
             },
             "resource": "Observation",
-            "params": "?value-quantity=5||unit2&_tag=http://ignixa.io/testscript/suite/test|fhir262-impsrch-suite&_count=100",
+            "params": "?value-quantity=5||unit2&_tag=http://ignixa.io/testscript/suite/test|ignixa-impsrch-suite&_count=100",
             "responseId": "qty-unit",
             "description": "GET Observation?value-quantity=5||unit2"
           }
@@ -2043,13 +2043,13 @@
         {
           "assert": {
             "description": "Must include qty-4 (5, unit2)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-qty-4').exists()"
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-qty-4').exists()"
           }
         },
         {
           "assert": {
             "description": "Must NOT include qty-3 (5, unit1)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-qty-3').exists()",
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-qty-3').exists()",
             "value": "false",
             "operator": "equals",
             "warningOnly": true
@@ -2073,7 +2073,7 @@
               "code": "search"
             },
             "resource": "Observation",
-            "params": "?value-quantity=gt4.9&_tag=http://ignixa.io/testscript/suite/test|fhir262-impsrch-suite&_count=100",
+            "params": "?value-quantity=gt4.9&_tag=http://ignixa.io/testscript/suite/test|ignixa-impsrch-suite&_count=100",
             "responseId": "qty-gt",
             "description": "GET Observation?value-quantity=gt4.9"
           }
@@ -2093,19 +2093,19 @@
         {
           "assert": {
             "description": "Must include qty-5 (6)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-qty-5').exists()"
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-qty-5').exists()"
           }
         },
         {
           "assert": {
             "description": "Must include qty-6 (10)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-qty-6').exists()"
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-qty-6').exists()"
           }
         },
         {
           "assert": {
             "description": "Must NOT include qty-2 (4.0)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-qty-2').exists()",
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-qty-2').exists()",
             "value": "false",
             "operator": "equals",
             "warningOnly": true
@@ -2114,7 +2114,7 @@
         {
           "assert": {
             "description": "Must NOT include qty-1 (1.0)",
-            "expression": "entry.where(resource.id = 'fhir262-impsrch-qty-1').exists()",
+            "expression": "entry.where(resource.id = 'ignixa-impsrch-qty-1').exists()",
             "value": "false",
             "operator": "equals",
             "warningOnly": true
@@ -2130,7 +2130,7 @@
           "type": {
             "code": "delete"
           },
-          "url": "DocumentReference/fhir262-impsrch-comp-docref-b",
+          "url": "DocumentReference/ignixa-impsrch-comp-docref-b",
           "description": "Teardown: delete comp-docref-b"
         }
       },
@@ -2139,7 +2139,7 @@
           "type": {
             "code": "delete"
           },
-          "url": "DocumentReference/fhir262-impsrch-comp-docref-a",
+          "url": "DocumentReference/ignixa-impsrch-comp-docref-a",
           "description": "Teardown: delete comp-docref-a"
         }
       },
@@ -2148,7 +2148,7 @@
           "type": {
             "code": "delete"
           },
-          "url": "Observation/fhir262-impsrch-comp-apgarcolor",
+          "url": "Observation/ignixa-impsrch-comp-apgarcolor",
           "description": "Teardown: delete comp-apgarcolor"
         }
       },
@@ -2157,7 +2157,7 @@
           "type": {
             "code": "delete"
           },
-          "url": "Observation/fhir262-impsrch-comp-bp",
+          "url": "Observation/ignixa-impsrch-comp-bp",
           "description": "Teardown: delete comp-bp"
         }
       },
@@ -2166,7 +2166,7 @@
           "type": {
             "code": "delete"
           },
-          "url": "Observation/fhir262-impsrch-comp-eyecolor-long",
+          "url": "Observation/ignixa-impsrch-comp-eyecolor-long",
           "description": "Teardown: delete comp-eyecolor-long"
         }
       },
@@ -2175,7 +2175,7 @@
           "type": {
             "code": "delete"
           },
-          "url": "Observation/fhir262-impsrch-comp-eyecolor",
+          "url": "Observation/ignixa-impsrch-comp-eyecolor",
           "description": "Teardown: delete comp-eyecolor"
         }
       },
@@ -2184,7 +2184,7 @@
           "type": {
             "code": "delete"
           },
-          "url": "Observation/fhir262-impsrch-comp-temp-normal",
+          "url": "Observation/ignixa-impsrch-comp-temp-normal",
           "description": "Teardown: delete comp-temp-normal"
         }
       },
@@ -2193,7 +2193,7 @@
           "type": {
             "code": "delete"
           },
-          "url": "Observation/fhir262-impsrch-comp-temp-high",
+          "url": "Observation/ignixa-impsrch-comp-temp-high",
           "description": "Teardown: delete comp-temp-high"
         }
       },
@@ -2202,7 +2202,7 @@
           "type": {
             "code": "delete"
           },
-          "url": "Observation/fhir262-impsrch-date-0",
+          "url": "Observation/ignixa-impsrch-date-0",
           "description": "Teardown: delete date-0"
         }
       },
@@ -2211,7 +2211,7 @@
           "type": {
             "code": "delete"
           },
-          "url": "Observation/fhir262-impsrch-date-1",
+          "url": "Observation/ignixa-impsrch-date-1",
           "description": "Teardown: delete date-1"
         }
       },
@@ -2220,7 +2220,7 @@
           "type": {
             "code": "delete"
           },
-          "url": "Observation/fhir262-impsrch-date-2",
+          "url": "Observation/ignixa-impsrch-date-2",
           "description": "Teardown: delete date-2"
         }
       },
@@ -2229,7 +2229,7 @@
           "type": {
             "code": "delete"
           },
-          "url": "Observation/fhir262-impsrch-date-3",
+          "url": "Observation/ignixa-impsrch-date-3",
           "description": "Teardown: delete date-3"
         }
       },
@@ -2238,7 +2238,7 @@
           "type": {
             "code": "delete"
           },
-          "url": "Observation/fhir262-impsrch-date-4",
+          "url": "Observation/ignixa-impsrch-date-4",
           "description": "Teardown: delete date-4"
         }
       },
@@ -2247,7 +2247,7 @@
           "type": {
             "code": "delete"
           },
-          "url": "Observation/fhir262-impsrch-date-5",
+          "url": "Observation/ignixa-impsrch-date-5",
           "description": "Teardown: delete date-5"
         }
       },
@@ -2256,7 +2256,7 @@
           "type": {
             "code": "delete"
           },
-          "url": "Observation/fhir262-impsrch-date-6",
+          "url": "Observation/ignixa-impsrch-date-6",
           "description": "Teardown: delete date-6"
         }
       },
@@ -2265,7 +2265,7 @@
           "type": {
             "code": "delete"
           },
-          "url": "RiskAssessment/fhir262-impsrch-num-0",
+          "url": "RiskAssessment/ignixa-impsrch-num-0",
           "description": "Teardown: delete num-0"
         }
       },
@@ -2274,7 +2274,7 @@
           "type": {
             "code": "delete"
           },
-          "url": "RiskAssessment/fhir262-impsrch-num-1",
+          "url": "RiskAssessment/ignixa-impsrch-num-1",
           "description": "Teardown: delete num-1"
         }
       },
@@ -2283,7 +2283,7 @@
           "type": {
             "code": "delete"
           },
-          "url": "RiskAssessment/fhir262-impsrch-num-2",
+          "url": "RiskAssessment/ignixa-impsrch-num-2",
           "description": "Teardown: delete num-2"
         }
       },
@@ -2292,7 +2292,7 @@
           "type": {
             "code": "delete"
           },
-          "url": "RiskAssessment/fhir262-impsrch-num-3",
+          "url": "RiskAssessment/ignixa-impsrch-num-3",
           "description": "Teardown: delete num-3"
         }
       },
@@ -2301,7 +2301,7 @@
           "type": {
             "code": "delete"
           },
-          "url": "RiskAssessment/fhir262-impsrch-num-4",
+          "url": "RiskAssessment/ignixa-impsrch-num-4",
           "description": "Teardown: delete num-4"
         }
       },
@@ -2310,7 +2310,7 @@
           "type": {
             "code": "delete"
           },
-          "url": "Patient/fhir262-impsrch-num-subj",
+          "url": "Patient/ignixa-impsrch-num-subj",
           "description": "Teardown: delete num-subj"
         }
       },
@@ -2319,7 +2319,7 @@
           "type": {
             "code": "delete"
           },
-          "url": "Observation/fhir262-impsrch-qty-0",
+          "url": "Observation/ignixa-impsrch-qty-0",
           "description": "Teardown: delete qty-0"
         }
       },
@@ -2328,7 +2328,7 @@
           "type": {
             "code": "delete"
           },
-          "url": "Observation/fhir262-impsrch-qty-1",
+          "url": "Observation/ignixa-impsrch-qty-1",
           "description": "Teardown: delete qty-1"
         }
       },
@@ -2337,7 +2337,7 @@
           "type": {
             "code": "delete"
           },
-          "url": "Observation/fhir262-impsrch-qty-2",
+          "url": "Observation/ignixa-impsrch-qty-2",
           "description": "Teardown: delete qty-2"
         }
       },
@@ -2346,7 +2346,7 @@
           "type": {
             "code": "delete"
           },
-          "url": "Observation/fhir262-impsrch-qty-3",
+          "url": "Observation/ignixa-impsrch-qty-3",
           "description": "Teardown: delete qty-3"
         }
       },
@@ -2355,7 +2355,7 @@
           "type": {
             "code": "delete"
           },
-          "url": "Observation/fhir262-impsrch-qty-4",
+          "url": "Observation/ignixa-impsrch-qty-4",
           "description": "Teardown: delete qty-4"
         }
       },
@@ -2364,7 +2364,7 @@
           "type": {
             "code": "delete"
           },
-          "url": "Observation/fhir262-impsrch-qty-5",
+          "url": "Observation/ignixa-impsrch-qty-5",
           "description": "Teardown: delete qty-5"
         }
       },
@@ -2373,7 +2373,7 @@
           "type": {
             "code": "delete"
           },
-          "url": "Observation/fhir262-impsrch-qty-6",
+          "url": "Observation/ignixa-impsrch-qty-6",
           "description": "Teardown: delete qty-6"
         }
       }

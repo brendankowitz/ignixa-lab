@@ -10,8 +10,8 @@
       "autodelete": false,
       "resource": {
         "resourceType": "ValueSet",
-        "id": "fhir262-vs-fhirversion",
-        "meta": { "tag": [{ "system": "http://ignixa.io/testscript/suite/test", "code": "fhir262-exp" }] },
+        "id": "ignixa-vs-fhirversion",
+        "meta": { "tag": [{ "system": "http://ignixa.io/testscript/suite/test", "code": "ignixa-exp" }] },
         "url": "http://ignixa.io/testscript/valueset/expand-fhir-version",
         "status": "active",
         "compose": { "include": [{ "system": "http://hl7.org/fhir/FHIR-version" }] }
@@ -23,8 +23,8 @@
       "autodelete": false,
       "resource": {
         "resourceType": "ValueSet",
-        "id": "fhir262-vs-acctstatus",
-        "meta": { "tag": [{ "system": "http://ignixa.io/testscript/suite/test", "code": "fhir262-exp" }] },
+        "id": "ignixa-vs-acctstatus",
+        "meta": { "tag": [{ "system": "http://ignixa.io/testscript/suite/test", "code": "ignixa-exp" }] },
         "url": "http://ignixa.io/testscript/valueset/expand-account-status",
         "status": "active",
         "compose": { "include": [{ "system": "http://hl7.org/fhir/account-status" }] }
@@ -44,8 +44,8 @@
   ],
   "setup": {
     "action": [
-      { "operation": { "type": { "code": "update" }, "url": "ValueSet/fhir262-vs-fhirversion", "sourceId": "vs-fhir-version", "description": "PUT ValueSet/fhir262-vs-fhirversion (url=http://ignixa.io/testscript/valueset/expand-fhir-version)" } },
-      { "operation": { "type": { "code": "update" }, "url": "ValueSet/fhir262-vs-acctstatus", "sourceId": "vs-account-status", "description": "PUT ValueSet/fhir262-vs-acctstatus (url=http://ignixa.io/testscript/valueset/expand-account-status)" } }
+      { "operation": { "type": { "code": "update" }, "url": "ValueSet/ignixa-vs-fhirversion", "sourceId": "vs-fhir-version", "description": "PUT ValueSet/ignixa-vs-fhirversion (url=http://ignixa.io/testscript/valueset/expand-fhir-version)" } },
+      { "operation": { "type": { "code": "update" }, "url": "ValueSet/ignixa-vs-acctstatus", "sourceId": "vs-account-status", "description": "PUT ValueSet/ignixa-vs-acctstatus (url=http://ignixa.io/testscript/valueset/expand-account-status)" } }
     ]
   },
   "test": [
@@ -66,7 +66,7 @@
       "description": "Instance-level $expand must expand the addressed ValueSet itself, ignoring a mismatched incoming url parameter.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
-        { "operation": { "type": { "code": "$expand" }, "method": "GET", "url": "ValueSet/fhir262-vs-acctstatus/$expand?url=http://ignixa.io/testscript/valueset/expand-fhir-version", "responseId": "expand-instance-level", "description": "GET ValueSet/fhir262-vs-acctstatus/$expand?url=<mismatched url>" } },
+        { "operation": { "type": { "code": "$expand" }, "method": "GET", "url": "ValueSet/ignixa-vs-acctstatus/$expand?url=http://ignixa.io/testscript/valueset/expand-fhir-version", "responseId": "expand-instance-level", "description": "GET ValueSet/ignixa-vs-acctstatus/$expand?url=<mismatched url>" } },
         { "assert": { "description": "Must return HTTP 200", "response": "okay" } },
         { "assert": { "description": "Response must be a ValueSet", "resource": "ValueSet" } },
         { "assert": { "description": "Returned ValueSet.url must be the instance's OWN canonical url, not the mismatched incoming url parameter", "expression": "ValueSet.url", "value": "http://ignixa.io/testscript/valueset/expand-account-status", "operator": "equals" } },
@@ -107,7 +107,7 @@
       "description": "Expanding a nonexistent ValueSet id must return 404 with an OperationOutcome.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
-        { "operation": { "type": { "code": "$expand" }, "method": "GET", "url": "ValueSet/fhir262-does-not-exist/$expand", "responseId": "expand-unknown-id", "description": "GET ValueSet/fhir262-does-not-exist/$expand" } },
+        { "operation": { "type": { "code": "$expand" }, "method": "GET", "url": "ValueSet/ignixa-does-not-exist/$expand", "responseId": "expand-unknown-id", "description": "GET ValueSet/ignixa-does-not-exist/$expand" } },
         { "assert": { "description": "Must return HTTP 404", "response": "notFound" } },
         { "assert": { "description": "Response should be an OperationOutcome with an error/not-found issue (warningOnly: exact issue code may vary by server)", "expression": "OperationOutcome.issue.where(severity = 'error' and code = 'not-found').exists()", "warningOnly": true } }
       ]
@@ -125,8 +125,8 @@
   ],
   "teardown": {
     "action": [
-      { "operation": { "type": { "code": "delete" }, "url": "ValueSet/fhir262-vs-acctstatus", "description": "Teardown: delete vs-account-status" } },
-      { "operation": { "type": { "code": "delete" }, "url": "ValueSet/fhir262-vs-fhirversion", "description": "Teardown: delete vs-fhir-version" } }
+      { "operation": { "type": { "code": "delete" }, "url": "ValueSet/ignixa-vs-acctstatus", "description": "Teardown: delete vs-account-status" } },
+      { "operation": { "type": { "code": "delete" }, "url": "ValueSet/ignixa-vs-fhirversion", "description": "Teardown: delete vs-fhir-version" } }
     ]
   }
 }

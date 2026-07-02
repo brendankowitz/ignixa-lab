@@ -22,7 +22,7 @@
       "autodelete": false,
       "resource": {
         "resourceType": "Observation",
-        "id": "fhir262-create-clientid",
+        "id": "ignixa-create-clientid",
         "meta": { "versionId": "9999", "lastUpdated": "2000-01-01T00:00:00Z" },
         "identifier": [{ "system": "http://ignixa.io/testscript/suite/test", "value": "CREATE-CLIENTMETA-1" }],
         "status": "final",
@@ -130,7 +130,7 @@
       "autodelete": false,
       "resource": {
         "resourceType": "Observation",
-        "id": "fhir262-illegal_id",
+        "id": "ignixa-illegal_id",
         "identifier": [{ "system": "http://ignixa.io/testscript/suite/test", "value": "CREATE-BADID-1" }],
         "status": "final",
         "code": { "coding": [{ "system": "http://loinc.org", "code": "8310-5", "display": "Body temperature" }] },
@@ -165,7 +165,7 @@
   "variable": [
     { "name": "basicId", "sourceId": "create-basic-response", "path": "id", "description": "id assigned to the basic create test's Observation" },
     { "name": "basicVersionId", "sourceId": "create-basic-response", "path": "meta.versionId", "description": "meta.versionId assigned to the basic create test's Observation" },
-    { "name": "clientMetaId", "sourceId": "create-clientmeta-response", "path": "id", "description": "server-assigned id for the client-supplied-id/meta test (differs from the fixture's fhir262-create-clientid)" },
+    { "name": "clientMetaId", "sourceId": "create-clientmeta-response", "path": "id", "description": "server-assigned id for the client-supplied-id/meta test (differs from the fixture's ignixa-create-clientid)" },
     { "name": "precisionId", "sourceId": "create-precision-response", "path": "id", "description": "id assigned to the high-precision quantity Observation" },
     { "name": "maliciousUrlId", "sourceId": "create-maliciousurl-response", "path": "id", "description": "id assigned to the Observation created via a query string containing malicious content" },
     { "name": "safeNarrativeId", "sourceId": "create-safenarrative-response", "path": "id", "description": "id assigned to the Observation with a sanitizable (non-tag) narrative payload" },
@@ -198,7 +198,7 @@
       "action": [
         { "operation": { "type": { "code": "create" }, "resource": "Observation", "sourceId": "observation-client-id-meta", "responseId": "create-clientmeta-response", "description": "POST Observation with client-supplied id and meta" } },
         { "assert": { "description": "Server must return 201 Created", "response": "created" } },
-        { "assert": { "description": "Server must NOT echo the client-supplied id", "expression": "Observation.id", "value": "fhir262-create-clientid", "operator": "notEquals" } },
+        { "assert": { "description": "Server must NOT echo the client-supplied id", "expression": "Observation.id", "value": "ignixa-create-clientid", "operator": "notEquals" } },
         { "assert": { "description": "Server must NOT echo the client-supplied meta.versionId", "expression": "Observation.meta.versionId", "value": "9999", "operator": "notEquals" } },
         { "assert": { "description": "Server must have assigned a non-empty id", "expression": "Observation.id.exists()" } }
       ]
@@ -271,7 +271,7 @@
       "name": "update with an illegal id format returns 400",
       "description": "PUT with an id containing an underscore (illegal in the FHIR id format) must return 400 Bad Request.",
       "action": [
-        { "operation": { "type": { "code": "update" }, "url": "Observation/fhir262-illegal_id", "sourceId": "observation-illegal-id", "responseId": "create-illegalid-response", "description": "PUT Observation/fhir262-illegal_id (underscore makes the id illegal)" } },
+        { "operation": { "type": { "code": "update" }, "url": "Observation/ignixa-illegal_id", "sourceId": "observation-illegal-id", "responseId": "create-illegalid-response", "description": "PUT Observation/ignixa-illegal_id (underscore makes the id illegal)" } },
         { "assert": { "description": "Server must return 400 Bad Request for an illegal id format", "response": "bad" } }
       ]
     },
@@ -287,7 +287,7 @@
             "responseId": "create-provenance-ok-response",
             "description": "POST Observation with a valid X-Provenance header",
             "requestHeader": [
-              { "field": "X-Provenance", "value": "{\"resourceType\":\"Provenance\",\"recorded\":\"2024-01-01T00:00:00Z\",\"agent\":[{\"who\":{\"reference\":\"Practitioner/fhir262-prov-agent\"}}],\"activity\":{\"coding\":[{\"system\":\"http://terminology.hl7.org/CodeSystem/v3-ParticipationType\",\"code\":\"AUT\"}]}}" }
+              { "field": "X-Provenance", "value": "{\"resourceType\":\"Provenance\",\"recorded\":\"2024-01-01T00:00:00Z\",\"agent\":[{\"who\":{\"reference\":\"Practitioner/ignixa-prov-agent\"}}],\"activity\":{\"coding\":[{\"system\":\"http://terminology.hl7.org/CodeSystem/v3-ParticipationType\",\"code\":\"AUT\"}]}}" }
             ]
           }
         },
@@ -326,7 +326,7 @@
       { "operation": { "type": { "code": "delete" }, "url": "Observation/${maliciousUrlId}", "description": "Teardown: delete the malicious-query-string Observation" } },
       { "operation": { "type": { "code": "delete" }, "url": "Observation/${safeNarrativeId}", "description": "Teardown: delete the safe-narrative Observation" } },
       { "operation": { "type": { "code": "delete" }, "url": "Observation/${provenanceOkId}", "description": "Teardown: delete the X-Provenance-linked Observation" } },
-      { "operation": { "type": { "code": "delete" }, "url": "Observation/fhir262-illegal_id", "description": "Teardown: attempt to delete the illegal-id Observation in case a lenient server accepted it" } }
+      { "operation": { "type": { "code": "delete" }, "url": "Observation/ignixa-illegal_id", "description": "Teardown: attempt to delete the illegal-id Observation in case a lenient server accepted it" } }
     ]
   }
 }

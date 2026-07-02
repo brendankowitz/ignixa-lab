@@ -10,12 +10,12 @@
       "autodelete": false,
       "resource": {
         "resourceType": "SearchParameter",
-        "id": "fhir262-sp-badsyntax",
+        "id": "ignixa-sp-badsyntax",
         "url": "http://ignixa.io/testscript/suite/custom-search-param/SearchParameter/badsyntax",
         "name": "Fhir262BadSyntax",
         "status": "draft",
         "description": "Invalid: expression is not valid FHIRPath syntax.",
-        "code": "fhir262-badsyntax",
+        "code": "ignixa-badsyntax",
         "base": ["Encounter"],
         "type": "reference",
         "expression": "bad syntax"
@@ -27,12 +27,12 @@
       "autodelete": false,
       "resource": {
         "resourceType": "SearchParameter",
-        "id": "fhir262-sp-wrongproperty",
+        "id": "ignixa-sp-wrongproperty",
         "url": "http://ignixa.io/testscript/suite/custom-search-param/SearchParameter/wrongproperty",
         "name": "Fhir262WrongProperty",
         "status": "draft",
         "description": "Invalid: expression references a property ('foo') that does not exist on Encounter.diagnosis.",
-        "code": "fhir262-wrongproperty",
+        "code": "ignixa-wrongproperty",
         "base": ["Encounter"],
         "type": "reference",
         "expression": "Encounter.diagnosis.foo"
@@ -44,12 +44,12 @@
       "autodelete": false,
       "resource": {
         "resourceType": "SearchParameter",
-        "id": "fhir262-sp-invalidbase",
+        "id": "ignixa-sp-invalidbase",
         "url": "http://ignixa.io/testscript/suite/custom-search-param/SearchParameter/invalidbase",
         "name": "Fhir262InvalidBase",
         "status": "draft",
         "description": "Invalid: base contains 'foo', which is not a valid resource type.",
-        "code": "fhir262-invalidbase",
+        "code": "ignixa-invalidbase",
         "base": ["foo"],
         "type": "reference",
         "expression": "Encounter.diagnosis.condition"
@@ -61,12 +61,12 @@
       "autodelete": false,
       "resource": {
         "resourceType": "SearchParameter",
-        "id": "fhir262-sp-invalidtype",
+        "id": "ignixa-sp-invalidtype",
         "url": "http://ignixa.io/testscript/suite/custom-search-param/SearchParameter/invalidtype",
         "name": "Fhir262InvalidType",
         "status": "draft",
         "description": "Invalid: type is 'foo', which is not a valid SearchParamType.",
-        "code": "fhir262-invalidtype",
+        "code": "ignixa-invalidtype",
         "base": ["Encounter"],
         "type": "foo",
         "expression": "Encounter.diagnosis.condition"
@@ -78,12 +78,12 @@
       "autodelete": false,
       "resource": {
         "resourceType": "SearchParameter",
-        "id": "fhir262-sp-missingbase",
+        "id": "ignixa-sp-missingbase",
         "url": "http://ignixa.io/testscript/suite/custom-search-param/SearchParameter/missingbase",
         "name": "Fhir262MissingBase",
         "status": "draft",
         "description": "Invalid: base is empty, but base has cardinality 1..*.",
-        "code": "fhir262-missingbase",
+        "code": "ignixa-missingbase",
         "base": [],
         "type": "reference",
         "expression": "Encounter.diagnosis.condition"
@@ -95,12 +95,12 @@
       "autodelete": false,
       "resource": {
         "resourceType": "SearchParameter",
-        "id": "fhir262-sp-missingexpression",
+        "id": "ignixa-sp-missingexpression",
         "url": "http://ignixa.io/testscript/suite/custom-search-param/SearchParameter/missingexpression",
         "name": "Fhir262MissingExpression",
         "status": "draft",
         "description": "Invalid: expression is an empty string.",
-        "code": "fhir262-missingexpression",
+        "code": "ignixa-missingexpression",
         "base": ["Encounter"],
         "type": "reference",
         "expression": ""
@@ -112,12 +112,12 @@
       "autodelete": false,
       "resource": {
         "resourceType": "SearchParameter",
-        "id": "fhir262-sp-missingtype",
+        "id": "ignixa-sp-missingtype",
         "url": "http://ignixa.io/testscript/suite/custom-search-param/SearchParameter/missingtype",
         "name": "Fhir262MissingType",
         "status": "draft",
         "description": "Invalid: type is an empty string, but type has cardinality 1..1.",
-        "code": "fhir262-missingtype",
+        "code": "ignixa-missingtype",
         "base": ["Encounter"],
         "type": "",
         "expression": "Encounter.diagnosis.condition"
@@ -129,12 +129,12 @@
       "autodelete": false,
       "resource": {
         "resourceType": "SearchParameter",
-        "id": "fhir262-sp-unsupportedtype",
+        "id": "ignixa-sp-unsupportedtype",
         "url": "http://ignixa.io/testscript/suite/custom-search-param/SearchParameter/unsupportedtype",
         "name": "Fhir262UnsupportedType",
         "status": "draft",
         "description": "Invalid: type is 'quantity', but the expression (Encounter.diagnosis.condition) resolves to a reference, not a quantity.",
-        "code": "fhir262-unsupportedtype",
+        "code": "ignixa-unsupportedtype",
         "base": ["Encounter"],
         "type": "quantity",
         "expression": "Encounter.diagnosis.condition"
@@ -146,12 +146,12 @@
       "autodelete": false,
       "resource": {
         "resourceType": "SearchParameter",
-        "id": "fhir262-sp-urltoolong",
+        "id": "ignixa-sp-urltoolong",
         "url": "http://example.org/fhir/SearchParameter/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "name": "Fhir262UrlTooLong",
         "status": "draft",
         "description": "MS FHIR Server-specific: url is 129 characters, one over the implementation's 128-character cap.",
-        "code": "fhir262-urltoolong",
+        "code": "ignixa-urltoolong",
         "base": ["Person"],
         "type": "string",
         "expression": "Person.name"
@@ -163,12 +163,12 @@
       "autodelete": false,
       "resource": {
         "resourceType": "SearchParameter",
-        "id": "fhir262-sp-urlupdate",
+        "id": "ignixa-sp-urlupdate",
         "url": "http://example.org/fhir/SearchParameter/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "name": "Fhir262UrlValid",
         "status": "draft",
         "description": "Valid: url is exactly 128 characters (at the MS FHIR Server implementation cap, not over it).",
-        "code": "fhir262-urlvalid",
+        "code": "ignixa-urlvalid",
         "base": ["Person"],
         "type": "string",
         "expression": "Person.name"
@@ -180,12 +180,12 @@
       "autodelete": false,
       "resource": {
         "resourceType": "SearchParameter",
-        "id": "fhir262-sp-urlupdate",
+        "id": "ignixa-sp-urlupdate",
         "url": "http://example.org/fhir/SearchParameter/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "name": "Fhir262UrlValid",
         "status": "draft",
         "description": "Same resource id as sp-url-valid, but url has been changed to 129 characters — used to PUT-update an existing, previously-valid SearchParameter to an over-the-cap url.",
-        "code": "fhir262-urlvalid",
+        "code": "ignixa-urlvalid",
         "base": ["Person"],
         "type": "string",
         "expression": "Person.name"
@@ -198,7 +198,7 @@
       "description": "A SearchParameter whose expression is not valid FHIRPath ('bad syntax') must be rejected with HTTP 400 and an OperationOutcome error/fatal issue.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
-        { "operation": { "type": { "code": "update" }, "url": "SearchParameter/fhir262-sp-badsyntax", "sourceId": "sp-bad-syntax", "description": "PUT SearchParameter/fhir262-sp-badsyntax (bad FHIRPath syntax)" } },
+        { "operation": { "type": { "code": "update" }, "url": "SearchParameter/ignixa-sp-badsyntax", "sourceId": "sp-bad-syntax", "description": "PUT SearchParameter/ignixa-sp-badsyntax (bad FHIRPath syntax)" } },
         { "assert": { "description": "Must return HTTP 400 Bad Request", "response": "bad" } },
         { "assert": { "description": "Response body must be an OperationOutcome", "resource": "OperationOutcome" } },
         { "assert": { "description": "OperationOutcome must contain an error or fatal issue", "expression": "OperationOutcome.issue.where(severity = 'error' or severity = 'fatal').exists()" } },
@@ -210,7 +210,7 @@
       "description": "A SearchParameter whose expression is Encounter.diagnosis.foo ('foo' does not exist on Encounter.diagnosis) must be rejected with HTTP 400 and an OperationOutcome error/fatal issue.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
-        { "operation": { "type": { "code": "update" }, "url": "SearchParameter/fhir262-sp-wrongproperty", "sourceId": "sp-wrong-property", "description": "PUT SearchParameter/fhir262-sp-wrongproperty (Encounter.diagnosis.foo)" } },
+        { "operation": { "type": { "code": "update" }, "url": "SearchParameter/ignixa-sp-wrongproperty", "sourceId": "sp-wrong-property", "description": "PUT SearchParameter/ignixa-sp-wrongproperty (Encounter.diagnosis.foo)" } },
         { "assert": { "description": "Must return HTTP 400 Bad Request", "response": "bad" } },
         { "assert": { "description": "Response body must be an OperationOutcome", "resource": "OperationOutcome" } },
         { "assert": { "description": "OperationOutcome must contain an error or fatal issue", "expression": "OperationOutcome.issue.where(severity = 'error' or severity = 'fatal').exists()" } },
@@ -222,7 +222,7 @@
       "description": "A SearchParameter with base=['foo'] ('foo' is not a valid resource type) must be rejected with HTTP 400 and an OperationOutcome error/fatal issue.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
-        { "operation": { "type": { "code": "update" }, "url": "SearchParameter/fhir262-sp-invalidbase", "sourceId": "sp-invalid-base", "description": "PUT SearchParameter/fhir262-sp-invalidbase (base=['foo'])" } },
+        { "operation": { "type": { "code": "update" }, "url": "SearchParameter/ignixa-sp-invalidbase", "sourceId": "sp-invalid-base", "description": "PUT SearchParameter/ignixa-sp-invalidbase (base=['foo'])" } },
         { "assert": { "description": "Must return HTTP 400 Bad Request", "response": "bad" } },
         { "assert": { "description": "Response body must be an OperationOutcome", "resource": "OperationOutcome" } },
         { "assert": { "description": "OperationOutcome must contain an error or fatal issue", "expression": "OperationOutcome.issue.where(severity = 'error' or severity = 'fatal').exists()" } },
@@ -234,7 +234,7 @@
       "description": "A SearchParameter with type='foo' ('foo' is not a valid SearchParamType) must be rejected with HTTP 400 and an OperationOutcome error/fatal issue.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
-        { "operation": { "type": { "code": "update" }, "url": "SearchParameter/fhir262-sp-invalidtype", "sourceId": "sp-invalid-type", "description": "PUT SearchParameter/fhir262-sp-invalidtype (type='foo')" } },
+        { "operation": { "type": { "code": "update" }, "url": "SearchParameter/ignixa-sp-invalidtype", "sourceId": "sp-invalid-type", "description": "PUT SearchParameter/ignixa-sp-invalidtype (type='foo')" } },
         { "assert": { "description": "Must return HTTP 400 Bad Request", "response": "bad" } },
         { "assert": { "description": "Response body must be an OperationOutcome", "resource": "OperationOutcome" } },
         { "assert": { "description": "OperationOutcome must contain an error or fatal issue", "expression": "OperationOutcome.issue.where(severity = 'error' or severity = 'fatal').exists()" } },
@@ -246,7 +246,7 @@
       "description": "A SearchParameter with base=[] (base has cardinality 1..*) must be rejected with HTTP 400 and an OperationOutcome error/fatal issue.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
-        { "operation": { "type": { "code": "update" }, "url": "SearchParameter/fhir262-sp-missingbase", "sourceId": "sp-missing-base", "description": "PUT SearchParameter/fhir262-sp-missingbase (base=[])" } },
+        { "operation": { "type": { "code": "update" }, "url": "SearchParameter/ignixa-sp-missingbase", "sourceId": "sp-missing-base", "description": "PUT SearchParameter/ignixa-sp-missingbase (base=[])" } },
         { "assert": { "description": "Must return HTTP 400 Bad Request", "response": "bad" } },
         { "assert": { "description": "Response body must be an OperationOutcome", "resource": "OperationOutcome" } },
         { "assert": { "description": "OperationOutcome must contain an error or fatal issue", "expression": "OperationOutcome.issue.where(severity = 'error' or severity = 'fatal').exists()" } },
@@ -258,7 +258,7 @@
       "description": "A SearchParameter with expression='' must be rejected with HTTP 400 and an OperationOutcome error/fatal issue.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
-        { "operation": { "type": { "code": "update" }, "url": "SearchParameter/fhir262-sp-missingexpression", "sourceId": "sp-missing-expression", "description": "PUT SearchParameter/fhir262-sp-missingexpression (expression='')" } },
+        { "operation": { "type": { "code": "update" }, "url": "SearchParameter/ignixa-sp-missingexpression", "sourceId": "sp-missing-expression", "description": "PUT SearchParameter/ignixa-sp-missingexpression (expression='')" } },
         { "assert": { "description": "Must return HTTP 400 Bad Request", "response": "bad" } },
         { "assert": { "description": "Response body must be an OperationOutcome", "resource": "OperationOutcome" } },
         { "assert": { "description": "OperationOutcome must contain an error or fatal issue", "expression": "OperationOutcome.issue.where(severity = 'error' or severity = 'fatal').exists()" } },
@@ -270,7 +270,7 @@
       "description": "A SearchParameter with type='' (type has cardinality 1..1) must be rejected with HTTP 400 and an OperationOutcome error/fatal issue.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
-        { "operation": { "type": { "code": "update" }, "url": "SearchParameter/fhir262-sp-missingtype", "sourceId": "sp-missing-type", "description": "PUT SearchParameter/fhir262-sp-missingtype (type='')" } },
+        { "operation": { "type": { "code": "update" }, "url": "SearchParameter/ignixa-sp-missingtype", "sourceId": "sp-missing-type", "description": "PUT SearchParameter/ignixa-sp-missingtype (type='')" } },
         { "assert": { "description": "Must return HTTP 400 Bad Request", "response": "bad" } },
         { "assert": { "description": "Response body must be an OperationOutcome", "resource": "OperationOutcome" } },
         { "assert": { "description": "OperationOutcome must contain an error or fatal issue", "expression": "OperationOutcome.issue.where(severity = 'error' or severity = 'fatal').exists()" } },
@@ -282,7 +282,7 @@
       "description": "A SearchParameter with type='quantity' but an expression (Encounter.diagnosis.condition) that resolves to a reference, not a quantity, must be rejected with HTTP 400 and an OperationOutcome error/fatal issue.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
-        { "operation": { "type": { "code": "update" }, "url": "SearchParameter/fhir262-sp-unsupportedtype", "sourceId": "sp-unsupported-type", "description": "PUT SearchParameter/fhir262-sp-unsupportedtype (type='quantity' on a reference expression)" } },
+        { "operation": { "type": { "code": "update" }, "url": "SearchParameter/ignixa-sp-unsupportedtype", "sourceId": "sp-unsupported-type", "description": "PUT SearchParameter/ignixa-sp-unsupportedtype (type='quantity' on a reference expression)" } },
         { "assert": { "description": "Must return HTTP 400 Bad Request", "response": "bad" } },
         { "assert": { "description": "Response body must be an OperationOutcome", "resource": "OperationOutcome" } },
         { "assert": { "description": "OperationOutcome must contain an error or fatal issue", "expression": "OperationOutcome.issue.where(severity = 'error' or severity = 'fatal').exists()" } },
@@ -294,7 +294,7 @@
       "description": "A SearchParameter.url of 129 characters (one over the server's 128-character cap) is rejected with HTTP 400 on create (warningOnly: not a universal FHIR requirement).",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
-        { "operation": { "type": { "code": "update" }, "url": "SearchParameter/fhir262-sp-urltoolong", "sourceId": "sp-url-toolong", "description": "PUT SearchParameter/fhir262-sp-urltoolong (url is 129 characters)" } },
+        { "operation": { "type": { "code": "update" }, "url": "SearchParameter/ignixa-sp-urltoolong", "sourceId": "sp-url-toolong", "description": "PUT SearchParameter/ignixa-sp-urltoolong (url is 129 characters)" } },
         { "assert": { "description": "Should return HTTP 400 Bad Request (warningOnly: the 128-character url cap is an MS FHIR Server-specific implementation limit, not a universal FHIR R4 requirement)", "response": "bad", "warningOnly": true } }
       ]
     },
@@ -303,25 +303,25 @@
       "description": "A SearchParameter created with a 128-character url (at the cap) cannot then be updated to a 129-character url (warningOnly: custom SearchParameter registration and the length cap are both server-specific, not universal FHIR requirements).",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
-        { "operation": { "type": { "code": "update" }, "url": "SearchParameter/fhir262-sp-urlupdate", "sourceId": "sp-url-valid", "description": "PUT SearchParameter/fhir262-sp-urlupdate (url is exactly 128 characters)" } },
+        { "operation": { "type": { "code": "update" }, "url": "SearchParameter/ignixa-sp-urlupdate", "sourceId": "sp-url-valid", "description": "PUT SearchParameter/ignixa-sp-urlupdate (url is exactly 128 characters)" } },
         { "assert": { "description": "Should return HTTP 201 Created (warningOnly: custom SearchParameter registration support varies across servers)", "response": "created", "warningOnly": true } },
-        { "operation": { "type": { "code": "update" }, "url": "SearchParameter/fhir262-sp-urlupdate", "sourceId": "sp-url-valid-then-toolong", "description": "PUT SearchParameter/fhir262-sp-urlupdate again, this time with a 129-character url" } },
+        { "operation": { "type": { "code": "update" }, "url": "SearchParameter/ignixa-sp-urlupdate", "sourceId": "sp-url-valid-then-toolong", "description": "PUT SearchParameter/ignixa-sp-urlupdate again, this time with a 129-character url" } },
         { "assert": { "description": "Should return HTTP 400 Bad Request (warningOnly: the 128-character url cap is an MS FHIR Server-specific implementation limit, not a universal FHIR R4 requirement)", "response": "bad", "warningOnly": true } }
       ]
     }
   ],
   "teardown": {
     "action": [
-      { "operation": { "type": { "code": "delete" }, "url": "SearchParameter/fhir262-sp-badsyntax", "description": "Teardown: delete fhir262-sp-badsyntax (expected to be a no-op; the create should have been rejected)" } },
-      { "operation": { "type": { "code": "delete" }, "url": "SearchParameter/fhir262-sp-wrongproperty", "description": "Teardown: delete fhir262-sp-wrongproperty (expected to be a no-op; the create should have been rejected)" } },
-      { "operation": { "type": { "code": "delete" }, "url": "SearchParameter/fhir262-sp-invalidbase", "description": "Teardown: delete fhir262-sp-invalidbase (expected to be a no-op; the create should have been rejected)" } },
-      { "operation": { "type": { "code": "delete" }, "url": "SearchParameter/fhir262-sp-invalidtype", "description": "Teardown: delete fhir262-sp-invalidtype (expected to be a no-op; the create should have been rejected)" } },
-      { "operation": { "type": { "code": "delete" }, "url": "SearchParameter/fhir262-sp-missingbase", "description": "Teardown: delete fhir262-sp-missingbase (expected to be a no-op; the create should have been rejected)" } },
-      { "operation": { "type": { "code": "delete" }, "url": "SearchParameter/fhir262-sp-missingexpression", "description": "Teardown: delete fhir262-sp-missingexpression (expected to be a no-op; the create should have been rejected)" } },
-      { "operation": { "type": { "code": "delete" }, "url": "SearchParameter/fhir262-sp-missingtype", "description": "Teardown: delete fhir262-sp-missingtype (expected to be a no-op; the create should have been rejected)" } },
-      { "operation": { "type": { "code": "delete" }, "url": "SearchParameter/fhir262-sp-unsupportedtype", "description": "Teardown: delete fhir262-sp-unsupportedtype (expected to be a no-op; the create should have been rejected)" } },
-      { "operation": { "type": { "code": "delete" }, "url": "SearchParameter/fhir262-sp-urltoolong", "description": "Teardown: delete fhir262-sp-urltoolong (only present if this server does not enforce the 128-character url cap)" } },
-      { "operation": { "type": { "code": "delete" }, "url": "SearchParameter/fhir262-sp-urlupdate", "description": "Teardown: delete fhir262-sp-urlupdate (only present if this server supports custom SearchParameter registration)" } }
+      { "operation": { "type": { "code": "delete" }, "url": "SearchParameter/ignixa-sp-badsyntax", "description": "Teardown: delete ignixa-sp-badsyntax (expected to be a no-op; the create should have been rejected)" } },
+      { "operation": { "type": { "code": "delete" }, "url": "SearchParameter/ignixa-sp-wrongproperty", "description": "Teardown: delete ignixa-sp-wrongproperty (expected to be a no-op; the create should have been rejected)" } },
+      { "operation": { "type": { "code": "delete" }, "url": "SearchParameter/ignixa-sp-invalidbase", "description": "Teardown: delete ignixa-sp-invalidbase (expected to be a no-op; the create should have been rejected)" } },
+      { "operation": { "type": { "code": "delete" }, "url": "SearchParameter/ignixa-sp-invalidtype", "description": "Teardown: delete ignixa-sp-invalidtype (expected to be a no-op; the create should have been rejected)" } },
+      { "operation": { "type": { "code": "delete" }, "url": "SearchParameter/ignixa-sp-missingbase", "description": "Teardown: delete ignixa-sp-missingbase (expected to be a no-op; the create should have been rejected)" } },
+      { "operation": { "type": { "code": "delete" }, "url": "SearchParameter/ignixa-sp-missingexpression", "description": "Teardown: delete ignixa-sp-missingexpression (expected to be a no-op; the create should have been rejected)" } },
+      { "operation": { "type": { "code": "delete" }, "url": "SearchParameter/ignixa-sp-missingtype", "description": "Teardown: delete ignixa-sp-missingtype (expected to be a no-op; the create should have been rejected)" } },
+      { "operation": { "type": { "code": "delete" }, "url": "SearchParameter/ignixa-sp-unsupportedtype", "description": "Teardown: delete ignixa-sp-unsupportedtype (expected to be a no-op; the create should have been rejected)" } },
+      { "operation": { "type": { "code": "delete" }, "url": "SearchParameter/ignixa-sp-urltoolong", "description": "Teardown: delete ignixa-sp-urltoolong (only present if this server does not enforce the 128-character url cap)" } },
+      { "operation": { "type": { "code": "delete" }, "url": "SearchParameter/ignixa-sp-urlupdate", "description": "Teardown: delete ignixa-sp-urlupdate (only present if this server supports custom SearchParameter registration)" } }
     ]
   }
 }

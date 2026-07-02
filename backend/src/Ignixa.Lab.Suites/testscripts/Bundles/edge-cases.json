@@ -34,21 +34,21 @@
           {
             "resource": {
               "resourceType": "Patient",
-              "id": "fhir262-edge-shared-id",
+              "id": "ignixa-edge-shared-id",
               "identifier": [{ "system": "http://ignixa.io/testscript/suite/bundle-edge", "value": "EDGE-SHARED" }],
               "name": [{ "family": "Edge", "given": ["Shared"] }]
             },
-            "request": { "method": "PUT", "url": "Patient/fhir262-edge-shared-id" }
+            "request": { "method": "PUT", "url": "Patient/ignixa-edge-shared-id" }
           },
           {
             "resource": {
               "resourceType": "Observation",
-              "id": "fhir262-edge-shared-id",
+              "id": "ignixa-edge-shared-id",
               "identifier": [{ "system": "http://ignixa.io/testscript/suite/bundle-edge", "value": "EDGE-SHARED" }],
               "status": "final",
               "code": { "coding": [{ "system": "http://loinc.org", "code": "8310-5", "display": "Body temperature" }] }
             },
-            "request": { "method": "PUT", "url": "Observation/fhir262-edge-shared-id" }
+            "request": { "method": "PUT", "url": "Observation/ignixa-edge-shared-id" }
           }
         ]
       }
@@ -59,7 +59,7 @@
       "autodelete": false,
       "resource": {
         "resourceType": "Patient",
-        "id": "fhir262-edge-hist-p1",
+        "id": "ignixa-edge-hist-p1",
         "identifier": [{ "system": "http://ignixa.io/testscript/suite/bundle-edge", "value": "EDGE-HIST" }],
         "name": [{ "family": "Edge", "given": ["History"] }]
       }
@@ -72,15 +72,15 @@
         "resourceType": "Bundle",
         "type": "batch",
         "entry": [
-          { "request": { "method": "GET", "url": "Patient/fhir262-edge-hist-p1/_history" } },
-          { "request": { "method": "GET", "url": "Patient/fhir262-edge-hist-p1/_history/1" } }
+          { "request": { "method": "GET", "url": "Patient/ignixa-edge-hist-p1/_history" } },
+          { "request": { "method": "GET", "url": "Patient/ignixa-edge-hist-p1/_history/1" } }
         ]
       }
     }
   ],
   "setup": {
     "action": [
-      { "operation": { "type": { "code": "update" }, "url": "Patient/fhir262-edge-hist-p1", "sourceId": "hist-patient-v1", "description": "PUT Patient/fhir262-edge-hist-p1 (client id) to deterministically create version 1 before the _history bundle test runs" } }
+      { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-edge-hist-p1", "sourceId": "hist-patient-v1", "description": "PUT Patient/ignixa-edge-hist-p1 (client id) to deterministically create version 1 before the _history bundle test runs" } }
     ]
   },
   "test": [
@@ -103,10 +103,10 @@
         { "assert": { "description": "Batch submission must return HTTP 200", "response": "okay" } },
         { "assert": { "description": "Response must be a Bundle", "resource": "Bundle" } },
         { "assert": { "description": "Response Bundle must contain 2 entries", "expression": "entry.count() = 2" } },
-        { "assert": { "description": "Patient/fhir262-edge-shared-id entry must succeed with a 2xx status", "expression": "entry[0].response.status.startsWith('2')" } },
-        { "assert": { "description": "Observation/fhir262-edge-shared-id entry must also succeed with a 2xx status", "expression": "entry[1].response.status.startsWith('2')" } },
-        { "assert": { "description": "First entry's resource id must be the shared id", "expression": "entry[0].resource.id", "value": "fhir262-edge-shared-id", "operator": "equals" } },
-        { "assert": { "description": "Second entry's resource id must also be the shared id", "expression": "entry[1].resource.id", "value": "fhir262-edge-shared-id", "operator": "equals" } }
+        { "assert": { "description": "Patient/ignixa-edge-shared-id entry must succeed with a 2xx status", "expression": "entry[0].response.status.startsWith('2')" } },
+        { "assert": { "description": "Observation/ignixa-edge-shared-id entry must also succeed with a 2xx status", "expression": "entry[1].response.status.startsWith('2')" } },
+        { "assert": { "description": "First entry's resource id must be the shared id", "expression": "entry[0].resource.id", "value": "ignixa-edge-shared-id", "operator": "equals" } },
+        { "assert": { "description": "Second entry's resource id must also be the shared id", "expression": "entry[1].resource.id", "value": "ignixa-edge-shared-id", "operator": "equals" } }
       ]
     },
     {
@@ -114,14 +114,14 @@
       "description": "GET both the Patient and Observation created with the shared id; each must return its own correct resource type, proving ids are scoped per resource type.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
-        { "operation": { "type": { "code": "read" }, "url": "Patient/fhir262-edge-shared-id", "responseId": "read-shared-patient", "description": "GET /Patient/fhir262-edge-shared-id" } },
+        { "operation": { "type": { "code": "read" }, "url": "Patient/ignixa-edge-shared-id", "responseId": "read-shared-patient", "description": "GET /Patient/ignixa-edge-shared-id" } },
         { "assert": { "description": "Read must return HTTP 200", "response": "okay" } },
         { "assert": { "description": "Response must be a Patient", "resource": "Patient" } },
-        { "assert": { "description": "Returned Patient id must be the shared id", "expression": "Patient.id", "value": "fhir262-edge-shared-id", "operator": "equals" } },
-        { "operation": { "type": { "code": "read" }, "url": "Observation/fhir262-edge-shared-id", "responseId": "read-shared-observation", "description": "GET /Observation/fhir262-edge-shared-id" } },
+        { "assert": { "description": "Returned Patient id must be the shared id", "expression": "Patient.id", "value": "ignixa-edge-shared-id", "operator": "equals" } },
+        { "operation": { "type": { "code": "read" }, "url": "Observation/ignixa-edge-shared-id", "responseId": "read-shared-observation", "description": "GET /Observation/ignixa-edge-shared-id" } },
         { "assert": { "description": "Read must return HTTP 200", "response": "okay" } },
         { "assert": { "description": "Response must be an Observation", "resource": "Observation" } },
-        { "assert": { "description": "Returned Observation id must be the shared id", "expression": "Observation.id", "value": "fhir262-edge-shared-id", "operator": "equals" } }
+        { "assert": { "description": "Returned Observation id must be the shared id", "expression": "Observation.id", "value": "ignixa-edge-shared-id", "operator": "equals" } }
       ]
     },
     {
@@ -136,15 +136,15 @@
         { "assert": { "description": "The _history entry must succeed with a 2xx status", "expression": "entry[0].response.status.startsWith('2')" } },
         { "assert": { "description": "The _history/1 entry must succeed with a 2xx status", "expression": "entry[1].response.status.startsWith('2')" } },
         { "assert": { "description": "The _history entry's embedded resource should itself be a history-type Bundle (warningOnly: nested Bundle-type resolution may vary by server)", "expression": "entry[0].resource.type = 'history'", "warningOnly": true } },
-        { "assert": { "description": "The _history/1 entry's embedded resource must be the version-1 Patient", "expression": "entry[1].resource.id", "value": "fhir262-edge-hist-p1", "operator": "equals" } }
+        { "assert": { "description": "The _history/1 entry's embedded resource must be the version-1 Patient", "expression": "entry[1].resource.id", "value": "ignixa-edge-hist-p1", "operator": "equals" } }
       ]
     }
   ],
   "teardown": {
     "action": [
-      { "operation": { "type": { "code": "delete" }, "url": "Patient/fhir262-edge-shared-id", "description": "Teardown: delete shared-id Patient" } },
-      { "operation": { "type": { "code": "delete" }, "url": "Observation/fhir262-edge-shared-id", "description": "Teardown: delete shared-id Observation" } },
-      { "operation": { "type": { "code": "delete" }, "url": "Patient/fhir262-edge-hist-p1", "description": "Teardown: delete the _history test Patient" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/ignixa-edge-shared-id", "description": "Teardown: delete shared-id Patient" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Observation/ignixa-edge-shared-id", "description": "Teardown: delete shared-id Observation" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/ignixa-edge-hist-p1", "description": "Teardown: delete the _history test Patient" } },
       { "operation": { "type": { "code": "delete" }, "url": "Patient?identifier=http://ignixa.io/testscript/suite/bundle-edge|EDGE-INVALIDTYPE", "description": "Teardown: defensive conditional delete in case a lenient server processed the invalid-type Bundle" } }
     ]
   }

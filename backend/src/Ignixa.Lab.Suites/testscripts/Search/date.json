@@ -11,7 +11,7 @@
       "resource": {
         "resourceType": "Observation",
         "status": "final",
-        "code": { "coding": [{ "system": "http://ignixa.io/testscript/suite/date", "code": "fhir262-date-test" }] },
+        "code": { "coding": [{ "system": "http://ignixa.io/testscript/suite/date", "code": "ignixa-date-test" }] },
         "identifier": [{ "system": "http://ignixa.io/testscript/suite/date", "value": "DATE-OBS-0" }],
         "effectiveDateTime": "1979-12-31"
       }
@@ -23,7 +23,7 @@
       "resource": {
         "resourceType": "Observation",
         "status": "final",
-        "code": { "coding": [{ "system": "http://ignixa.io/testscript/suite/date", "code": "fhir262-date-test" }] },
+        "code": { "coding": [{ "system": "http://ignixa.io/testscript/suite/date", "code": "ignixa-date-test" }] },
         "identifier": [{ "system": "http://ignixa.io/testscript/suite/date", "value": "DATE-OBS-1" }],
         "effectiveDateTime": "1980"
       }
@@ -35,7 +35,7 @@
       "resource": {
         "resourceType": "Observation",
         "status": "final",
-        "code": { "coding": [{ "system": "http://ignixa.io/testscript/suite/date", "code": "fhir262-date-test" }] },
+        "code": { "coding": [{ "system": "http://ignixa.io/testscript/suite/date", "code": "ignixa-date-test" }] },
         "identifier": [{ "system": "http://ignixa.io/testscript/suite/date", "value": "DATE-OBS-2" }],
         "effectiveDateTime": "1980-05"
       }
@@ -47,7 +47,7 @@
       "resource": {
         "resourceType": "Observation",
         "status": "final",
-        "code": { "coding": [{ "system": "http://ignixa.io/testscript/suite/date", "code": "fhir262-date-test" }] },
+        "code": { "coding": [{ "system": "http://ignixa.io/testscript/suite/date", "code": "ignixa-date-test" }] },
         "identifier": [{ "system": "http://ignixa.io/testscript/suite/date", "value": "DATE-OBS-3" }],
         "effectiveDateTime": "1980-05-11"
       }
@@ -59,7 +59,7 @@
       "resource": {
         "resourceType": "Observation",
         "status": "final",
-        "code": { "coding": [{ "system": "http://ignixa.io/testscript/suite/date", "code": "fhir262-date-test" }] },
+        "code": { "coding": [{ "system": "http://ignixa.io/testscript/suite/date", "code": "ignixa-date-test" }] },
         "identifier": [{ "system": "http://ignixa.io/testscript/suite/date", "value": "DATE-OBS-4" }],
         "effectiveDateTime": "1980-05-11T16:32:15"
       }
@@ -71,7 +71,7 @@
       "resource": {
         "resourceType": "Observation",
         "status": "final",
-        "code": { "coding": [{ "system": "http://ignixa.io/testscript/suite/date", "code": "fhir262-date-test" }] },
+        "code": { "coding": [{ "system": "http://ignixa.io/testscript/suite/date", "code": "ignixa-date-test" }] },
         "identifier": [{ "system": "http://ignixa.io/testscript/suite/date", "value": "DATE-OBS-5" }],
         "effectiveDateTime": "1980-05-11T16:32:15.500"
       }
@@ -83,7 +83,7 @@
       "resource": {
         "resourceType": "Observation",
         "status": "final",
-        "code": { "coding": [{ "system": "http://ignixa.io/testscript/suite/date", "code": "fhir262-date-test" }] },
+        "code": { "coding": [{ "system": "http://ignixa.io/testscript/suite/date", "code": "ignixa-date-test" }] },
         "identifier": [{ "system": "http://ignixa.io/testscript/suite/date", "value": "DATE-OBS-6" }],
         "effectiveDateTime": "1981-01-01"
       }
@@ -95,7 +95,7 @@
       "resource": {
         "resourceType": "Observation",
         "status": "final",
-        "code": { "coding": [{ "system": "http://ignixa.io/testscript/suite/date", "code": "fhir262-date-test" }] },
+        "code": { "coding": [{ "system": "http://ignixa.io/testscript/suite/date", "code": "ignixa-date-test" }] },
         "identifier": [{ "system": "http://ignixa.io/testscript/suite/date", "value": "DATE-OBS-7" }],
         "effectivePeriod": { "start": "1980-05-16", "end": "1980-05-17" }
       }
@@ -179,7 +179,7 @@
       "description": "Two repeated `date` params (gt1980-05-10 and lt1980-05-12) are ANDed together, matching only obs-1 through obs-5 and excluding obs-0, obs-6, and obs-7.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
-        { "operation": { "type": { "code": "search" }, "resource": "Observation", "params": "?code=fhir262-date-test&date=gt1980-05-10&date=lt1980-05-12", "responseId": "and-range-response", "description": "GET /Observation?date=gt1980-05-10&date=lt1980-05-12" } },
+        { "operation": { "type": { "code": "search" }, "resource": "Observation", "params": "?code=ignixa-date-test&date=gt1980-05-10&date=lt1980-05-12", "responseId": "and-range-response", "description": "GET /Observation?date=gt1980-05-10&date=lt1980-05-12" } },
         { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
         { "assert": { "description": "Response must be a Bundle", "resource": "Bundle" } },
         { "assert": { "description": "Must include obs-1 (1980)", "expression": "entry.where(resource.id = '${obs1Id}').exists()" } },
@@ -197,7 +197,7 @@
       "description": "An instant-precision date search must match any Observation whose date/period contains that instant, including a Period-valued effectivePeriod (obs-7), not just single dateTime values.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
-        { "operation": { "type": { "code": "search" }, "resource": "Observation", "params": "?code=fhir262-date-test&date=1980-05-16T16:32:15.500", "responseId": "period-match-response", "description": "GET /Observation?date=1980-05-16T16:32:15.500" } },
+        { "operation": { "type": { "code": "search" }, "resource": "Observation", "params": "?code=ignixa-date-test&date=1980-05-16T16:32:15.500", "responseId": "period-match-response", "description": "GET /Observation?date=1980-05-16T16:32:15.500" } },
         { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
         { "assert": { "description": "Response must be a Bundle", "resource": "Bundle" } },
         { "assert": { "description": "Must include obs-1 (year 1980 contains the instant)", "expression": "entry.where(resource.id = '${obs1Id}').exists()" } },

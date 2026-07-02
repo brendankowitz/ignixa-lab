@@ -12,8 +12,8 @@
         "resourceType": "Observation",
         "status": "final",
         "identifier": [{ "system": "http://ignixa.io/testscript/suite/canonical", "value": "CANONICAL-V1" }],
-        "code": { "coding": [{ "system": "http://ignixa.io/testscript/suite/canonical", "code": "fhir262-canonical-test" }] },
-        "meta": { "profile": ["http://ignixa.io/tests/StructureDefinition/fhir262-canonical-lab|1#fragment"] }
+        "code": { "coding": [{ "system": "http://ignixa.io/testscript/suite/canonical", "code": "ignixa-canonical-test" }] },
+        "meta": { "profile": ["http://ignixa.io/tests/StructureDefinition/ignixa-canonical-lab|1#fragment"] }
       }
     },
     {
@@ -24,8 +24,8 @@
         "resourceType": "Observation",
         "status": "final",
         "identifier": [{ "system": "http://ignixa.io/testscript/suite/canonical", "value": "CANONICAL-V2" }],
-        "code": { "coding": [{ "system": "http://ignixa.io/testscript/suite/canonical", "code": "fhir262-canonical-test" }] },
-        "meta": { "profile": ["http://ignixa.io/tests/StructureDefinition/fhir262-canonical-lab|2"] }
+        "code": { "coding": [{ "system": "http://ignixa.io/testscript/suite/canonical", "code": "ignixa-canonical-test" }] },
+        "meta": { "profile": ["http://ignixa.io/tests/StructureDefinition/ignixa-canonical-lab|2"] }
       }
     },
     {
@@ -36,11 +36,11 @@
         "resourceType": "Observation",
         "status": "final",
         "identifier": [{ "system": "http://ignixa.io/testscript/suite/canonical", "value": "CANONICAL-ALT" }],
-        "code": { "coding": [{ "system": "http://ignixa.io/testscript/suite/canonical", "code": "fhir262-canonical-test" }] },
+        "code": { "coding": [{ "system": "http://ignixa.io/testscript/suite/canonical", "code": "ignixa-canonical-test" }] },
         "meta": {
           "profile": [
-            "http://ignixa.io/tests/StructureDefinition/fhir262-canonical-lab-alt",
-            "http://ignixa.io/tests/StructureDefinition/fhir262-canonical-lab|1"
+            "http://ignixa.io/tests/StructureDefinition/ignixa-canonical-lab-alt",
+            "http://ignixa.io/tests/StructureDefinition/ignixa-canonical-lab|1"
           ]
         }
       }
@@ -64,7 +64,7 @@
       "description": "An exact full-canonical search (uri+version+fragment) against obs-profile-v1 typically finds nothing, since version/fragment are usually stripped before indexing (warningOnly).",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
-        { "operation": { "type": { "code": "search" }, "resource": "Observation", "params": "?_profile=http://ignixa.io/tests/StructureDefinition/fhir262-canonical-lab|1%23fragment&_count=50", "responseId": "canonical-full-response", "description": "GET /Observation?_profile=<uri>|1%23fragment" } },
+        { "operation": { "type": { "code": "search" }, "resource": "Observation", "params": "?_profile=http://ignixa.io/tests/StructureDefinition/ignixa-canonical-lab|1%23fragment&_count=50", "responseId": "canonical-full-response", "description": "GET /Observation?_profile=<uri>|1%23fragment" } },
         { "assert": { "description": "Search must return HTTP 200 (or 400 if _profile is not a supported search parameter on this server)", "response": "okay", "warningOnly": true } },
         { "assert": { "description": "Response should be a Bundle", "resource": "Bundle", "warningOnly": true } },
         { "assert": { "description": "Should find no matches, since canonical version+fragment components are typically stripped before indexing (warningOnly: canonical-stripping behavior is implementation-defined, and STU3 servers may retain an exact match instead)", "expression": "entry.exists()", "value": "false", "operator": "equals", "warningOnly": true } }
@@ -75,7 +75,7 @@
       "description": "A bare canonical uri search (no version/fragment) should match all three fixtures that reference that uri at any version (warningOnly, since canonical-stripping behavior is implementation-defined).",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
-        { "operation": { "type": { "code": "search" }, "resource": "Observation", "params": "?_profile=http://ignixa.io/tests/StructureDefinition/fhir262-canonical-lab&_count=50", "responseId": "canonical-bare-response", "description": "GET /Observation?_profile=<uri>" } },
+        { "operation": { "type": { "code": "search" }, "resource": "Observation", "params": "?_profile=http://ignixa.io/tests/StructureDefinition/ignixa-canonical-lab&_count=50", "responseId": "canonical-bare-response", "description": "GET /Observation?_profile=<uri>" } },
         { "assert": { "description": "Search must return HTTP 200 (or 400 if _profile is not a supported search parameter on this server)", "response": "okay", "warningOnly": true } },
         { "assert": { "description": "Response should be a Bundle", "resource": "Bundle", "warningOnly": true } },
         { "assert": { "description": "Should include obs-profile-v1 (warningOnly: canonical-stripping behavior is implementation-defined)", "expression": "entry.where(resource.id = '${profileV1Id}').exists()", "warningOnly": true } },
@@ -88,7 +88,7 @@
       "description": "A canonical uri+version (no fragment) search against obs-profile-v2 typically finds nothing, since the version component is usually stripped before indexing (warningOnly).",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
-        { "operation": { "type": { "code": "search" }, "resource": "Observation", "params": "?_profile=http://ignixa.io/tests/StructureDefinition/fhir262-canonical-lab|2&_count=50", "responseId": "canonical-version-response", "description": "GET /Observation?_profile=<uri>|2" } },
+        { "operation": { "type": { "code": "search" }, "resource": "Observation", "params": "?_profile=http://ignixa.io/tests/StructureDefinition/ignixa-canonical-lab|2&_count=50", "responseId": "canonical-version-response", "description": "GET /Observation?_profile=<uri>|2" } },
         { "assert": { "description": "Search must return HTTP 200 (or 400 if _profile is not a supported search parameter on this server)", "response": "okay", "warningOnly": true } },
         { "assert": { "description": "Response should be a Bundle", "resource": "Bundle", "warningOnly": true } },
         { "assert": { "description": "Should find no matches, since the canonical version component is typically stripped before indexing (warningOnly: canonical-stripping behavior is implementation-defined, and STU3 servers may retain an exact match instead)", "expression": "entry.exists()", "value": "false", "operator": "equals", "warningOnly": true } }
@@ -99,7 +99,7 @@
       "description": "Searching with the bare alternate uri should match only obs-profile-alt, the sole fixture whose meta.profile includes that alternate uri.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
-        { "operation": { "type": { "code": "search" }, "resource": "Observation", "params": "?_profile=http://ignixa.io/tests/StructureDefinition/fhir262-canonical-lab-alt&_count=50", "responseId": "canonical-alt-response", "description": "GET /Observation?_profile=<alternate uri>" } },
+        { "operation": { "type": { "code": "search" }, "resource": "Observation", "params": "?_profile=http://ignixa.io/tests/StructureDefinition/ignixa-canonical-lab-alt&_count=50", "responseId": "canonical-alt-response", "description": "GET /Observation?_profile=<alternate uri>" } },
         { "assert": { "description": "Search must return HTTP 200 (or 400 if _profile is not a supported search parameter on this server)", "response": "okay", "warningOnly": true } },
         { "assert": { "description": "Response should be a Bundle", "resource": "Bundle", "warningOnly": true } },
         { "assert": { "description": "Should include obs-profile-alt (warningOnly: _profile search support is optional)", "expression": "entry.where(resource.id = '${profileAltId}').exists()", "warningOnly": true } },

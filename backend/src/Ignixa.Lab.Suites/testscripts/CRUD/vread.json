@@ -53,7 +53,7 @@
       "name": "vread of a never-existing id and version returns 404",
       "description": "vread of an id that was never assigned by the server must return 404 Not Found.",
       "action": [
-        { "operation": { "type": { "code": "vread" }, "url": "Observation/fhir262-vread-never-existed/_history/1", "responseId": "vread-missing-id-response", "description": "vread an id that was never created" } },
+        { "operation": { "type": { "code": "vread" }, "url": "Observation/ignixa-vread-never-existed/_history/1", "responseId": "vread-missing-id-response", "description": "vread an id that was never created" } },
         { "assert": { "description": "Server must return 404 Not Found", "response": "notFound" } }
       ]
     },

@@ -21,7 +21,7 @@
           {
             "resource": {
               "resourceType": "Patient",
-              "identifier": [{ "system": "http://fhir262/bundle-tx", "value": "BTX-1" }],
+              "identifier": [{ "system": "http://ignixa/bundle-tx", "value": "BTX-1" }],
               "name": [{ "family": "Bundle", "given": ["Alpha"] }]
             },
             "request": { "method": "POST", "url": "Patient" }
@@ -29,7 +29,7 @@
           {
             "resource": {
               "resourceType": "Patient",
-              "identifier": [{ "system": "http://fhir262/bundle-tx", "value": "BTX-2" }],
+              "identifier": [{ "system": "http://ignixa/bundle-tx", "value": "BTX-2" }],
               "name": [{ "family": "Bundle", "given": ["Beta"] }]
             },
             "request": { "method": "POST", "url": "Patient" }
@@ -37,7 +37,7 @@
           {
             "resource": {
               "resourceType": "Patient",
-              "identifier": [{ "system": "http://fhir262/bundle-tx", "value": "BTX-3" }],
+              "identifier": [{ "system": "http://ignixa/bundle-tx", "value": "BTX-3" }],
               "name": [{ "family": "Bundle", "given": ["Gamma"] }]
             },
             "request": { "method": "POST", "url": "Patient" }
@@ -56,13 +56,13 @@
           {
             "resource": {
               "resourceType": "Patient",
-              "identifier": [{ "system": "http://fhir262/bundle-tx", "value": "BTX-1" }],
+              "identifier": [{ "system": "http://ignixa/bundle-tx", "value": "BTX-1" }],
               "name": [{ "family": "Bundle", "given": ["Alpha"] }]
             },
             "request": {
               "method": "POST",
               "url": "Patient",
-              "ifNoneExist": "identifier=http://fhir262/bundle-tx|BTX-1"
+              "ifNoneExist": "identifier=http://ignixa/bundle-tx|BTX-1"
             }
           }
         ]
@@ -132,7 +132,7 @@
       "description": "After the transaction commits, a search by one of the bundle identifiers must return at least one match, proving the resources were persisted.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
-        { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?identifier=http://fhir262/bundle-tx|BTX-1", "responseId": "tx-search", "description": "GET /Patient?identifier=http://fhir262/bundle-tx|BTX-1" } },
+        { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?identifier=http://ignixa/bundle-tx|BTX-1", "responseId": "tx-search", "description": "GET /Patient?identifier=http://ignixa/bundle-tx|BTX-1" } },
         { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
         { "assert": { "description": "Response must be a Bundle", "resource": "Bundle" } },
         { "assert": { "description": "At least one BTX-1 Patient must be found", "expression": "entry.count() >= 1" } }
@@ -166,9 +166,9 @@
   ],
   "teardown": {
     "action": [
-      { "operation": { "type": { "code": "delete" }, "url": "Patient?identifier=http://fhir262/bundle-tx|BTX-1", "description": "Teardown: conditional delete BTX-1" } },
-      { "operation": { "type": { "code": "delete" }, "url": "Patient?identifier=http://fhir262/bundle-tx|BTX-2", "description": "Teardown: conditional delete BTX-2" } },
-      { "operation": { "type": { "code": "delete" }, "url": "Patient?identifier=http://fhir262/bundle-tx|BTX-3", "description": "Teardown: conditional delete BTX-3" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient?identifier=http://ignixa/bundle-tx|BTX-1", "description": "Teardown: conditional delete BTX-1" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient?identifier=http://ignixa/bundle-tx|BTX-2", "description": "Teardown: conditional delete BTX-2" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient?identifier=http://ignixa/bundle-tx|BTX-3", "description": "Teardown: conditional delete BTX-3" } },
       { "operation": { "type": { "code": "delete" }, "url": "Patient/${txUuidPatientId}", "description": "Teardown: delete the urn:uuid-created Patient by its server-assigned id" } },
       { "operation": { "type": { "code": "delete" }, "url": "Observation/${txUuidObservationId}", "description": "Teardown: delete the urn:uuid-created Observation by its server-assigned id" } }
     ]

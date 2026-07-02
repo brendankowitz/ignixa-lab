@@ -10,7 +10,7 @@
       "autodelete": false,
       "resource": {
         "resourceType": "Patient",
-        "id": "fhir262-msp-past",
+        "id": "ignixa-msp-past",
         "identifier": [{ "system": "http://ignixa.io/testscript/suite/ms-param", "value": "msp-past" }],
         "meta": {
           "extension": [
@@ -28,7 +28,7 @@
       "autodelete": false,
       "resource": {
         "resourceType": "Patient",
-        "id": "fhir262-msp-future",
+        "id": "ignixa-msp-future",
         "identifier": [{ "system": "http://ignixa.io/testscript/suite/ms-param", "value": "msp-future" }],
         "meta": {
           "extension": [
@@ -43,8 +43,8 @@
   ],
   "setup": {
     "action": [
-      { "operation": { "type": { "code": "update" }, "url": "Patient/fhir262-msp-past", "sourceId": "patient-past", "description": "PUT Patient with meta.extension expiry-date = 2000-01-01 (in the past)" } },
-      { "operation": { "type": { "code": "update" }, "url": "Patient/fhir262-msp-future", "sourceId": "patient-future", "description": "PUT Patient with meta.extension expiry-date = 2999-01-01 (in the future)" } }
+      { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-msp-past", "sourceId": "patient-past", "description": "PUT Patient with meta.extension expiry-date = 2000-01-01 (in the past)" } },
+      { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-msp-future", "sourceId": "patient-future", "description": "PUT Patient with meta.extension expiry-date = 2999-01-01 (in the future)" } }
     ]
   },
   "test": [
@@ -67,8 +67,8 @@
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?_expiryDate=lt2025&identifier=http://ignixa.io/testscript/suite/ms-param|&_count=100", "responseId": "expiry-lt-response", "description": "GET /Patient?_expiryDate=lt2025" } },
         { "assert": { "description": "Search should return HTTP 200 (or 400 if _expiryDate is unrecognized)", "response": "okay", "warningOnly": true } },
         { "assert": { "description": "Response should be a Bundle", "resource": "Bundle", "warningOnly": true } },
-        { "assert": { "description": "Should include the past-expiry patient", "expression": "entry.where(resource.id = 'fhir262-msp-past').exists()", "warningOnly": true } },
-        { "assert": { "description": "Should NOT include the future-expiry patient", "expression": "entry.where(resource.id = 'fhir262-msp-future').exists()", "value": "false", "operator": "equals", "warningOnly": true } }
+        { "assert": { "description": "Should include the past-expiry patient", "expression": "entry.where(resource.id = 'ignixa-msp-past').exists()", "warningOnly": true } },
+        { "assert": { "description": "Should NOT include the future-expiry patient", "expression": "entry.where(resource.id = 'ignixa-msp-future').exists()", "value": "false", "operator": "equals", "warningOnly": true } }
       ]
     },
     {
@@ -79,8 +79,8 @@
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?_expiryDate=gt2025&identifier=http://ignixa.io/testscript/suite/ms-param|&_count=100", "responseId": "expiry-gt-response", "description": "GET /Patient?_expiryDate=gt2025" } },
         { "assert": { "description": "Search should return HTTP 200 (or 400 if _expiryDate is unrecognized)", "response": "okay", "warningOnly": true } },
         { "assert": { "description": "Response should be a Bundle", "resource": "Bundle", "warningOnly": true } },
-        { "assert": { "description": "Should include the future-expiry patient", "expression": "entry.where(resource.id = 'fhir262-msp-future').exists()", "warningOnly": true } },
-        { "assert": { "description": "Should NOT include the past-expiry patient", "expression": "entry.where(resource.id = 'fhir262-msp-past').exists()", "value": "false", "operator": "equals", "warningOnly": true } }
+        { "assert": { "description": "Should include the future-expiry patient", "expression": "entry.where(resource.id = 'ignixa-msp-future').exists()", "warningOnly": true } },
+        { "assert": { "description": "Should NOT include the past-expiry patient", "expression": "entry.where(resource.id = 'ignixa-msp-past').exists()", "value": "false", "operator": "equals", "warningOnly": true } }
       ]
     },
     {
@@ -91,15 +91,15 @@
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/ms-param|&_count=100", "responseId": "baseline-response", "description": "GET /Patient?identifier=http://ignixa.io/testscript/suite/ms-param|" } },
         { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
         { "assert": { "description": "Response must be a Bundle", "resource": "Bundle" } },
-        { "assert": { "description": "Must include the past-expiry patient", "expression": "entry.where(resource.id = 'fhir262-msp-past').exists()" } },
-        { "assert": { "description": "Must include the future-expiry patient", "expression": "entry.where(resource.id = 'fhir262-msp-future').exists()" } }
+        { "assert": { "description": "Must include the past-expiry patient", "expression": "entry.where(resource.id = 'ignixa-msp-past').exists()" } },
+        { "assert": { "description": "Must include the future-expiry patient", "expression": "entry.where(resource.id = 'ignixa-msp-future').exists()" } }
       ]
     }
   ],
   "teardown": {
     "action": [
-      { "operation": { "type": { "code": "delete" }, "url": "Patient/fhir262-msp-past", "description": "Teardown: delete past-expiry patient" } },
-      { "operation": { "type": { "code": "delete" }, "url": "Patient/fhir262-msp-future", "description": "Teardown: delete future-expiry patient" } }
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/ignixa-msp-past", "description": "Teardown: delete past-expiry patient" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/ignixa-msp-future", "description": "Teardown: delete future-expiry patient" } }
     ]
   }
 }
