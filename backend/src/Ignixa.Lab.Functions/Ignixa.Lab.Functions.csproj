@@ -13,7 +13,7 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Ignixa.TestScript" />
     <PackageReference Include="Ignixa.TestScript.FhirFakes" />
-    <PackageReference Include="Ignixa.TestScript.Suites" />
+    <PackageReference Include="IgnixaLab.TestScript.Suites" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" />

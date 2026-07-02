@@ -37,12 +37,12 @@ src/Ignixa.Lab.Functions/
                    EndpointClassifier, ClientIpKeyExtractor — ADR-2608)
   Models/          RunRequest, SuiteDescriptor, CapabilityResponse
   Suites/          SuiteCatalog (reads testscripts/<category>/*.json restored
-                   from the Ignixa.TestScript.Suites package — see Suites below)
+                   from the IgnixaLab.TestScript.Suites package — see Suites below)
   Program.cs       Host + DI wiring
 
 src/Ignixa.Lab.Suites/
   testscripts/     The 12 canonical TestScript suites, packed into the
-                   Ignixa.TestScript.Suites content package (ADR-2607)
+                   IgnixaLab.TestScript.Suites content package (ADR-2607)
 
 test/Ignixa.Lab.Functions.Tests/
   Execution/       TargetUrlValidatorTests, ConformanceReportMapperTests,
@@ -143,7 +143,7 @@ Phase 2 shared-store counter, which is not implemented here.
 ## Suites
 
 The 12 canonical FHIR TestScript suites (`backend/src/Ignixa.Lab.Suites/testscripts/{Bundles,CRUD,Search,Validation}/*.json`)
-are packed into a local NuGet content package, `Ignixa.TestScript.Suites`, by
+are packed into a local NuGet content package, `IgnixaLab.TestScript.Suites`, by
 the `Ignixa.Lab.Suites` project and consumed by `Ignixa.Lab.Functions` (and
 its test project) via `PackageReference`. This is an interim step —
 see [ADR-2607](../docs/features/testscript-suite-sourcing/adr-2607-suite-sourcing.md)
@@ -154,14 +154,14 @@ Because restore needs the package to already exist, it must be packed before
 every restore/build/test:
 
 ```bash
-./backend/pack-suites.ps1                        # -> artifacts/local-feed/Ignixa.TestScript.Suites.0.1.0-local.nupkg
+./backend/pack-suites.ps1                        # -> artifacts/local-feed/IgnixaLab.TestScript.Suites.0.1.0-local.nupkg
 dotnet build Ignixa.Lab.sln -c Release
 dotnet test Ignixa.Lab.sln -c Release
 ```
 
 `nuget.config` adds `artifacts/local-feed` as a package source (alongside
 nuget.org) and `Directory.Packages.props` pins the version. The package ships
-`build/Ignixa.TestScript.Suites.targets`, which MSBuild auto-imports for any
+`build/IgnixaLab.TestScript.Suites.targets`, which MSBuild auto-imports for any
 consumer with the `PackageReference` — it copies the packaged JSONs to the
 consumer's output under `testscripts/`, preserving the category subfolders
 that `SuiteCatalog` reads. Bumping the suites means editing the JSON under

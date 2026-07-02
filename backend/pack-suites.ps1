@@ -1,12 +1,12 @@
 #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-    Packs the local Ignixa.TestScript.Suites content package (ADR-2607) into
+    Packs the local IgnixaLab.TestScript.Suites content package (ADR-2607) into
     the repo-local NuGet feed, ready for restore.
 
 .DESCRIPTION
     Interim step until ignixa-fhir publishes the canonical suites artifact:
-    dotnet restore/build/test expect Ignixa.TestScript.Suites to already exist
+    dotnet restore/build/test expect IgnixaLab.TestScript.Suites to already exist
     in artifacts/local-feed, so this must run before restore. Paths are
     resolved relative to the repo root so it works when invoked from anywhere.
 #>

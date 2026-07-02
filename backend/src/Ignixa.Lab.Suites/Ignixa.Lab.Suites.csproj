@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <IsPackable>true</IsPackable>
-    <PackageId>Ignixa.TestScript.Suites</PackageId>
+    <PackageId>IgnixaLab.TestScript.Suites</PackageId>
     <Version>0.1.0-local</Version>
     <Description>
       Canonical FHIR TestScript suites for the Ignixa Lab backend, packaged as
@@ -17,7 +17,7 @@
 
   <ItemGroup>
     <None Include="testscripts/**/*.json" Pack="true" PackagePath="testscripts/" />
-    <None Include="build/Ignixa.TestScript.Suites.targets" Pack="true" PackagePath="build/" />
+    <None Include="build/IgnixaLab.TestScript.Suites.targets" Pack="true" PackagePath="build/" />
   </ItemGroup>
 
 </Project>

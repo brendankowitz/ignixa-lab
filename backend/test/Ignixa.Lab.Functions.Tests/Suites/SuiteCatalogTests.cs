@@ -147,7 +147,7 @@ public sealed class SuiteCatalogTests : IDisposable
     }
 
     // The following tests exercise the real canonical suites (ADR-2607),
-    // restored from the Ignixa.TestScript.Suites content package into this
+    // restored from the IgnixaLab.TestScript.Suites content package into this
     // project's own output under testscripts/ — not the synthetic scripts
     // written above. They use the default SuitesDirectory (AppContext.BaseDirectory)
     // rather than the temp root the other tests write into.

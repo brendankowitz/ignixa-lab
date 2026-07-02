@@ -18,7 +18,7 @@
       backend/src/Ignixa.Lab.Suites and packed to the local-feed source; will
       be repointed at the upstream ignixa-fhir suites artifact once published.
     -->
-    <PackageVersion Include="Ignixa.TestScript.Suites" Version="0.1.0-local" />
+    <PackageVersion Include="IgnixaLab.TestScript.Suites" Version="0.1.0-local" />
 
     <!-- Azure Functions .NET isolated worker (ASP.NET Core integration) -->
     <PackageVersion Include="Microsoft.Azure.Functions.Worker" Version="2.0.0" />

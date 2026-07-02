@@ -23,7 +23,7 @@
       suites from AppContext.BaseDirectory) needs its own reference to get the
       testscripts/ folder copied into this project's own output (ADR-2607).
     -->
-    <PackageReference Include="Ignixa.TestScript.Suites" />
+    <PackageReference Include="IgnixaLab.TestScript.Suites" />
   </ItemGroup>
 
   <ItemGroup>

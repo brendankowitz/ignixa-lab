@@ -12,7 +12,7 @@ Steps:
    `backend/src/Ignixa.Lab.Suites/testscripts/$1/`. The folder name (`$1`)
    becomes the suite's category; no code change is needed for discovery (see
    `SuiteCatalog`). This is the packaging project for the interim local
-   `Ignixa.TestScript.Suites` content package — see ADR-2607
+   `IgnixaLab.TestScript.Suites` content package — see ADR-2607
    (`docs/features/testscript-suite-sourcing/adr-2607-suite-sourcing.md`).
 2. Give the TestScript a clear `name` and `description` — these surface in
    `GET /api/suites` and the SPA suite picker.
