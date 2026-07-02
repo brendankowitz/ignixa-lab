@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Validation/validate-modes",
-  "description": "$validate operation conformance tests ported from Microsoft.Health.Fhir.Shared.Tests.E2E.Rest.ValidateTests (fhir-server). Covers scenarios not already exercised by Validation/validate-op: validating against a specific 'profile' parameter (both as a query string and as an embedded Parameters 'profile' parameter) for conformant and non-conformant resources, a resourceType mismatch between the request URL and the resource body, a required-element (cardinality) violation on a non-Patient resource type, instance-level $validate via GET for an existing resource id (conformant and non-conformant) and for a missing id (404), and an unresolvable/malformed 'profile' parameter value. Assertions inspect the OperationOutcome for error/fatal issues rather than exact diagnostic text, and profile-enforcement assertions are warningOnly because custom StructureDefinition-based profile validation support varies across FHIR servers.",
+  "description": "$validate conformance tests covering the 'profile' parameter (via query string and via an embedded Parameters parameter), a resourceType mismatch between URL and body, a missing required element on a non-Patient resource, instance-level $validate by id (found and missing), and an unresolvable profile reference (from ValidateTests). Profile-enforcement assertions are warningOnly since custom StructureDefinition-based profile validation support varies across servers.",
   "status": "active",
   "fixture": [
     {
@@ -115,7 +115,7 @@
           "resource": "StructureDefinition",
           "sourceId": "profile-birthdate-required",
           "responseId": "create-profile-response",
-          "description": "Create a custom StructureDefinition profile that constrains Patient.birthDate to 1..1, used by the profile-parameter tests below"
+          "description": "Create a custom StructureDefinition profile requiring Patient.birthDate (1..1)"
         }
       },
       {
@@ -124,7 +124,7 @@
           "resource": "Patient",
           "sourceId": "conformant-patient-birthdate",
           "responseId": "create-conformant-patient-response",
-          "description": "Create a Patient with birthDate set, so instance-level (GET by id) $validate tests have a profile-conformant resource to reference"
+          "description": "Create a profile-conformant Patient (has birthDate) for the GET-by-id tests"
         }
       },
       {
@@ -133,7 +133,7 @@
           "resource": "Patient",
           "sourceId": "nonconformant-patient-no-birthdate",
           "responseId": "create-nonconformant-patient-response",
-          "description": "Create a Patient without birthDate, so instance-level (GET by id) $validate tests have a profile-non-conformant resource to reference"
+          "description": "Create a profile-non-conformant Patient (no birthDate) for the GET-by-id tests"
         }
       }
     ]
@@ -141,7 +141,7 @@
   "test": [
     {
       "name": "type-level $validate: profile-conformant resource accepted (profile via query parameter)",
-      "description": "POST /Patient/$validate?profile=<url> with a raw (non-Parameters-wrapped) Patient that has birthDate set must return an OperationOutcome with no error/fatal issues against the custom profile requiring birthDate.",
+      "description": "POST Patient/$validate?profile=<url> with a conformant Patient (has birthDate) as a raw body; the OperationOutcome must have no error/fatal issues.",
       "action": [
         {
           "operation": {
@@ -160,7 +160,7 @@
     },
     {
       "name": "type-level $validate: profile-conformant resource accepted (profile via Parameters parameter)",
-      "description": "POST /Patient/$validate with a Parameters-wrapped body containing both a 'profile' parameter and a conformant Patient 'resource' parameter must return an OperationOutcome with no error/fatal issues.",
+      "description": "POST Patient/$validate with 'profile' and 'resource' both embedded in a Parameters body; a conformant Patient must produce no error/fatal issues.",
       "action": [
         {
           "operation": {
@@ -177,7 +177,7 @@
     },
     {
       "name": "type-level $validate: profile-non-conformant resource rejected (profile via query parameter)",
-      "description": "POST /Patient/$validate?profile=<url> with a raw Patient missing birthDate must be flagged against the custom profile requiring birthDate (warningOnly: enforcement of custom uploaded profiles varies across FHIR servers).",
+      "description": "POST Patient/$validate?profile=<url> with a Patient missing birthDate; the OperationOutcome should flag an error/fatal issue (warningOnly: custom profile enforcement varies across servers).",
       "action": [
         {
           "operation": {
@@ -195,7 +195,7 @@
     },
     {
       "name": "type-level $validate: profile-non-conformant resource rejected (profile via Parameters parameter)",
-      "description": "POST /Patient/$validate with a Parameters-wrapped body containing a 'profile' parameter and a non-conformant Patient 'resource' parameter should be flagged (warningOnly: custom profile enforcement varies across servers).",
+      "description": "POST Patient/$validate with 'profile' and a non-conformant Patient (missing birthDate) both embedded in Parameters; should be flagged (warningOnly: custom profile enforcement varies across servers).",
       "action": [
         {
           "operation": {
@@ -212,7 +212,7 @@
     },
     {
       "name": "type-level $validate: resourceType in the URL must match resourceType in the body",
-      "description": "POST /Observation/$validate with a Parameters-wrapped Patient resource (resourceType mismatch between URL and body) must return an OperationOutcome reporting at least one error/fatal issue. Ported from GivenAValidateRequest_WhenAnInvalidResourceIsPassedByParameter_ThenADetailedErrorIsReturned.",
+      "description": "POST Observation/$validate with a Patient resource body; the resourceType mismatch between URL and body must produce an error/fatal issue (from ValidateTests).",
       "action": [
         {
           "operation": {
@@ -230,7 +230,7 @@
     },
     {
       "name": "type-level $validate: required element missing on a non-Patient resource (Observation.status)",
-      "description": "POST /Observation/$validate with an Observation missing the required 'status' element (cardinality 1..1) must return an OperationOutcome reporting at least one error/fatal issue. Ported from GivenAValidateRequest_WhenTheResourceIsInvalid_ThenADetailedErrorWithLocationsIsReturned.",
+      "description": "POST Observation/$validate with an Observation missing the required status element; the OperationOutcome must report an error/fatal issue for the missing element (from ValidateTests).",
       "action": [
         {
           "operation": {
@@ -248,7 +248,7 @@
     },
     {
       "name": "instance-level $validate (GET by id): conformant resource passes",
-      "description": "GET /Patient/{id}/$validate?profile=<url> for a stored Patient that conforms to the custom profile must return an OperationOutcome with no error/fatal issues. Ported from GivenAValidateByIdRequest_WhenTheResourceIsValid_ThenAnOkMessageIsReturned.",
+      "description": "GET Patient/{id}/$validate?profile=<url> for a stored, profile-conformant Patient; must return an OperationOutcome with no error/fatal issues (from ValidateTests).",
       "action": [
         {
           "operation": {
@@ -266,7 +266,7 @@
     },
     {
       "name": "instance-level $validate (GET by id): non-conformant resource is rejected",
-      "description": "GET /Patient/{id}/$validate?profile=<url> for a stored Patient that does not conform to the custom profile should be flagged (warningOnly: custom profile enforcement varies across servers). Ported from GivenAValidateByIdRequestWithStricterProfile_WhenRunningValidate_ThenAnErrorShouldBeReturned.",
+      "description": "GET Patient/{id}/$validate?profile=<url> for a stored Patient that violates the profile; should be flagged (warningOnly: custom profile enforcement varies across servers).",
       "action": [
         {
           "operation": {
@@ -283,7 +283,7 @@
     },
     {
       "name": "instance-level $validate (GET by id): non-existent id returns 404",
-      "description": "GET /Patient/{id}/$validate for an id that does not exist on the server must return 404 Not Found. Ported from GivenUnpresentIdRequest_WhenValidateIt_ThenAnErrorShouldBeReturned.",
+      "description": "GET Patient/{id}/$validate for an id that was never created; the server must return 404 Not Found (from ValidateTests).",
       "action": [
         {
           "operation": {
@@ -299,7 +299,7 @@
     },
     {
       "name": "type-level $validate: malformed profile parameter value",
-      "description": "POST /Patient/$validate?profile=<not-a-resolvable-url> with an otherwise-valid Patient. Ported from GivenInvalidProfile_WhenValidateCalled_ThenBadRequestReturned. Marked warningOnly because some servers reject unresolvable profile references with 400 Bad Request while others silently ignore them and validate against the base type.",
+      "description": "POST Patient/$validate?profile=<unresolvable-url> with an otherwise-valid Patient; the server should return 400 Bad Request (warningOnly: some servers ignore unknown profiles instead).",
       "action": [
         {
           "operation": {

@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Bundles/batch",
-  "description": "Bundle type=batch conformance tests, ported from the Microsoft FHIR Server E2E suite (BundleBatchTests.cs). Unlike a transaction, a batch Bundle processes each entry independently: one entry's failure must not abort or roll back the others. POSTs a type=batch Bundle to the FHIR base URL (same POST-to-base-URL mechanism as Bundles/transaction.json — the engine has no dedicated batch operation code, so type.code='batch' is unrecognised by DeriveMethod and falls through to POST, and with no url/resource/params the request URL resolves to the server base). Bundle bodies are static fixtures using either server-assigned ids (plain POST) or a fixed client-supplied id (PUT), per the engine's static-fixture-body constraint.",
+  "description": "Bundle batch (type=batch) conformance tests: independent per-entry processing with no rollback on partial failure, conditional-create idempotency, and rejection of malformed root submissions (from BundleBatchTests.cs).",
   "status": "active",
   "fixture": [
     {
@@ -99,7 +99,7 @@
   "test": [
     {
       "name": "Batch processes every entry independently; a failing entry does not abort the others",
-      "description": "POST a batch Bundle of 4 entries to the base URL: (1) a Patient create, (2) a GET of a deliberately nonexistent Patient (expected to fail with 404), (3) another Patient create, (4) a Patient create-via-PUT with a client-supplied id. Unlike a transaction, the batch must return 200 with all 4 per-entry results present — the 404 in entry 2 must not prevent entries 3 and 4 from succeeding (no all-or-nothing rollback).",
+      "description": "POST a batch Bundle with 4 entries: a Patient create, a GET of a nonexistent Patient (404), another Patient create, and a Patient create-via-PUT. The batch must return 200 with all 4 independent results, and the 404 must not block the remaining entries from succeeding.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "batch" }, "method": "POST", "sourceId": "batch-bundle", "responseId": "batch-response", "description": "POST batch Bundle (create, failing GET, create, PUT) to the base URL" } },
@@ -114,7 +114,7 @@
     },
     {
       "name": "Conditional create (If-None-Exist) inside a batch is idempotent across repeated submissions",
-      "description": "POST a batch Bundle containing a single conditional-create Patient entry twice. The first submission must create the resource (201); resubmitting the identical batch must match the existing resource rather than create a duplicate (200), mirroring the Microsoft FHIR Server's GivenAValidBundle_WhenSubmittingABatchTwiceWithAndWithoutChanges_ThenVersionIsCreatedWhenDataIsChanged scenario.",
+      "description": "Submit the same batch Bundle with a conditional-create Patient entry twice: the first submission must create the resource (201), and resubmitting it must match the existing resource instead of duplicating it (200).",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "batch" }, "method": "POST", "sourceId": "batch-conditional-bundle", "responseId": "batch-cond-response-1", "description": "POST batch Bundle with conditional-create Patient (1st submission)" } },
@@ -127,7 +127,7 @@
     },
     {
       "name": "No rollback: resources from before and after the failing entry both persist",
-      "description": "After the batch in the previous test ran (including its internal 404 failure), independently verify that BATCH-1 (before the failure), BATCH-2 (after the failure), and the client-id BATCH-3 Patient are all persisted, and that the conditional-create BATCH-4 Patient exists exactly once despite being submitted twice.",
+      "description": "Verify that all Patients from the prior batch persisted despite its internal 404 failure, and that the conditionally-created Patient exists exactly once despite being submitted twice.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/bundle-batch|BATCH-1", "responseId": "search-batch1", "description": "GET /Patient?identifier=http://ignixa.io/testscript/suite/bundle-batch|BATCH-1" } },
@@ -146,7 +146,7 @@
     },
     {
       "name": "Posting a non-Bundle resource to the base URL is rejected",
-      "description": "POST a plain Observation (not wrapped in a Bundle) to the base URL, mirroring GivenANonBundleResource_WhenSubmittingABatch_ThenBadRequestIsReturned. The base URL only accepts batch/transaction Bundles, so the server is expected to reject this with 400. Marked warningOnly because non-Bundle-at-root handling is not explicitly mandated by the FHIR spec and some servers may respond with a different error status.",
+      "description": "POST a plain Observation (not wrapped in a Bundle) to the base URL; the server should reject it with 400 since the base URL only accepts batch/transaction Bundles. warningOnly since the exact rejection status isn't spec-mandated.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "batch" }, "method": "POST", "sourceId": "nonbundle-observation", "responseId": "nonbundle-response", "description": "POST a plain Observation (not a Bundle) to the base URL" } },
@@ -155,7 +155,7 @@
     },
     {
       "name": "A Bundle missing the required type element is rejected",
-      "description": "POST a Bundle with no 'type' element to the base URL. The Microsoft FHIR Server returns 405 Method Not Allowed ('Bundle type is not present. Possible values are: transaction or batch'); other conformant servers may instead reject this at structural validation with 400. Both are marked warningOnly since the exact status code for this malformed submission is not spec-mandated.",
+      "description": "POST a Bundle missing the required 'type' element to the base URL; servers may reject it with 405 (Microsoft FHIR Server) or 400 (structural validation) — both asserted as warningOnly since the exact status isn't spec-mandated.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "batch" }, "method": "POST", "sourceId": "typeless-bundle", "responseId": "typeless-response", "description": "POST a Bundle with no type element to the base URL" } },

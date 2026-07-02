@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Search/canonical",
-  "description": "Canonical URI (_profile) search conformance tests ported from fhir-server's CanonicalSearchTests.cs / CanonicalSearchTestFixture.cs. Three Observation fixtures carry distinctive meta.profile canonical references: obs-profile-v1 (uri|1#fragment), obs-profile-v2 (uri|2), and obs-profile-alt (an alternate uri plus uri|1 with no fragment). On R4/R4B/R5, servers commonly strip the version and fragment components from a canonical reference before indexing (Canonical => Uri), so an exact full-canonical search (uri+version+fragment) typically finds nothing, while a bare-uri search matches all resources that reference that uri at any version/fragment. Because _profile support is itself optional (the original suite skips entirely when the server does not advertise _profile as a supported Observation search parameter) and the exact canonical-stripping behavior is implementation-defined, every match/no-match assertion here is warningOnly; only the basic HTTP 200 / Bundle response shape is asserted as a hard requirement. The '#' character is percent-encoded (%23) in the query string per the original test's own comment that ASP.NET otherwise treats it as a URL fragment delimiter, not part of the query.",
+  "description": "`_profile` canonical URI search conformance tests (from CanonicalSearchTests): searches by full canonical (uri+version+fragment), bare uri, and alternate uri against Observation.meta.profile. Canonical version/fragment stripping and `_profile` support itself are implementation-defined, so all match/no-match assertions are warningOnly except the base HTTP 200/Bundle response shape.",
   "status": "active",
   "fixture": [
     {
@@ -61,7 +61,7 @@
   "test": [
     {
       "name": "_profile: full canonical (uri+version+fragment) search",
-      "description": "Searching with the exact full canonical value (uri|1#fragment, '#' percent-encoded as %23) that obs-profile-v1 carries. On R4/R4B/R5, servers commonly strip the version/fragment before indexing (Canonical => Uri), so this exact-match search typically finds nothing.",
+      "description": "An exact full-canonical search (uri+version+fragment) against obs-profile-v1 typically finds nothing, since version/fragment are usually stripped before indexing (warningOnly).",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Observation", "params": "?_profile=http://ignixa.io/tests/StructureDefinition/fhir262-canonical-lab|1%23fragment&_count=50", "responseId": "canonical-full-response", "description": "GET /Observation?_profile=<uri>|1%23fragment" } },
@@ -72,7 +72,7 @@
     },
     {
       "name": "_profile: bare canonical uri search matches all resources referencing that uri at any version/fragment",
-      "description": "Searching with just the bare uri (no version, no fragment) should match obs-profile-v1, obs-profile-v2, and obs-profile-alt (which references the same uri, at version 1, with no fragment, as its second profile entry) — since all three carry a profile whose uri component equals this value.",
+      "description": "A bare canonical uri search (no version/fragment) should match all three fixtures that reference that uri at any version (warningOnly, since canonical-stripping behavior is implementation-defined).",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Observation", "params": "?_profile=http://ignixa.io/tests/StructureDefinition/fhir262-canonical-lab&_count=50", "responseId": "canonical-bare-response", "description": "GET /Observation?_profile=<uri>" } },
@@ -85,7 +85,7 @@
     },
     {
       "name": "_profile: canonical uri+version (no fragment) search",
-      "description": "Searching with uri|2 (version, no fragment) against obs-profile-v2's profile. On R4/R4B/R5, servers commonly strip the version before indexing, so this exact-match search typically finds nothing.",
+      "description": "A canonical uri+version (no fragment) search against obs-profile-v2 typically finds nothing, since the version component is usually stripped before indexing (warningOnly).",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Observation", "params": "?_profile=http://ignixa.io/tests/StructureDefinition/fhir262-canonical-lab|2&_count=50", "responseId": "canonical-version-response", "description": "GET /Observation?_profile=<uri>|2" } },

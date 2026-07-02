@@ -1,12 +1,12 @@
 {
   "resourceType": "TestScript",
   "name": "Regression/ms-operation-versions",
-  "description": "Content-negotiation conformance for the '$versions' operation, ported from fhir-server's Microsoft.Health.Fhir.Shared.Tests.E2E OperationVersionsTests.cs. IMPORTANT: '$versions' is a Microsoft FHIR Server-specific system operation (GET {base}/$versions returning the server's supported FHIR versions) — it is NOT part of the core FHIR specification, so every assertion in this suite is warningOnly. A target server that does not implement this operation will typically return 404, which is itself a perfectly conformant response and should not be treated as a failure. InlineData rows collapsed: 'application/json' + 'application/fhir+json' -> one representative JSON test; 'application/xml' + 'application/fhir+xml' -> one representative XML test; the two invalid Accept values ('application/json1', 'applicaiton/xml') -> one representative invalid-Accept test (both are equally malformed media types and exercise the same 406 code path).",
+  "description": "Content-negotiation conformance for the Microsoft-proprietary '$versions' operation (from OperationVersionsTests.cs): valid Accept headers return 200 with a matching Content-Type, a missing Accept defaults to JSON, and an invalid Accept returns 406. All assertions are warningOnly since '$versions' isn't part of core FHIR and may 404 if unimplemented.",
   "status": "active",
   "test": [
     {
       "name": "$versions honors a valid JSON Accept header",
-      "description": "GET {base}/$versions with Accept: application/fhir+json must return HTTP 200 with a Content-Type that echoes the requested media type exactly (source test also covers the bare 'application/json' alias, which is behaviorally equivalent and collapsed here). warningOnly: '$versions' is a proprietary operation that may not exist on the target server.",
+      "description": "GET $versions with Accept: application/fhir+json should return 200 with a matching Content-Type (also covers the 'application/json' alias); warningOnly since $versions is proprietary.",
       "action": [
         {
           "operation": {
@@ -24,7 +24,7 @@
     },
     {
       "name": "$versions honors a valid XML Accept header",
-      "description": "GET {base}/$versions with Accept: application/fhir+xml must return HTTP 200 with a Content-Type that echoes the requested media type exactly (source test also covers the bare 'application/xml' alias, collapsed here). warningOnly: '$versions' is a proprietary operation that may not exist on the target server, and some servers only support the JSON format.",
+      "description": "GET $versions with Accept: application/fhir+xml should return 200 with a matching Content-Type (also covers the 'application/xml' alias); warningOnly since $versions is proprietary and XML support is optional.",
       "action": [
         {
           "operation": {
@@ -42,7 +42,7 @@
     },
     {
       "name": "$versions with no Accept header defaults to application/fhir+json",
-      "description": "GET {base}/$versions with no Accept header at all must return HTTP 200 with Content-Type application/fhir+json (the server's default representation). warningOnly: '$versions' is a proprietary operation that may not exist on the target server.",
+      "description": "GET $versions with no Accept header should default to Content-Type application/fhir+json; warningOnly since $versions is proprietary.",
       "action": [
         {
           "operation": {
@@ -59,7 +59,7 @@
     },
     {
       "name": "$versions rejects an invalid Accept header with 406",
-      "description": "GET {base}/$versions with a malformed Accept header (e.g. 'application/json1') must return HTTP 406 Not Acceptable (source test also covers the typo'd 'applicaiton/xml' value, collapsed here since both exercise the same invalid-media-type rejection path). warningOnly: '$versions' is a proprietary operation that may not exist on the target server (in which case 404 is expected instead of 406).",
+      "description": "GET $versions with a malformed Accept header (e.g. 'application/json1') should return 406 Not Acceptable (also covers the typo'd 'applicaiton/xml' value); warningOnly since $versions is proprietary and may 404 instead if unimplemented.",
       "action": [
         {
           "operation": {

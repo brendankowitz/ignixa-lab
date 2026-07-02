@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "CRUD/read",
-  "description": "Conformance tests for resource read (GET /{type}/{id}) semantics: successful read returns matching metadata, ETag, and security headers; reading a never-existing id returns 404; reading a deleted resource returns 410 (or 404). Fixture tagged identifier READ-BASIC-1 (fhir262) to avoid colliding with other suites on a shared test server.",
+  "description": "Conformance tests for GET /{type}/{id} read semantics: a successful read returns matching metadata and headers, and reads of a missing or deleted resource return 404/410 (from ReadTests).",
   "status": "active",
   "fixture": [
     {
@@ -38,7 +38,7 @@
   "test": [
     {
       "name": "read returns the resource with matching metadata and headers",
-      "description": "GET /Observation/{id} must return HTTP 200 with the same id, meta.versionId, and meta.lastUpdated as the create response, an ETag header reflecting the current version, and the X-Content-Type-Options: nosniff security header (FHIR R4 §3.2.0.1.1).",
+      "description": "GET /Observation/{id} must return 200 with metadata (id/version/lastUpdated) matching the created resource, plus ETag and X-Content-Type-Options security headers.",
       "action": [
         { "operation": { "type": { "code": "read" }, "url": "Observation/${obsId}", "responseId": "read-response", "description": "Read the Observation by server-assigned id" } },
         { "assert": { "description": "Read must return HTTP 200", "response": "okay" } },
@@ -52,7 +52,7 @@
     },
     {
       "name": "read of a never-existing id returns 404",
-      "description": "GET /Observation/{id} for an id that was never assigned by the server must return 404 Not Found.",
+      "description": "GET on an id that was never assigned by the server must return 404 Not Found.",
       "action": [
         { "operation": { "type": { "code": "read" }, "url": "Observation/fhir262-read-never-existed", "responseId": "read-missing-response", "description": "Attempt to read an id that was never created" } },
         { "assert": { "description": "Server must return 404 Not Found", "response": "notFound" } }
@@ -60,7 +60,7 @@
     },
     {
       "name": "read after delete returns 410 or 404",
-      "description": "GET /Observation/{id} after DELETE must return 410 (Gone) or 404 (Not Found). FHIR R4 specifies 410 Gone for a resource that existed and was deleted, so that is the primary assertion. 404 is accepted as a warningOnly alternative for servers that do not distinguish deleted from never-existed.",
+      "description": "GET after DELETE must return 410 Gone (primary assertion); 404 Not Found is accepted as a warningOnly alternative for servers that don't distinguish deleted from never-existed.",
       "action": [
         { "operation": { "type": { "code": "delete" }, "url": "Observation/${obsId}", "responseId": "delete-response", "description": "Delete the Observation created in setup" } },
         { "assert": { "description": "Delete must return a 2xx success status", "response": "okay" } },

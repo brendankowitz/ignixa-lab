@@ -1,30 +1,30 @@
 {
   "resourceType": "TestScript",
   "name": "Regression/exception-handling",
-  "description": "Server error-handling conformance ported from fhir-server's Microsoft.Health.Fhir.Shared.Tests.E2E ExceptionTests.cs. Only 2 of the 4 source test methods are portable to an arbitrary external target server: GivenAnUnknownRoute_WhenPostingToHttp_TheServerShouldReturnAnOperationOutcome (unmapped route -> 404) and GivenANotAllowedMethod_WhenRequestIsSent_TheServerShouldReturnMethodNotSupported (unsupported HTTP verb -> 405). SKIPPED: GivenAnInternalThrowQuerystring_WhenPostingToHttp_TheServerShouldReturnAnOperationOutcome and GivenAMiddlewareThrowQuerystring_WhenPostingToHttp_TheServerShouldReturnAnOperationOutcome both require the source test's in-process StartupWithThrowingMiddleware test harness (a custom ASP.NET Core pipeline that deliberately throws on '?throw=internal'/'?throw=middleware') which no deployed/external FHIR server exposes; there is no generic conformance behavior to assert here. The method-not-allowed case is also an approximation: the source test sends HEAD to a fixed in-proc static route ('admin.html') that does not exist on arbitrary FHIR servers, so this suite instead sends HEAD to a normal resource-type endpoint (Patient) and treats the outcome as informational (warningOnly) since HTTP method support for FHIR endpoints beyond GET/POST/PUT/DELETE/PATCH is not mandated by the FHIR spec.",
+  "description": "Server error-handling conformance (from ExceptionTests.cs): unknown routes return 404, and unsupported HTTP methods against a resource endpoint return 405. Two source tests requiring in-process throwing middleware aren't portable to an external server and are skipped.",
   "status": "active",
   "test": [
     {
       "name": "Unknown route returns 404",
-      "description": "GET {base}/unknownRoute (a path that matches no defined FHIR interaction or resource type route) must return HTTP 404 Not Found. Per FHIR R4 §2.1.0.9 (RESTful error handling) servers SHOULD return an OperationOutcome for error responses, so the OperationOutcome shape/issue checks are warningOnly: a route that is entirely outside the FHIR interaction model (never resolves to a resource type) may be handled by generic web-framework routing that returns a plain 404 without a FHIR body.",
+      "description": "GET a path that matches no FHIR resource type or interaction; server must return 404 (OperationOutcome shape checks are warningOnly since generic routing 404s may not include a FHIR body).",
       "action": [
         {
           "operation": {
             "type": { "code": "read" },
             "url": "unknownRoute",
             "responseId": "unknown-route-response",
-            "description": "GET /unknownRoute — a path that does not correspond to any FHIR resource type or interaction"
+            "description": "GET a path outside the FHIR interaction model"
           }
         },
         { "assert": { "description": "Server must return HTTP 404 Not Found", "response": "notFound" } },
         { "assert": { "description": "Response body should be an OperationOutcome (warningOnly: routing-level 404s may bypass FHIR error formatting)", "resource": "OperationOutcome", "warningOnly": true } },
         { "assert": { "description": "OperationOutcome should contain an error-severity issue (warningOnly, see above)", "expression": "OperationOutcome.issue.where(severity = 'error').exists()", "warningOnly": true } },
-        { "assert": { "description": "Issue code should be 'not-found' per FHIR IssueType (warningOnly: source E2E test asserts OperationOutcome.IssueType.NotFound, but the exact code used for routing-level errors varies by server)", "expression": "OperationOutcome.issue.where(code = 'not-found').exists()", "warningOnly": true } }
+        { "assert": { "description": "Issue code should be 'not-found' (warningOnly: exact code for routing-level errors varies by server)", "expression": "OperationOutcome.issue.where(code = 'not-found').exists()", "warningOnly": true } }
       ]
     },
     {
       "name": "Unsupported HTTP method against a resource endpoint (approximated)",
-      "description": "Source test GivenANotAllowedMethod_WhenRequestIsSent_TheServerShouldReturnMethodNotSupported sends HEAD to a fixed static in-proc route ('admin.html') and hard-asserts 405. That route does not exist on arbitrary FHIR servers, so this suite instead sends HEAD to Patient (a real resource-type endpoint). Both possible outcomes are informational: 405 Method Not Allowed (HEAD is not a standard FHIR interaction) or 200 (some servers alias HEAD to GET, which is also valid HTTP semantics).",
+      "description": "HEAD to Patient (approximating the source test's HEAD against a fixed static route, which doesn't exist on external servers); either 405 Method Not Allowed or 200 (HEAD aliased to GET) is acceptable, so both are warningOnly.",
       "action": [
         {
           "operation": {
@@ -32,7 +32,7 @@
             "method": "HEAD",
             "url": "Patient",
             "responseId": "head-patient-response",
-            "description": "HEAD /Patient — HEAD is not one of the standard FHIR RESTful interactions"
+            "description": "HEAD /Patient (not a standard FHIR interaction)"
           }
         },
         { "assert": { "description": "Alternative A: server rejects HEAD with 405 Method Not Allowed (informational: not a FHIR spec requirement)", "responseCode": "405", "warningOnly": true } },

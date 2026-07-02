@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "CRUD/delete",
-  "description": "Conformance tests for instance delete (DELETE) semantics ported from Microsoft.Health.Fhir.Shared.Tests.E2E Rest/DeleteTests.cs: a deleted resource returns 410 Gone (or 404) on subsequent read while its pre-delete version remains vread-able, deleted resources are excluded from subsequent searches, hard delete permanently erases all version history (extended capability, warningOnly), and the $purge-history operation removes prior versions while keeping the current version accessible (extended capability, warningOnly). Fixtures are tagged identifier DELETE-* (system http://ignixa.io/testscript/suite/test) to avoid colliding with other suites on a shared test server.",
+  "description": "Instance delete (DELETE) conformance tests: a deleted resource returns 410/404 on read while its pre-delete version remains vread-able and it is excluded from search; also covers hard delete and $purge-history as optional server extensions (warningOnly), from DeleteTests.",
   "status": "active",
   "fixture": [
     {

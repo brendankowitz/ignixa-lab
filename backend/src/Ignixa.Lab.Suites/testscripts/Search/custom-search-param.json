@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Search/custom-search-param",
-  "description": "Custom SearchParameter registration conformance tests ported from fhir-server's CustomSearchParamTests.cs. Covers rejection of syntactically/structurally invalid SearchParameter definitions (bad FHIRPath expression syntax, an expression referencing a non-existent property, an invalid base resource type, an invalid search parameter type, a missing base, a missing expression, a missing type, and a type that is incompatible with the expression's target — e.g. 'quantity' on a reference-valued expression) with HTTP 400 Bad Request plus an OperationOutcome error/fatal issue. Also covers a Microsoft FHIR Server-specific implementation limit (SearchParameter.url capped at 128 characters on both create and update) as warningOnly, since that specific length cap is not a universal FHIR R4 requirement. All fixtures are PUT via 'update' with client-supplied ids so a known, static id can always be torn down afterwards regardless of whether the create/update attempt succeeded or was rejected.",
+  "description": "Custom SearchParameter registration conformance tests (from CustomSearchParamTests): invalid SearchParameter definitions (bad FHIRPath, non-existent target property, invalid base/type, missing required fields, type/expression mismatch) are rejected with HTTP 400 and an OperationOutcome error. Also covers a server-specific 128-character SearchParameter.url length cap as warningOnly, since it is not a universal FHIR R4 requirement.",
   "status": "active",
   "fixture": [
     {
@@ -291,7 +291,7 @@
     },
     {
       "name": "SearchParameter.url longer than 128 characters is rejected on create (MS FHIR Server-specific)",
-      "description": "MS FHIR Server enforces an implementation-specific 128-character cap on SearchParameter.url. A 129-character url is expected to be rejected with HTTP 400, but this cap is not a universal FHIR R4 requirement, so the whole scenario is warningOnly.",
+      "description": "A SearchParameter.url of 129 characters (one over the server's 128-character cap) is rejected with HTTP 400 on create (warningOnly: not a universal FHIR requirement).",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "update" }, "url": "SearchParameter/fhir262-sp-urltoolong", "sourceId": "sp-url-toolong", "description": "PUT SearchParameter/fhir262-sp-urltoolong (url is 129 characters)" } },
@@ -300,7 +300,7 @@
     },
     {
       "name": "an existing SearchParameter cannot be updated to a url longer than 128 characters (MS FHIR Server-specific)",
-      "description": "A SearchParameter is first created with a 128-character url (at, not over, the MS FHIR Server cap), then an update attempt changes its url to 129 characters. The initial create and the subsequent rejection are both warningOnly, since custom SearchParameter registration and the 128-character cap are both MS FHIR Server-specific behaviors, not universal FHIR R4 requirements.",
+      "description": "A SearchParameter created with a 128-character url (at the cap) cannot then be updated to a 129-character url (warningOnly: custom SearchParameter registration and the length cap are both server-specific, not universal FHIR requirements).",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "update" }, "url": "SearchParameter/fhir262-sp-urlupdate", "sourceId": "sp-url-valid", "description": "PUT SearchParameter/fhir262-sp-urlupdate (url is exactly 128 characters)" } },

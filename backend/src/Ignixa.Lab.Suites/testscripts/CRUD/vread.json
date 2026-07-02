@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "CRUD/vread",
-  "description": "Conformance tests for version-specific read (GET /{type}/{id}/_history/{vid}) semantics: a valid id+version returns the exact historical version with matching metadata; a never-existing id+version returns 404; an existing id with a never-existing version returns 404. Fixture tagged identifier VREAD-BASIC-1 (fhir262) to avoid colliding with other suites on a shared test server.",
+  "description": "Conformance tests for GET /{type}/{id}/_history/{vid} version-specific reads: a valid id+version returns the exact historical version, and reads with a missing id or missing version return 404 (from VReadTests).",
   "status": "active",
   "fixture": [
     {
@@ -38,7 +38,7 @@
   "test": [
     {
       "name": "vread returns the exact historical version requested",
-      "description": "GET /Observation/{id}/_history/{vid} must return HTTP 200 with the same id, meta.versionId, and meta.lastUpdated as the create response, and an ETag header reflecting that version.",
+      "description": "GET /Observation/{id}/_history/{vid} must return 200 with metadata matching the created version, plus an ETag header reflecting that version.",
       "action": [
         { "operation": { "type": { "code": "vread" }, "url": "Observation/${obsId}/_history/${obsVersionId}", "responseId": "vread-response", "description": "vread the Observation at its created version" } },
         { "assert": { "description": "vread must return HTTP 200", "response": "okay" } },
@@ -51,7 +51,7 @@
     },
     {
       "name": "vread of a never-existing id and version returns 404",
-      "description": "GET /Observation/{id}/_history/{vid} for an id that was never assigned by the server must return 404 Not Found.",
+      "description": "vread of an id that was never assigned by the server must return 404 Not Found.",
       "action": [
         { "operation": { "type": { "code": "vread" }, "url": "Observation/fhir262-vread-never-existed/_history/1", "responseId": "vread-missing-id-response", "description": "vread an id that was never created" } },
         { "assert": { "description": "Server must return 404 Not Found", "response": "notFound" } }
@@ -59,7 +59,7 @@
     },
     {
       "name": "vread of an existing id with a never-existing version returns 404",
-      "description": "GET /Observation/{id}/_history/{vid} for an id that exists but a version number that was never assigned must return 404 Not Found — the id being valid must not cause the server to fall back to the current version.",
+      "description": "vread of an existing id with a version number that was never assigned must return 404 Not Found, not fall back to the current version.",
       "action": [
         { "operation": { "type": { "code": "vread" }, "url": "Observation/${obsId}/_history/999999", "responseId": "vread-missing-version-response", "description": "vread the existing Observation at a version that was never created" } },
         { "assert": { "description": "Server must return 404 Not Found", "response": "notFound" } }

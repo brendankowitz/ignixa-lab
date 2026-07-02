@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Search/chaining-and-sort",
-  "description": "Combined chain + modifier + sort/summary/total conformance tests, complementing Search/chaining.json and Search/sort.json. Ported (in spirit) from ChainingAndSortTests.cs, which exercises a large seeded bundle via _has:PractitionerRole:service:practitioner=<id> combined with name:missing=false, active:not=false, location:missing=false and a second _has:PractitionerRole:service:active=true, then _sort, _summary=count and _total=accurate. The original test's ~40-resource transaction bundle (Bundle-ChainingSortAndSearchValidation) can't be reproduced with static per-fixture PUTs at that scale, so this file rebuilds the same combination of behaviors with a small, deterministic dataset: Practitioner fhir262-cs-prac-target has 5 PractitionerRoles (fhir262-cs-role1..5) linking it to 5 HealthcareServices (fhir262-cs-hs1..5), each service deliberately violating exactly one of the combined filters (hs2 has no name, hs3 is inactive, hs4 has no location, hs5's only role is inactive); a 6th HealthcareService (fhir262-cs-hsdecoy) is linked only to a different Practitioner (fhir262-cs-prac-other) so the initial chain excludes it. Only hs1 passes every filter. Uses client-supplied IDs (PUT) so cross-references (practitioner, service) resolve statically.",
+  "description": "Tests reverse chaining (_has) combined with active:not, name:missing, location:missing modifiers, a second _has clause, _sort, _summary=count and _total=accurate on a small deterministic HealthcareService/PractitionerRole dataset (from ChainingAndSortTests.cs, adapted from its large seeded bundle), complementing Search/chaining.json and Search/sort.json.",
   "status": "active",
   "fixture": [
     {
@@ -284,7 +284,7 @@
     },
     {
       "name": "Combined chain + all modifiers narrows to exactly one match",
-      "description": "Combining the reverse chain with active:not=false, name:missing=false, location:missing=false and the second _has:PractitionerRole:service:active=true (mirroring ChainingAndSortTests.cs's commonQuery) narrows the result to exactly hs1, the only service passing every filter.",
+      "description": "Combining the reverse chain with active:not=false, name:missing=false, location:missing=false and the second _has:PractitionerRole:service:active=true narrows the result to exactly hs1, the only service passing every filter.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "HealthcareService", "params": "?_has:PractitionerRole:service:practitioner=fhir262-cs-prac-target&active:not=false&name:missing=false&location:missing=false&_has:PractitionerRole:service:active=true&identifier=http://ignixa.io/testscript/suite/chaining-and-sort|&_count=100", "responseId": "chain-combined", "description": "GET .../HealthcareService with the full combined filter set" } },

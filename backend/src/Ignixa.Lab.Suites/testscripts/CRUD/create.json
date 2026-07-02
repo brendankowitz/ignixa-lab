@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "CRUD/create",
-  "description": "Conformance tests for resource creation (POST) semantics: response metadata (id/version/headers), client-supplied id and meta override, unsupported resource types, content-type negotiation, body validation, malicious-input handling, illegal ids, and the X-Provenance header behaviour. Fixtures are tagged fhir262-create-* / identifier CREATE-* to avoid colliding with other suites on a shared test server.",
+  "description": "Conformance tests for POST /{type} create semantics: assigned id/version metadata and headers, client-supplied id/meta overriding, content-type and body validation, malicious-input handling, and the X-Provenance header (from CreateTests).",
   "status": "active",
   "fixture": [
     {
@@ -177,7 +177,7 @@
   "test": [
     {
       "name": "create returns 201 with id, version, and location metadata",
-      "description": "POST /Observation must return 201 Created, assign a non-empty id and meta.versionId/meta.lastUpdated, and return ETag, Location (versioned, .../_history/{vid}), and Last-Modified response headers (FHIR R4 §3.2.0.1.1).",
+      "description": "POST /Observation must return 201 Created with an assigned id/version and ETag, Location, and Last-Modified response headers.",
       "action": [
         { "operation": { "type": { "code": "create" }, "resource": "Observation", "sourceId": "observation-basic", "responseId": "create-basic-response", "description": "POST a basic Observation" } },
         { "assert": { "description": "Server must return 201 Created", "response": "created" } },
@@ -194,7 +194,7 @@
     },
     {
       "name": "create ignores client-supplied id and meta",
-      "description": "POST an Observation whose body carries id=fhir262-create-clientid and meta.versionId=9999/meta.lastUpdated=2000-01-01. The server must assign its own id and its own meta.versionId, ignoring the client-supplied values (FHIR R4 §2.1.0.2 and §3.2.0.1.1).",
+      "description": "POST an Observation with a client-supplied id and meta.versionId; the server must assign its own values and ignore the client-supplied ones.",
       "action": [
         { "operation": { "type": { "code": "create" }, "resource": "Observation", "sourceId": "observation-client-id-meta", "responseId": "create-clientmeta-response", "description": "POST Observation with client-supplied id and meta" } },
         { "assert": { "description": "Server must return 201 Created", "response": "created" } },
@@ -205,7 +205,7 @@
     },
     {
       "name": "create to an unrecognized resource type returns 404",
-      "description": "POST /NotObservation (a URL segment that is not a known FHIR resource type) must return 404 Not Found rather than attempting to process the body.",
+      "description": "POST to an unrecognized resource type endpoint must return 404 Not Found.",
       "action": [
         { "operation": { "type": { "code": "create" }, "url": "NotObservation", "sourceId": "observation-unsupported-type", "responseId": "create-unsupported-response", "description": "POST to /NotObservation" } },
         { "assert": { "description": "Server must return 404 Not Found for an unrecognized resource type", "response": "notFound" } }
@@ -213,7 +213,7 @@
     },
     {
       "name": "create with an unsupported Content-Type returns 415",
-      "description": "POST /Observation with a Content-Type the server does not accept for FHIR bodies (e.g. application/x-www-form-urlencoded, or no/plain-text content type) must return 415 Unsupported Media Type rather than attempting to parse the body as a FHIR resource.",
+      "description": "POST with an unsupported Content-Type (not a FHIR media type) must return 415 Unsupported Media Type.",
       "action": [
         { "operation": { "type": { "code": "create" }, "resource": "Observation", "sourceId": "observation-bad-contenttype", "contentType": "application/x-www-form-urlencoded", "responseId": "create-contenttype-response", "description": "POST Observation with an unsupported Content-Type header" } },
         { "assert": { "description": "Server must return 415 Unsupported Media Type", "responseCode": "415" } }
@@ -221,7 +221,7 @@
     },
     {
       "name": "create with an invalid (incomplete) resource body returns 400",
-      "description": "POST an Observation missing required elements (status, code — both 1..1 in R4) must return 400 Bad Request.",
+      "description": "POST an Observation missing required elements (status, code) must return 400 Bad Request.",
       "action": [
         { "operation": { "type": { "code": "create" }, "resource": "Observation", "sourceId": "observation-empty-invalid", "responseId": "create-invalid-response", "description": "POST an empty Observation" } },
         { "assert": { "description": "Server must return 400 Bad Request", "response": "bad" } }
@@ -229,7 +229,7 @@
     },
     {
       "name": "create with a malformed dateTime returns 400",
-      "description": "POST an Observation whose effectiveDateTime is '2021-10-13+02:00' (a date with a timezone offset but no time component, which is not a legal FHIR dateTime) must return 400 Bad Request.",
+      "description": "POST an Observation with an invalid effectiveDateTime (date + timezone offset but no time) must return 400 Bad Request.",
       "action": [
         { "operation": { "type": { "code": "create" }, "resource": "Observation", "sourceId": "observation-invalid-date", "responseId": "create-baddate-response", "description": "POST Observation with malformed effectiveDateTime" } },
         { "assert": { "description": "Server must return 400 Bad Request", "response": "bad" } }
@@ -237,7 +237,7 @@
     },
     {
       "name": "create with a high-precision quantity value succeeds",
-      "description": "POST an Observation whose valueQuantity carries a high-precision decimal (10.91968939701716) must succeed with 201 Created; the server must not reject or truncate valid decimal precision.",
+      "description": "POST an Observation with a high-precision decimal quantity value must succeed with 201 Created.",
       "action": [
         { "operation": { "type": { "code": "create" }, "resource": "Observation", "sourceId": "observation-precision-quantity", "responseId": "create-precision-response", "description": "POST Observation with a high-precision quantity value" } },
         { "assert": { "description": "Server must return 201 Created", "response": "created" } }
@@ -245,7 +245,7 @@
     },
     {
       "name": "create tolerates a malicious query string on the collection URL",
-      "description": "POST /Observation?' having 1=1-- (a SQL-injection/fuzz-style query string appended to the create URL) must still succeed with 201 Created; the server must not be tripped up by unrecognized/malicious query parameters on a create request.",
+      "description": "POST with a SQL-injection-style query string appended to the create URL must still succeed with 201 Created.",
       "action": [
         { "operation": { "type": { "code": "create" }, "resource": "Observation", "url": "Observation?%27%20having%201%3D1--", "sourceId": "observation-malicious-url", "responseId": "create-maliciousurl-response", "description": "POST Observation with a malicious query string appended to the URL" } },
         { "assert": { "description": "Server must return 201 Created", "response": "created" } }
@@ -253,7 +253,7 @@
     },
     {
       "name": "create accepts sanitizable narrative text",
-      "description": "POST an Observation whose text.div contains fuzz/injection-style text with no actual markup tags (\"' having 1=1--\") must succeed with 201 Created — this content is valid XHTML text content, not markup, so it must be accepted as-is or sanitized rather than rejected.",
+      "description": "POST an Observation whose narrative text contains injection-style text but no markup tags must succeed with 201 Created.",
       "action": [
         { "operation": { "type": { "code": "create" }, "resource": "Observation", "sourceId": "observation-safe-narrative", "responseId": "create-safenarrative-response", "description": "POST Observation with fuzz-style (non-tag) narrative text" } },
         { "assert": { "description": "Server must return 201 Created", "response": "created" } }
@@ -261,7 +261,7 @@
     },
     {
       "name": "create blocks a malicious narrative containing a script tag",
-      "description": "POST an Observation whose text.div contains a literal <script> tag must be rejected with 400 Bad Request — Narrative.div only permits a restricted XHTML subset, and <script> is disallowed (FHIR R4 narrative rules).",
+      "description": "POST an Observation whose narrative text contains a <script> tag must be rejected with 400 Bad Request, since Narrative.div only allows a restricted XHTML subset.",
       "action": [
         { "operation": { "type": { "code": "create" }, "resource": "Observation", "sourceId": "observation-malicious-narrative", "responseId": "create-maliciousnarrative-response", "description": "POST Observation with a <script> tag in the narrative" } },
         { "assert": { "description": "Server must return 400 Bad Request", "response": "bad" } }
@@ -269,7 +269,7 @@
     },
     {
       "name": "update with an illegal id format returns 400",
-      "description": "PUT /Observation/fhir262-illegal_id with a body id of the same value must return 400 Bad Request — FHIR ids may only contain [A-Za-z0-9-.], and the underscore character makes this id illegal (FHIR R4 §3.2.0.1, id datatype regex). This also exercises the server's general robustness against unusual/malicious id strings.",
+      "description": "PUT with an id containing an underscore (illegal in the FHIR id format) must return 400 Bad Request.",
       "action": [
         { "operation": { "type": { "code": "update" }, "url": "Observation/fhir262-illegal_id", "sourceId": "observation-illegal-id", "responseId": "create-illegalid-response", "description": "PUT Observation/fhir262-illegal_id (underscore makes the id illegal)" } },
         { "assert": { "description": "Server must return 400 Bad Request for an illegal id format", "response": "bad" } }
@@ -277,7 +277,7 @@
     },
     {
       "name": "create with a valid X-Provenance header links a Provenance resource",
-      "description": "POST /Observation with a well-formed X-Provenance header (a Provenance resource without a target) must succeed with 201 Created, and the server must create a linked Provenance resource whose target references the new Observation — found via Provenance?target=Observation/{id}.",
+      "description": "POST with a valid X-Provenance header must succeed with 201 Created and create a linked Provenance resource targeting the new Observation.",
       "action": [
         {
           "operation": {
@@ -300,7 +300,7 @@
     },
     {
       "name": "create with a malformed X-Provenance header returns 400",
-      "description": "POST /Observation with an X-Provenance header that is not parseable FHIR JSON ('Jibberish') must return 400 Bad Request rather than silently ignoring the header or succeeding.",
+      "description": "POST with a malformed (non-JSON) X-Provenance header must return 400 Bad Request.",
       "action": [
         {
           "operation": {
@@ -326,7 +326,7 @@
       { "operation": { "type": { "code": "delete" }, "url": "Observation/${maliciousUrlId}", "description": "Teardown: delete the malicious-query-string Observation" } },
       { "operation": { "type": { "code": "delete" }, "url": "Observation/${safeNarrativeId}", "description": "Teardown: delete the safe-narrative Observation" } },
       { "operation": { "type": { "code": "delete" }, "url": "Observation/${provenanceOkId}", "description": "Teardown: delete the X-Provenance-linked Observation" } },
-      { "operation": { "type": { "code": "delete" }, "url": "Observation/fhir262-illegal_id", "description": "Teardown: defensively attempt to delete the illegal-id Observation in case a lenient server accepted it (expected to already be absent)" } }
+      { "operation": { "type": { "code": "delete" }, "url": "Observation/fhir262-illegal_id", "description": "Teardown: attempt to delete the illegal-id Observation in case a lenient server accepted it" } }
     ]
   }
 }

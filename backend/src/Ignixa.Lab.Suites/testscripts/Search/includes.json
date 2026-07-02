@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Search/includes",
-  "description": "_include / _revinclude / _include:iterate conformance tests ported from IncludeSearchTests.cs. Uses a small static graph: an Organization chain org-c <- org-b <- org-a (org-b.partOf=org-c, org-a.partOf=org-b) to exercise _include:iterate without needing a truly circular reference (a single iterate pass from _id=org-a should pull in org-b but NOT org-c); a separate Practitioner (prac1) and Organization (org) referenced by Patient pat1 (managingOrganization=org, generalPractitioner=prac1); an Observation (obs1, subject=pat1, performer=[prac1,org]) to test _include with no fixed target type; a DiagnosticReport (dr1, subject=pat1, result=[obs1], no specimen) for specimen:missing=true; and a self-referencing Location (loc-self, partOf=itself) to verify a resource matched by the search isn't duplicated as its own include. Uses client-supplied IDs (PUT) so cross-references resolve statically.",
+  "description": "Search result parameter conformance tests for _include, _revinclude, and _include:iterate: forward/reverse/wildcard includes, multi-hop iteration, self-references, and interaction with _id, _summary, and _total (from IncludeSearchTests.cs).",
   "status": "active",
   "fixture": [
     {
@@ -227,7 +227,7 @@
     },
     {
       "name": "_include:iterate on a same-type chain performs a single iteration, not unbounded recursion",
-      "description": "Organization?_id=org-a&_include:iterate=Organization:partof must include org-b (org-a.partOf) after one iteration, but must NOT include org-c (org-b.partOf), since _include:iterate performs exactly one additional hop per occurrence, not a full transitive closure. This mirrors the intent of the source test's circular-reference scenario (structurally repeating source/target types) without requiring an actual reference cycle.",
+      "description": "Organization?_id=org-a&_include:iterate=Organization:partof must include org-b (one iteration) but not org-c, confirming _include:iterate performs a single additional hop rather than a full transitive closure.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Organization", "params": "?_id=fhir262-inc-org-a&_include:iterate=Organization:partof", "responseId": "inc-iterate-chain", "description": "GET /Organization?_id=fhir262-inc-org-a&_include:iterate=Organization:partof" } },
@@ -302,7 +302,7 @@
     },
     {
       "name": "_include and _revinclude combine in a single request",
-      "description": "Patient?_id=pat1&_include=Patient:organization&_revinclude=Observation:subject must include both org (forward include) and obs1 (reverse include) alongside the matched patient, exercising the combined-query-plan path.",
+      "description": "Patient?_id=pat1&_include=Patient:organization&_revinclude=Observation:subject must include both org (forward include) and obs1 (reverse include) alongside the matched patient.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?_id=fhir262-inc-pat1&_include=Patient:organization&_revinclude=Observation:subject", "responseId": "inc-combined", "description": "GET /Patient with both _include and _revinclude" } },

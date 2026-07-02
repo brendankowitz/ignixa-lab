@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "CRUD/update",
-  "description": "Conformance tests for instance update (PUT) semantics ported from Microsoft.Health.Fhir.Shared.Tests.E2E Rest/UpdateTests.cs: version/id stability on content change, no-op updates not creating a new version, malformed Content-Type rejection, client-supplied-id upsert-create with server-side meta override, URL/body id mismatch and missing-body-id rejection, If-Match precondition handling (correct, malformed, and stale versions), and conditional-reference resolution via identifier on generalPractitioner. Fixtures are tagged fhir262-update-* / identifier UPDATE-* (system http://ignixa.io/testscript/suite/test) to avoid colliding with other suites on a shared test server.",
+  "description": "Instance update (PUT) conformance tests: version bump on content change vs. no bump on no-op updates, malformed Content-Type/If-Match rejection, client-supplied-id upsert-create, URL/body id-mismatch and missing-id rejection, and conditional-reference resolution via identifier (from UpdateTests).",
   "status": "active",
   "fixture": [
     {
@@ -181,7 +181,7 @@
     },
     {
       "name": "update with a malformed If-Match header value returns 400",
-      "description": "PUT Patient/fhir262-update-content with an If-Match value that is not a well-formed weak ETag (a bare quoted string, a negative number, or zero) must return 400 Bad Request. Parametrized over the three malformed forms exercised by the source test.",
+      "description": "PUT Patient/fhir262-update-content with an If-Match value that is not a well-formed weak ETag (a bare quoted string, a negative number, or zero) must return 400 Bad Request.",
       "extension": [
         {
           "url": "http://ignixa.io/testscript/parametrize",

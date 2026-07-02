@@ -1,12 +1,12 @@
 {
   "resourceType": "TestScript",
   "name": "Regression/capability-statement-version",
-  "description": "CapabilityStatement.fhirVersion conformance ported from fhir-server's Microsoft.Health.Fhir.Shared.Tests.E2E VersionSpecificTests.cs (the shared TestCapabilityStatementFhirVersion helper) together with its per-release partial classes in the R4/R4B/R5/Stu3 Tests.E2E projects (GivenR4Server_.../GivenR4BServer_.../GivenR5Server_.../GivenStu3Server_WhenCapabilityStatementIsRetrieved_ThenCorrectVersionShouldBeReturned). Only the capability-statement-version-check aspect is represented; CreateAllFhirResourcesTests.cs-style per-resource-type creation coverage and the other VersionSpecificTests methods (ObservationDefinition creation, invalid-decimal rejection, new-resource-type creation, renamed-resource-type search) are out of scope for this suite. GET /metadata is fetched once (no fhirVersions restriction) and its result is reused by sourceId across the version-scoped assertions below, avoiding 5 separate HTTP calls. The exact-version checks use the engine's 'http://ignixa.io/testscript/fhirVersions' extension so each one only runs when the conformance run is configured for that FHIR release; on any other configured release it is recorded as skipped, not failed.",
+  "description": "GET /metadata returns the correct CapabilityStatement.fhirVersion for the server's configured FHIR release (from VersionSpecificTests.cs, R4/R4B/R5/STU3). Only the version-check aspect is covered; per-resource-type creation coverage is out of scope.",
   "status": "active",
   "test": [
     {
       "name": "GET /metadata returns a CapabilityStatement with a populated fhirVersion",
-      "description": "GET {base}/metadata must return HTTP 200 with a CapabilityStatement whose fhirVersion element is present. Since the target server's configured FHIR release cannot be hardcoded in a generic suite, the check that fhirVersion is one of the well-known released version literals is informational (warningOnly) rather than a hard requirement.",
+      "description": "GET /metadata must return 200 with a CapabilityStatement whose fhirVersion is present; the value is also informationally checked against known released version literals (warningOnly since the target's configured version isn't known ahead of time).",
       "action": [
         {
           "operation": {
@@ -19,12 +19,12 @@
         { "assert": { "description": "Server must return HTTP 200", "response": "okay" } },
         { "assert": { "description": "Response body must be a CapabilityStatement", "resource": "CapabilityStatement" } },
         { "assert": { "description": "CapabilityStatement.fhirVersion must be present", "expression": "CapabilityStatement.fhirVersion.exists()" } },
-        { "assert": { "description": "Informational: fhirVersion should be one of the well-known released FHIR version literals (warningOnly: this list is not exhaustive and the target's configured version is not known ahead of time)", "expression": "CapabilityStatement.fhirVersion", "value": "1.0.2,3.0.1,3.0.2,4.0.0,4.0.1,4.3.0,5.0.0", "operator": "in", "warningOnly": true } }
+        { "assert": { "description": "fhirVersion should be one of the known released FHIR version literals (warningOnly: list isn't exhaustive)", "expression": "CapabilityStatement.fhirVersion", "value": "1.0.2,3.0.1,3.0.2,4.0.0,4.0.1,4.3.0,5.0.0", "operator": "in", "warningOnly": true } }
       ]
     },
     {
       "name": "R4: CapabilityStatement.fhirVersion is 4.0.1",
-      "description": "Only runs when this conformance run is configured for FHIR R4 (fhirVersions=4.0). Mirrors GivenR4Server_WhenCapabilityStatementIsRetrieved_ThenCorrectVersionShouldBeReturned, which hard-asserts fhirVersion == '4.0.1'. Reuses the /metadata response fetched above via sourceId.",
+      "description": "Runs only when this suite targets an R4 server; reuses the /metadata response from the first test.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0" }],
       "action": [
         { "assert": { "description": "CapabilityStatement.fhirVersion must equal '4.0.1' for an R4 server", "sourceId": "capability-metadata-response", "expression": "CapabilityStatement.fhirVersion", "value": "4.0.1", "operator": "equals" } }
@@ -32,7 +32,7 @@
     },
     {
       "name": "R4B: CapabilityStatement.fhirVersion is 4.3.0",
-      "description": "Only runs when this conformance run is configured for FHIR R4B (fhirVersions=4.3). Mirrors GivenR4BServer_WhenCapabilityStatementIsRetrieved_ThenCorrectVersionShouldBeReturned, which hard-asserts fhirVersion == '4.3.0'. Reuses the /metadata response fetched above via sourceId.",
+      "description": "Runs only when this suite targets an R4B server; reuses the /metadata response from the first test.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.3" }],
       "action": [
         { "assert": { "description": "CapabilityStatement.fhirVersion must equal '4.3.0' for an R4B server", "sourceId": "capability-metadata-response", "expression": "CapabilityStatement.fhirVersion", "value": "4.3.0", "operator": "equals" } }
@@ -40,7 +40,7 @@
     },
     {
       "name": "R5: CapabilityStatement.fhirVersion is 5.0.0",
-      "description": "Only runs when this conformance run is configured for FHIR R5 (fhirVersions=5.0). Mirrors GivenR5Server_WhenCapabilityStatementIsRetrieved_ThenCorrectVersionShouldBeReturned, which hard-asserts fhirVersion == '5.0.0'. Reuses the /metadata response fetched above via sourceId.",
+      "description": "Runs only when this suite targets an R5 server; reuses the /metadata response from the first test.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "5.0" }],
       "action": [
         { "assert": { "description": "CapabilityStatement.fhirVersion must equal '5.0.0' for an R5 server", "sourceId": "capability-metadata-response", "expression": "CapabilityStatement.fhirVersion", "value": "5.0.0", "operator": "equals" } }
@@ -48,7 +48,7 @@
     },
     {
       "name": "STU3: CapabilityStatement.fhirVersion is 3.0.2",
-      "description": "Only runs when this conformance run is configured for FHIR STU3 (fhirVersions=3.0). Mirrors GivenStu3Server_WhenCapabilityStatementIsRetrieved_ThenCorrectVersionShouldBeReturned, which hard-asserts fhirVersion == '3.0.2'. Reuses the /metadata response fetched above via sourceId.",
+      "description": "Runs only when this suite targets a STU3 server; reuses the /metadata response from the first test.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "3.0" }],
       "action": [
         { "assert": { "description": "CapabilityStatement.fhirVersion must equal '3.0.2' for a STU3 server", "sourceId": "capability-metadata-response", "expression": "CapabilityStatement.fhirVersion", "value": "3.0.2", "operator": "equals" } }

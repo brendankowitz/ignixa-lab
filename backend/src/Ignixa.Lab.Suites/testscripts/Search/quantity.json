@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Search/quantity",
-  "description": "Quantity search-parameter conformance tests, ported from Microsoft.Health.Fhir.Shared.Tests.E2E QuantitySearchTests. Five Observation fixtures on value-quantity (0.002, 5|unit1|system1, 5|unit2|system2, 100, and a duplicate-value pair to test unit/system disambiguation) exercise: implicit/eq default, ne/lt/gt/le/ge/sa/eb prefixes, the system-qualified (value|system) and unit-qualified (value||unit) forms, a combined system+unit filter with no match, and scientific-notation value parsing (2e-3).",
+  "description": "Quantity search-parameter conformance tests on Observation.value-quantity: implicit/eq, ne/lt/gt/le/ge/sa/eb prefixes, system- and unit-qualified values, and scientific-notation parsing (from QuantitySearchTests).",
   "status": "active",
   "fixture": [
     {

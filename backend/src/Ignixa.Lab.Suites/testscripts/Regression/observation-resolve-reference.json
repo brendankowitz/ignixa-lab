@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Regression/observation-resolve-reference",
-  "description": "Conditional (search-URL) reference resolution conformance ported from fhir-server's Microsoft.Health.Fhir.Shared.Tests.E2E ObservationResolveReferenceTests.cs. Covers both source test methods: POSTing an Observation whose subject.reference is a conditional search URL ('Patient?identifier=...') must succeed (201) when exactly one matching Patient exists, and must fail (400) when the conditional search resolves to no matches. A fixed Patient identifier (http://ignixa.io/testscript/suite/regression-resolve|REGR-RESOLVE-PAT-1) replaces the source test's Guid.NewGuid() uniqueness strategy since fixture bodies are static; the identifier is namespaced distinctly from other suites to avoid collisions on a shared server.",
+  "description": "Conditional (search-URL) reference resolution in Observation.subject.reference (from ObservationResolveReferenceTests.cs): resolves to 201 when exactly one matching Patient exists, and fails with 400 when no match exists.",
   "status": "active",
   "fixture": [
     {
@@ -69,7 +69,7 @@
   "test": [
     {
       "name": "Conditional (search-URL) reference resolves to exactly one existing resource",
-      "description": "POST an Observation whose subject.reference is 'Patient?identifier=http://ignixa.io/testscript/suite/regression-resolve|REGR-RESOLVE-PAT-1', which matches exactly the Patient created in setup. The server must resolve the conditional reference and return 201 Created.",
+      "description": "POST an Observation whose subject.reference is a conditional search URL matching exactly one Patient; the server must resolve it and return 201 Created.",
       "action": [
         {
           "operation": {
@@ -87,7 +87,7 @@
     },
     {
       "name": "Conditional (search-URL) reference to a non-existent resource is rejected",
-      "description": "POST an Observation whose subject.reference is a conditional search URL that matches no Patient. The server must reject this with 400 Bad Request (FHIR R4 conditional reference resolution: zero matches is an error, distinct from the 'multiple matches' case). Source test asserts issue.severity=error and issue.code=Invalid with a specific diagnostics message; the exact issue code is kept warningOnly since implementations vary in which IssueType they use for an unresolvable conditional reference.",
+      "description": "POST an Observation whose subject.reference is a conditional search URL matching no Patient; the server must reject it with 400 Bad Request (zero matches is an error, per FHIR conditional reference resolution). The issue-code check is warningOnly since the exact IssueType used varies by server.",
       "action": [
         {
           "operation": {
@@ -101,7 +101,7 @@
         { "assert": { "description": "Server must return 400 Bad Request", "response": "bad" } },
         { "assert": { "description": "Response body must be an OperationOutcome", "resource": "OperationOutcome" } },
         { "assert": { "description": "OperationOutcome must contain an error-severity issue", "expression": "OperationOutcome.issue.where(severity = 'error').exists()" } },
-        { "assert": { "description": "Issue code should be 'invalid' per FHIR IssueType (warningOnly: source E2E test asserts IssueType.Invalid, but the exact code used for unresolved conditional references varies by server)", "expression": "OperationOutcome.issue.where(code = 'invalid').exists()", "warningOnly": true } }
+        { "assert": { "description": "Issue code should be 'invalid' (warningOnly: exact code varies by server)", "expression": "OperationOutcome.issue.where(code = 'invalid').exists()", "warningOnly": true } }
       ]
     }
   ],

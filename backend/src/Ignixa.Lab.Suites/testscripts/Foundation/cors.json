@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Foundation/cors",
-  "description": "CORS preflight conformance tests ported from Microsoft.Health.Fhir.Shared.Tests.E2E Rest/CorsTests.cs. Sends an OPTIONS preflight request to the Patient endpoint with Origin/Access-Control-Request-Method/Access-Control-Request-Headers request headers and asserts the standard Access-Control-* response headers using the engine's headerField assert criteria (Ignixa.TestScript.Expressions.HeaderCriteria, JSON key 'headerField'), which reads response headers via a case-insensitive header dictionary. The two 'Access-Control-Allow-Headers' echo checks are warningOnly because header-value matching in this engine uses ordinal (case-sensitive) string comparison, while HTTP header token comparison is case-insensitive and other FHIR servers' CORS middleware may normalize casing differently than what was sent.",
+  "description": "CORS preflight conformance tests (from CorsTests): an OPTIONS request to Patient with Origin/Access-Control-Request-* headers must return 204 No Content with the appropriate Access-Control-Allow-Origin/Methods/Headers and Max-Age response headers. The Allow-Headers value checks are warningOnly since header casing may vary by server.",
   "status": "active",
   "test": [
     {
@@ -56,7 +56,7 @@
         },
         {
           "assert": {
-            "description": "Access-Control-Allow-Headers should include 'authorization' (warningOnly: engine's contains check is case-sensitive; header casing may vary by server)",
+            "description": "Access-Control-Allow-Headers should include 'authorization' (warningOnly: casing may vary by server)",
             "sourceId": "cors-response",
             "headerField": "Access-Control-Allow-Headers",
             "operator": "contains",
@@ -66,7 +66,7 @@
         },
         {
           "assert": {
-            "description": "Access-Control-Allow-Headers should include 'content-type' (warningOnly: engine's contains check is case-sensitive; header casing may vary by server)",
+            "description": "Access-Control-Allow-Headers should include 'content-type' (warningOnly: casing may vary by server)",
             "sourceId": "cors-response",
             "headerField": "Access-Control-Allow-Headers",
             "operator": "contains",

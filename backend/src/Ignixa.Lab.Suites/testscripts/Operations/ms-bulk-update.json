@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Operations/ms-bulk-update",
-  "description": "$bulk-update conformance tests ported from Microsoft.Health.Fhir.Shared.Tests.E2E.Rest.BulkUpdateTests. $bulk-update is an async long-running job invoked with HTTP PATCH (not POST/DELETE) and a Prefer: respond-async header, whose body is a standard FHIRPath-Patch Parameters resource (Ignixa.TestScript.Client.HttpTestRequestProvider serializes the fixture body as-is; the same 'operation'/'part'(type/path/name/value) shape already used by CRUD/patch-fhirpath.json applies here per the FHIRPath Patch spec). This engine has no wait-for-completion/polling-loop primitive, so job completion (ResourceUpdatedCount/ResourcePatchFailedCount/ResourceIgnoredCount Parameters) is NOT verified -- only kick-off acceptance (202 + Content-Location), a single best-effort status poll (warningOnly), and the fully synchronous validation-failure scenarios (400, no async involved) are asserted. All fixtures use meta.tag http://ignixa.io/testscript/suite/test|<unique-tag-per-scenario> to stay isolated from other suites on a shared server.",
+  "description": "$bulk-update conformance tests: FHIRPath-Patch async job kick-off (202 + Content-Location) at system and type scope, _isParallel option, and validation-failure scenarios (invalid search parameter, unsupported patch-type combination, unsupported resource types) (from BulkUpdateTests). Job completion is not verified, only kick-off acceptance and a single best-effort status poll (warningOnly).",
   "status": "active",
   "fixture": [
     {
@@ -103,7 +103,7 @@
       "sourceId": "bulk-update-system-kickoff",
       "headerField": "Content-Location",
       "defaultValue": "$bulk-update",
-      "description": "Job-status URL from the Content-Location header of the system-level kickoff response; falls back to GET $bulk-update if the header was absent."
+      "description": "Job-status URL from the kickoff response's Content-Location header (falls back to $bulk-update if absent)."
     }
   ],
   "setup": {
@@ -115,7 +115,7 @@
   "test": [
     {
       "name": "$bulk-update: invalid search parameter is rejected with 400",
-      "description": "PATCH /$bulk-update?_tag=...&invalidParam=badRequest with a valid FHIRPath-Patch body must still be rejected with 400 because invalidParam is not a valid search parameter, matching GivenBulkUpdateRequestWithInvalidSearchParameters_WhenRequested_ThenBadRequestIsReturned. This is fully synchronous validation; no job is created.",
+      "description": "An invalid search parameter must be rejected with 400 even with a valid patch body, before any job is created.",
       "action": [
         { "operation": { "type": { "code": "$bulk-update" }, "method": "PATCH", "url": "$bulk-update?_tag=http://ignixa.io/testscript/suite/test|fhir262-bu-badreq&invalidParam=badRequest", "sourceId": "patch-replace-gender", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-update-bad-search-param", "description": "PATCH $bulk-update?_tag=...&invalidParam=badRequest" } },
         { "assert": { "description": "Must return HTTP 400", "response": "bad" } }
@@ -123,7 +123,7 @@
     },
     {
       "name": "$bulk-update: unsupported patch type combination is rejected with 400",
-      "description": "PATCH /$bulk-update?_tag=... with an 'add' on Patient.gender (a single-cardinality element, not a list -- add is only valid on repeating elements) combined with an 'insert' on a nonexistent list path must be rejected with 400, matching GivenBulkUpdateRequestWithUnsupportedPatchType_WhenRequested_ThenBadRequestIsReturned.",
+      "description": "An 'add' on a single-cardinality element (Patient.gender) combined with an 'insert' on a nonexistent list path must be rejected with 400.",
       "action": [
         { "operation": { "type": { "code": "$bulk-update" }, "method": "PATCH", "url": "$bulk-update?_tag=http://ignixa.io/testscript/suite/test|fhir262-bu-unsupported", "sourceId": "patch-unsupported-combo", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-update-unsupported-type", "description": "PATCH $bulk-update?_tag=... with add(Patient.gender)+insert(Patient.nothing)" } },
         { "assert": { "description": "Must return HTTP 400", "response": "bad" } }
@@ -131,7 +131,7 @@
     },
     {
       "name": "$bulk-update: unsupported resource types (SearchParameter, StructureDefinition) are rejected with 400",
-      "description": "PATCH /SearchParameter/$bulk-update and /StructureDefinition/$bulk-update, even with an empty Parameters body, must both be rejected with 400 because these resource types are excluded from bulk update, matching GivenBulkUpdateRequestWithUnsupportedResourceTypes_WhenRequested_ThenBadRequestIsReturned.",
+      "description": "$bulk-update on excluded resource types (SearchParameter, StructureDefinition) must be rejected with 400 even with an empty patch body.",
       "action": [
         { "operation": { "type": { "code": "$bulk-update" }, "method": "PATCH", "url": "SearchParameter/$bulk-update?_tag=http://ignixa.io/testscript/suite/test|fhir262-bu-restype", "sourceId": "patch-empty", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-update-searchparameter-response", "description": "PATCH SearchParameter/$bulk-update?_tag=... with an empty Parameters body" } },
         { "assert": { "description": "SearchParameter/$bulk-update must return HTTP 400", "sourceId": "bulk-update-searchparameter-response", "response": "bad" } },
@@ -141,7 +141,7 @@
     },
     {
       "name": "$bulk-update kick-off: system-level with a valid patch returns 202 Accepted",
-      "description": "PATCH /$bulk-update?_tag=http://ignixa.io/testscript/suite/test|fhir262-bu-sys with Prefer: respond-async and a valid replace-Patient.active patch must return 202 Accepted with a non-empty Content-Location job-status header, matching GivenVariousResourcesOfDifferentTypes_WhenBulkUpdatedAtSystemLevel_ThenAllAreUpdated (job completion itself is not verified; see suite description).",
+      "description": "A valid patch submitted system-level must return 202 Accepted with a non-empty Content-Location header.",
       "action": [
         { "operation": { "type": { "code": "$bulk-update" }, "method": "PATCH", "url": "$bulk-update?_tag=http://ignixa.io/testscript/suite/test|fhir262-bu-sys", "sourceId": "patch-replace-active", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-update-system-kickoff", "description": "PATCH $bulk-update?_tag=http://ignixa.io/testscript/suite/test|fhir262-bu-sys" } },
         { "assert": { "description": "Kick-off must return 202 Accepted", "responseCode": "202" } },
@@ -150,7 +150,7 @@
     },
     {
       "name": "$bulk-update: single best-effort status poll",
-      "description": "GET the Content-Location captured from the system-level kickoff. This is a single request, not a wait loop; the job may already be complete (200 + Parameters) or still running (202) by the time this runs, so the whole assertion is warningOnly.",
+      "description": "A single status check on the kicked-off job's Content-Location; warningOnly since the job may finish before or after this check.",
       "action": [
         { "operation": { "type": { "code": "read" }, "method": "GET", "url": "${bulkUpdateLocation}", "responseId": "bulk-update-status-poll", "description": "GET the bulk-update job status URL" } },
         { "assert": { "description": "Status poll should return a 2xx status, either 202 (still running) or 200 (complete) (warningOnly: timing-dependent)", "response": "okay", "warningOnly": true } }
@@ -158,7 +158,7 @@
     },
     {
       "name": "$bulk-update kick-off: type-scoped (Patient/$bulk-update) accepts both _isParallel=true and _isParallel=false",
-      "description": "PATCH /Patient/$bulk-update?_tag=...&_isParallel=<true|false> with a valid patch must return 202 Accepted in both modes, matching GivenResourcesOfOneType_WhenBulkUpdatedByType_ThenAllOfThatTypeAreUpdated(resourceType, isParallel).",
+      "description": "A valid patch submitted type-scoped (Patient) must return 202 Accepted with both _isParallel=true and _isParallel=false.",
       "action": [
         { "operation": { "type": { "code": "$bulk-update" }, "method": "PATCH", "url": "Patient/$bulk-update?_tag=http://ignixa.io/testscript/suite/test|fhir262-bu-type&_isParallel=true", "sourceId": "patch-replace-active", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-update-type-parallel-true-kickoff", "description": "PATCH Patient/$bulk-update?_tag=...&_isParallel=true" } },
         { "assert": { "description": "_isParallel=true kick-off must return 202 Accepted", "sourceId": "bulk-update-type-parallel-true-kickoff", "response": "okay" } },

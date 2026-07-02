@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Search/reference",
-  "description": "Reference search-parameter conformance tests, ported from Microsoft.Health.Fhir.Shared.Tests.E2E ReferenceSearchTests. Five Patient fixtures exercise reference search across a single-type parameter (managingOrganization -> organization, constrained to Organization) and a multi-type parameter (generalPractitioner -> general-practitioner, which may reference Practitioner, Organization, or PractitionerRole): typed vs bare-id references, exact (non-prefix) id matching, resource-type case-sensitivity, the :type modifier, and the ambiguity that arises when a multi-type parameter's stored reference has no type. Referenced Organization/Practitioner resources are NOT created — reference search matches on the reference value itself and does not require the target to exist.",
+  "description": "Reference search-parameter conformance tests on Patient.managingOrganization (single-type) and Patient.generalPractitioner (multi-type): typed vs bare-id references, exact id matching, resource-type case-sensitivity, the :type modifier, and multi-type reference ambiguity (from ReferenceSearchTests). Referenced Organization/Practitioner resources are intentionally not created, since reference search matches on the reference value itself.",
   "status": "active",
   "fixture": [
     {

@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Operations/ms-import-basic",
-  "description": "Core $import operation conformance tests ported from the Microsoft.Health.Fhir.Shared.Tests.E2E ImportTests.cs (52 Facts) and ImportBasicSearchTests.cs suites. Real $import requires the input files to already exist as ndjson blobs in the server's configured Azure Storage account, and completion is only observable via an async poll-until-terminal loop -- neither blob provisioning nor poll-until-terminal exists in the TestScript engine, so this suite cannot exercise a real end-to-end import. Instead it exhaustively exercises the synchronous, purely-HTTP-observable part of the contract: the ValidateImportRequestFilterAttribute header checks and the ValidateImportRequestConfiguration body validation that ImportController.Import runs BEFORE any job is queued (see ImportController.cs). Because that validation always throws the same 400 regardless of which specific rule fires, these checks are reliable against ANY compliant target server, even though the input file's storage-account host is unknown to a portable suite. SKIPPED (require a completed real import job against real blob storage, which the engine cannot orchestrate): all incremental-load version/conflict-resolution and error-log Facts (GivenIncrementalLoad_*, GivenImportInvalidResource_ThenErrorLogsShouldBeOutput, GivenImportResourceWithWrongType_ThenErrorLogShouldBeUploaded, GivenImportDuplicatedResource_ThenDupResourceShouldBeReported, GivenImportRequest_WhenImportDataHasInvalidResourceIds_*, GivenImportTriggered_*, GivenImportOperationEnabled_WhenImportOperationTriggeredWithoutEtag_*, GivenImportTriggeredWithMultipleFiles_*), the permission/RBAC Facts (GivenAUserWith[out]ImportPermissions_*), the cancel-lifecycle-after-a-real-kickoff Facts (GivenImportWithCancel_ThenTaskShouldBeCanceled, GivenImportHasCompleted_WhenCancel_ThenTaskShouldReturnConflict), the etag-mismatch and invalid-url Facts that need a real uploaded file (GivenImportInvalidETag_ThenBadRequestShouldBeReturned, GivenImportOperationEnabled_WhenImportInvalidResourceUrl_ThenBadRequestShouldBeReturned -- itself already Skip-marked in source), and the entirety of ImportBasicSearchTests.cs (asserts search results after a completed import of a large fixed dataset). Two tests below are intentionally best-effort/environment-dependent (marked warningOnly) because they depend on the target's real configured storage-account host, which this suite cannot know.",
+  "description": "$import bulk-data-load operation conformance tests (from ImportTests.cs / ImportBasicSearchTests.cs): kickoff request validation (400 for malformed headers, body, or input URLs) and job-status polling for an unknown job id. Real end-to-end import needs real blob storage and async job completion this suite can't provide, so only synchronous request validation is covered, and two tests are best-effort/warningOnly since reaching 202 requires a storage account matching the target server's configuration.",
   "status": "active",
   "fixture": [
     {
@@ -202,7 +202,7 @@
   "test": [
     {
       "name": "$import kickoff requires the Prefer: respond-async and Content-Type: application/fhir+json headers",
-      "description": "Derived from ValidateImportRequestFilterAttribute.cs, which runs before the request body is even parsed and throws RequestNotValidException (400) if Prefer is missing/wrong, or (for POST) if Content-Type does not contain application/fhir+json. Not a literal ImportTests.cs Fact (that file only exercises header-valid requests), but a direct port of production validation logic gated on the same operation.",
+      "description": "Missing Prefer: respond-async, or a Content-Type other than application/fhir+json, must each return 400 Bad Request.",
       "action": [
         { "operation": { "type": { "code": "$import" }, "method": "POST", "url": "$import", "accept": "application/fhir+json", "sourceId": "import-params-wellformed", "responseId": "missing-prefer-response", "description": "POST $import with a well-formed body but no Prefer header" } },
         { "assert": { "description": "Missing Prefer: respond-async must return 400 Bad Request", "sourceId": "missing-prefer-response", "response": "bad" } },
@@ -212,7 +212,7 @@
     },
     {
       "name": "$import kickoff rejects an empty Parameters body and an unsupported inputFormat",
-      "description": "Ported from ValidateImportRequestConfiguration (ImportController.cs): an empty Parameters yields a null/absent inputFormat (ExtractImportRequest never returns null itself, but the default inputFormat check fails), and an explicit unsupported inputFormat value is rejected the same way. Both checks fire before storageDetail/input are ever inspected.",
+      "description": "An empty Parameters body and an unsupported inputFormat value (application/fhir+xml) must each return 400 Bad Request.",
       "action": [
         { "operation": { "type": { "code": "$import" }, "method": "POST", "url": "$import", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "sourceId": "import-params-empty", "responseId": "empty-params-response", "description": "POST $import with an empty Parameters (no parameter entries)" } },
         { "assert": { "description": "Empty Parameters must return 400 Bad Request", "sourceId": "empty-params-response", "response": "bad" } },
@@ -222,7 +222,7 @@
     },
     {
       "name": "$import kickoff rejects an unsupported storageDetail.type and a missing input array",
-      "description": "Ported from ValidateImportRequestConfiguration: only storageDetail.type=azure-blob is allowed, and the input array must be non-null/non-empty. Both fire before any per-item URL/type checks.",
+      "description": "An unsupported storageDetail.type and a request missing the input array must each return 400 Bad Request.",
       "action": [
         { "operation": { "type": { "code": "$import" }, "method": "POST", "url": "$import", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "sourceId": "import-params-bad-storage-type", "responseId": "bad-storage-response", "description": "POST $import with storageDetail.type=aws-s3 (only azure-blob is allowed)" } },
         { "assert": { "description": "Unsupported storageDetail.type must return 400 Bad Request", "sourceId": "bad-storage-response", "response": "bad" } },
@@ -232,7 +232,7 @@
     },
     {
       "name": "$import kickoff rejects duplicate input file URLs",
-      "description": "Ported from GivenImportRequestWithMultipleSameFile_ThenBadRequestShouldBeReturned. The duplicate-URL check runs over the whole input array before any per-item type/URL/host check, so it is fully deterministic without a real uploaded file: two input entries with the identical URL are enough to trigger it.",
+      "description": "Two input entries with the same file URL must return 400 Bad Request (from ImportTests).",
       "action": [
         { "operation": { "type": { "code": "$import" }, "method": "POST", "url": "$import", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "sourceId": "import-params-duplicate-urls", "responseId": "duplicate-urls-response", "description": "POST $import with two input entries pointing at the same URL" } },
         { "assert": { "description": "Duplicate input URLs must return 400 Bad Request", "sourceId": "duplicate-urls-response", "response": "bad" } }
@@ -240,7 +240,7 @@
     },
     {
       "name": "$import kickoff rejects an unrecognized input resource type",
-      "description": "Ported from GivenImportInvalidResourceType_ThenBadRequestShouldBeReturned. Per-item type validation (Enum.IsDefined(typeof(ResourceType), item.Type)) runs before the storage-account-host check, so an invalid type value like 'Invalid' is rejected deterministically regardless of which storage host the URL points at.",
+      "description": "An input entry with an unrecognized resource type must return 400 Bad Request (from ImportTests).",
       "action": [
         { "operation": { "type": { "code": "$import" }, "method": "POST", "url": "$import", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "sourceId": "import-params-invalid-type", "responseId": "invalid-type-response", "description": "POST $import with input[0].type=Invalid" } },
         { "assert": { "description": "Unrecognized input resource type must return 400 Bad Request", "sourceId": "invalid-type-response", "response": "bad" } }
@@ -248,7 +248,7 @@
     },
     {
       "name": "$import kickoff rejects an input URL that is relative or that contains a query string",
-      "description": "Conceptually related to GivenImportOperationEnabled_WhenImportInvalidResourceUrl_ThenBadRequestShouldBeReturned (itself Skip-marked in source as a long-running real-upload test). This directly exercises the synchronous URL-shape check in ValidateImportRequestConfiguration (item.Url must be absolute with no query string), which -- like the resource-type check -- runs before the storage-account-host check, so it does not require a real uploaded file or a matching host.",
+      "description": "An input URL that is relative, or that includes a query string, must each return 400 Bad Request.",
       "action": [
         { "operation": { "type": { "code": "$import" }, "method": "POST", "url": "$import", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "sourceId": "import-params-relative-url", "responseId": "relative-url-response", "description": "POST $import with a relative input URL (container/patient.ndjson)" } },
         { "assert": { "description": "Relative input URL must return 400 Bad Request", "sourceId": "relative-url-response", "response": "bad" } },
@@ -258,7 +258,7 @@
     },
     {
       "name": "$import kickoff rejects an input URL for an unconfigured storage account",
-      "description": "Ported from GivenImportInputUrlForUnconfiguredStorageAccount_ThenBadRequestShouldBeReturned, using the same style of placeholder domain (https://unconfigured.example.org) the source test itself uses -- this is a literal port, not an approximation, since the source test also never uploads a real file for this scenario.",
+      "description": "An input URL pointing at a storage account the server hasn't configured must return 400 Bad Request (from ImportTests).",
       "action": [
         { "operation": { "type": { "code": "$import" }, "method": "POST", "url": "$import", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "sourceId": "import-params-unconfigured-host", "responseId": "unconfigured-host-response", "description": "POST $import with input[0].url on a domain no server configures" } },
         { "assert": { "description": "Input URL on an unconfigured storage account must return 400 Bad Request", "sourceId": "unconfigured-host-response", "response": "bad" } }
@@ -266,7 +266,7 @@
     },
     {
       "name": "$import kickoff rejects the SearchParameter resource type via its explicit denylist",
-      "description": "Ported from the SearchParameter denylist in ValidateImportRequestConfiguration (input.Any(i => i.Type == \"SearchParameter\") -> 400), even though SearchParameter is otherwise a valid ResourceType enum member. Caveat: this denylist check runs AFTER the storage-account-host check, so on a target whose configured storage host does not match our placeholder URL, the 400 observed here is actually caused by the host-mismatch check firing first, not the denylist itself. The response is still deterministically 400 either way, which is what this test asserts; only servers whose storage host happens to match the placeholder would exercise the denylist rule specifically.",
+      "description": "An input entry with resource type SearchParameter must return 400 Bad Request; SearchParameter is explicitly denylisted for import even though it's a valid resource type. Note: on this target, the 400 may come from the storage-host check firing first rather than the denylist itself.",
       "action": [
         { "operation": { "type": { "code": "$import" }, "method": "POST", "url": "$import", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "sourceId": "import-params-searchparameter-type", "responseId": "searchparameter-type-response", "description": "POST $import with input[0].type=SearchParameter" } },
         { "assert": { "description": "SearchParameter input type must return 400 Bad Request", "sourceId": "searchparameter-type-response", "response": "bad" } }
@@ -274,7 +274,7 @@
     },
     {
       "name": "status check for a never-issued $import job id returns 404 Not Found",
-      "description": "Derived from GetImportRequestHandler.cs, which throws ResourceNotFoundException (mapped to 404) when the requested job id does not exist. Import job ids are server-assigned longs (route _operations/import/{id}), so a very large, essentially-never-issued id is used in place of a real job id -- no real import needs to run first.",
+      "description": "A status check for an import job id that was never issued must return 404 Not Found.",
       "action": [
         { "operation": { "type": { "code": "read" }, "method": "GET", "url": "_operations/import/999999999999", "responseId": "unknown-job-status-response", "description": "GET /_operations/import/999999999999 for a job id that was never created" } },
         { "assert": { "description": "Status check for an unknown import job id must return 404 Not Found", "sourceId": "unknown-job-status-response", "response": "notFound" } }
@@ -282,7 +282,7 @@
     },
     {
       "name": "$import kickoff rejects an unrecognized mode value (best-effort)",
-      "description": "Derived from ImportController.Import, which synchronously rejects any non-empty mode value other than InitialLoad/IncrementalLoad with 400 (Resources.ImportModeIsNotRecognized) -- but this check runs AFTER ValidateImportRequestConfiguration's storage-account-host check, so (like the SearchParameter denylist test above) the 400 observed here on a generic target may actually come from the host-mismatch check rather than the mode check specifically. The response is still deterministically 400 either way.",
+      "description": "An unrecognized mode value must return 400 Bad Request (best-effort: on this target, the 400 may come from the storage-host check rather than the mode check itself).",
       "action": [
         { "operation": { "type": { "code": "$import" }, "method": "POST", "url": "$import", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "sourceId": "import-params-invalid-mode", "responseId": "invalid-mode-response", "description": "POST $import with mode=not-a-real-mode" } },
         { "assert": { "description": "Unrecognized mode value must return 400 Bad Request", "sourceId": "invalid-mode-response", "response": "bad" } }
@@ -290,12 +290,12 @@
     },
     {
       "name": "well-formed $import kickoff shape (best-effort, environment-dependent)",
-      "description": "Represents the request/response shape called out in the task's realism note: a syntactically well-formed $import kickoff should return 202 Accepted with a non-empty Content-Location header (per ImportResult.Accepted()/SetContentLocationHeader in ImportController.cs). Whether this actually happens depends entirely on whether the input URL's host matches the target's real configured Azure Storage account, which this portable suite cannot know -- our placeholder host (ignixa-lab-testscript-placeholder.blob.core.windows.net) will not match on any real deployment, so in practice this will almost always observe the 400 branch instead. All three assertions are warningOnly for this reason; this test exists purely to document the positive-path shape, not to reliably enforce it.",
+      "description": "A well-formed $import kickoff should return 202 Accepted with a Content-Location header; both assertions are warningOnly since reaching 202 depends on the target's real storage account, which this suite can't know.",
       "action": [
         { "operation": { "type": { "code": "$import" }, "method": "POST", "url": "$import", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "sourceId": "import-params-wellformed", "responseId": "wellformed-kickoff-response", "description": "POST $import with a syntactically well-formed body (valid inputFormat/storageDetail/input shape)" } },
-        { "assert": { "description": "Best-effort: a matching storage host would return 202 Accepted (warningOnly: host is almost never a match on a portable suite)", "sourceId": "wellformed-kickoff-response", "responseCode": "202", "warningOnly": true } },
-        { "assert": { "description": "Best-effort: a non-matching storage host returns 400 Bad Request instead (warningOnly: documents the far more likely outcome)", "sourceId": "wellformed-kickoff-response", "response": "bad", "warningOnly": true } },
-        { "assert": { "description": "If 202 was returned, Content-Location must be present and non-empty (warningOnly: only meaningful on the 202 branch)", "sourceId": "wellformed-kickoff-response", "headerField": "Content-Location", "warningOnly": true } }
+        { "assert": { "description": "202 Accepted if the input URL happens to match the server's configured storage account (rarely true for a portable suite).", "sourceId": "wellformed-kickoff-response", "responseCode": "202", "warningOnly": true } },
+        { "assert": { "description": "400 Bad Request otherwise, which is the far more likely outcome.", "sourceId": "wellformed-kickoff-response", "response": "bad", "warningOnly": true } },
+        { "assert": { "description": "If 202 was returned, Content-Location must be present (only meaningful on the 202 branch).", "sourceId": "wellformed-kickoff-response", "headerField": "Content-Location", "warningOnly": true } }
       ]
     }
   ]

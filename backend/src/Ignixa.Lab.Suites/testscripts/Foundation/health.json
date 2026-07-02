@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Foundation/health",
-  "description": "Health check endpoint conformance tests ported from Microsoft.Health.Fhir.Shared.Tests.E2E Rest/HealthTests.cs. Covers GET /health/check returning HTTP 200. The source test's second assertion (that the raw response body contains the substring 'description') cannot be expressed with this engine: the health report is a plain JSON object with no 'resourceType', and the engine's only body-inspection assertions (resource/expression) require a FHIR resource body to convert via the schema-aware FHIRPath evaluator, while there is no raw substring/body-text assertion available. This is approximated by asserting the response Content-Type is application/json (confirming a structured JSON body was returned), and the limitation is documented here rather than silently dropped.",
+  "description": "Health check endpoint (/health/check) conformance tests: a healthy server returns HTTP 200 with a JSON health report (from HealthTests). Body-content checks on the non-FHIR report aren't expressible with this engine, so the 'contains description' check is approximated via Content-Type.",
   "status": "active",
   "test": [
     {
@@ -28,7 +28,7 @@
     },
     {
       "name": "health/check returns a JSON body (approximates the 'contains description' check)",
-      "description": "The original test asserts the raw response text contains the substring 'description'. This engine cannot inspect non-FHIR response bodies (see file description), so this is approximated by asserting the response is HTTP 200 with a Content-Type of application/json, confirming a structured health report body was returned.",
+      "description": "Approximates the source test's body-text check: asserts the health check returns HTTP 200 with a JSON Content-Type, since raw body-text assertions aren't supported by this engine.",
       "action": [
         {
           "operation": {

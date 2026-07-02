@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Search/token-overflow",
-  "description": "Token overflow storage/search conformance tests ported from Microsoft.Health.Fhir.Shared.Tests.E2E TokenOverflowTests.GivenResourcesWithAndWithoutTokenOverflow_WhenSearchByToken_VerifyCorrectSerachResults. The SQL Server-backed store indexes token codes in a VARCHAR(256) column (dbo.TokenSearchParam.Code); values longer than 256 characters spill the remainder into a companion CodeOverflow column, and the query generator must transparently stitch the two back together. Four Patient.identifier values are used: (A) 257 chars sharing an identical 256-char prefix with (B) but differing only in the final overflow character, (C) exactly 256 chars (the boundary, no overflow), and (D) 156 chars (short, well under the limit). This is exercised as an externally observable search-correctness behavior (any FHIR server must be able to find a resource by its exact, arbitrarily long token value and must not confuse two values sharing a long common prefix) so it is not restricted to SQL Server, though it originates from a SQL Server-specific storage design. The composite custom-SearchParameter + $reindex overflow variants in the source file (CompositeCustomToken*SearchParameter tests) are skipped: they require dynamically constructing and POSTing new SearchParameter resources and polling a $reindex job, both of which need dynamic request bodies and multi-step polling not supported by this static-fixture TestScript engine; those source tests are themselves marked Skip=\"Reindexing is failing CI\" upstream.",
+  "description": "Token value storage/search conformance: search must correctly distinguish long token values that share a common prefix and exceed typical indexed-column length limits (from TokenOverflowTests). Composite custom-SearchParameter + $reindex overflow variants are skipped since they require dynamic SearchParameter creation and reindex polling, unsupported by this static-fixture engine; those source tests are also skipped upstream (CI reindexing issue).",
   "status": "active",
   "fixture": [
     {
@@ -56,7 +56,7 @@
   "test": [
     {
       "name": "Overflow value A is found and distinguished from B",
-      "description": "Searching by A's full 257-char value must return exactly A, even though A and B share an identical 256-char prefix and differ only in the final (overflow) character.",
+      "description": "Searching by A's full 257-character value must return exactly A, not B, even though both share an identical 256-character prefix.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/token-overflow|fhir262tokof----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------A", "responseId": "overflow-a-response", "description": "GET /Patient?identifier=...prefix...A (257 chars)" } },
@@ -69,7 +69,7 @@
     },
     {
       "name": "Overflow value B is found and distinguished from A",
-      "description": "Searching by B's full 257-char value must return exactly B, not A, verifying the CodeOverflow column (not just the truncated 256-char prefix in Code) is compared.",
+      "description": "Searching by B's full 257-character value must return exactly B, not A, confirming the full value (not just a truncated prefix) is compared.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/token-overflow|fhir262tokof----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------B", "responseId": "overflow-b-response", "description": "GET /Patient?identifier=...prefix...B (257 chars)" } },
@@ -81,7 +81,7 @@
     },
     {
       "name": "Exact 256-char boundary value (no overflow) is found",
-      "description": "Patient C's identifier value is exactly 256 characters, the storage boundary where no overflow occurs. Searching by its full value must return exactly C, not the 257-char A/B values that share the same prefix.",
+      "description": "Patient C's 256-character identifier (the exact boundary, no overflow) must be found by its full value without matching the longer A/B values sharing the same prefix.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/token-overflow|fhir262tokof----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------", "responseId": "boundary-c-response", "description": "GET /Patient?identifier=...prefix (exactly 256 chars, no suffix)" } },
@@ -94,7 +94,7 @@
     },
     {
       "name": "Short value well under the overflow limit is found",
-      "description": "Patient D's identifier value is 156 characters, comfortably under the 256-char indexed column limit, exercising the ordinary non-overflow code path alongside the boundary and overflow cases above.",
+      "description": "Patient D's 156-character identifier (well under the overflow boundary) must be found by its full value, exercising the ordinary non-overflow path.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/token-overflow|fhir262tokof------------------------------------------------------------------------------------------------------------------------------------------------", "responseId": "short-d-response", "description": "GET /Patient?identifier=...prefix (156 chars)" } },
@@ -105,7 +105,7 @@
     },
     {
       "name": "Non-matching token value returns none of the fixtures",
-      "description": "Ported from the source test's final assertion (Patient?identifier=nonexistant-patient returns an empty bundle): a token value that matches none of the fixtures must not incidentally match any of them via prefix truncation or overflow mishandling.",
+      "description": "A token value matching none of the fixtures must return an empty bundle, not a false match via prefix truncation or overflow mishandling (from TokenOverflowTests).",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/token-overflow|nonexistent-token-overflow-value", "responseId": "no-match-response", "description": "GET /Patient?identifier=http://ignixa.io/testscript/suite/token-overflow|nonexistent-token-overflow-value" } },

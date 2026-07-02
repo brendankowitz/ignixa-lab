@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "CRUD/patch-fhirpath",
-  "description": "FHIRPath Patch (application/fhir+json PATCH with a Parameters resource carrying 'patch-op' operations, per http://hl7.org/fhir/fhirpatch.html) conformance tests, adapted from the Microsoft FHIR Server E2E suite FhirPathPatchTests.cs. Covers add/replace/delete operations, FHIRPath path filters (where()), choice-type handling, immutable-element protection, conditional (If-Match/ETag) semantics, and date/dateTime edge cases. Bundle-transaction patch scenarios and the SQL-Server-only history-suppression assertion are noted inline; see the top-level suite summary for what is intentionally out of scope.",
+  "description": "FHIRPath Patch (application/fhir+json PATCH with a Parameters resource, per http://hl7.org/fhir/fhirpatch.html) conformance tests: add/replace/delete operations, FHIRPath where() filters, choice-type handling, immutable-element protection, If-Match preconditions, and date/dateTime edge cases (from FhirPathPatchTests).",
   "status": "active",
   "fixture": [
     {

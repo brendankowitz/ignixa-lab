@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Operations/export-data",
-  "description": "System/Patient/Group $export conformance tests ported from the Microsoft.Health.Fhir.Shared.Tests.E2E Export suite. Covers kick-off (202 Accepted + Content-Location), request validation failures (400: unsupported resource type/query param, unparsable _since/_till, invalid Accept/Prefer headers, _container and _anonymizationConfig path traversal), status polling (single-shot, not a wait loop), and the cancel lifecycle (DELETE Content-Location -> 202, then 404 on subsequent status/cancel). ExportDataTests.cs and ExportDataValidationTests.cs are entirely SKIPPED: every test in those files creates real data, waits for the export job to reach a terminal 'complete' state, then downloads and parses the resulting ndjson blobs from Azure Storage to compare resource-for-resource with server data -- none of that is possible from a black-box HTTP TestScript run (no polling-until-terminal construct exists in TestScript, and exported blob content cannot be read). Similarly, ExportTests.GivenFhirServer... history/soft-delete/container-content assertions are out of scope for the same reason; only the request/response-shape behavior of ExportTests is represented below.",
+  "description": "System/Patient/Group $export conformance tests: kick-off (202 + Content-Location), request validation (400 for bad resource type/query params/_since/_till/headers/path traversal), status checks, and the cancel lifecycle. Scenarios requiring actual export completion and blob content verification are not covered (from ExportTests, ExportDataTests, ExportDataValidationTests).",
   "status": "active",
   "variable": [
     { "name": "systemExportLocation", "sourceId": "system-export-kickoff", "headerField": "Content-Location", "description": "Content-Location returned by the system-level $export kickoff" },
@@ -16,7 +16,7 @@
   "test": [
     {
       "name": "type-level export rejects an unsupported resource type with 400",
-      "description": "Ported from GivenExportIsEnabled_WhenRequestingExportByTypeWithAnInvalidResourceType_ThenServerShouldReturnBadRequest([\"Observation/$export\", \"Patient/id/$export\"]). Only Patient (type-level) and Group/{id} (group-level) export routes are supported; both must be rejected synchronously with 400.",
+      "description": "Only Patient (type-level) and Group/{id} (group-level) $export routes are supported; other type/id combinations must return 400. (from ExportTests)",
       "action": [
         { "operation": { "type": { "code": "$export" }, "method": "GET", "url": "Observation/$export", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "invalid-type-observation-response", "description": "GET Observation/$export (type-level export is only supported for Patient)" } },
         { "assert": { "description": "Observation/$export must return 400 Bad Request", "sourceId": "invalid-type-observation-response", "response": "bad" } },
@@ -26,17 +26,17 @@
     },
     {
       "name": "system-level $export kick-off returns 202 Accepted with a non-empty Content-Location",
-      "description": "Ported from GivenExportIsEnabled_WhenRequestingExportWithCorrectHeaders_ThenServerShouldReturnAcceptedAndNonEmptyContentLocationHeader(\"$export\"). Actual export completion/content is not verified (see suite description).",
+      "description": "System-level $export with valid headers must return 202 Accepted plus a Content-Location header; job completion isn't verified. (from ExportTests)",
       "action": [
         { "operation": { "type": { "code": "$export" }, "method": "GET", "url": "$export", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "system-export-kickoff", "description": "GET /$export with Accept: application/fhir+json and Prefer: respond-async" } },
         { "assert": { "description": "System-level export kick-off must return 202 Accepted", "sourceId": "system-export-kickoff", "responseCode": "202" } },
         { "assert": { "description": "Content-Location header must be present and non-empty", "sourceId": "system-export-kickoff", "headerField": "Content-Location" } },
-        { "operation": { "type": { "code": "delete" }, "method": "DELETE", "url": "${systemExportLocation}", "description": "Best-effort cancel so the job doesn't actually run to completion (mirrors GenerateAndSendCancelExportMessage)" } }
+        { "operation": { "type": { "code": "delete" }, "method": "DELETE", "url": "${systemExportLocation}", "description": "Best-effort cancel so the job doesn't run to completion" } }
       ]
     },
     {
       "name": "Patient/$export kick-off returns 202 Accepted with a non-empty Content-Location",
-      "description": "Ported from GivenExportIsEnabled_WhenRequestingExportWithCorrectHeaders_ThenServerShouldReturnAcceptedAndNonEmptyContentLocationHeader(\"Patient/$export\").",
+      "description": "Patient-level $export with valid headers must return 202 Accepted plus a Content-Location header. (from ExportTests)",
       "action": [
         { "operation": { "type": { "code": "$export" }, "method": "GET", "url": "Patient/$export", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "patient-export-kickoff", "description": "GET /Patient/$export with Accept: application/fhir+json and Prefer: respond-async" } },
         { "assert": { "description": "Patient-level export kick-off must return 202 Accepted", "sourceId": "patient-export-kickoff", "responseCode": "202" } },
@@ -46,7 +46,7 @@
     },
     {
       "name": "Group/{id}/$export kick-off returns 202 Accepted with a non-empty Content-Location",
-      "description": "Ported from GivenExportIsEnabled_WhenRequestingExportWithCorrectHeaders_ThenServerShouldReturnAcceptedAndNonEmptyContentLocationHeader(\"Group/123456/$export\"). The group id is a placeholder (not a real Group) -- like the source test, existence of the group is validated asynchronously during job processing, not at kick-off.",
+      "description": "Group-level $export with valid headers must return 202 Accepted plus a Content-Location header; the group id is a placeholder since existence is only checked once the job runs. (from ExportTests)",
       "action": [
         { "operation": { "type": { "code": "$export" }, "method": "GET", "url": "Group/123456/$export", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "group-export-kickoff", "description": "GET /Group/123456/$export with Accept: application/fhir+json and Prefer: respond-async" } },
         { "assert": { "description": "Group-level export kick-off must return 202 Accepted", "sourceId": "group-export-kickoff", "responseCode": "202" } },
@@ -56,7 +56,7 @@
     },
     {
       "name": "export kick-off rejects an unsupported query parameter at system, type, and group scope",
-      "description": "Ported from GivenExportIsEnabled_WhenRequestingExportWithUnsupportedQueryParam_ThenServerShouldReturnBadRequest, run against all three export scopes. ValidateExportRequestFilterAttribute rejects any query parameter not on its allow-list.",
+      "description": "An unrecognized query parameter must return 400 at system, Patient, and Group export scopes. (from ExportTests)",
       "action": [
         { "operation": { "type": { "code": "$export" }, "method": "GET", "url": "$export?anyQueryParam=anyValue", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "unsupported-param-system-response", "description": "GET /$export?anyQueryParam=anyValue" } },
         { "assert": { "description": "System-level export must return 400 for an unsupported query parameter", "sourceId": "unsupported-param-system-response", "response": "bad" } },
@@ -68,7 +68,7 @@
     },
     {
       "name": "export kick-off rejects an unparsable _since value",
-      "description": "Ported from GivenUnparsableTime_WhenRequestionExportWithIt_ThenServerShouldReturnBadRequest(_since variants). Both a non-date word and a validly-formatted date with a stray trailing space must fail PartialDateTime binding with 400.",
+      "description": "An unparsable _since value (non-date text, or a valid date with a stray trailing space) must return 400. (from ExportTests)",
       "action": [
         { "operation": { "type": { "code": "$export" }, "method": "GET", "url": "$export?_type=Patient&_since=time", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "since-word-response", "description": "GET /$export?_type=Patient&_since=time" } },
         { "assert": { "description": "Non-date _since value must return 400 Bad Request", "sourceId": "since-word-response", "response": "bad" } },
@@ -78,7 +78,7 @@
     },
     {
       "name": "export kick-off rejects an unparsable _till value",
-      "description": "Ported from GivenUnparsableTime_WhenRequestionExportWithIt_ThenServerShouldReturnBadRequest(_till variants).",
+      "description": "An unparsable _till value must return 400, mirroring the _since behavior. (from ExportTests)",
       "action": [
         { "operation": { "type": { "code": "$export" }, "method": "GET", "url": "$export?_type=Patient&_till=time", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "till-word-response", "description": "GET /$export?_type=Patient&_till=time" } },
         { "assert": { "description": "Non-date _till value must return 400 Bad Request", "sourceId": "till-word-response", "response": "bad" } },
@@ -88,7 +88,7 @@
     },
     {
       "name": "export kick-off with supported query parameters (_since, _type, _container) returns 202 Accepted",
-      "description": "Ported from GivenExportIsEnabled_WhenRequestingExportWithSupportedQueryParam_ThenServerShouldReturnAcceptedAndNonEmptyContentLocationHeader, run against all three export scopes.",
+      "description": "Kicking off export with supported query params (_since, _type, _container) must return 202 Accepted at all three export scopes. (from ExportTests)",
       "action": [
         { "operation": { "type": { "code": "$export" }, "method": "GET", "url": "$export?_since=2024-01-01T00:00:00.00%2B00:00&_type=Patient&_container=test-container", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "supported-params-system-kickoff", "description": "GET /$export?_since=...&_type=Patient&_container=test-container" } },
         { "assert": { "description": "System-level export with supported params must return 202 Accepted", "sourceId": "supported-params-system-kickoff", "responseCode": "202" } },
@@ -106,7 +106,7 @@
     },
     {
       "name": "a single immediate status check right after kick-off returns 202 Accepted",
-      "description": "Ported from GivenExportJobExists_WhenRequestingExportStatus_ThenServerShouldReturnAccepted. This is a single GET, not a wait loop, so it does not depend on completion infra. The 202 assertion is warningOnly because a lab backend could conceivably finish an empty/trivial export before this single follow-up check runs, in which case 200 would be returned instead.",
+      "description": "A status check immediately after kick-off should still return 202 Accepted; warningOnly since a trivial export could already complete (200) before this check runs. (from ExportTests)",
       "action": [
         { "operation": { "type": { "code": "$export" }, "method": "GET", "url": "$export", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "status-check-kickoff", "description": "GET /$export to create a job record" } },
         { "assert": { "description": "Kick-off must return 202 Accepted", "sourceId": "status-check-kickoff", "responseCode": "202" } },
@@ -117,7 +117,7 @@
     },
     {
       "name": "status check for an unknown export job id returns 404 Not Found",
-      "description": "Ported from GivenExportJobDoesNotExist_WhenRequestingExportStatus_ThenServerShouldReturnNotFound. Uses a fixed, presumably-never-issued job id in place of Guid.NewGuid().",
+      "description": "A status check for a job id that was never issued must return 404. (from ExportTests)",
       "action": [
         { "operation": { "type": { "code": "read" }, "method": "GET", "url": "_operations/export/00000000-0000-0000-0000-000000000000", "responseId": "unknown-job-status-response", "description": "GET /_operations/export/{id} for a job id that was never created" } },
         { "assert": { "description": "Status check for an unknown job id must return 404 Not Found", "sourceId": "unknown-job-status-response", "response": "notFound" } }
@@ -125,7 +125,7 @@
     },
     {
       "name": "export kick-off rejects invalid Accept header values with 400",
-      "description": "Ported from GivenExportIsEnabled_WhenRequestingExportWithInvalidAcceptHeader_ThenServerShouldReturnBadRequest. ValidateExportRequestFilterAttribute requires exactly one Accept header equal to application/fhir+json.",
+      "description": "Export requires an Accept header of exactly application/fhir+json; any other value must return 400. (from ExportTests)",
       "action": [
         { "operation": { "type": { "code": "$export" }, "method": "GET", "url": "$export", "accept": "application/json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "accept-json-response", "description": "GET /$export with Accept: application/json" } },
         { "assert": { "description": "Accept: application/json must return 400 Bad Request", "sourceId": "accept-json-response", "response": "bad" } },
@@ -139,7 +139,7 @@
     },
     {
       "name": "export kick-off rejects invalid Prefer header values with 400",
-      "description": "Ported from GivenExportIsEnabled_WhenRequestingExportWithInvalidPreferHeader_ThenServerShouldReturnBadRequest. ValidateExportRequestFilterAttribute requires a Prefer header containing respond-async.",
+      "description": "Export requires a Prefer header containing respond-async; any other value must return 400. (from ExportTests)",
       "action": [
         { "operation": { "type": { "code": "$export" }, "method": "GET", "url": "$export", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async, wait=10" } ], "responseId": "prefer-wait-response", "description": "GET /$export with Prefer: respond-async, wait=10 (wait= is not a recognized token)" } },
         { "assert": { "description": "Prefer: respond-async, wait=10 must return 400 Bad Request", "sourceId": "prefer-wait-response", "response": "bad" } },
@@ -153,7 +153,7 @@
     },
     {
       "name": "export kick-off rejects path traversal in the _container parameter",
-      "description": "Ported from GivenExportIsEnabled_WhenContainerContainsPathTraversal_ThenServerShouldReturnBadRequest. The three variants exercise: a raw '/'-separated traversal, a raw '\\\\'-separated traversal (percent-encoded here as %5C so it survives as a literal backslash), and a double percent-encoded traversal (%252f decodes once to %2f, then again to '/', which is exactly what ExportController's two-pass Uri.UnescapeDataString check is designed to catch).",
+      "description": "Path traversal in _container (../, ..\\, and double percent-encoded ..%2f) must return 400. (from ExportTests)",
       "action": [
         { "operation": { "type": { "code": "$export" }, "method": "GET", "url": "$export?_container=../secret", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "container-traversal-slash-response", "description": "GET /$export?_container=../secret" } },
         { "assert": { "description": "_container=../secret must return 400 Bad Request", "sourceId": "container-traversal-slash-response", "response": "bad" } },
@@ -165,7 +165,7 @@
     },
     {
       "name": "export kick-off rejects path traversal in the _anonymizationConfig parameter",
-      "description": "Ported from GivenExportIsEnabled_WhenAnonymizationConfigContainsPathTraversal_ThenServerShouldReturnBadRequest. A valid _container is supplied so the request reaches the anonymization-config path-traversal check (ExportController validates _container before _anonymizationConfig).",
+      "description": "Path traversal in _anonymizationConfig (../, ..\\, and double percent-encoded ..%2f) must return 400. (from ExportTests)",
       "action": [
         { "operation": { "type": { "code": "$export" }, "method": "GET", "url": "$export?_container=test-container&_anonymizationConfig=../secret/config.json", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "anon-config-traversal-slash-response", "description": "GET /$export?_container=test-container&_anonymizationConfig=../secret/config.json" } },
         { "assert": { "description": "_anonymizationConfig=../secret/config.json must return 400 Bad Request", "sourceId": "anon-config-traversal-slash-response", "response": "bad" } },
@@ -177,7 +177,7 @@
     },
     {
       "name": "cancel lifecycle: create, cancel, status-check, cancel-again",
-      "description": "Ported from GivenExportJobExists_WhenCancelledThenStatusCheckedThenCancelledAgain_ThenCancelReturns202AndSubsequentCallsReturn404 (see https://hl7.org/fhir/uv/bulkdata/STU2/export.html#bulk-data-delete-request). Fully deterministic single-shot HTTP calls, no polling required: kick-off -> 202, DELETE Content-Location -> 202, GET Content-Location -> 404, DELETE Content-Location again -> 404.",
+      "description": "Cancelling an export job returns 202; subsequent status checks and re-cancellation on the cancelled job return 404. (from ExportTests, bulk-data delete spec)",
       "action": [
         { "operation": { "type": { "code": "$export" }, "method": "GET", "url": "$export", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "cancel-lifecycle-kickoff", "description": "Step 1: GET /$export to create an export job" } },
         { "assert": { "description": "Step 1: kick-off must return 202 Accepted", "sourceId": "cancel-lifecycle-kickoff", "responseCode": "202" } },

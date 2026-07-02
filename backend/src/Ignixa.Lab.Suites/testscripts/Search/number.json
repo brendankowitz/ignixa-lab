@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Search/number",
-  "description": "Number search-parameter prefix conformance tests, ported from Microsoft.Health.Fhir.Shared.Tests.E2E NumberSearchTests. Three RiskAssessment fixtures (fhir262-num-low probability=1, fhir262-num-mid probability=5, fhir262-num-high probability=100) referencing a client-supplied Patient subject exercise the implicit (eq) default plus all number prefixes: eq, ne, lt, gt, le, ge, sa (starts-after), eb (ends-before). For point values (no range) sa/eb behave like gt/lt respectively, matching the source fixture's exact-value semantics.",
+  "description": "Number search-parameter prefix conformance tests on RiskAssessment.probability: implicit/eq default plus ne, lt, gt, le, ge, sa, and eb (from NumberSearchTests).",
   "status": "active",
   "fixture": [
     {

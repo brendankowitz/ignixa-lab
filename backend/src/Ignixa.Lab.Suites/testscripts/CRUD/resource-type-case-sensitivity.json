@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "CRUD/resource-type-case-sensitivity",
-  "description": "Conformance tests ported from Microsoft.Health.Fhir.Shared.Tests.E2E Rest/ResourceTypeCaseSensitivityTests.cs: FHIR resource type names in the URL path are case-sensitive per the R4 specification, so a mis-cased type segment (e.g. 'patient' or 'PATIENT' instead of 'Patient') must be rejected with 404 Not Found across every HTTP method (read, type-level search, update, delete, create, patch), while the correctly-cased type routes successfully. No fixtures, setup, or teardown are required since no resources are created.",
+  "description": "Resource-type case-sensitivity conformance tests: a mis-cased resource type segment (e.g. 'patient'/'PATIENT') must return 404 Not Found for every HTTP method, while the correctly-cased 'Patient' routes successfully (from ResourceTypeCaseSensitivityTests).",
   "status": "active",
   "test": [
     {

@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Search/id",
-  "description": "_id search-parameter conformance tests, ported from Microsoft.Health.Fhir.Shared.Tests.E2E IdSearchTests (which validates against a large canned canonical dataset via GetHealthRecordIdentifiersAsync). Re-implemented here with three independent HealthcareService fixtures with unique client-supplied ids: single-value _id lookup, _id combined with another search parameter (AND semantics, including a :missing modifier), and comma-separated _id lists (OR semantics) with an exact result count. Because _id filters on a globally unique resource id, matches/excludes for our own fixture ids are deterministic even on a shared server with other suites' data, so assertions here are NOT warningOnly (unlike token/string/number searches where a shared server could coincidentally have overlapping values).",
+  "description": "_id search-parameter conformance tests on HealthcareService: single-value lookup, combination with other search parameters/modifiers (AND semantics), and comma-separated id lists (OR semantics) (from IdSearchTests). Since _id matches on a globally unique id, assertions here are exact rather than warningOnly.",
   "status": "active",
   "fixture": [
     {

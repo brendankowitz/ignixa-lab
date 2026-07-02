@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Search/ms-search-parameter",
-  "description": "Coverage for a custom, non-standard search parameter as ported from Microsoft.Health.Fhir.Shared.Tests.E2E MsSearchParameterTests. That source test targets an Azure Health Data Services-specific feature: a built-in _expiryDate search parameter over the extension https://azurehealthcareapis.com/data-extensions/expiry-date, plus a CapabilityStatement check confirming the parameter is advertised as 'supported'. Since _expiryDate and its backing extension are proprietary to Azure Health Data Services rather than part of the FHIR R4 specification, this suite targets Patient resources carrying that same extension but marks every assertion warningOnly so the suite degrades gracefully (rather than failing) against a generic/vanilla FHIR R4 server that has no knowledge of this parameter.",
+  "description": "Custom MS/Azure Health Data Services _expiryDate search parameter conformance (from MsSearchParameterTests); all assertions are warningOnly since this parameter is proprietary and not part of the base FHIR R4 spec.",
   "status": "active",
   "fixture": [
     {
@@ -50,7 +50,7 @@
   "test": [
     {
       "name": "CapabilityStatement optionally advertises the _expiryDate search parameter on Patient",
-      "description": "Ported from the source's CheckSearchParameterStatus check, which hard-asserts _expiryDate is 'supported'. This is an Azure Health Data Services-specific capability, not guaranteed on an arbitrary FHIR R4 server, so every assertion here is warningOnly and informational only.",
+      "description": "CapabilityStatement should optionally advertise the _expiryDate Patient search parameter; informational only since this is an Azure Health Data Services-specific capability (from MsSearchParameterTests.CheckSearchParameterStatus).",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "read" }, "url": "metadata", "responseId": "capability-response", "description": "GET /metadata" } },
@@ -61,7 +61,7 @@
     },
     {
       "name": "_expiryDate=lt2025 matches only the past-expiry patient",
-      "description": "Patient?_expiryDate=lt2025 should match fhir262-msp-past (expiry 2000-01-01) and exclude fhir262-msp-future (expiry 2999-01-01), if the server implements this MS-specific parameter. warningOnly throughout since _expiryDate is not a standard FHIR search parameter.",
+      "description": "Patient?_expiryDate=lt2025 should match only the patient whose expiry date is in the past, if the server implements this MS-specific parameter (warningOnly).",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?_expiryDate=lt2025&identifier=http://ignixa.io/testscript/suite/ms-param|&_count=100", "responseId": "expiry-lt-response", "description": "GET /Patient?_expiryDate=lt2025" } },
@@ -73,7 +73,7 @@
     },
     {
       "name": "_expiryDate=gt2025 matches only the future-expiry patient",
-      "description": "Patient?_expiryDate=gt2025 should match fhir262-msp-future and exclude fhir262-msp-past, if the server implements this MS-specific parameter. warningOnly throughout since _expiryDate is not a standard FHIR search parameter.",
+      "description": "Patient?_expiryDate=gt2025 should match only the patient whose expiry date is in the future, if the server implements this MS-specific parameter (warningOnly).",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?_expiryDate=gt2025&identifier=http://ignixa.io/testscript/suite/ms-param|&_count=100", "responseId": "expiry-gt-response", "description": "GET /Patient?_expiryDate=gt2025" } },
@@ -85,7 +85,7 @@
     },
     {
       "name": "Baseline: both patients are retrievable by identifier regardless of _expiryDate support",
-      "description": "Sanity check independent of _expiryDate support: both fixtures must be findable via the standard identifier search, confirming the fixtures themselves loaded correctly even on servers with no knowledge of the custom parameter.",
+      "description": "Both fixture patients must be findable via standard identifier search, confirming they loaded correctly independent of _expiryDate support.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/ms-param|&_count=100", "responseId": "baseline-response", "description": "GET /Patient?identifier=http://ignixa.io/testscript/suite/ms-param|" } },

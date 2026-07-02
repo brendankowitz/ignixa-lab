@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Search/composite",
-  "description": "Composite search parameter conformance tests ported from fhir-server's CompositeSearchTests.cs / CompositeSearchTestFixture.cs. Covers the standard R4 base composite search params on Observation (code-value-quantity, code-value-string, combo-code-value-quantity, combo-code-value-concept) and DocumentReference (relationship), demonstrating that a composite param ANDs its two components together against the SAME element/component group — not any code plus any value on the resource. Fixture resources are trimmed versions of the Normative sample files (ObservationWith1MinuteApgarScore, ObservationWith20MinuteApgarScore, ObservationWithTemperature, ObservationWithBloodPressure, ObservationWithEyeColor, ObservationWithLongEyeColor, DocumentReference-example-relatesTo-code-appends, DocumentReference-example-relatesTo-code-transforms-replaces-target) used by the original suite, scoped with a unique identifier so results can be isolated on a shared server. The OR-across-multiple-relatesTo-values scenario is intentionally NOT tested here: the upstream suite itself skips it (https://github.com/microsoft/fhir-server/issues/523).",
+  "description": "Composite search parameter conformance tests (from CompositeSearchTests): verifies that a composite param ANDs its two components against the SAME element/component group on Observation (code-value-quantity, code-value-string, combo-code-value-quantity, combo-code-value-concept) and DocumentReference (relationship). The OR-across-multiple-relatesTo scenario is intentionally omitted, matching a known gap in the upstream suite (fhir-server issue #523).",
   "status": "active",
   "fixture": [
     {
@@ -277,7 +277,7 @@
     },
     {
       "name": "combo-code-value-quantity: does not match code from one component paired with another component's value",
-      "description": "obs-bloodpressure's component[0].code is 8480-6 (systolic) and component[1].valueQuantity is 60 (diastolic). loinc|8480-6$60 crosses component boundaries and must NOT match, proving the composite engine keeps code+value scoped to the same component.",
+      "description": "combo-code-value-quantity must not match a code from one component paired with a value from a different component (systolic code with diastolic value).",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Observation", "params": "?combo-code-value-quantity=http://loinc.org|8480-6$60&identifier=http://ignixa.io/testscript/suite/composite|", "responseId": "ccvq-crosscomponent-response", "description": "GET /Observation?combo-code-value-quantity=8480-6 (component[0].code)$60 (component[1].valueQuantity)" } },
@@ -416,7 +416,7 @@
     },
     {
       "name": "combo-code-value-concept: top-level code does not pair with a component's value (cross-group mismatch)",
-      "description": "obs-apgar20's top-level Observation.code contains 443849008 and its component[0].valueCodeableConcept contains LA6724-4, but a composite param requires both parts to originate from the SAME group (either both top-level, or both from the same component). snomed|443849008$loinc/la|LA6724-4 must therefore NOT match — proving the engine does not cross-wire top-level code with component value.",
+      "description": "combo-code-value-concept must not match a top-level Observation.code paired with a component's valueCodeableConcept; both parts must come from the same group.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Observation", "params": "?combo-code-value-concept=http://snomed.info/sct|443849008$http://loinc.org/la|LA6724-4&identifier=http://ignixa.io/testscript/suite/composite|", "responseId": "ccvc-crossgroup-response", "description": "GET /Observation?combo-code-value-concept=443849008 (top-level code)$LA6724-4 (component value)" } },

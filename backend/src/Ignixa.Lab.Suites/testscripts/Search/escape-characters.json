@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Search/escape-characters",
-  "description": "Search value escape-character conformance tests. Per the FHIR search grammar, the characters comma (list separator), pipe (token system|code separator), and backslash (the escape character itself) must be backslash-escaped when they are literal data inside a single parameter value rather than acting as a separator. Ported in spirit from Microsoft.Health.Fhir.Shared.Tests.E2E EscapeCharactersSearchTests, which validates that a compound query combining :missing, :not, and _has reverse-chaining returns identical results whether the query string is written raw or pre-percent-encoded. That raw-vs-percent-encoded byte-level comparison isn't reproducible with this engine (operation.params is always encoded once by the request layer, so writing a pre-encoded copy would be double-encoded and is not a meaningful equivalence test here); instead this suite directly verifies the underlying character-escaping and modifier-combination behavior that test was protecting, using a minimal fixture set (identifier system http://ignixa.io/testscript/suite/escape) in place of the source's large synthetic HealthcareService/PractitionerRole bundle.",
+  "description": "Search-value escape-character conformance: literal comma, pipe, and backslash characters in a token/string search value must be backslash-escaped to avoid being parsed as list/system separators (from EscapeCharactersSearchTests). Skips the source's raw-vs-percent-encoded URL byte comparison as not meaningful at this engine's request abstraction; instead directly verifies the escaping and :not/:missing/_has modifier-combination behavior it was protecting.",
   "status": "active",
   "fixture": [
     {
@@ -121,7 +121,7 @@
   "test": [
     {
       "name": "Escaped comma is treated as literal data, not an OR separator",
-      "description": "family=Zephyr\\,Orion (backslash-escaped comma) must be treated as one literal string search value 'Zephyr,Orion', matching only p1. It must not be split into an OR of 'Zephyr' and 'Orion' (which would also match p3's 'Jones' via the unescaped form tested next).",
+      "description": "family=Zephyr\\,Orion (escaped comma) must be treated as one literal value, matching only the patient with that exact family name and not split into an OR list.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?family=Zephyr\\,Orion&identifier=http://ignixa.io/testscript/suite/escape|&_count=100", "responseId": "escaped-comma-response", "description": "GET /Patient?family=Zephyr\\,Orion (escaped comma, literal value)" } },
@@ -134,7 +134,7 @@
     },
     {
       "name": "Unescaped comma is an OR-list separator",
-      "description": "family=Zephyr,Jones (unescaped comma) must be parsed as the OR of two separate prefix searches, 'Zephyr' and 'Jones'. p1 matches because its family starts with 'Zephyr'; p3 (Jones) also matches; p2 (Smith) matches neither arm.",
+      "description": "family=Zephyr,Jones (unescaped comma) must be parsed as an OR of two separate prefix searches, matching patients with either family name.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?family=Zephyr,Jones&identifier=http://ignixa.io/testscript/suite/escape|&_count=100", "responseId": "or-comma-response", "description": "GET /Patient?family=Zephyr,Jones (unescaped comma, OR list)" } },
@@ -147,7 +147,7 @@
     },
     {
       "name": "Escaped pipe is treated as literal data in the token code",
-      "description": "identifier=http://ignixa.io/testscript/suite/escape|A\\|B must treat the backslash-escaped pipe as literal data within the code portion, matching p4 whose identifier value is literally 'A|B'.",
+      "description": "An escaped pipe in an identifier search value must be treated as literal data in the code portion, matching an identifier value that itself contains a pipe character.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/escape|A\\|B", "responseId": "escaped-pipe-response", "description": "GET /Patient?identifier=http://ignixa.io/testscript/suite/escape|A\\|B (escaped pipe, literal 'A|B' code)" } },
@@ -158,7 +158,7 @@
     },
     {
       "name": "Unescaped pipe as system|code does not match a value containing a literal pipe",
-      "description": "Illustrative negative case: identifier=A|B without our system prefix is parsed as system='A', code='B', which does not describe p4 (system=http://ignixa.io/testscript/suite/escape, value='A|B') at all. Demonstrates why the escape in the previous test is required. Marked informational since exact handling of a bare, non-fixture system token is server-dependent.",
+      "description": "An unescaped pipe is parsed as the system|code separator, so it must not match an identifier whose value literally contains a pipe (informational; exact system-token handling is server-dependent).",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?identifier=A|B", "responseId": "unescaped-pipe-response", "description": "GET /Patient?identifier=A|B (naive, unescaped: system='A', code='B')" } },
@@ -168,7 +168,7 @@
     },
     {
       "name": "Escaped backslash is treated as literal data",
-      "description": "identifier=http://ignixa.io/testscript/suite/escape|back\\\\slash (doubled backslash) must match p5, whose identifier value literally contains one backslash character ('back\\slash'). Doubling the backslash in the query escapes it as literal data rather than as an (undefined) escape-prefix character.",
+      "description": "A doubled (escaped) backslash in a search value must be treated as literal data, matching an identifier value that contains a single literal backslash.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/escape|back\\\\slash", "responseId": "escaped-backslash-response", "description": "GET /Patient?identifier=http://ignixa.io/testscript/suite/escape|back\\\\slash (escaped backslash, literal 'back\\slash' value)" } },
@@ -179,7 +179,7 @@
     },
     {
       "name": "Compound query: :not, :missing, and _has reverse chaining together",
-      "description": "Ported from the source test's compound query shape (name:missing=false&active:not=false&_has:PractitionerRole:service:active=true). HealthcareService?active:not=false&name:missing=false&_has:PractitionerRole:service:active=true must match fhir262-esc-hs-active (active=true, named, and is the service of an active PractitionerRole) and must exclude fhir262-esc-hs-inactive (active=false, and referenced by no PractitionerRole at all).",
+      "description": "HealthcareService?active:not=false&name:missing=false&_has:PractitionerRole:service:active=true must match an active, named service linked from an active PractitionerRole, and exclude an inactive, unreferenced service (from EscapeCharactersSearchTests).",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "HealthcareService", "params": "?active:not=false&name:missing=false&_has:PractitionerRole:service:active=true&identifier=http://ignixa.io/testscript/suite/escape|&_count=100", "responseId": "compound-not-has-response", "description": "GET /HealthcareService?active:not=false&name:missing=false&_has:PractitionerRole:service:active=true" } },

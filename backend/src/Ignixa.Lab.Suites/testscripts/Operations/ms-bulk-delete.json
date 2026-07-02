@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Operations/ms-bulk-delete",
-  "description": "$bulk-delete conformance tests ported from Microsoft.Health.Fhir.Shared.Tests.E2E.Rest.BulkDeleteTests. $bulk-delete is an async long-running job (DELETE with Prefer: respond-async -> 202 Accepted + Content-Location job-status URL); this engine has no wait-for-completion/polling-loop primitive, so job completion (ResourceDeletedCount Parameters) is NOT verified. What IS reliably testable and asserted here: kick-off acceptance (202 + non-empty Content-Location) at system and type scope, a single best-effort status poll (warningOnly, since the job may finish before or after this one check), and the fully synchronous invalid-search-parameter validation failure (400, no async involved). All fixtures use meta.tag http://ignixa.io/testscript/suite/test|<unique-tag-per-scenario> so each kicked-off job only ever targets its own scenario's resources on a shared server; a defensive teardown re-deletes anything the async jobs may not have finished deleting yet.",
+  "description": "$bulk-delete conformance tests: async job kick-off (202 + Content-Location) at system and type scope, kick-off validation for hardDelete/purgeHistory/excludedResourceTypes/_include/_revinclude/_remove-references, and invalid-search-parameter rejection (from BulkDeleteTests). Job completion is not verified, only kick-off acceptance and a single best-effort status poll (warningOnly).",
   "status": "active",
   "fixture": [
     {
@@ -158,7 +158,7 @@
       "sourceId": "bulk-delete-basic-kickoff",
       "headerField": "Content-Location",
       "defaultValue": "$bulk-delete",
-      "description": "Job-status URL from the Content-Location header of the basic kickoff response; falls back to GET $bulk-delete if the header was absent."
+      "description": "Job-status URL from the kickoff response's Content-Location header (falls back to $bulk-delete if absent)."
     }
   ],
   "setup": {
@@ -181,7 +181,7 @@
   "test": [
     {
       "name": "$bulk-delete kick-off: system-level, multiple resource types",
-      "description": "DELETE /$bulk-delete?_tag=http://ignixa.io/testscript/suite/test|fhir262-bd-basic with Prefer: respond-async must return 202 Accepted with a non-empty Content-Location job-status header, matching GivenVariousResourcesOfDifferentTypes_WhenBulkDeleted_ThenAllAreDeleted (job completion itself is not verified; see suite description).",
+      "description": "System-level $bulk-delete kick-off across multiple resource types must return 202 Accepted with a non-empty Content-Location header.",
       "action": [
         { "operation": { "type": { "code": "$bulk-delete" }, "method": "DELETE", "url": "$bulk-delete?_tag=http://ignixa.io/testscript/suite/test|fhir262-bd-basic", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-delete-basic-kickoff", "description": "DELETE $bulk-delete?_tag=http://ignixa.io/testscript/suite/test|fhir262-bd-basic" } },
         { "assert": { "description": "Kick-off must return 202 Accepted", "responseCode": "202" } },
@@ -190,7 +190,7 @@
     },
     {
       "name": "$bulk-delete: single best-effort status poll",
-      "description": "GET the Content-Location captured from the basic kickoff. This is a single request, not a wait loop; the job may already be complete (200 + Parameters) or still running (202) by the time this runs, so the whole assertion is warningOnly.",
+      "description": "A single status check on the kicked-off job's Content-Location; warningOnly since the job may finish before or after this check.",
       "action": [
         { "operation": { "type": { "code": "read" }, "method": "GET", "url": "${bulkDeleteBasicLocation}", "responseId": "bulk-delete-basic-poll", "description": "GET the bulk-delete job status URL" } },
         { "assert": { "description": "Status poll should return a 2xx status, either 202 (still running) or 200 (complete) (warningOnly: timing-dependent)", "response": "okay", "warningOnly": true } }
@@ -198,7 +198,7 @@
     },
     {
       "name": "$bulk-delete: invalid search parameter is rejected with 400",
-      "description": "DELETE /$bulk-delete?_tag=...&invalidParam=badRequest supplies a query parameter that is not a valid search parameter; this is fully synchronous validation (no job is created) and must return 400, matching GivenBulkDeleteRequestWithInvalidSearchParameters_WhenRequested_ThenBadRequestIsReturned.",
+      "description": "An invalid search parameter must be rejected synchronously with 400 before any job is created.",
       "action": [
         { "operation": { "type": { "code": "$bulk-delete" }, "method": "DELETE", "url": "$bulk-delete?_tag=http://ignixa.io/testscript/suite/test|fhir262-bd-badreq&invalidParam=badRequest", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-delete-bad-request", "description": "DELETE $bulk-delete?_tag=...&invalidParam=badRequest" } },
         { "assert": { "description": "Must return HTTP 400", "response": "bad" } }
@@ -206,7 +206,7 @@
     },
     {
       "name": "$bulk-delete kick-off: type-scoped (Organization/$bulk-delete)",
-      "description": "DELETE /Organization/$bulk-delete?_tag=http://ignixa.io/testscript/suite/test|fhir262-bd-typeorg must return 202 Accepted with a Content-Location header, matching GivenResourcesOfOneType_WhenBulkDeletedByType_ThenAllOfThatTypeAreDeleted.",
+      "description": "Type-scoped $bulk-delete (Organization) kick-off must return 202 Accepted with a Content-Location header.",
       "action": [
         { "operation": { "type": { "code": "$bulk-delete" }, "method": "DELETE", "url": "Organization/$bulk-delete?_tag=http://ignixa.io/testscript/suite/test|fhir262-bd-typeorg", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-delete-type-scoped-kickoff", "description": "DELETE Organization/$bulk-delete?_tag=http://ignixa.io/testscript/suite/test|fhir262-bd-typeorg" } },
         { "assert": { "description": "Type-scoped kick-off must return 202 Accepted", "response": "okay" } },
@@ -215,7 +215,7 @@
     },
     {
       "name": "$bulk-delete kick-off accepts hardDelete / purgeHistory / excludedResourceTypes / _include / _revinclude / _remove-references options",
-      "description": "Each of BulkDeleteTests' documented optional query parameters must be accepted at kick-off time and return 202 Accepted: _hardDelete=true (GivenHardBulkDeleteRequest...), _purgeHistory=true (GivenPurgeBulkDeleteRequest...), excludedResourceTypes (GivenBulkDeleteRequestWithMultipleExcludedResourceTypes...), _include=Observation:* (GivenBulkDeleteJobWithIncludeSearch...), _revinclude=*:* (GivenBulkDeleteJobWithRevincludeSearch...), and _hardDelete=true&_remove-references=true together (GivenABulkDeleteJob_WhenRemovingReferences_ThenReferencesAreRemoved). Only kick-off acceptance is checked; the resulting deletion counts are not verified (no polling-until-complete primitive).",
+      "description": "Kick-off must accept each optional query parameter (_hardDelete, _purgeHistory, excludedResourceTypes, _include, _revinclude, and _hardDelete+_remove-references together) and return 202 Accepted; resulting deletion counts are not verified.",
       "action": [
         { "operation": { "type": { "code": "$bulk-delete" }, "method": "DELETE", "url": "Patient/$bulk-delete?_tag=http://ignixa.io/testscript/suite/test|fhir262-bd-hard&_hardDelete=true", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "bulk-delete-hard-kickoff", "description": "DELETE Patient/$bulk-delete?_tag=...&_hardDelete=true" } },
         { "assert": { "description": "_hardDelete=true kick-off must return 202 Accepted", "sourceId": "bulk-delete-hard-kickoff", "response": "okay" } },

@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "CRUD/conditional-create",
-  "description": "Conditional create (POST with an If-None-Exist request header) conformance tests: no existing match creates a new resource, exactly one match short-circuits to the existing resource, multiple matches are rejected with 412, an empty/blank criteria is rejected with 400, and the Prefer header is honoured on a matched conditional create. Uses Observation fixtures tagged with unique identifiers (http://ignixa.io/testscript/suite/cond-create) to avoid collisions with other suites.",
+  "description": "Conditional create (POST with If-None-Exist) conformance tests: create-on-no-match, short-circuit-on-one-match, 412 on multiple matches, 400 on empty criteria, and Prefer header handling on a matched create.",
   "status": "active",
   "fixture": [
     {
@@ -76,7 +76,7 @@
   "test": [
     {
       "name": "Conditional create with no existing match creates a new resource",
-      "description": "POST /Observation with header If-None-Exist: identifier=http://ignixa.io/testscript/suite/cond-create|CC-NOMATCH. No resource currently carries that identifier, so the server must create a new one and return 201 Created with a server-assigned id.",
+      "description": "POST /Observation with an If-None-Exist header matching no existing resource; the server must create a new Observation and return 201 Created.",
       "action": [
         { "operation": { "type": { "code": "create" }, "resource": "Observation", "sourceId": "obs-nomatch-body", "responseId": "create-nomatch-response", "requestHeader": [{ "field": "If-None-Exist", "value": "identifier=http://ignixa.io/testscript/suite/cond-create|CC-NOMATCH" }], "description": "Conditional POST /Observation, If-None-Exist matches nothing" } },
         { "assert": { "description": "Must return HTTP 201 Created", "response": "created" } },
@@ -86,7 +86,7 @@
     },
     {
       "name": "Conditional create with exactly one existing match returns the existing resource",
-      "description": "POST /Observation with header If-None-Exist: identifier=http://ignixa.io/testscript/suite/cond-create|CC-ONEMATCH. Exactly one Observation already carries that identifier (created in setup), so the server must short-circuit the create, return 200 OK, and return the existing resource rather than creating a new one.",
+      "description": "POST /Observation with an If-None-Exist header matching exactly one existing Observation; the server must short-circuit and return 200 OK with the existing resource instead of creating a new one.",
       "action": [
         { "operation": { "type": { "code": "create" }, "resource": "Observation", "sourceId": "obs-new-onematch-body", "responseId": "create-onematch-response", "requestHeader": [{ "field": "If-None-Exist", "value": "identifier=http://ignixa.io/testscript/suite/cond-create|CC-ONEMATCH" }], "description": "Conditional POST /Observation, If-None-Exist matches the single seeded CC-ONEMATCH Observation" } },
         { "assert": { "description": "Must return HTTP 200 OK (matched, not created)", "response": "okay" } },
@@ -96,7 +96,7 @@
     },
     {
       "name": "Conditional create with an empty If-None-Exist criteria is rejected",
-      "description": "POST /Observation with an empty If-None-Exist header value. An empty search criteria is not selective enough to be evaluated, so the server must reject the request with 400 Bad Request.",
+      "description": "POST /Observation with an empty If-None-Exist header value; the server must reject the request with 400 Bad Request.",
       "action": [
         { "operation": { "type": { "code": "create" }, "resource": "Observation", "sourceId": "obs-nomatch-body", "responseId": "create-emptycriteria-response", "requestHeader": [{ "field": "If-None-Exist", "value": "" }], "description": "Conditional POST /Observation with a blank If-None-Exist header" } },
         { "assert": { "description": "Must return HTTP 400 Bad Request", "response": "bad" } }
@@ -104,7 +104,7 @@
     },
     {
       "name": "Conditional create with multiple existing matches fails",
-      "description": "POST /Observation with header If-None-Exist: identifier=http://ignixa.io/testscript/suite/cond-create|CC-MULTI. Two Observations already carry that identifier (created in setup), so the criteria is not selective enough to identify a single resource; the server must return 412 Precondition Failed.",
+      "description": "POST /Observation with an If-None-Exist header matching two existing Observations; the server must return 412 Precondition Failed since the criteria isn't selective enough.",
       "action": [
         { "operation": { "type": { "code": "create" }, "resource": "Observation", "sourceId": "obs-nomatch-body", "responseId": "create-multi-response", "requestHeader": [{ "field": "If-None-Exist", "value": "identifier=http://ignixa.io/testscript/suite/cond-create|CC-MULTI" }], "description": "Conditional POST /Observation, If-None-Exist matches both seeded CC-MULTI Observations" } },
         { "assert": { "description": "Must return HTTP 412 Precondition Failed", "response": "preconditionFailed" } }
@@ -112,7 +112,7 @@
     },
     {
       "name": "Conditional create match honors Prefer: return=OperationOutcome",
-      "description": "When a conditional create resolves to a single existing match and the client sends Prefer: return=OperationOutcome, the 200 OK response body must be an OperationOutcome (informational) rather than the matched resource itself.",
+      "description": "Conditional create matching one existing Observation with Prefer: return=OperationOutcome; the 200 OK response body must be an OperationOutcome, not the matched resource.",
       "action": [
         { "operation": { "type": { "code": "create" }, "resource": "Observation", "sourceId": "obs-new-onematch-body", "responseId": "create-prefer-oo-response", "requestHeader": [{ "field": "If-None-Exist", "value": "identifier=http://ignixa.io/testscript/suite/cond-create|CC-ONEMATCH" }, { "field": "Prefer", "value": "return=OperationOutcome" }], "description": "Conditional POST /Observation matching CC-ONEMATCH with Prefer: return=OperationOutcome" } },
         { "assert": { "description": "Must return HTTP 200 OK (matched, not created)", "response": "okay" } },
@@ -121,7 +121,7 @@
     },
     {
       "name": "Conditional create rejects an invalid Prefer preference value",
-      "description": "When a conditional create resolves to a single existing match and the client sends an invalid Prefer header value (return= with no preference), the server must reject the request with 400 Bad Request.",
+      "description": "Conditional create matching one existing Observation with an invalid Prefer header value (return= with no preference); the server must reject the request with 400 Bad Request.",
       "action": [
         { "operation": { "type": { "code": "create" }, "resource": "Observation", "sourceId": "obs-new-onematch-body", "responseId": "create-prefer-invalid-response", "requestHeader": [{ "field": "If-None-Exist", "value": "identifier=http://ignixa.io/testscript/suite/cond-create|CC-ONEMATCH" }, { "field": "Prefer", "value": "return=" }], "description": "Conditional POST /Observation matching CC-ONEMATCH with an invalid Prefer header value" } },
         { "assert": { "description": "Must return HTTP 400 Bad Request", "response": "bad" } }

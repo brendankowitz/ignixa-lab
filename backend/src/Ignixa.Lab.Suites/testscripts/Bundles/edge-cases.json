@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Bundles/edge-cases",
-  "description": "Bundle edge-case conformance tests, ported from the Microsoft FHIR Server E2E suite (BundleEdgeCaseTests.cs): an invalid Bundle.type value, a resource id shared between two different resource types within the same Bundle, and _history/_history-by-version GET requests nested inside a batch Bundle. Two tests from the source file are deliberately NOT ported: GivenABundleWithConditionalUpdateByReference_WhenExecutedWithMaximizedConditionalQueryParallelism_RunsTheQueryInParallel requires a server-specific 'MaximizeConditionalQueryParallelism' bundle-processing option with no TestScript equivalent, and WhenProcessingMultipleBundlesWithTheSameResource_AndIncreasingTheExpectedVersionInParallel_ThenUpdateTheResourcesAsExpected requires firing multiple concurrent HTTP requests from a single test flow, which this sequential TestScript engine has no primitive for. Uses a client-supplied id (PUT) for the _history fixture so the version-1 URL can be a static literal.",
+  "description": "Bundle edge-case conformance tests: invalid Bundle.type rejection, an id shared between two different resource types in the same Bundle, and _history/_history/{version} GET requests nested inside a batch Bundle. Two concurrency-dependent scenarios from BundleEdgeCaseTests.cs (a custom parallelism option, concurrent multi-bundle version conflicts) aren't portable to this sequential engine and are omitted.",
   "status": "active",
   "fixture": [
     {
@@ -86,7 +86,7 @@
   "test": [
     {
       "name": "Invalid Bundle.type value is rejected with 400 Bad Request",
-      "description": "POST a Bundle whose type is the literal string 'invalid-type' (not a valid FHIR Bundle.type code) to the base URL. The server must reject it with 400 Bad Request rather than attempting to process the entries.",
+      "description": "POST a Bundle with an invalid Bundle.type value; the server must reject it with 400 rather than processing the entries.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "batch" }, "method": "POST", "sourceId": "invalid-type-bundle", "responseId": "invalid-type-response", "description": "POST Bundle with type='invalid-type' to the base URL" } },
@@ -96,7 +96,7 @@
     },
     {
       "name": "Same literal id shared between different resource types is processed as two independent resources",
-      "description": "POST a batch Bundle containing PUT Patient/fhir262-edge-shared-id and PUT Observation/fhir262-edge-shared-id — the same id string used for two different resource types. Because logical ids are scoped per resource type, both operations must succeed independently; the id collision must not cause either entry to fail.",
+      "description": "PUT a Patient and an Observation using the same literal id inside one batch Bundle; both must succeed independently since ids are scoped per resource type.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "batch" }, "method": "POST", "sourceId": "shared-id-bundle", "responseId": "shared-id-response", "description": "POST batch Bundle with same-id Patient and Observation PUTs" } },
@@ -111,7 +111,7 @@
     },
     {
       "name": "Both same-id resources are independently retrievable by resource type",
-      "description": "After the shared-id batch commits, GET Patient/fhir262-edge-shared-id and GET Observation/fhir262-edge-shared-id must each return the correct resource type — proving the id namespace is scoped per resource type, not global.",
+      "description": "GET both the Patient and Observation created with the shared id; each must return its own correct resource type, proving ids are scoped per resource type.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "read" }, "url": "Patient/fhir262-edge-shared-id", "responseId": "read-shared-patient", "description": "GET /Patient/fhir262-edge-shared-id" } },
@@ -126,7 +126,7 @@
     },
     {
       "name": "A batch Bundle containing _history and _history/{version} GET requests returns the expected resources",
-      "description": "POST a batch Bundle with two GET entries: Patient/{id}/_history and Patient/{id}/_history/1. Both must succeed inside the Bundle just as they would as standalone requests: the first returns a history Bundle whose newest entry is the Patient, and the second returns the version-1 Patient directly.",
+      "description": "POST a batch Bundle containing nested _history and _history/1 GET entries for a Patient; both must succeed, returning the expected history Bundle and version-1 resource respectively.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "batch" }, "method": "POST", "sourceId": "hist-bundle", "responseId": "hist-bundle-response", "description": "POST batch Bundle with _history and _history/1 GET entries" } },
@@ -135,7 +135,7 @@
         { "assert": { "description": "Response Bundle must contain 2 entries", "expression": "entry.count() = 2" } },
         { "assert": { "description": "The _history entry must succeed with a 2xx status", "expression": "entry[0].response.status.startsWith('2')" } },
         { "assert": { "description": "The _history/1 entry must succeed with a 2xx status", "expression": "entry[1].response.status.startsWith('2')" } },
-        { "assert": { "description": "The _history entry's embedded resource should itself be a history-type Bundle (warningOnly: depth of nested resource-type resolution may vary by server serialization)", "expression": "entry[0].resource.type = 'history'", "warningOnly": true } },
+        { "assert": { "description": "The _history entry's embedded resource should itself be a history-type Bundle (warningOnly: nested Bundle-type resolution may vary by server)", "expression": "entry[0].resource.type = 'history'", "warningOnly": true } },
         { "assert": { "description": "The _history/1 entry's embedded resource must be the version-1 Patient", "expression": "entry[1].resource.id", "value": "fhir262-edge-hist-p1", "operator": "equals" } }
       ]
     }

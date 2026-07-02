@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Search/compartments",
-  "description": "Compartment search conformance tests complementing the 'Compartment search: Patient observations' test already in Search/chaining.json. Covers Device and Practitioner compartments (not just Patient), _type filtering on the Patient/* wildcard route, direct-type vs wildcard+_type equivalence, compartment search combined with an additional filter/_include, and edge cases (unsupported _type, nonexistent sub-resource-type path, nonexistent compartment owner, paging). Uses client-supplied IDs (PUT) so cross-references (device, performer, subject) resolve statically. Device fhir262-cmp-device1; Practitioner fhir262-cmp-prac1 (and decoy fhir262-cmp-prac-other); Patient fhir262-cmp-pat1; Condition fhir262-cmp-cond1 (subject=pat1); Observations obs-device (subject=pat1, device=device1), obs-prac (subject=pat1, performer=prac1), obs-plain (subject=pat1 only).",
+  "description": "Compartment search conformance tests (GET /{CompartmentType}/{id}/{ResourceType}), complementing the existing Patient/Observation test in Search/chaining.json with Device and Practitioner compartments, wildcard+_type filtering, combined filters, and edge cases like an unknown owner.",
   "status": "active",
   "fixture": [
     {
@@ -267,7 +267,7 @@
     },
     {
       "name": "Compartment search paging with _count=1",
-      "description": "GET /Patient/fhir262-cmp-pat1/*?_count=1 must return at most 1 entry on the first page. Does NOT follow the next link — absolute-URL link traversal requires an engine enhancement (see Search/pagination.json).",
+      "description": "GET /Patient/fhir262-cmp-pat1/*?_count=1 must return at most 1 entry on the first page; the next link is not followed (this suite does not test multi-page traversal).",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "url": "Patient/fhir262-cmp-pat1/*?_count=1", "responseId": "compartment-paging", "description": "GET /Patient/fhir262-cmp-pat1/*?_count=1" } },

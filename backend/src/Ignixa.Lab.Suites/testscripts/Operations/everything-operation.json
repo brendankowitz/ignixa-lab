@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Operations/everything-operation",
-  "description": "Patient $everything conformance tests ported from fhir-server EverythingOperationTests. Uses client-supplied IDs (PUT) so cross-references (managingOrganization, subject, participant.actor) resolve statically. Organization fhir262-evx-org; Patient fhir262-evx-pat (managingOrganization=org) with compartment members Observation fhir262-evx-obs, Condition fhir262-evx-cond, Appointment fhir262-evx-appt; a decoy Patient fhir262-evx-other with its own Observation fhir262-evx-other-obs proves $everything never leaks cross-patient content. APPROXIMATION: the source fixture also exercises Device/DeviceAssociation compartment membership and Encounter, but Device<->Patient linkage differs by FHIR version (R4 Device.patient, R4B Device.subject, R5+ separate DeviceAssociation resource) and Encounter.class differs (single Coding in R4/R4B vs List<CodeableConcept> in R5), neither of which can be expressed as one static fixture valid across '4.0,4.3,5.0' — both are skipped here; Condition is used in place of Encounter as a version-stable compartment member. The engine has no loop/next-link-following construct, and fhir-server's own tests show $everything can return compartment members across multiple phased pages even when a single page would fit the data, so presence of second-phase resources (Observation/Condition/Appointment) on the FIRST page is asserted warningOnly rather than hard-required; only Patient itself and its directly-referenced Organization are guaranteed on page one per the source test evidence.",
+  "description": "Patient $everything conformance tests: full compartment fetch, cross-patient isolation, _type/_since filtering, and unsupported-parameter handling (from EverythingOperationTests). Condition substitutes for Encounter as a version-stable compartment member; Device/DeviceAssociation compartment membership is not covered since its shape varies by FHIR version.",
   "status": "active",
   "fixture": [
     {
@@ -113,7 +113,7 @@
   "test": [
     {
       "name": "$everything: full compartment fetch",
-      "description": "GET /Patient/fhir262-evx-pat/$everything must return the patient and its directly-referenced organization; compartment members (observation/condition/appointment) may be paged onto a later phase by the server so their presence on this first page is checked but not required. The decoy patient and its observation must never appear.",
+      "description": "$everything must return the patient and its managing organization; compartment members (observation/condition/appointment) are checked warningOnly since the server may page them onto a later batch. An unrelated decoy patient and its data must never appear.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "$everything" }, "method": "GET", "url": "Patient/fhir262-evx-pat/$everything", "responseId": "evx-full", "description": "GET Patient/fhir262-evx-pat/$everything" } },
@@ -130,7 +130,7 @@
     },
     {
       "name": "$everything: _type filter narrows compartment content",
-      "description": "GET /Patient/fhir262-evx-pat/$everything?_type=Patient,Observation must return the patient and observation (both requested types) but exclude the condition, appointment, and organization (none of which are Patient or Observation).",
+      "description": "_type=Patient,Observation must return only patient and observation entries; condition, appointment, and organization must be excluded.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "$everything" }, "method": "GET", "url": "Patient/fhir262-evx-pat/$everything?_type=Patient,Observation", "responseId": "evx-type-filter", "description": "GET Patient/fhir262-evx-pat/$everything?_type=Patient,Observation" } },
@@ -145,7 +145,7 @@
     },
     {
       "name": "$everything: invalid _type value returns an empty bundle",
-      "description": "GET /Patient/fhir262-evx-pat/$everything?_type=foo requests a nonexistent resource type; the server must return HTTP 200 with an empty Bundle (no entries, not even the patient itself).",
+      "description": "_type=foo (a nonexistent resource type) must return 200 with an empty Bundle, excluding even the patient itself.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "$everything" }, "method": "GET", "url": "Patient/fhir262-evx-pat/$everything?_type=foo", "responseId": "evx-invalid-type", "description": "GET Patient/fhir262-evx-pat/$everything?_type=foo" } },
@@ -156,7 +156,7 @@
     },
     {
       "name": "$everything: far-future _since returns an empty bundle",
-      "description": "GET /Patient/fhir262-evx-pat/$everything?_since=3000 filters by a last-updated timestamp far in the future; since none of the fixtures were last modified after year 3000, the bundle must be empty.",
+      "description": "_since=3000 (a far-future timestamp) must return an empty Bundle since no fixture matches.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "$everything" }, "method": "GET", "url": "Patient/fhir262-evx-pat/$everything?_since=3000", "responseId": "evx-since-future", "description": "GET Patient/fhir262-evx-pat/$everything?_since=3000" } },
@@ -167,7 +167,7 @@
     },
     {
       "name": "$everything: invalid continuation token is rejected",
-      "description": "GET /Patient/fhir262-evx-pat/$everything?ct=abc supplies a malformed continuation token; the server must reject the request with HTTP 400.",
+      "description": "A malformed continuation token (ct=abc) must be rejected with 400.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "$everything" }, "method": "GET", "url": "Patient/fhir262-evx-pat/$everything?ct=abc", "responseId": "evx-bad-ct", "description": "GET Patient/fhir262-evx-pat/$everything?ct=abc" } },
@@ -176,7 +176,7 @@
     },
     {
       "name": "$everything: unsupported resource type returns 404",
-      "description": "GET /Observation/bar/$everything invokes $everything on a resource type that does not support the operation (only Patient does); the server must return HTTP 404.",
+      "description": "$everything on a resource type that doesn't support it (Observation) must return 404.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "$everything" }, "method": "GET", "url": "Observation/bar/$everything", "responseId": "evx-unsupported-type", "description": "GET Observation/bar/$everything" } },
@@ -185,7 +185,7 @@
     },
     {
       "name": "$everything: unsupported input parameters produce a warning outcome but real results still return",
-      "description": "GET /Patient/fhir262-evx-pat/$everything?_count=100&foo=bar passes two parameters $everything does not accept (_count and foo). Both must be flagged in the returned OperationOutcome with severity=warning and code=not-supported, while the patient and its organization still appear in the same bundle.",
+      "description": "Unsupported parameters (_count, foo) must each produce a warning/not-supported OperationOutcome issue while real results (patient, organization) still return.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "$everything" }, "method": "GET", "url": "Patient/fhir262-evx-pat/$everything?_count=100&foo=bar", "responseId": "evx-unsupported-params", "description": "GET Patient/fhir262-evx-pat/$everything?_count=100&foo=bar" } },

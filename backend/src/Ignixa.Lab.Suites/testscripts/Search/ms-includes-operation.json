@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Search/ms-includes-operation",
-  "description": "$includes operation conformance tests ported from IncludesOperationTests.cs. In the source tests, an ordinary search with _include/_revinclude and _includesCount is issued first; only if the number of included resources exceeds _includesCount does the server return a 'related' Bundle link pointing at the $includes operation ({ResourceType}/$includes?...) to fetch the remaining included resources on a follow-up page. Since this engine cannot capture a response Bundle's link.url into a variable and follow it in a subsequent request (see Search/pagination.json), no continuation-following test is included here; all _includesCount-truncation-specific and $includes-operation-specific assertions (which the source tests gate behind Skip.IfNot(SupportsOperation(\"includes\"))) are marked warningOnly, keeping only deterministic HTTP-shape and matched-resource assertions as hard requirements. Fixture: Organization org1 and Practitioner prac1 referenced by Patient p1 (managingOrganization=org1, generalPractitioner=prac1); a decoy Patient p2 with no such references; Observations obs1/obs2 (subject=p1) and obs3 (subject=p2, decoy); MedicationRequest mr1 (subject=p1) and MedicationDispense md1 (subject=p1, prescription=mr1). Uses client-supplied IDs (PUT) so cross-references resolve statically.",
+  "description": "Tests _include/_revinclude/_include:iterate combined with the Microsoft FHIR Server's _includesCount paging control for included resources; truncation/continuation assertions are warningOnly since this suite does not follow multi-page 'related' links (from IncludesOperationTests.cs).",
   "status": "active",
   "fixture": [
     {
@@ -134,7 +134,7 @@
   "test": [
     {
       "name": "Wildcard _include/_revinclude returns every direct and reverse reference with no truncation",
-      "description": "Patient?_id=fhir262-inco-p1&_include=*&_revinclude=* on this small fixture set (well under any default _includesCount) must return the matched patient plus org1, prac1, obs1, obs2, mr1 and md1; obs3 (which references the decoy p2, not p1) must not appear.",
+      "description": "Patient?_id=fhir262-inco-p1&_include=*&_revinclude=* must return the matched patient plus org1, prac1, obs1, obs2, mr1 and md1; obs3 (references the decoy p2) must not appear.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?_id=fhir262-inco-p1&_include=*&_revinclude=*", "responseId": "inco-wildcard", "description": "GET /Patient?_id=fhir262-inco-p1&_include=*&_revinclude=*" } },
@@ -152,19 +152,19 @@
     },
     {
       "name": "_includesCount limits included resources per page without dropping the matched resource",
-      "description": "Patient?_id=fhir262-inco-p1&_include=*&_revinclude=*&_includesCount=1 (there are 6 candidate included resources) must still return the matched patient. Servers implementing the $includes operation should truncate the included set to 1 per page and surface a 'related' link plus an incomplete/truncation OperationOutcome warning instead of all 6 -- these behaviors are server-optional so are checked as warnings only.",
+      "description": "Patient?_id=fhir262-inco-p1&_include=*&_revinclude=*&_includesCount=1 must still return the matched patient even though 6 resources qualify for inclusion; truncating the included set and surfacing a 'related' link plus a warning are optional server behaviors, so those are checked as warnings only.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?_id=fhir262-inco-p1&_include=*&_revinclude=*&_includesCount=1", "responseId": "inco-count", "description": "GET /Patient?_id=fhir262-inco-p1&_include=*&_revinclude=*&_includesCount=1" } },
         { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
         { "assert": { "description": "Must always include the matched patient regardless of _includesCount", "expression": "entry.where(resource.id = 'fhir262-inco-p1').exists()" } },
-        { "assert": { "description": "If the $includes operation is supported, the included set should be truncated to at most _includesCount entries", "expression": "entry.where(resource.search.mode = 'include').count() <= 1", "warningOnly": true } },
+        { "assert": { "description": "The included set should be truncated to at most _includesCount entries, if supported", "expression": "entry.where(resource.search.mode = 'include').count() <= 1", "warningOnly": true } },
         { "assert": { "description": "If truncated, response should carry an incomplete/warning OperationOutcome entry", "expression": "entry.resource.ofType(OperationOutcome).issue.where(severity = 'warning' and code = 'incomplete').exists()", "warningOnly": true } }
       ]
     },
     {
       "name": "_include:iterate combined with _includesCount does not error and may truncate iterated includes",
-      "description": "MedicationDispense?_id=fhir262-inco-md1&_include=MedicationDispense:prescription&_include:iterate=MedicationRequest:subject&_includesCount=1 must always match md1. The direct include (mr1) and iterated include (p1, via mr1.subject) together exceed _includesCount=1 on servers implementing $includes, so specific inclusion/truncation-warning assertions are warningOnly.",
+      "description": "MedicationDispense?_id=fhir262-inco-md1&_include=MedicationDispense:prescription&_include:iterate=MedicationRequest:subject&_includesCount=1 must always match md1; the combined direct + iterated includes may be truncated, so those assertions are warningOnly.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "MedicationDispense", "params": "?_id=fhir262-inco-md1&_include=MedicationDispense:prescription&_include:iterate=MedicationRequest:subject&_includesCount=1", "responseId": "inco-iterate", "description": "GET /MedicationDispense with _include + _include:iterate + _includesCount=1" } },
@@ -176,7 +176,7 @@
     },
     {
       "name": "Matched-resource search is unaffected by $includes support or absence",
-      "description": "As a deterministic control, Patient?_id=fhir262-inco-p1 (a plain search with no include parameters) must return exactly one matched patient regardless of whether the server implements the optional $includes operation.",
+      "description": "Patient?_id=fhir262-inco-p1 with no include parameters must match exactly one patient, as a deterministic control unaffected by whether the server supports _includesCount.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?_id=fhir262-inco-p1", "responseId": "inco-control", "description": "GET /Patient?_id=fhir262-inco-p1" } },
@@ -186,7 +186,7 @@
     },
     {
       "name": "_summary=count reports only the matched total, ignoring include-style parameters",
-      "description": "Patient?_id=fhir262-inco-p1&_include=*&_revinclude=*&_summary=count must return total=1 (only the matched patient) and an empty entry list, deterministically confirming totals aren't inflated by referenced/included resources.",
+      "description": "Patient?_id=fhir262-inco-p1&_include=*&_revinclude=*&_summary=count must return total=1 and an empty entry list, confirming the total isn't inflated by included resources.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?_id=fhir262-inco-p1&_include=*&_revinclude=*&_summary=count", "responseId": "inco-summary-count", "description": "GET /Patient?_id=fhir262-inco-p1&_include=*&_revinclude=*&_summary=count" } },

@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Search/uri",
-  "description": "Uri search-parameter conformance tests, ported from Microsoft.Health.Fhir.Shared.Tests.E2E UriSearchTests. Four ValueSet fixtures on ValueSet.url exercise the three uri modifiers: default (exact match, case-sensitive, no prefix matching), :above (stored value is a prefix/ancestor of the query value), and :below (stored value is a superstring/descendant of the query value). Deliberately excludes the source test's edge cases where the query value itself is not a well-formed absolute URI (e.g. bare 'test' or 'urn' with no scheme separator) — servers differ on how such inputs are handled and it is not a normative requirement, so those rows are omitted to keep this suite portable across FHIR servers.",
+  "description": "Uri search-parameter conformance tests on ValueSet.url: exact (case-sensitive, non-prefix) matching plus the :above and :below modifiers (from UriSearchTests). Omits inputs that aren't well-formed absolute URIs, since handling of those is server-specific and non-normative.",
   "status": "active",
   "fixture": [
     {

@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "CRUD/patch-json",
-  "description": "Conformance tests adapted from the Microsoft FHIR Server E2E suite JsonPatchTests.cs, which exercises PATCH with a raw 'application/json-patch+json' JSON Patch array body. This engine's operation model can only send a FHIR-resource-shaped JSON object as a request body (via fixture/sourceId), never a bare JSON array, so every test in this suite instead sends the semantically equivalent FHIRPath Patch request (a Parameters resource, Content-Type application/fhir+json) that produces the same edit or the same class of error. Each test's description calls out the specific original JSON Patch scenario it approximates. Two scenarios have NO expressible equivalent and are intentionally omitted rather than fabricated: (1) the JSON-Patch-only 'test' operation (op:'test' preconditions have no FHIRPath Patch counterpart), and (2) the empty/whitespace request body tests and the Binary-resource-in-a-Bundle patch test (this engine cannot emit a zero-length body, and Bundle/transaction patch flows are out of scope for a single-operation TestScript). See the CRUD/patch-body suite for body-shape edge cases.",
+  "description": "PATCH conformance tests adapted from JsonPatchTests, covering JSON-Patch-style edits (replace/remove/add), error handling, immutability, and If-Match preconditions. Since raw JSON Patch array bodies aren't supported here, each test submits an equivalent FHIRPath Patch body producing the same edit or error class; see CRUD/patch-body for body-shape-only scenarios.",
   "status": "active",
   "fixture": [
     {
@@ -550,7 +550,7 @@
   "test": [
     {
       "name": "replace and remove edits patch correctly",
-      "description": "Approximates the original JsonPatchTests level-1 property patch ([{op:replace,path:/gender},{op:remove,path:/address}]) using the semantically equivalent FHIRPath Patch replace+delete operations, since this engine can only send FHIR-resource-shaped (JSON object) bodies and a JSON Patch document is a raw JSON array.",
+      "description": "FHIRPath Patch equivalent of a JSON Patch replace-gender + remove-address edit (from JsonPatchTests); must return 200 with both edits applied.",
       "action": [
         {
           "operation": {
@@ -608,7 +608,7 @@
     },
     {
       "name": "malformed patch document is rejected with 400",
-      "description": "Approximates JsonPatchTests' 'incorrect JSON patch' theory (unknown 'op' value, missing 'path', etc. in the raw JSON Patch array all yield 400) using an unrecognized FHIRPath Patch operation type, since a raw JSON Patch array body cannot be sent by this engine.",
+      "description": "FHIRPath Patch equivalent of JsonPatchTests' malformed-patch-document cases, using an unrecognized operation type; must return 400 Bad Request.",
       "action": [
         {
           "operation": {
@@ -650,7 +650,7 @@
     },
     {
       "name": "add edit with a complex value patches correctly",
-      "description": "Approximates the original JsonPatchTests level-2 property patch (adding an address array then an address object at index 0) using a single FHIRPath Patch 'add' of a complete Address value, since arbitrary JSON-array bodies are not supported by this engine.",
+      "description": "FHIRPath Patch equivalent of JsonPatchTests' add-a-complex-address edit; must return 200 with exactly one address added.",
       "action": [
         {
           "operation": {

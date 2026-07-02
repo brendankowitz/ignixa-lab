@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "CRUD/patch-body",
-  "description": "Conformance tests adapted from the Microsoft FHIR Server E2E suite PatchBodyTests.cs, which checks PATCH behavior at the request-body-shape level (independent of the patch semantics themselves) for both 'application/json-patch+json' and 'application/fhir+json'. The two 'empty body' scenarios cannot be reproduced literally: this engine's HTTP client only attaches a Content-Type header when a request body is present, so a Content-Type header can never be sent alongside a genuinely empty body. Each is instead approximated with a syntactically valid but wrong-shaped, non-empty body (an empty JSON object for json-patch+json; a Patient resource in place of the expected Parameters resource for fhir+json) that fails ASP.NET Core model binding for the same underlying reason an empty body would, producing the same 400 Bad Request outcome. The two 'populated body succeeds' scenarios are otherwise straightforward; the JSON Patch case is approximated via an equivalent FHIRPath Patch body since raw JSON array bodies cannot be sent by this engine, while the FHIR Patch case is reproduced directly and exactly.",
+  "description": "PATCH request-body-shape conformance tests (from PatchBodyTests): malformed bodies are rejected with 400 for both application/json-patch+json and application/fhir+json, while populated bodies succeed. Empty-body cases are approximated with a wrong-shaped non-empty body, since a bodyless request can't be sent here.",
   "status": "active",
   "fixture": [
     {
@@ -94,7 +94,7 @@
   "test": [
     {
       "name": "json-patch+json request with a malformed (empty-object) body is rejected",
-      "description": "Approximates GivenJsonPatch_WhenBodyIsEmpty_ThenBadRequestShouldBeReturned. This engine cannot submit a truly empty request body (its HTTP client only attaches a Content-Type header when a body is present), so an empty JSON object '{}' is sent instead of an empty string. ASP.NET Core's JsonPatchDocument model binder requires the root of the body to be a JSON array, so '{}' fails to bind for the same underlying reason an empty body does, and the server must return 400 Bad Request either way.",
+      "description": "A malformed json-patch+json body (an empty object instead of the expected JSON Patch array) must be rejected with 400 -- approximates the original empty-body test, since a bodyless request can't be sent here (from PatchBodyTests).",
       "action": [
         {
           "operation": {
@@ -136,7 +136,7 @@
     },
     {
       "name": "fhir+json patch request with a malformed (wrong resourceType) body is rejected",
-      "description": "Approximates GivenFhirPatch_WhenBodyIsEmpty_ThenBadRequestShouldBeReturned. This engine cannot submit a truly empty request body, so a syntactically valid Patient resource is sent instead of the expected Parameters resource. The server's FHIRPath Patch action binds the body to a Parameters resource, so a Patient body fails model binding for the same underlying reason an empty body does, and the server must return 400 Bad Request either way.",
+      "description": "A malformed application/fhir+json patch body (a Patient resource instead of the expected Parameters resource) must be rejected with 400 -- approximates the original empty-body test for the same reason (from PatchBodyTests).",
       "action": [
         {
           "operation": {
@@ -178,7 +178,7 @@
     },
     {
       "name": "json-patch-shaped edit with a populated body succeeds",
-      "description": "Approximates GivenJsonPatch_WhenBodyIsPopulated_ThenResultIsSuccessful (a JSON Patch '[{op:replace,path:/gender,value:female}]' array body) using the semantically equivalent FHIRPath Patch replace operation, since this engine cannot send a raw JSON array as a request body - only FHIR-resource-shaped JSON objects are supported.",
+      "description": "A populated JSON-Patch-equivalent edit (FHIRPath Patch replacing gender) must succeed with 200 (from PatchBodyTests; raw JSON Patch arrays aren't supported here).",
       "action": [
         {
           "operation": {
@@ -237,7 +237,7 @@
     },
     {
       "name": "fhir-patch edit with a populated Parameters body succeeds",
-      "description": "Direct equivalent of GivenFhirPatch_WhenBodyIsPopulated_ThenResultIsSuccessful: a real FHIRPath Patch Parameters body (built the same way AddReplacePatchParameter would) replacing Patient.gender with 'female' must succeed with 200.",
+      "description": "A populated FHIRPath Patch body replacing Patient.gender must succeed with 200 (from PatchBodyTests).",
       "action": [
         {
           "operation": {

@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "CRUD/history",
-  "description": "Conformance tests for history (GET /_history, /{type}/_history, /{type}/{id}/_history) semantics ported from Microsoft.Health.Fhir.Shared.Tests.E2E Rest/HistoryTests.cs: system-, type-, and instance-level history return non-empty Bundles; instance history reflects create+update with correct default (descending) and explicit ascending/descending sort order; every history entry reports a well-formed response.status; _summary=count returns totals without entries; a far-past _since does not wrongly exclude history; and unsupported/invalid parameters (_before in the far future, _sort=_id) are rejected. Fixtures are tagged identifier HISTORY-* (system http://ignixa.io/testscript/suite/test) to avoid colliding with other suites on a shared test server.",
+  "description": "History (GET /_history, /{type}/_history, /{type}/{id}/_history) conformance tests: non-empty system/type/instance Bundles, correct default and explicit sort order, well-formed entry.response.status, and _summary=count/_since/_before/_sort parameter handling (from HistoryTests).",
   "status": "active",
   "fixture": [
     {

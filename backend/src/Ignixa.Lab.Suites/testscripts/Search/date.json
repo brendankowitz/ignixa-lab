@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Search/date",
-  "description": "Date search conformance tests that complement Search/intervals.json (which already covers the 8 date prefixes eq/ne/gt/lt/ge/le/sa/eb representatively). This suite covers scenarios NOT exercised by intervals.json: ANDing two repeated date params to form a range, matching a point-in-time query against an Observation with an effectivePeriod, invalid/out-of-range date literals rejected with 400, and the FHIR R4 partial-precision date-equality ambiguity (overlap vs. containment) documented in Microsoft's DateSearchTests.cs as AB#191826 — servers legitimately differ here, so those specific assertions are warningOnly. Ported from fhir-server's DateSearchTests.cs / DateSearchTestFixture.cs.",
+  "description": "Date search (`date`/`birthdate`) conformance tests complementing Search/intervals.json's core prefix coverage: ANDed date ranges, matching against a Period-valued field, invalid/out-of-range date rejection, and partial-precision date-equality semantics (from DateSearchTests).",
   "status": "active",
   "fixture": [
     {
@@ -176,7 +176,7 @@
   "test": [
     {
       "name": "AND of two repeated date params forms a range",
-      "description": "date=gt1980-05-10&date=lt1980-05-12 ANDs the two bounds: only observations with end time after 1980-05-10 AND start time before 1980-05-12 match (obs-1 through obs-5). obs-0 (1979-12-31), obs-6 (1981-01-01) and obs-7 (period 1980-05-16..17) must be excluded.",
+      "description": "Two repeated `date` params (gt1980-05-10 and lt1980-05-12) are ANDed together, matching only obs-1 through obs-5 and excluding obs-0, obs-6, and obs-7.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Observation", "params": "?code=fhir262-date-test&date=gt1980-05-10&date=lt1980-05-12", "responseId": "and-range-response", "description": "GET /Observation?date=gt1980-05-10&date=lt1980-05-12" } },
@@ -194,7 +194,7 @@
     },
     {
       "name": "Date search matched against an effectivePeriod",
-      "description": "date=1980-05-16T16:32:15.500 (a precise instant) must match any Observation whose range contains that instant: obs-1 (whole year 1980), obs-2 (whole month 1980-05), and obs-7 (period 1980-05-16 to 1980-05-17, containing it directly). Day/instant-precision May-11 observations (obs-3/4/5) do not contain a May-16 instant and must be excluded.",
+      "description": "An instant-precision date search must match any Observation whose date/period contains that instant, including a Period-valued effectivePeriod (obs-7), not just single dateTime values.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Observation", "params": "?code=fhir262-date-test&date=1980-05-16T16:32:15.500", "responseId": "period-match-response", "description": "GET /Observation?date=1980-05-16T16:32:15.500" } },
@@ -211,7 +211,7 @@
     },
     {
       "name": "Invalid date search value returns 400",
-      "description": "GET /Patient?birthdate=<value> with a syntactically invalid date value must be rejected with HTTP 400. Parametrized over '***' and '!' via the http://ignixa.io/testscript/parametrize engine extension.",
+      "description": "A syntactically invalid birthdate value must be rejected with HTTP 400.",
       "extension": [
         { "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" },
         {
@@ -229,7 +229,7 @@
     },
     {
       "name": "Out-of-range date value returns 400",
-      "description": "GET /Patient?birthdate=<value> with a calendar-invalid date (Feb 30) or a dateTime with an excessive number of fractional-second digits must be rejected with HTTP 400. Parametrized via the http://ignixa.io/testscript/parametrize engine extension.",
+      "description": "A calendar-invalid date (Feb 30) or a dateTime with excessive fractional-second digits must be rejected with HTTP 400.",
       "extension": [
         { "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" },
         {
@@ -247,7 +247,7 @@
     },
     {
       "name": "Partial-precision date equality: exact match is unambiguous, cross-precision overlap is implementation-defined",
-      "description": "birthdate=2000-03-03 (day precision) must match the patient born on exactly that day, and must NOT match the control patient born 1999-12-31 (clearly outside 2000) — both are true under any reading of the R4 date-equality prefix. Whether it ALSO matches coarser-precision patients born '2000-03' or '2000' is genuinely ambiguous: FHIR R4 defines eq as 'the range of the search value fully contains the range of the target value' (strict containment, which a day range does NOT satisfy against a month/year range), but Microsoft's shipped FHIR server default instead uses range-overlap semantics (tracked as a known deviation, AB#191826, with spec-compliant containment available behind an opt-in flag). Those two assertions are therefore warningOnly.",
+      "description": "birthdate=2000-03-03 must match the exact-day patient and exclude a control patient born outside 2000 (hard assertions); whether it also matches coarser-precision (month/year) patients is warningOnly, since FHIR R4 defines `eq` as strict containment but the server's default behavior uses overlap semantics instead (a documented deviation, see DateSearchTests).",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?_id=${birthYearId},${birthMonthId},${birthDayId},${birthOutsideId}&birthdate=2000-03-03", "responseId": "partial-eq-response", "description": "GET /Patient?birthdate=2000-03-03 scoped to the four fixture patients" } },

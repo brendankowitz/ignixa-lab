@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "CRUD/conditional-update",
-  "description": "Conditional update (PUT /Patient?search-params, without a resource id in the URL) conformance tests: no match upserts (creates), no criteria is rejected, a client-supplied id with no match creates that id, one match updates the resolved resource, a body id matching/mismatching the resolved resource id is accepted/rejected, and multiple matches are rejected with 412. Uses Patient fixtures tagged with unique identifiers (http://ignixa.io/testscript/suite/cond-update) to avoid collisions with other suites; client-supplied ids are used where the test needs to deterministically match or mismatch a resource id, since request bodies are static fixtures.",
+  "description": "Conditional update (PUT /Patient?search-params) conformance tests: upsert-on-no-match, 400 on no criteria, body-id agreement/mismatch handling, and 412 on multiple matches.",
   "status": "active",
   "fixture": [
     {
@@ -131,7 +131,7 @@
   "test": [
     {
       "name": "Conditional update with no existing match upserts a new resource",
-      "description": "PUT /Patient?identifier=http://ignixa.io/testscript/suite/cond-update|CU-NOMATCH with a body that has no id. No resource matches, so the server must upsert (create) it and return 201 Created.",
+      "description": "PUT /Patient?identifier=... matching no existing resource with an id-less body; the server must upsert (create) it and return 201 Created.",
       "action": [
         { "operation": { "type": { "code": "update" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-NOMATCH", "sourceId": "patient-nomatch-body", "responseId": "cu-nomatch-response", "description": "Conditional PUT /Patient?identifier=...CU-NOMATCH, matches nothing" } },
         { "assert": { "description": "Must return HTTP 201 Created", "response": "created" } },
@@ -141,7 +141,7 @@
     },
     {
       "name": "Conditional update with no search criteria is rejected",
-      "description": "PUT /Patient with no query string at all. A conditional update requires selective search criteria; with none, the server must return 400 Bad Request.",
+      "description": "PUT /Patient with no search criteria; the server must reject the request with 400 Bad Request.",
       "action": [
         { "operation": { "type": { "code": "update" }, "resource": "Patient", "sourceId": "patient-nomatch-body", "responseId": "cu-nocriteria-response", "description": "Conditional PUT /Patient with no query string" } },
         { "assert": { "description": "Must return HTTP 400 Bad Request", "response": "bad" } }
@@ -149,7 +149,7 @@
     },
     {
       "name": "Conditional update with a client-supplied id and no existing match creates that id",
-      "description": "PUT /Patient?identifier=http://ignixa.io/testscript/suite/cond-update|CU-EXPLICIT with a body that has a client-supplied id. No resource matches, so the server must create a new resource using the client-supplied id and return 201 Created.",
+      "description": "PUT /Patient?identifier=... matching no existing resource with a body carrying a client-supplied id; the server must create the resource using that id and return 201 Created.",
       "action": [
         { "operation": { "type": { "code": "update" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-EXPLICIT", "sourceId": "patient-explicit-id-body", "responseId": "cu-explicit-response", "description": "Conditional PUT /Patient?identifier=...CU-EXPLICIT, body carries id=fhir262-cond-upd-explicit" } },
         { "assert": { "description": "Must return HTTP 201 Created", "response": "created" } },
@@ -158,7 +158,7 @@
     },
     {
       "name": "Conditional update with no id in body and one match updates the existing resource",
-      "description": "PUT /Patient?identifier=http://ignixa.io/testscript/suite/cond-update|CU-ONEMATCH with a body that has no id. Exactly one Patient already carries that identifier (created in setup), so the server must update it in place, returning 200 OK with the same server-assigned id.",
+      "description": "PUT /Patient?identifier=... matching exactly one existing Patient with an id-less body; the server must update it in place and return 200 OK with the same id.",
       "action": [
         { "operation": { "type": { "code": "update" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-ONEMATCH", "sourceId": "patient-update-onematch-body", "responseId": "cu-onematch-response", "description": "Conditional PUT /Patient?identifier=...CU-ONEMATCH, matches the single seeded Patient" } },
         { "assert": { "description": "Must return HTTP 200 OK (updated, not created)", "response": "okay" } },
@@ -167,7 +167,7 @@
     },
     {
       "name": "Conditional update with a body id matching the resolved resource updates its content",
-      "description": "PUT /Patient?identifier=http://ignixa.io/testscript/suite/cond-update|CU-CORRECTID with a body whose id equals the id of the single matched resource (both are the client-supplied id fhir262-cond-upd-correctid from setup). The ids agree, so the server must accept the update and return 200 OK with the new content (gender changed to female).",
+      "description": "PUT /Patient?identifier=... matching one existing Patient whose id agrees with the body's id; the server must accept the update and return 200 OK with the updated content.",
       "action": [
         { "operation": { "type": { "code": "update" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-CORRECTID", "sourceId": "patient-update-correctid-body", "responseId": "cu-correctid-response", "description": "Conditional PUT /Patient?identifier=...CU-CORRECTID, body id matches the resolved resource's id" } },
         { "assert": { "description": "Must return HTTP 200 OK", "response": "okay" } },
@@ -177,7 +177,7 @@
     },
     {
       "name": "Conditional update with a mismatched body id is rejected",
-      "description": "PUT /Patient?identifier=http://ignixa.io/testscript/suite/cond-update|CU-CORRECTID with a body whose id (fhir262-cond-upd-wrongid) disagrees with the id of the single resource the search criteria resolves to (fhir262-cond-upd-correctid). The server must reject this with 400 Bad Request.",
+      "description": "PUT /Patient?identifier=... matching one existing Patient whose id disagrees with the body's id; the server must reject the request with 400 Bad Request.",
       "action": [
         { "operation": { "type": { "code": "update" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-CORRECTID", "sourceId": "patient-update-wrongid-body", "responseId": "cu-mismatch-response", "description": "Conditional PUT /Patient?identifier=...CU-CORRECTID, body id deliberately disagrees with the resolved resource's id" } },
         { "assert": { "description": "Must return HTTP 400 Bad Request", "response": "bad" } }
@@ -185,7 +185,7 @@
     },
     {
       "name": "Conditional update with multiple existing matches fails",
-      "description": "PUT /Patient?identifier=http://ignixa.io/testscript/suite/cond-update|CU-MULTI. Two Patients already carry that identifier (created in setup), so the criteria is not selective enough to identify a single resource; the server must return 412 Precondition Failed.",
+      "description": "PUT /Patient?identifier=... matching two existing Patients; the server must return 412 Precondition Failed since the criteria isn't selective enough.",
       "action": [
         { "operation": { "type": { "code": "update" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-MULTI", "sourceId": "patient-update-multi-body", "responseId": "cu-multi-response", "description": "Conditional PUT /Patient?identifier=...CU-MULTI, matches both seeded Patients" } },
         { "assert": { "description": "Must return HTTP 412 Precondition Failed", "response": "preconditionFailed" } }

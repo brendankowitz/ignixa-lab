@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Search/ms-not-referenced",
-  "description": "_not-referenced modifier conformance tests ported from NotReferencedSearchTests.cs. _not-referenced=[SourceType]:[searchParam] (or wildcards for either/both segments) returns only resources that are NOT the target of any matching reference. Five Patients: fhir262-nr-p1 (referenced by an Observation's subject), fhir262-nr-p2 (referenced by an Observation's performer), fhir262-nr-p3 (referenced by a Condition's subject), fhir262-nr-p4 and fhir262-nr-p5 (never referenced by anything). A Condition (rather than the original test's Encounter) is used as the third referencing resource type because Encounter.class has an incompatible shape between R4 (single Coding) and R5 (array of CodeableConcept) that can't be represented in one static, version-spanning fixture body. Uses client-supplied IDs (PUT) so cross-references resolve statically.",
+  "description": "Tests the _not-referenced=[SourceType]:[searchParam] search modifier, which returns only resources that are NOT the target of any matching reference, including wildcard source/param segments and malformed values (from NotReferencedSearchTests.cs).",
   "status": "active",
   "fixture": [
     {
