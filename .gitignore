@@ -437,3 +437,5 @@ local.settings.json
 
 # Local ad-hoc scripts (dev-only, not part of the build)
 claude-*.ps1
+
+.worktrees/
