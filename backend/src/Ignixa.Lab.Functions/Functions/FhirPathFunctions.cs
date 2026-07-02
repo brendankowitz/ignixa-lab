@@ -27,7 +27,7 @@ public sealed class FhirPathFunctions(ILogger<FhirPathFunctions> logger, FhirPat
     [Function("FhirPathMetadata")]
     [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Instance method by design so it can be consumed via DI and mocked in tests.")]
     public IActionResult RunCapabilityStatement(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "metadata")] HttpRequest request)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "options", Route = "metadata")] HttpRequest request)
     {
         var capabilityStatement = new JsonObject
         {
@@ -35,6 +35,7 @@ public sealed class FhirPathFunctions(ILogger<FhirPathFunctions> logger, FhirPat
             ["title"] = "FHIRPath Lab DotNet expression evaluator (Ignixa)",
             ["description"] = "Supports FHIR STU3, R4, R4B, R5, R6. Features: AST output, trace, validation.",
             ["status"] = "active",
+            // Static publish date for this CapabilityStatement; not tied to deployment time.
             ["date"] = "2026-01-19",
             ["kind"] = "instance",
             ["fhirVersion"] = "4.0.1",
@@ -68,31 +69,31 @@ public sealed class FhirPathFunctions(ILogger<FhirPathFunctions> logger, FhirPat
 
     [Function("FhirPathStu3")]
     public Task<IActionResult> RunFhirPathTestStu3(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "$fhirpath-stu3")] HttpRequest request,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", "options", Route = "$fhirpath-stu3")] HttpRequest request,
         CancellationToken cancellationToken) =>
         ProcessFhirPathRequest(request, "STU3", cancellationToken);
 
     [Function("FhirPathR4")]
     public Task<IActionResult> RunFhirPathTestR4(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "$fhirpath-r4")] HttpRequest request,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", "options", Route = "$fhirpath-r4")] HttpRequest request,
         CancellationToken cancellationToken) =>
         ProcessFhirPathRequest(request, "R4", cancellationToken);
 
     [Function("FhirPathR4B")]
     public Task<IActionResult> RunFhirPathTestR4B(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "$fhirpath-r4b")] HttpRequest request,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", "options", Route = "$fhirpath-r4b")] HttpRequest request,
         CancellationToken cancellationToken) =>
         ProcessFhirPathRequest(request, "R4B", cancellationToken);
 
     [Function("FhirPathR5")]
     public Task<IActionResult> RunFhirPathTestR5(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "$fhirpath-r5")] HttpRequest request,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", "options", Route = "$fhirpath-r5")] HttpRequest request,
         CancellationToken cancellationToken) =>
         ProcessFhirPathRequest(request, "R5", cancellationToken);
 
     [Function("FhirPathR6")]
     public Task<IActionResult> RunFhirPathTestR6(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "$fhirpath-r6")] HttpRequest request,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", "options", Route = "$fhirpath-r6")] HttpRequest request,
         CancellationToken cancellationToken) =>
         ProcessFhirPathRequest(request, "R6", cancellationToken);
 
@@ -165,7 +166,21 @@ public sealed class FhirPathFunctions(ILogger<FhirPathFunctions> logger, FhirPat
         var variablesParam = operationParameters.FindParameter("variables");
         var debugTraceParam = operationParameters.FindParameter("debug_trace");
 
-        ResourceJsonNode? resource = resourceParam?.Resource;
+        // Extracting the embedded resource can throw if its "resourceType" is
+        // present but not the JSON string FHIR requires (e.g. a number) - a
+        // plausible malformed shape on this fully attacker-controlled request
+        // body. Guard it here so it becomes a structured 400 response instead
+        // of an unhandled exception.
+        ResourceJsonNode? resource;
+        try
+        {
+            resource = resourceParam?.Resource;
+        }
+        catch (Exception ex)
+        {
+            return (null, $"Invalid resource: {ex.Message}", null);
+        }
+
         string? resourceId = resource == null ? resourceParam?.GetValueAs<string>() : null;
         string? context = contextParam?.GetValueAs<string>();
         string? expression = expressionParam?.GetValueAs<string>();
@@ -206,7 +221,7 @@ public sealed class FhirPathFunctions(ILogger<FhirPathFunctions> logger, FhirPat
 
     private static IActionResult CreateErrorResponse(string message, string? diagnostics = null)
     {
-        var outcome = ResultFormatter.CreateOperationOutcomeResult("error", "not-found", message, diagnostics);
+        var outcome = ResultFormatter.CreateOperationOutcomeResult("error", "invalid", message, diagnostics);
 
         return new ContentResult
         {

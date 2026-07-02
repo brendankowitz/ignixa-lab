@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using System.Text.Json.Nodes;
 using Ignixa.Abstractions;
 using Ignixa.Serialization.SourceNodes;
 
@@ -60,10 +61,14 @@ public sealed class LightweightElementResolver
         }
 
         // Create a minimal FHIR resource with just resourceType and id
-        string json = $"{{\"resourceType\":\"{parsed.Value.ResourceType}\",\"id\":\"{parsed.Value.ResourceId}\"}}";
+        var minimalResourceJson = new JsonObject
+        {
+            ["resourceType"] = parsed.Value.ResourceType,
+            ["id"] = parsed.Value.ResourceId
+        }.ToJsonString();
 
         // ToElement returns SchemaAwareElement which implements IElement
-        var typedElement = ResourceJsonNode.Parse(json).ToElement(_schemaProvider);
+        var typedElement = ResourceJsonNode.Parse(minimalResourceJson).ToElement(_schemaProvider);
 
         return (IElement)typedElement;
     }

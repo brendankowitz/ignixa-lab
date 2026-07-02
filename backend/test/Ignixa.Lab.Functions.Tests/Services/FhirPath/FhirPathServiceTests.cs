@@ -1,13 +1,50 @@
 using System.Net;
 using FluentAssertions;
 using Ignixa.Lab.Functions.Configuration;
+using Ignixa.Lab.Functions.Models;
 using Ignixa.Lab.Functions.Services.FhirPath;
+using Ignixa.Serialization;
+using Ignixa.Serialization.SourceNodes;
 using Microsoft.Extensions.Options;
 
 namespace Ignixa.Lab.Functions.Tests.Services.FhirPath;
 
 public sealed class FhirPathServiceTests
 {
+    [Fact]
+    public void Evaluate_MalformedResourceType_ReturnsStructuredErrorInsteadOfThrowing()
+    {
+        var service = CreateService(new ThrowingHttpClientFactory(), allowPrivateTargets: true);
+
+        // "resourceType" must be a JSON string per the FHIR spec. A resource
+        // JSON payload with a non-string resourceType actually fails even
+        // earlier (during Parameters body parsing), so to reach the
+        // FhirPathService.Evaluate orchestration boundary specifically, mutate
+        // an already-parsed resource's underlying node directly (via the
+        // public MutableNode) to the same malformed shape. Accessing
+        // ResourceType - used both for analysis and for the ToElement schema
+        // conversion - then throws InvalidOperationException, which
+        // previously propagated out of FhirPathService.Evaluate unhandled
+        // instead of becoming a structured error result.
+        var resource = JsonSourceNodeFactory.Parse<ResourceJsonNode>("""{"resourceType":"Patient","id":"example"}""");
+        resource.MutableNode["resourceType"] = System.Text.Json.Nodes.JsonValue.Create(123);
+
+        var request = new FhirPathRequest
+        {
+            Resource = resource,
+            Expression = "true",
+            FhirVersion = "R4"
+        };
+
+        var act = () => service.Evaluate(request);
+
+        act.Should().NotThrow();
+
+        var result = service.Evaluate(request);
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().NotBeNullOrEmpty();
+    }
+
     [Theory]
     [InlineData("http://127.0.0.1/fhir/Patient/1")]
     [InlineData("http://localhost:8080/fhir/Patient/1")]
@@ -94,6 +131,24 @@ public sealed class FhirPathServiceTests
 
         factory.CapturedClient.Should().NotBeNull();
         factory.CapturedClient!.Timeout.Should().Be(TimeSpan.FromSeconds(42));
+    }
+
+    [Fact]
+    public async Task LoadResourceFromUrl_RequestTimesOut_ReturnsErrorInsteadOfThrowing()
+    {
+        // The handler delays well past the configured 1-second client timeout,
+        // so HttpClient itself cancels the request (TaskCanceledException) even
+        // though the caller's own CancellationToken.None was never triggered.
+        var factory = new DelayingHttpClientFactory(TimeSpan.FromSeconds(5));
+        var service = CreateService(factory, allowPrivateTargets: true, httpTimeoutSeconds: 1);
+
+        var act = async () => await service.LoadResourceFromUrl("http://127.0.0.1/fhir/Patient/1", CancellationToken.None);
+
+        await act.Should().NotThrowAsync();
+
+        var (resource, error) = await service.LoadResourceFromUrl("http://127.0.0.1/fhir/Patient/1", CancellationToken.None);
+        resource.Should().BeNull();
+        error.Should().NotBeNull();
     }
 
     private static FhirPathService CreateService(IHttpClientFactory httpClientFactory, bool allowPrivateTargets, int httpTimeoutSeconds = 100)
@@ -219,6 +274,31 @@ public sealed class FhirPathServiceTests
                 {
                     Content = new StringContent(responseBody)
                 });
+        }
+    }
+
+    /// <summary>
+    /// Simulates an HTTP timeout: delays past the client's configured
+    /// <see cref="HttpClient.Timeout"/> so <see cref="HttpClient.GetAsync"/>
+    /// itself throws <see cref="TaskCanceledException"/>, proving
+    /// <see cref="FhirPathService.LoadResourceFromUrl"/> handles that
+    /// distinctly from the caller's own <see cref="CancellationToken"/> being
+    /// cancelled.
+    /// </summary>
+    private sealed class DelayingHttpClientFactory(TimeSpan delay) : IHttpClientFactory
+    {
+        public HttpClient CreateClient(string name) => new(new DelayingHandler(delay));
+
+        private sealed class DelayingHandler(TimeSpan delay) : HttpMessageHandler
+        {
+            protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                await Task.Delay(delay, cancellationToken);
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("""{"resourceType":"Patient","id":"example"}""")
+                };
+            }
         }
     }
 }

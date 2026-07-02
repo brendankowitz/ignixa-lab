@@ -81,40 +81,58 @@ public sealed class FhirPathService
             };
         }
 
-        // Parse and analyze expressions
-        var rootTypeName = request.Resource?.ResourceType;
-        var (parsed, contextExpr, parseError) = _analyzer.ParseAndAnalyze(
-            request.Expression,
-            request.Context,
-            rootTypeName,
-            request.FhirVersion);
+        // Parse, analyze, and evaluate the expression. This whole block is a
+        // top-level orchestration boundary: resource/variable-to-schema
+        // conversion (e.g. request.Resource?.ResourceType, resource?.ToElement(schema),
+        // or variable parsing in CreateEvaluationContext) happens outside the
+        // evaluator's own per-context try/catch, so a malformed but
+        // attacker-controlled resource/variables shape (e.g. a non-string
+        // "resourceType") could otherwise throw an unhandled exception instead
+        // of a structured error result.
+        try
+        {
+            var rootTypeName = request.Resource?.ResourceType;
+            var (parsed, contextExpr, parseError) = _analyzer.ParseAndAnalyze(
+                request.Expression,
+                request.Context,
+                rootTypeName,
+                request.FhirVersion);
 
-        if (parseError != null)
+            if (parseError != null)
+            {
+                return new FhirPathResult
+                {
+                    Request = request,
+                    Error = parseError,
+                    ErrorDiagnostics = request.Expression
+                };
+            }
+
+            var evaluationResults = _evaluator.Evaluate(
+                parsed!,
+                contextExpr,
+                request.Resource,
+                request.Variables,
+                request.FhirVersion,
+                request.DebugTrace);
+
+            return new FhirPathResult
+            {
+                Request = request,
+                ParsedExpression = parsed,
+                ContextExpression = contextExpr,
+                Results = evaluationResults
+            };
+        }
+        catch (Exception ex)
         {
             return new FhirPathResult
             {
                 Request = request,
-                Error = parseError,
+                Error = $"Evaluation error: {ex.Message}",
                 ErrorDiagnostics = request.Expression
             };
         }
-
-        // Evaluate the expression
-        var evaluationResults = _evaluator.Evaluate(
-            parsed!,
-            contextExpr,
-            request.Resource,
-            request.Variables,
-            request.FhirVersion,
-            request.DebugTrace);
-
-        return new FhirPathResult
-        {
-            Request = request,
-            ParsedExpression = parsed,
-            ContextExpression = contextExpr,
-            Results = evaluationResults
-        };
     }
 
     /// <summary>
@@ -194,6 +212,10 @@ public sealed class FhirPathService
         catch (HttpRequestException ex)
         {
             return (null, $"Unable to retrieve resource {url}: {ex.Message}");
+        }
+        catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return (null, $"Unable to retrieve resource {url}: the request timed out.");
         }
     }
 

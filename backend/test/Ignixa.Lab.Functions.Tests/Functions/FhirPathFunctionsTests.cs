@@ -101,6 +101,30 @@ public sealed class FhirPathFunctionsTests
         json["resourceType"]!.GetValue<string>().Should().Be("OperationOutcome");
     }
 
+    [Fact]
+    public async Task RunFhirPathTestR4_MalformedEmbeddedResourceType_ReturnsBadRequestOperationOutcome()
+    {
+        var function = CreateFunction();
+
+        // "resourceType" must be a JSON string per the FHIR spec. A number
+        // here throws deep inside the embedded resource's schema conversion
+        // (ResourceJsonNode.ResourceType); this must be surfaced as a
+        // structured 400 OperationOutcome instead of an unhandled exception.
+        const string body = """
+            {"resourceType":"Parameters","parameter":[
+                {"name":"expression","valueString":"true"},
+                {"name":"resource","resource":{"resourceType":123,"id":"example"}}
+            ]}
+            """;
+
+        var result = await function.RunFhirPathTestR4(BuildPostRequest(body), CancellationToken.None);
+
+        var content = result.Should().BeOfType<ContentResult>().Subject;
+        content.StatusCode.Should().Be(400);
+        var json = JsonNode.Parse(content.Content!)!;
+        json["resourceType"]!.GetValue<string>().Should().Be("OperationOutcome");
+    }
+
     private static FhirPathFunctions CreateFunction()
     {
         var schemaFactory = new SchemaProviderFactory();
