@@ -1,0 +1,26 @@
+<Project>
+
+  <!--
+    Shared build settings for all projects in the Ignixa Lab solution.
+    Keeps compiler behaviour, language version, and analysis consistent.
+  -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!--
+      High-performance logging (CA1848/CA1873) and micro-allocation return-type
+      rules (CA1859) add noise without value for a small I/O-bound Functions app
+      whose log calls are low-frequency, not hot paths. CA1711 flags the
+      deliberate FHIR "Impl" wire field name that we must keep for report
+      compatibility with the ignixa-fhir dashboard.
+    -->
+    <NoWarn>$(NoWarn);CA1848;CA1859;CA1711;CA1873</NoWarn>
+  </PropertyGroup>
+
+</Project>

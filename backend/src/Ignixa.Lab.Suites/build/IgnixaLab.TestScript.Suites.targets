@@ -1,0 +1,20 @@
+<Project>
+
+  <!--
+    Copies the packaged canonical TestScript suites into the consumer's output
+    under testscripts/, preserving the category subfolders that SuiteCatalog
+    reads (Suites/SuiteCatalog.cs). The package layout places this file under
+    build/ and the suites under testscripts/ at the package root, so from here
+    the suites are one directory up.
+  -->
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)../testscripts/**/*.json">
+      <Link>testscripts/%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <Pack>false</Pack>
+      <Visible>false</Visible>
+    </None>
+  </ItemGroup>
+
+</Project>

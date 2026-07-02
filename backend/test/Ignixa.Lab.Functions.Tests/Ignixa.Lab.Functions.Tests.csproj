@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <!--
+      xUnit convention uses Method_Scenario_Expectation names with underscores
+      (CA1707), and InlineData arrays for parameterised assertions (CA1861).
+      Both are idiomatic in tests and add no value to flag here.
+    -->
+    <NoWarn>$(NoWarn);CA1707;CA1861</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="FluentAssertions" />
+    <!--
+      Content packages don't flow their CopyToOutputDirectory items through a
+      ProjectReference, so SuiteCatalogTests (which reads the real bundled
+      suites from AppContext.BaseDirectory) needs its own reference to get the
+      testscripts/ folder copied into this project's own output (ADR-2607).
+    -->
+    <PackageReference Include="IgnixaLab.TestScript.Suites" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Ignixa.Lab.Functions\Ignixa.Lab.Functions.csproj" />
+  </ItemGroup>
+
+</Project>

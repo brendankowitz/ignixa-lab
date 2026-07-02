@@ -1,0 +1,66 @@
+/*
+ * Global reset + base typography. Theme colors are NOT set here — they're
+ * applied as CSS custom properties directly on the `.app-shell` wrapper by
+ * `useTheme` (see `theme/variables.ts`), so light/dark can flip instantly
+ * without a page reload or a `prefers-color-scheme` media query.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+input,
+button {
+  font-family: inherit;
+}
+
+input {
+  outline: none;
+}
+
+button {
+  border: none;
+  background: none;
+  font-size: inherit;
+  cursor: pointer;
+}
+
+pre {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+@keyframes ixspin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ixpulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}

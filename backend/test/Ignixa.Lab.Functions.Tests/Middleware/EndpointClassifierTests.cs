@@ -1,0 +1,28 @@
+using FluentAssertions;
+using Ignixa.Lab.Functions.Middleware;
+
+namespace Ignixa.Lab.Functions.Tests.Middleware;
+
+public sealed class EndpointClassifierTests
+{
+    [Theory]
+    [InlineData("Health", EndpointClass.Exempt)]
+    [InlineData("Suites", EndpointClass.Suites)]
+    [InlineData("Capability", EndpointClass.Capability)]
+    [InlineData("Run", EndpointClass.Run)]
+    [InlineData("SomeFutureEndpoint", EndpointClass.Run)]
+    public void Classify_MapsFunctionNameToClass(string functionName, EndpointClass expected)
+    {
+        EndpointClassifier.Classify(functionName, "GET").Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("Health")]
+    [InlineData("Suites")]
+    [InlineData("Capability")]
+    [InlineData("Run")]
+    public void Classify_OptionsPreflight_IsAlwaysExempt(string functionName)
+    {
+        EndpointClassifier.Classify(functionName, "OPTIONS").Should().Be(EndpointClass.Exempt);
+    }
+}

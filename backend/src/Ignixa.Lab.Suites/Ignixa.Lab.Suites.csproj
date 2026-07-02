@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <IsPackable>true</IsPackable>
+    <PackageId>IgnixaLab.TestScript.Suites</PackageId>
+    <Version>0.1.0-local</Version>
+    <Description>
+      Canonical FHIR TestScript suites for the Ignixa Lab backend, packaged as
+      NuGet content. Interim local package per ADR-2607; will be repointed at
+      the upstream ignixa-fhir suites artifact once it is published.
+    </Description>
+    <!-- Content-only package: nothing to compile, so skip the empty-lib warning. -->
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="testscripts/**/*.json" Pack="true" PackagePath="testscripts/" />
+    <None Include="build/IgnixaLab.TestScript.Suites.targets" Pack="true" PackagePath="build/" />
+  </ItemGroup>
+
+</Project>
