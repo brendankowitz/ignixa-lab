@@ -6,12 +6,15 @@ interface SofColumn {
   path: string;
 }
 
-interface SofSelect {
-  forEach?: string;
-  forEachOrNull?: string;
+type SofUnnest =
+  | { forEach: string; forEachOrNull?: never }
+  | { forEach?: never; forEachOrNull: string }
+  | { forEach?: never; forEachOrNull?: never };
+
+type SofSelect = SofUnnest & {
   column?: SofColumn[];
   select?: SofSelect[];
-}
+};
 
 interface SofViewDefinition {
   resource?: string;
@@ -46,6 +49,10 @@ function selectRows(selects: SofSelect[], context: unknown): Record<string, SofC
   let rows: Record<string, SofCellValue>[] = [{}];
 
   for (const part of selects) {
+    if (part.forEach !== undefined && part.forEachOrNull !== undefined) {
+      throw new Error('A select cannot have both forEach and forEachOrNull');
+    }
+
     let contexts: unknown[];
     if (part.forEach !== undefined) {
       contexts = evaluateMiniFhirPath(parseMiniFhirPath(part.forEach), [context], { vars: {} });
@@ -89,7 +96,7 @@ function collectColumnNames(selects: SofSelect[] | undefined, out: string[]): vo
   }
 }
 
-/** Flattens `resources` through a ViewDefinition's `select`/`forEach`/`column` tree, mockup-identical engine. */
+/** Flattens `resources` through a ViewDefinition's `select`/`forEach`/`forEachOrNull`/`column` tree (`forEachOrNull` keeps a row with null columns instead of dropping it when the nested collection is empty). */
 export function runSof(viewDefinitionText: string, resourcesText: string): SofRunResult {
   let viewDefinition: SofViewDefinition;
   let resources: unknown;
@@ -97,6 +104,9 @@ export function runSof(viewDefinitionText: string, resourcesText: string): SofRu
     viewDefinition = JSON.parse(viewDefinitionText) as SofViewDefinition;
   } catch (error) {
     return { error: `ViewDefinition JSON — ${getErrorMessage(error)}`, columns: [], rows: [], meta: '' };
+  }
+  if (viewDefinition === null || typeof viewDefinition !== 'object') {
+    return { error: 'ViewDefinition JSON must be an object', columns: [], rows: [], meta: '' };
   }
   try {
     resources = JSON.parse(resourcesText);

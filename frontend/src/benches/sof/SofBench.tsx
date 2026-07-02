@@ -92,14 +92,14 @@ export function SofBench() {
                         padding: '7px 12px',
                         fontFamily: monoFont,
                         fontSize: 11.5,
-                        color: value === null ? 'var(--text4)' : 'var(--text)',
+                        color: value === null || value === undefined ? 'var(--text4)' : 'var(--text)',
                         borderRight: '1px solid var(--border)',
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                       }}
                     >
-                      {value === null ? '∅' : String(value)}
+                      {value === null || value === undefined ? '∅' : String(value)}
                     </span>
                   );
                 })}
