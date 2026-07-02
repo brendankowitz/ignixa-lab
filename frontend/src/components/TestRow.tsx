@@ -1,11 +1,7 @@
 import { useMemo, useState } from 'react';
 import { extractAssertions, STATUS_LABELS } from '../lib/conformance';
-import type {
-  ConformanceHttpRequest,
-  ConformanceHttpResponse,
-  ConformanceResult,
-  ConformanceStep,
-} from '../types/conformance';
+import type { ConformanceResult, ConformanceStep } from '../types/conformance';
+import { HttpRequestView, HttpResponseView } from './HttpMessage';
 
 /** Props for {@link TestRow}. */
 export interface TestRowProps {
@@ -106,10 +102,14 @@ export function TestRow({ result, suiteLabel }: TestRowProps) {
                 <p className="test-row__empty">No request captured for this test.</p>
               ) : (
                 operationSteps.map((step, index) => (
-                  <pre key={index} className="test-row__code-block">
-                    {stepHeading(step)}
-                    {step.request ? `\n\n${formatHttpRequest(step.request)}` : '\n\n(no request captured)'}
-                  </pre>
+                  <div key={index} className="http-message__step">
+                    <span className="http-message__step-heading">{stepHeading(step)}</span>
+                    {step.request ? (
+                      <HttpRequestView request={step.request} />
+                    ) : (
+                      <p className="test-row__empty">(no request captured)</p>
+                    )}
+                  </div>
                 ))
               )}
             </div>
@@ -121,10 +121,14 @@ export function TestRow({ result, suiteLabel }: TestRowProps) {
                 <p className="test-row__empty">No response captured for this test.</p>
               ) : (
                 operationSteps.map((step, index) => (
-                  <pre key={index} className="test-row__code-block">
-                    {stepHeading(step)}
-                    {step.response ? `\n\n${formatHttpResponse(step.response)}` : '\n\n(no response captured)'}
-                  </pre>
+                  <div key={index} className="http-message__step">
+                    <span className="http-message__step-heading">{stepHeading(step)}</span>
+                    {step.response ? (
+                      <HttpResponseView response={step.response} />
+                    ) : (
+                      <p className="test-row__empty">(no response captured)</p>
+                    )}
+                  </div>
                 ))
               )}
             </div>
@@ -147,20 +151,4 @@ function TabButton({ label, active, onClick }: { label: string; active: boolean;
 function stepHeading(step: ConformanceStep): string {
   const label = step.label ?? step.description ?? 'operation';
   return `${step.phase} · ${label}`;
-}
-
-function formatHttpRequest(request: ConformanceHttpRequest): string {
-  const headerLines = Object.entries(request.headers).map(([name, value]) => `${name}: ${value}`);
-  const lines = [`${request.method} ${request.url}`, ...headerLines];
-  return request.body ? `${lines.join('\n')}\n\n${request.body}` : lines.join('\n');
-}
-
-function formatHttpResponse(response: ConformanceHttpResponse): string {
-  const headerLines = Object.entries(response.headers).map(([name, value]) => `${name}: ${value}`);
-  const lines = [`HTTP ${response.statusCode}`, ...headerLines];
-  if (response.bodyParseError) {
-    lines.push('', `(unparseable body: ${response.bodyParseError})`);
-    return lines.join('\n');
-  }
-  return response.body ? `${lines.join('\n')}\n\n${response.body}` : lines.join('\n');
 }

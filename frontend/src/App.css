@@ -931,17 +931,191 @@
   color: var(--text3);
 }
 
-.test-row__code-block {
+/* ---- HTTP message viewer (Runner: Request / Response tabs) ---- */
+
+.http-message__step {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.http-message__step-heading {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10.5px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.http-message {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.http-message__start-line {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.http-message__method,
+.http-message__status {
+  flex: none;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  background: var(--inset);
+  color: var(--text3);
+}
+
+.http-message__method--get {
+  background: var(--method-get-bg);
+  color: var(--method-get);
+}
+
+.http-message__method--post {
+  background: var(--pass-bg);
+  color: var(--pass);
+}
+
+.http-message__method--put {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.http-message__method--patch {
+  background: var(--method-patch-bg);
+  color: var(--method-patch);
+}
+
+.http-message__method--delete {
+  background: var(--fail-bg);
+  color: var(--fail);
+}
+
+.http-message__status--success {
+  background: var(--pass-bg);
+  color: var(--pass);
+}
+
+.http-message__status--redirect {
+  background: var(--inset);
+  color: var(--text2);
+}
+
+.http-message__status--warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.http-message__status--fail {
+  background: var(--fail-bg);
+  color: var(--fail);
+}
+
+.http-message__url {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  color: var(--text);
+  word-break: break-all;
+}
+
+.http-message__reason {
+  font-size: 11.5px;
+  color: var(--text3);
+}
+
+.http-message__headers {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  background: var(--inset);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.http-message__header {
+  display: flex;
+  gap: 8px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.http-message__header-name {
+  flex: none;
+  color: var(--text3);
+}
+
+.http-message__header-value {
+  color: var(--text2);
+  word-break: break-word;
+}
+
+.http-message__header-value--redacted {
+  color: var(--text4);
+  font-style: italic;
+}
+
+.http-message__body {
   margin: 0;
   background: var(--code);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 12px 14px;
+  font-family: 'IBM Plex Mono', monospace;
   font-size: 11px;
   line-height: 1.6;
   color: var(--text2);
   white-space: pre-wrap;
   word-break: break-word;
+  overflow: auto;
+  max-height: 420px;
+}
+
+.http-message__error {
+  margin: 0;
+  padding: 8px 10px;
+  background: var(--fail-soft);
+  border: 1px solid var(--fail-border);
+  border-radius: 8px;
+  font-size: 11.5px;
+  color: var(--fail);
+}
+
+.tok--key {
+  color: var(--tok-key);
+  font-weight: 600;
+}
+
+.tok--string {
+  color: var(--tok-string);
+}
+
+.tok--number {
+  color: var(--tok-number);
+}
+
+.tok--boolean {
+  color: var(--tok-boolean);
+}
+
+.tok--null {
+  color: var(--tok-null);
+  font-style: italic;
+}
+
+.tok--punct {
+  color: var(--tok-punct);
+}
+
+.tok--plain {
+  color: var(--tok-plain);
 }
 
 .assertion {
