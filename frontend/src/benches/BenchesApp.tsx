@@ -41,11 +41,14 @@ export function BenchesApp() {
   return (
     <div style={{ ...shellStyle, ...(theme.variables as CSSProperties) }}>
       <header style={topBarStyle}>
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span style={{ fontSize: 14.5, fontWeight: 700, letterSpacing: '-.01em' }}>Ignixa Lab</span>
-          <span style={{ fontFamily: monoFont, fontSize: 9, letterSpacing: '.14em', color: 'var(--text3)', textTransform: 'uppercase' }}>
-            Expression benches
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+          <div aria-hidden="true" style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--grad)', flex: 'none' }} />
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: 14.5, fontWeight: 700, letterSpacing: '-.01em' }}>Ignixa Lab</span>
+            <span style={{ fontFamily: monoFont, fontSize: 9, letterSpacing: '.14em', color: 'var(--text3)', textTransform: 'uppercase' }}>
+              Expression benches
+            </span>
+          </div>
         </div>
 
         <div style={{ marginLeft: 20 }}>
