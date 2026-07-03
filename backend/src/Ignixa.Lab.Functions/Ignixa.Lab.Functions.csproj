@@ -18,6 +18,8 @@
     <PackageReference Include="Ignixa.Serialization" />
     <PackageReference Include="Ignixa.Specification" />
     <PackageReference Include="Ignixa.FhirFakes" />
+    <PackageReference Include="Ignixa.FhirMappingLanguage" />
+    <PackageReference Include="Ignixa.SqlOnFhir" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" />
