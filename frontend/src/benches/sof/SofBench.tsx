@@ -1,17 +1,19 @@
 import { useState, type CSSProperties } from 'react';
 import { Card, ErrorBanner } from '../components/primitives';
 import { engineBadgeStyle, monoFont, monoTextareaStyle, primaryButtonStyle, sectionLabelStyle } from '../components/styles';
+import { useIsNarrowViewport } from '../../hooks/useIsNarrowViewport';
 import { runSof } from './sofEngine';
 import { DEFAULT_RESOURCES_TEXT, DEFAULT_VIEW_DEFINITION_TEXT } from './sofFixtures';
 
-const twoColumnStyle: CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'minmax(380px,44%) 1fr',
-  gap: 14,
-  alignItems: 'start',
-};
-
 export function SofBench() {
+  const stacked = useIsNarrowViewport(720);
+  const twoColumnStyle: CSSProperties = {
+    display: 'grid',
+    gridTemplateColumns: stacked ? '1fr' : 'minmax(380px,44%) 1fr',
+    gap: 14,
+    alignItems: 'start',
+  };
+
   const [viewDefinitionText, setViewDefinitionText] = useState(DEFAULT_VIEW_DEFINITION_TEXT);
   const [resourcesText, setResourcesText] = useState(DEFAULT_RESOURCES_TEXT);
   const [result, setResult] = useState(() => runSof(DEFAULT_VIEW_DEFINITION_TEXT, DEFAULT_RESOURCES_TEXT));
@@ -32,7 +34,7 @@ export function SofBench() {
       </div>
 
       <div style={twoColumnStyle}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
           <Card>
             <span style={sectionLabelStyle}>ViewDefinition</span>
             <textarea
@@ -53,7 +55,7 @@ export function SofBench() {
           </Card>
         </div>
 
-        <Card style={{ minHeight: 400 }}>
+        <Card style={{ minHeight: 400, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ ...sectionLabelStyle, flex: 1 }}>Result table</span>
             <span style={{ fontFamily: monoFont, fontSize: 10.5, color: 'var(--text3)' }}>{result.meta}</span>
