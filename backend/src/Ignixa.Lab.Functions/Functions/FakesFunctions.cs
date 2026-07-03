@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Ignixa.FhirFakes.EdgeCases;
 using Ignixa.FhirFakes.Population;
 using Ignixa.Lab.Functions.Models.Fakes;
@@ -13,10 +14,12 @@ namespace Ignixa.Lab.Functions.Functions;
 public sealed class FakesFunctions(
     SchemaProviderFactory schemaProviderFactory,
     ScenarioDiscovery scenarioDiscovery,
-    ObservationStateDiscovery observationStateDiscovery)
+    ObservationStateDiscovery observationStateDiscovery,
+    FakesService fakesService)
 {
     private static readonly string[] FhirVersions = ["stu3", "r4", "r4b", "r5", "r6"];
     private static readonly string[] ActiveEdgeCaseFamilies = ["Unicode", "Temporal", "StringBoundary"];
+    private static readonly JsonSerializerOptions PopulationRequestJsonOptions = new(JsonSerializerDefaults.Web);
 
     [Function("FakesMetadata")]
     public IActionResult GetMetadata(
@@ -40,6 +43,31 @@ public sealed class FakesFunctions(
         };
 
         return new OkObjectResult(response);
+    }
+
+    [Function("FakesPopulation")]
+    public async Task<IActionResult> GeneratePopulation(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", "options", Route = "fakes/population")] HttpRequest request,
+        CancellationToken cancellationToken)
+    {
+        PopulationRequest? populationRequest;
+        try
+        {
+            populationRequest = await JsonSerializer.DeserializeAsync<PopulationRequest>(
+                request.Body, PopulationRequestJsonOptions, cancellationToken);
+        }
+        catch (JsonException ex)
+        {
+            return new BadRequestObjectResult(new { error = $"Invalid request body: {ex.Message}" });
+        }
+
+        if (populationRequest is null || string.IsNullOrWhiteSpace(populationRequest.Source))
+        {
+            return new BadRequestObjectResult(new { error = "A 'source' (US state name) is required." });
+        }
+
+        var result = fakesService.GeneratePopulation(populationRequest.FhirVersion, populationRequest.Source, populationRequest.Count);
+        return new OkObjectResult(result);
     }
 
     private static ScenarioMetadata ToScenarioMetadata(DiscoveredScenario scenario) => new()
