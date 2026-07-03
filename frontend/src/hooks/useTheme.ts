@@ -14,10 +14,10 @@ export interface ThemeState {
   icon: string;
 }
 
-/** Reads the persisted theme, falling back to `light` for unset/invalid values. */
+/** Reads the persisted theme, falling back to `dark` for unset/invalid values. */
 function readStoredTheme(): ThemeMode {
   const stored = localStorage.getItem(THEME_STORAGE_KEY);
-  return stored === 'dark' || stored === 'light' ? stored : 'light';
+  return stored === 'dark' || stored === 'light' ? stored : 'dark';
 }
 
 /**

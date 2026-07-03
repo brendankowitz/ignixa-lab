@@ -1,3 +1,4 @@
+import { resolve } from 'node:path'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
@@ -15,6 +16,18 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:7071',
         changeOrigin: true,
+      },
+    },
+  },
+  build: {
+    rollupOptions: {
+      // Multi-page app: the conformance runner (index.html) and Expression
+      // Benches (benches.html) are two separate React roots sharing the same
+      // theme tokens, not one router-based SPA — see
+      // docs/superpowers/specs/2026-07-02-expression-benches-design.md.
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        benches: resolve(__dirname, 'benches.html'),
       },
     },
   },

@@ -29,8 +29,10 @@ so reports are interchangeable between the two projects.
 │   │   ├── Suites/               Suite catalog + bundled TestScripts (by category)
 │   │   └── Program.cs            Host + DI wiring
 │   └── test/Ignixa.Lab.Functions.Tests/   xUnit tests
-├── frontend/                    Vite + React 19 + TypeScript SPA
-│   └── src/                      api client, types, hooks, components
+├── frontend/                    Vite + React 19 + TypeScript, two pages
+│   └── src/                      conformance app (api client, types, hooks,
+│                                  components) + benches/ (Expression Benches:
+│                                  FHIRPath [real backend], FML/SQL-on-FHIR [mocked])
 ├── docs/                        Architecture, API, schema, and development guides
 ├── .github/workflows/           CI for backend and frontend
 ├── Directory.Build.props        Shared MSBuild settings (analyzers, warnings-as-errors)
@@ -62,6 +64,10 @@ npm run dev                                           # serves http://localhost:
 
 The dev server proxies `/api/*` to the Functions host on port 7071, so the SPA
 works against the local backend with no extra configuration.
+
+The frontend is a two-page build: `/` is the TestScript conformance runner,
+`/benches.html` is Expression Benches (FHIRPath, FML, SQL on FHIR). Both are
+served by the same dev server and cross-link to each other in their top bars.
 
 ## Documentation
 
