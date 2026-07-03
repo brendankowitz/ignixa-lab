@@ -3,6 +3,12 @@
   "name": "Regression/ms-operation-versions",
   "description": "Content-negotiation conformance for the Microsoft-proprietary '$versions' operation (from OperationVersionsTests.cs): valid Accept headers return 200 with a matching Content-Type, a missing Accept defaults to JSON, and an invalid Accept returns 406. All assertions are warningOnly since '$versions' isn't part of core FHIR and may 404 if unimplemented.",
   "status": "active",
+  "extension": [
+    {
+      "url": "http://ignixa.io/testscript/requiresCapability",
+      "valueString": "rest.operation.where(name='versions').exists()"
+    }
+  ],
   "test": [
     {
       "name": "$versions honors a valid JSON Accept header",
@@ -18,8 +24,8 @@
             "description": "GET /$versions with Accept: application/fhir+json"
           }
         },
-        { "assert": { "description": "Server should return HTTP 200 (warningOnly: operation may be unimplemented)", "response": "okay", "warningOnly": true } },
-        { "assert": { "description": "Response Content-Type should echo 'application/fhir+json' exactly (warningOnly, see above)", "contentType": "application/fhir+json", "warningOnly": true } }
+        { "assert": { "description": "Server should return HTTP 200 (warningOnly: operation may be unimplemented)", "response": "okay" } },
+        { "assert": { "description": "Response Content-Type should echo 'application/fhir+json' exactly (warningOnly, see above)", "contentType": "application/fhir+json" } }
       ]
     },
     {
@@ -36,8 +42,8 @@
             "description": "GET /$versions with Accept: application/fhir+xml"
           }
         },
-        { "assert": { "description": "Server should return HTTP 200 (warningOnly: operation and/or XML format may be unimplemented)", "response": "okay", "warningOnly": true } },
-        { "assert": { "description": "Response Content-Type should echo 'application/fhir+xml' exactly (warningOnly, see above)", "contentType": "application/fhir+xml", "warningOnly": true } }
+        { "assert": { "description": "Server should return HTTP 200 (warningOnly: operation and/or XML format may be unimplemented)", "response": "okay" } },
+        { "assert": { "description": "Response Content-Type should echo 'application/fhir+xml' exactly (warningOnly, see above)", "contentType": "application/fhir+xml" } }
       ]
     },
     {
@@ -53,8 +59,8 @@
             "description": "GET /$versions with no Accept header"
           }
         },
-        { "assert": { "description": "Server should return HTTP 200 (warningOnly: operation may be unimplemented)", "response": "okay", "warningOnly": true } },
-        { "assert": { "description": "Response Content-Type should default to application/fhir+json (warningOnly, see above)", "contentType": "application/fhir+json", "warningOnly": true } }
+        { "assert": { "description": "Server should return HTTP 200 (warningOnly: operation may be unimplemented)", "response": "okay" } },
+        { "assert": { "description": "Response Content-Type should default to application/fhir+json (warningOnly, see above)", "contentType": "application/fhir+json" } }
       ]
     },
     {
@@ -71,7 +77,7 @@
             "description": "GET /$versions with an invalid Accept header value"
           }
         },
-        { "assert": { "description": "Server should return HTTP 406 Not Acceptable (warningOnly: operation may be unimplemented, or may 404 instead)", "responseCode": "406", "warningOnly": true } }
+        { "assert": { "description": "Server should return HTTP 406 Not Acceptable (warningOnly: operation may be unimplemented, or may 404 instead)", "responseCode": "406" } }
       ]
     }
   ]

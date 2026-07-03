@@ -3,6 +3,12 @@
   "name": "Operations/ms-import-rebuild-indexes",
   "description": "$import index-rebuild-behavior conformance tests (from ImportRebuildIndexesTests.cs). Index rebuild/disable during import is a server-side-only configuration knob with no client-facing request parameter, so this suite only confirms that unrecognized rebuild-related parameters have no effect on the request contract.",
   "status": "active",
+  "extension": [
+    {
+      "url": "http://ignixa.io/testscript/requiresCapability",
+      "valueString": "rest.operation.where(name='import').exists()"
+    }
+  ],
   "fixture": [
     {
       "id": "import-params-with-unrecognized-index-params",

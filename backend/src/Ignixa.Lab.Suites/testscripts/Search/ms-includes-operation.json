@@ -153,7 +153,7 @@
     {
       "name": "_includesCount limits included resources per page without dropping the matched resource",
       "description": "Patient?_id=ignixa-inco-p1&_include=*&_revinclude=*&_includesCount=1 must still return the matched patient even though 6 resources qualify for inclusion; truncating the included set and surfacing a 'related' link plus a warning are optional server behaviors, so those are checked as warnings only.",
-      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }, { "url": "http://ignixa.io/testscript/requiresCapability", "valueString": "rest.operation.where(name='includes').exists()" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?_id=ignixa-inco-p1&_include=*&_revinclude=*&_includesCount=1", "responseId": "inco-count", "description": "GET /Patient?_id=ignixa-inco-p1&_include=*&_revinclude=*&_includesCount=1" } },
         { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
@@ -165,7 +165,7 @@
     {
       "name": "_include:iterate combined with _includesCount does not error and may truncate iterated includes",
       "description": "MedicationDispense?_id=ignixa-inco-md1&_include=MedicationDispense:prescription&_include:iterate=MedicationRequest:subject&_includesCount=1 must always match md1; the combined direct + iterated includes may be truncated, so those assertions are warningOnly.",
-      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }, { "url": "http://ignixa.io/testscript/requiresCapability", "valueString": "rest.operation.where(name='includes').exists()" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "MedicationDispense", "params": "?_id=ignixa-inco-md1&_include=MedicationDispense:prescription&_include:iterate=MedicationRequest:subject&_includesCount=1", "responseId": "inco-iterate", "description": "GET /MedicationDispense with _include + _include:iterate + _includesCount=1" } },
         { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },

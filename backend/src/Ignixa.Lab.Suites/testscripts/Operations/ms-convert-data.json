@@ -3,6 +3,12 @@
   "name": "Operations/ms-convert-data",
   "description": "$convert-data operation conformance tests (HL7v2/CCDA-to-FHIR conversion via Liquid templates), covering request/response shape, validation-failure status codes, and a custom (non-default) template registry reference (from ConvertDataTests and CustomConvertDataTests). $convert-data may be disabled or unconfigured on non-Microsoft-FHIR-Server targets, so all assertions here are warningOnly.",
   "status": "active",
+  "extension": [
+    {
+      "url": "http://ignixa.io/testscript/requiresCapability",
+      "valueString": "rest.operation.where(name='convert-data').exists()"
+    }
+  ],
   "fixture": [
     {
       "id": "convert-non-parameters-body",
@@ -144,7 +150,7 @@
       "description": "POST a plain Patient resource (not wrapped in Parameters) to $convert-data must return 400 Bad Request. warningOnly: target may not implement $convert-data at all.",
       "action": [
         { "operation": { "type": { "code": "$convert-data" }, "sourceId": "convert-non-parameters-body", "responseId": "convert-non-params-response", "description": "POST $convert-data with a bare Patient body" } },
-        { "assert": { "description": "Server should reject a non-Parameters body with 400 Bad Request (warningOnly)", "response": "bad", "warningOnly": true } }
+        { "assert": { "description": "Server should reject a non-Parameters body with 400 Bad Request (warningOnly)", "response": "bad" } }
       ]
     },
     {
@@ -170,7 +176,7 @@
       "description": "POST $convert-data with an invalid inputDataType ('jpeg') must return 400 Bad Request. warningOnly: target may not implement $convert-data.",
       "action": [
         { "operation": { "type": { "code": "$convert-data" }, "sourceId": "convert-invalid-input-data-type", "responseId": "convert-bad-datatype-response", "description": "POST $convert-data with inputDataType='jpeg'" } },
-        { "assert": { "description": "Server should reject the invalid inputDataType with 400 Bad Request (warningOnly)", "response": "bad", "warningOnly": true } }
+        { "assert": { "description": "Server should reject the invalid inputDataType with 400 Bad Request (warningOnly)", "response": "bad" } }
       ]
     },
     {
@@ -178,7 +184,7 @@
       "description": "POST $convert-data with an unrecognized parameter name must return 400 Bad Request. warningOnly: target may not implement $convert-data.",
       "action": [
         { "operation": { "type": { "code": "$convert-data" }, "sourceId": "convert-unsupported-parameter", "responseId": "convert-bad-param-response", "description": "POST $convert-data with an unrecognized parameter name" } },
-        { "assert": { "description": "Server should reject the unsupported parameter with 400 Bad Request (warningOnly)", "response": "bad", "warningOnly": true } }
+        { "assert": { "description": "Server should reject the unsupported parameter with 400 Bad Request (warningOnly)", "response": "bad" } }
       ]
     },
     {
@@ -186,7 +192,7 @@
       "description": "POST $convert-data with a malformed templateCollectionReference (missing a registry host) must return 400 Bad Request. warningOnly: target may not implement $convert-data.",
       "action": [
         { "operation": { "type": { "code": "$convert-data" }, "sourceId": "convert-invalid-template-reference-format", "responseId": "convert-bad-templateref-response", "description": "POST $convert-data with a malformed templateCollectionReference" } },
-        { "assert": { "description": "Server should reject the malformed template reference with 400 Bad Request (warningOnly)", "response": "bad", "warningOnly": true } }
+        { "assert": { "description": "Server should reject the malformed template reference with 400 Bad Request (warningOnly)", "response": "bad" } }
       ]
     },
     {
@@ -194,7 +200,7 @@
       "description": "POST $convert-data with a syntactically valid but never-registered template reference must return 400 Bad Request. warningOnly: requires $convert-data enabled to reach this check.",
       "action": [
         { "operation": { "type": { "code": "$convert-data" }, "sourceId": "convert-template-not-configured", "responseId": "convert-not-configured-response", "description": "POST $convert-data with an unconfigured template reference" } },
-        { "assert": { "description": "Server should reject the unconfigured template reference with 400 Bad Request (warningOnly)", "response": "bad", "warningOnly": true } }
+        { "assert": { "description": "Server should reject the unconfigured template reference with 400 Bad Request (warningOnly)", "response": "bad" } }
       ]
     },
     {
@@ -202,7 +208,7 @@
       "description": "POST $convert-data with inputDataType='hl7v2' but a template reference pointing at the CCDA default templates must return 400 Bad Request. warningOnly: requires $convert-data enabled with default templates configured.",
       "action": [
         { "operation": { "type": { "code": "$convert-data" }, "sourceId": "convert-inconsistent-data-type", "responseId": "convert-inconsistent-response", "description": "POST $convert-data with mismatched inputDataType and default template collection" } },
-        { "assert": { "description": "Server should reject the inconsistent input data type / template pairing with 400 Bad Request (warningOnly)", "response": "bad", "warningOnly": true } }
+        { "assert": { "description": "Server should reject the inconsistent input data type / template pairing with 400 Bad Request (warningOnly)", "response": "bad" } }
       ]
     },
     {
@@ -210,7 +216,7 @@
       "description": "POST $convert-data with unparseable HL7v2 input data must return 400 Bad Request. warningOnly: requires $convert-data enabled with default HL7v2 templates configured.",
       "action": [
         { "operation": { "type": { "code": "$convert-data" }, "sourceId": "convert-malformed-hl7v2-input", "responseId": "convert-malformed-response", "description": "POST $convert-data with unparseable HL7v2 input" } },
-        { "assert": { "description": "Server should reject the malformed HL7v2 input with 400 Bad Request (warningOnly)", "response": "bad", "warningOnly": true } }
+        { "assert": { "description": "Server should reject the malformed HL7v2 input with 400 Bad Request (warningOnly)", "response": "bad" } }
       ]
     },
     {

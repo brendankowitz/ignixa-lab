@@ -62,25 +62,31 @@
     {
       "name": "_expiryDate=lt2025 matches only the past-expiry patient",
       "description": "Patient?_expiryDate=lt2025 should match only the patient whose expiry date is in the past, if the server implements this MS-specific parameter (warningOnly).",
-      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "extension": [
+        { "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" },
+        { "url": "http://ignixa.io/testscript/requiresCapability", "valueString": "rest.resource.where(type='Patient').searchParam.where(definition='https://azurehealthcareapis.com/data-extensions/expiry-date').exists()" }
+      ],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?_expiryDate=lt2025&identifier=http://ignixa.io/testscript/suite/ms-param|&_count=100", "responseId": "expiry-lt-response", "description": "GET /Patient?_expiryDate=lt2025" } },
         { "assert": { "description": "Search should return HTTP 200 (or 400 if _expiryDate is unrecognized)", "response": "okay", "warningOnly": true } },
-        { "assert": { "description": "Response should be a Bundle", "resource": "Bundle", "warningOnly": true } },
-        { "assert": { "description": "Should include the past-expiry patient", "expression": "entry.where(resource.id = 'ignixa-msp-past').exists()", "warningOnly": true } },
-        { "assert": { "description": "Should NOT include the future-expiry patient", "expression": "entry.where(resource.id = 'ignixa-msp-future').exists()", "value": "false", "operator": "equals", "warningOnly": true } }
+        { "assert": { "description": "Response should be a Bundle", "resource": "Bundle" } },
+        { "assert": { "description": "Should include the past-expiry patient", "expression": "entry.where(resource.id = 'ignixa-msp-past').exists()" } },
+        { "assert": { "description": "Should NOT include the future-expiry patient", "expression": "entry.where(resource.id = 'ignixa-msp-future').exists()", "value": "false", "operator": "equals" } }
       ]
     },
     {
       "name": "_expiryDate=gt2025 matches only the future-expiry patient",
       "description": "Patient?_expiryDate=gt2025 should match only the patient whose expiry date is in the future, if the server implements this MS-specific parameter (warningOnly).",
-      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "extension": [
+        { "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" },
+        { "url": "http://ignixa.io/testscript/requiresCapability", "valueString": "rest.resource.where(type='Patient').searchParam.where(definition='https://azurehealthcareapis.com/data-extensions/expiry-date').exists()" }
+      ],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?_expiryDate=gt2025&identifier=http://ignixa.io/testscript/suite/ms-param|&_count=100", "responseId": "expiry-gt-response", "description": "GET /Patient?_expiryDate=gt2025" } },
         { "assert": { "description": "Search should return HTTP 200 (or 400 if _expiryDate is unrecognized)", "response": "okay", "warningOnly": true } },
-        { "assert": { "description": "Response should be a Bundle", "resource": "Bundle", "warningOnly": true } },
-        { "assert": { "description": "Should include the future-expiry patient", "expression": "entry.where(resource.id = 'ignixa-msp-future').exists()", "warningOnly": true } },
-        { "assert": { "description": "Should NOT include the past-expiry patient", "expression": "entry.where(resource.id = 'ignixa-msp-past').exists()", "value": "false", "operator": "equals", "warningOnly": true } }
+        { "assert": { "description": "Response should be a Bundle", "resource": "Bundle" } },
+        { "assert": { "description": "Should include the future-expiry patient", "expression": "entry.where(resource.id = 'ignixa-msp-future').exists()" } },
+        { "assert": { "description": "Should NOT include the past-expiry patient", "expression": "entry.where(resource.id = 'ignixa-msp-past').exists()", "value": "false", "operator": "equals" } }
       ]
     },
     {
