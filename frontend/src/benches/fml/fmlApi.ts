@@ -88,7 +88,9 @@ export function parseFmlResponse(response: FhirParameters): FmlEvalResult {
     .map((parameter) => (parameter.valueString as string) ?? '');
 
   const resultPart = parameters.find((parameter) => parameter.name === 'result');
-  const output = typeof resultPart?.valueString === 'string' ? resultPart.valueString : null;
+  // Normalize CRLF -> LF: the backend pretty-prints JSON with `\r\n`, but `diffLines` splits on `\n` only,
+  // so every line would otherwise show as changed vs. the (LF-only) expected text.
+  const output = typeof resultPart?.valueString === 'string' ? resultPart.valueString.replace(/\r\n/g, '\n') : null;
 
   const outcomePart = parameters.find((parameter) => parameter.name === 'outcome');
   const outcomeResource = outcomePart?.resource as
