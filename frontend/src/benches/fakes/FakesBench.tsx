@@ -519,6 +519,11 @@ function ResourcePanel({
               ⟳
             </button>
           </div>
+          {resourceType === 'Observation' && observationState ? (
+            <span style={{ fontSize: 10.5, color: 'var(--text4)' }}>
+              Seed has no effect for Observation clinical states — this path isn't seed-controlled in the underlying library.
+            </span>
+          ) : null}
 
           <button type="button" onClick={generate} disabled={isLoading} style={primaryButtonStyle}>
             {isLoading ? 'Generating…' : '⚡ Generate resource'}

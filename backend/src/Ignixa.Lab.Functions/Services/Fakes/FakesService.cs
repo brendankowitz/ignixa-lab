@@ -85,7 +85,15 @@ public sealed class FakesService(
         }
 
         var schemaProvider = schemaProviderFactory.GetSchemaProvider(fhirVersion);
-        var context = scenarioDiscovery.Invoke(scenario, schemaProvider, parameters);
+        ScenarioContext context;
+        try
+        {
+            context = scenarioDiscovery.Invoke(scenario, schemaProvider, parameters);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.Reflection.TargetInvocationException)
+        {
+            throw new InvalidScenarioParametersException($"Invalid scenario parameters: {ex.Message}");
+        }
 
         if (resolvedReferences)
         {

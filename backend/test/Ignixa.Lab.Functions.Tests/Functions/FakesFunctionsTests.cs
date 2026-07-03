@@ -62,6 +62,39 @@ public sealed class FakesFunctionsTests
     }
 
     [Fact]
+    public async Task GeneratePopulation_CountAboveMaximum_ReturnsBadRequest()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { source = "Massachusetts", count = 500 });
+
+        var result = await functions.GeneratePopulation(request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task GeneratePopulation_CountZero_ReturnsBadRequest()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { source = "Massachusetts", count = 0 });
+
+        var result = await functions.GeneratePopulation(request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task GeneratePopulation_CountAtMaximumBoundary_Succeeds()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { source = "Massachusetts", count = 100 });
+
+        var result = await functions.GeneratePopulation(request, CancellationToken.None);
+
+        result.Should().BeOfType<OkObjectResult>();
+    }
+
+    [Fact]
     public async Task GenerateScenario_DiabeticPatientWithTag_StampsTagOnEveryResource()
     {
         var functions = CreateFunctions();
@@ -78,6 +111,17 @@ public sealed class FakesFunctionsTests
         {
             resource.GetProperty("meta").GetProperty("tag")[0].GetProperty("code").GetString().Should().Be("test-run-123");
         }
+    }
+
+    [Fact]
+    public async Task GenerateScenario_ParameterTypeMismatch_ReturnsBadRequest()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { scenarioId = "DiabeticPatient", parameters = new { age = "thirty" } });
+
+        var result = await functions.GenerateScenario(request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
     }
 
     [Fact]
@@ -149,6 +193,17 @@ public sealed class FakesFunctionsTests
         var body = JsonSerializer.Serialize(ok.Value);
         using var doc = JsonDocument.Parse(body);
         doc.RootElement.GetProperty("manifest").ValueKind.Should().NotBe(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task GenerateResource_UnknownResourceType_ReturnsBadRequest()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { resourceType = "NotARealType" });
+
+        var result = await functions.GenerateResource(request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
     }
 
     [Fact]

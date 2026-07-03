@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Ignixa.FhirFakes.EdgeCases;
 using Ignixa.FhirFakes.Population;
 using Ignixa.Lab.Functions.Models.Fakes;
@@ -66,6 +67,11 @@ public sealed class FakesFunctions(
             return new BadRequestObjectResult(new { error = "A 'source' (US state name) is required." });
         }
 
+        if (populationRequest.Count is < 1 or > 100)
+        {
+            return new BadRequestObjectResult(new { error = "count must be between 1 and 100." });
+        }
+
         var result = fakesService.GeneratePopulation(populationRequest.FhirVersion, populationRequest.Source, populationRequest.Count);
         return new OkObjectResult(result);
     }
@@ -91,12 +97,20 @@ public sealed class FakesFunctions(
             return new BadRequestObjectResult(new { error = "A 'scenarioId' is required." });
         }
 
-        var result = fakesService.GenerateScenario(
-            scenarioRequest.FhirVersion,
-            scenarioRequest.ScenarioId,
-            scenarioRequest.Parameters,
-            scenarioRequest.Tag,
-            scenarioRequest.ResolvedReferences);
+        JsonObject? result;
+        try
+        {
+            result = fakesService.GenerateScenario(
+                scenarioRequest.FhirVersion,
+                scenarioRequest.ScenarioId,
+                scenarioRequest.Parameters,
+                scenarioRequest.Tag,
+                scenarioRequest.ResolvedReferences);
+        }
+        catch (InvalidScenarioParametersException ex)
+        {
+            return new BadRequestObjectResult(new { error = ex.Message });
+        }
 
         if (result is null)
         {
@@ -125,6 +139,12 @@ public sealed class FakesFunctions(
         if (resourceRequest is null || string.IsNullOrWhiteSpace(resourceRequest.ResourceType))
         {
             return new BadRequestObjectResult(new { error = "A 'resourceType' is required." });
+        }
+
+        var schemaProvider = schemaProviderFactory.GetSchemaProvider(resourceRequest.FhirVersion);
+        if (!schemaProvider.ResourceTypeNames.Contains(resourceRequest.ResourceType))
+        {
+            return new BadRequestObjectResult(new { error = $"Unknown resourceType '{resourceRequest.ResourceType}'." });
         }
 
         var result = fakesService.GenerateResource(
