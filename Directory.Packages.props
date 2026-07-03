@@ -7,22 +7,16 @@
     https://learn.microsoft.com/nuget/consume-packages/central-package-management
   -->
   <ItemGroup>
-    <!--
-      FHIR TestScript execution engine (published from ignixa-fhir).
-      Pinned to a local build (artifacts/local-feed) while the
-      requiresCapability engine feature (ignixa-fhir feature/requires-capability)
-      is in review; repoint to the next real nuget.org prerelease once merged
-      and published.
-    -->
-    <PackageVersion Include="Ignixa.TestScript" Version="0.6.0-requires-capability.1" />
+    <!-- FHIR TestScript execution engine (published from ignixa-fhir); includes the requiresCapability gating extension (ignixa-fhir#292). -->
+    <PackageVersion Include="Ignixa.TestScript" Version="0.5.13-beta" />
 
     <!-- Generates fixture resources for the canonical suites' fhirfakes markers -->
-    <PackageVersion Include="Ignixa.TestScript.FhirFakes" Version="0.6.0-requires-capability.1" />
+    <PackageVersion Include="Ignixa.TestScript.FhirFakes" Version="0.5.13-beta" />
 
     <!-- FHIRPath expression evaluation engine, powering the fhirpath-evaluator endpoints -->
-    <PackageVersion Include="Ignixa.FhirPath" Version="0.6.0-requires-capability.1" />
-    <PackageVersion Include="Ignixa.Serialization" Version="0.6.0-requires-capability.1" />
-    <PackageVersion Include="Ignixa.Specification" Version="0.6.0-requires-capability.1" />
+    <PackageVersion Include="Ignixa.FhirPath" Version="0.5.13" />
+    <PackageVersion Include="Ignixa.Serialization" Version="0.5.13" />
+    <PackageVersion Include="Ignixa.Specification" Version="0.5.13" />
 
     <!--
       Canonical TestScript suites (ADR-2607). Interim local package built by
