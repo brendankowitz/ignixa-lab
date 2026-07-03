@@ -5,13 +5,15 @@ import { monoFont } from './components/styles';
 import { FhirPathBench } from './fhirpath/FhirPathBench';
 import { FmlBench } from './fml/FmlBench';
 import { SofBench } from './sof/SofBench';
+import { FakesBench } from './fakes/FakesBench';
 
-type BenchId = 'fhirpath' | 'fml' | 'sqlonfhir';
+type BenchId = 'fhirpath' | 'fml' | 'sqlonfhir' | 'fakes';
 
 const BENCH_TABS: PillItem<BenchId>[] = [
   { id: 'fhirpath', label: 'FHIRPath' },
   { id: 'fml', label: 'FML' },
   { id: 'sqlonfhir', label: 'SQL on FHIR' },
+  { id: 'fakes', label: 'Fakes' },
 ];
 
 const shellStyle: CSSProperties = {
@@ -91,6 +93,7 @@ export function BenchesApp() {
         {bench === 'fhirpath' ? <FhirPathBench /> : null}
         {bench === 'fml' ? <FmlBench /> : null}
         {bench === 'sqlonfhir' ? <SofBench /> : null}
+        {bench === 'fakes' ? <FakesBench /> : null}
       </main>
     </div>
   );
