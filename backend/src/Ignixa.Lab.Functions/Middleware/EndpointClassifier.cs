@@ -37,8 +37,9 @@ public static class EndpointClassifier
             // was never meant for this and was only hit because these endpoints
             // fell through to the fail-safe default below.
             "FakesMetadata" or "FakesPopulation" or "FakesScenario" or "FakesResource" => EndpointClass.Capability,
-            // FML transform is likewise a single unit of work per call.
-            "FmlTransform" => EndpointClass.Capability,
+            // FML transform and SQL-on-FHIR view evaluation are likewise a
+            // single unit of work per call.
+            "FmlTransform" or "SqlOnFhirViewDefinitionRun" => EndpointClass.Capability,
             // Fail safe: an unrecognized (e.g. newly added) endpoint gets the
             // strictest tier rather than silently running unlimited.
             _ => EndpointClass.Run,

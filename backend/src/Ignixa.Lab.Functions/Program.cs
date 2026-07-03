@@ -3,6 +3,7 @@ using Ignixa.Lab.Functions.Execution;
 using Ignixa.Lab.Functions.Middleware;
 using Ignixa.Lab.Functions.Services.FhirPath;
 using Ignixa.Lab.Functions.Services.Fml;
+using Ignixa.Lab.Functions.Services.SqlOnFhir;
 using Ignixa.Lab.Functions.Suites;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Builder;
@@ -46,6 +47,7 @@ builder.Services.AddSingleton<Ignixa.Lab.Functions.Services.Fakes.FakesService>(
 
 builder.Services.AddSingleton<FmlService>();
 builder.Services.AddSingleton<FmlResultFormatter>();
+builder.Services.AddSingleton<SqlOnFhirService>();
 
 builder.Services
     .AddApplicationInsightsTelemetryWorkerService()

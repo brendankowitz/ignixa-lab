@@ -21,6 +21,7 @@ public sealed class EndpointClassifierTests
     [InlineData("FakesScenario", EndpointClass.Capability)]
     [InlineData("FakesResource", EndpointClass.Capability)]
     [InlineData("FmlTransform", EndpointClass.Capability)]
+    [InlineData("SqlOnFhirViewDefinitionRun", EndpointClass.Capability)]
     [InlineData("SomeFutureEndpoint", EndpointClass.Run)]
     public void Classify_MapsFunctionNameToClass(string functionName, EndpointClass expected)
     {
