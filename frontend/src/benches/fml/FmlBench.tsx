@@ -25,9 +25,9 @@ export interface FmlBenchProps {
 
 const EMPTY_RESULT: FmlEvalResult = { error: null, evaluator: '', output: null, trace: [], outcomeIssues: [] };
 
-/** Reads the `"MapName"` string out of a map's declaration line (`map "url" = "MapName"`), for display next to the editor. Returns '' if the map has no declaration line yet. */
+/** Reads the `'MapName'` string out of a map's declaration line (`map 'url' = 'MapName'`), for display next to the editor. Returns '' if the map has no declaration line yet. FML string literals are single-quoted (the tokenizer treats double-quoted text as a DelimitedIdentifier, not a string literal), so this must match single quotes to work with any map the real backend can actually parse. */
 function extractMapName(mapText: string): string {
-  const match = mapText.match(/map\s+"[^"]*"\s*=\s*"([^"]+)"/);
+  const match = mapText.match(/map\s+'[^']*'\s*=\s*'([^']+)'/);
   return match ? match[1] : '';
 }
 
