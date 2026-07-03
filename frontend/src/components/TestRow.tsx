@@ -94,11 +94,13 @@ export function TestRow({ result, suiteLabel }: TestRowProps) {
           ) : null}
 
           {tab === 'steps' ? (
-            <div className="test-row__panel test-row__panel--steps">
+            <div className="test-row__panel step-list">
               {result.steps.length === 0 ? (
                 <p className="test-row__empty">No steps recorded for this test.</p>
               ) : (
-                result.steps.map((step, index) => <StepRow key={index} step={step} index={index} />)
+                result.steps.map((step, index) => (
+                  <StepRow key={`${step.phase}-${step.kind}-${index}`} step={step} index={index} />
+                ))
               )}
             </div>
           ) : null}
@@ -107,14 +109,21 @@ export function TestRow({ result, suiteLabel }: TestRowProps) {
             <div className="test-row__panel">
               <div className="test-script">
                 <span className="test-script__path">{result.file}</span>
-                <a
-                  className="test-script__link"
-                  href={testScriptGithubUrl(result.file)}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  View test script on GitHub ↗
-                </a>
+                {result.category === 'uploaded' ? (
+                  <p className="test-row__empty">
+                    This test script was uploaded for this run, not bundled with the app — no GitHub source to
+                    link to.
+                  </p>
+                ) : (
+                  <a
+                    className="test-script__link"
+                    href={testScriptGithubUrl(result.file)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    View test script on GitHub ↗
+                  </a>
+                )}
               </div>
             </div>
           ) : null}
@@ -147,27 +156,37 @@ function StepRow({ step, index }: { step: ConformanceStep; index: number }) {
       ? `${step.request.method.toUpperCase()} ${shortUrl(step.request.url)}`
       : (step.label ?? step.description ?? `Step ${index + 1}`);
 
+  const headerContent = (
+    <>
+      <span className={`step__chip step__chip--${step.status}`}>{STATUS_LABELS[step.status]}</span>
+      <div className="step__text">
+        <span className="step__title">{title}</span>
+        <span className="step__meta">
+          {step.phase} · {step.kind} · {step.duration_ms}ms
+        </span>
+      </div>
+      {hasDetail ? (
+        <span className={`step__chevron${open ? ' step__chevron--open' : ''}`} aria-hidden="true">
+          ▸
+        </span>
+      ) : null}
+    </>
+  );
+
   return (
     <div className={`step step--${step.status}`}>
-      <button
-        type="button"
-        className={`step__header${hasDetail ? '' : ' step__header--static'}`}
-        aria-expanded={hasDetail ? open : undefined}
-        onClick={hasDetail ? () => setOpen((value) => !value) : undefined}
-      >
-        <span className={`step__chip step__chip--${step.status}`}>{STATUS_LABELS[step.status]}</span>
-        <div className="step__text">
-          <span className="step__title">{title}</span>
-          <span className="step__meta">
-            {step.phase} · {step.kind} · {step.duration_ms}ms
-          </span>
-        </div>
-        {hasDetail ? (
-          <span className={`step__chevron${open ? ' step__chevron--open' : ''}`} aria-hidden="true">
-            ▸
-          </span>
-        ) : null}
-      </button>
+      {hasDetail ? (
+        <button
+          type="button"
+          className="step__header"
+          aria-expanded={open}
+          onClick={() => setOpen((value) => !value)}
+        >
+          {headerContent}
+        </button>
+      ) : (
+        <div className="step__header step__header--static">{headerContent}</div>
+      )}
 
       {hasDetail && open ? (
         <div className="step__body">
