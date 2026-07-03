@@ -19,13 +19,23 @@ const DENSITY_ITEMS: PillItem<string>[] = [
   { id: 'Maximum', label: 'Maximum' },
 ];
 
+const BENCH_LABELS: Record<'fhirpath' | 'fml' | 'sqlonfhir', string> = {
+  fhirpath: 'FHIRPath',
+  fml: 'FML',
+  sqlonfhir: 'SQL on FHIR',
+};
+
 /** Props for {@link FakesBench}. */
 export interface FakesBenchProps {
-  /** Called with the generated payload when the user sends it to another bench. Omitted in Population mode, which has no single-resource payload to send. */
-  onSend?: (payload: Record<string, unknown> | Record<string, unknown>[], label: string) => void;
+  /** Set when Fakes was opened from another bench via "⚡ Fakes ↗", to show the return banner. */
+  returnTo?: 'fhirpath' | 'fml' | 'sqlonfhir' | null;
+  /** Called when the user dismisses the return banner. */
+  onDismissReturn?: () => void;
+  /** Called with the target bench and generated payload when the user sends it to another bench. Omitted in Population mode, which has no single-resource payload to send. */
+  onSend?: (targetBench: 'fhirpath' | 'fml' | 'sqlonfhir', payload: Record<string, unknown> | Record<string, unknown>[], label: string) => void;
 }
 
-export function FakesBench({ onSend }: FakesBenchProps) {
+export function FakesBench({ returnTo, onDismissReturn, onSend }: FakesBenchProps) {
   const stacked = useIsNarrowViewport(720);
   const [mode, setMode] = useState<FakesMode>('scenario');
   const [metadata, setMetadata] = useState<FakesMetadata | null>(null);
@@ -59,6 +69,29 @@ export function FakesBench({ onSend }: FakesBenchProps) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <Pills items={MODE_ITEMS} activeId={mode} onChange={setMode} />
       </div>
+
+      {returnTo ? (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            flexWrap: 'wrap',
+            padding: '11px 16px',
+            borderRadius: 10,
+            background: 'var(--chip-vio-bg)',
+            border: '1px solid var(--accent-border)',
+          }}
+        >
+          <span style={{ fontSize: 13 }}>
+            Generating for the <b style={{ color: 'var(--accent)' }}>{BENCH_LABELS[returnTo]}</b> bench — configure a source below, then send it straight in.
+          </span>
+          <div style={{ flex: 1 }} />
+          <button type="button" onClick={onDismissReturn} style={{ fontSize: 12, fontWeight: 600, color: 'var(--text3)', border: 'none', background: 'transparent', cursor: 'pointer' }}>
+            Dismiss
+          </button>
+        </div>
+      ) : null}
 
       {!metadata ? (
         <span style={{ fontFamily: monoFont, fontSize: 11, color: 'var(--text3)' }}>Loading…</span>
@@ -193,7 +226,7 @@ function ScenarioPanel({
 }: {
   metadata: FakesMetadata;
   stacked: boolean;
-  onSend?: (payload: Record<string, unknown> | Record<string, unknown>[], label: string) => void;
+  onSend?: (targetBench: 'fhirpath' | 'fml' | 'sqlonfhir', payload: Record<string, unknown> | Record<string, unknown>[], label: string) => void;
 }) {
   const [scenarioId, setScenarioId] = useState(metadata.scenarios[0]?.id ?? '');
   const [paramValues, setParamValues] = useState<Record<string, unknown>>({});
@@ -293,7 +326,13 @@ function ScenarioPanel({
               </pre>
               {onSend ? (
                 <SendBar
-                  onSend={(bench) => onSend({ single: result.patient ?? result.bundle, array: result.resources }[bench === 'sqlonfhir' ? 'array' : 'single'], `${scenarioId} · ${result.resources.length} resources`)}
+                  onSend={(targetBench) =>
+                    onSend(
+                      targetBench,
+                      { single: result.patient ?? result.bundle, array: result.resources }[targetBench === 'sqlonfhir' ? 'array' : 'single'],
+                      `${scenarioId} · ${result.resources.length} resources`,
+                    )
+                  }
                 />
               ) : null}
             </>
@@ -398,7 +437,7 @@ function ResourcePanel({
 }: {
   metadata: FakesMetadata;
   stacked: boolean;
-  onSend?: (payload: Record<string, unknown> | Record<string, unknown>[], label: string) => void;
+  onSend?: (targetBench: 'fhirpath' | 'fml' | 'sqlonfhir', payload: Record<string, unknown> | Record<string, unknown>[], label: string) => void;
 }) {
   const [resourceType, setResourceType] = useState('Patient');
   const [density, setDensity] = useState('Minimal');
@@ -521,7 +560,7 @@ function ResourcePanel({
                 </div>
               ) : null}
               {onSend ? (
-                <SendBar onSend={(bench) => onSend(bench === 'sqlonfhir' ? [result.resource] : result.resource, `${resourceType} · edge-cased`)} />
+                <SendBar onSend={(targetBench) => onSend(targetBench, targetBench === 'sqlonfhir' ? [result.resource] : result.resource, `${resourceType} · edge-cased`)} />
               ) : null}
             </>
           ) : (

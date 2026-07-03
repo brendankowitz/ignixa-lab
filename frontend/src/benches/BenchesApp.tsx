@@ -40,6 +40,32 @@ const topBarStyle: CSSProperties = {
 export function BenchesApp() {
   const theme = useTheme();
   const [bench, setBench] = useState<BenchId>('fhirpath');
+  const [fakesReturnTo, setFakesReturnTo] = useState<Exclude<BenchId, 'fakes'> | null>(null);
+  const [sentToast, setSentToast] = useState<{ bench: BenchId; label: string } | null>(null);
+  const [fhirpathSeed, setFhirpathSeed] = useState<{ text: string } | null>(null);
+  const [fmlSeed, setFmlSeed] = useState<{ text: string } | null>(null);
+  const [sofSeed, setSofSeed] = useState<{ text: string } | null>(null);
+
+  const openFakesFrom = (fromBench: Exclude<BenchId, 'fakes'>) => {
+    setBench('fakes');
+    setFakesReturnTo(fromBench);
+  };
+
+  const handleSend = (targetBench: 'fhirpath' | 'fml' | 'sqlonfhir', payload: Record<string, unknown> | Record<string, unknown>[], label: string) => {
+    const text = JSON.stringify(payload, null, 2);
+    if (targetBench === 'fhirpath') {
+      setFhirpathSeed({ text });
+    } else if (targetBench === 'fml') {
+      setFmlSeed({ text });
+    } else {
+      setSofSeed({ text });
+    }
+
+    setBench(targetBench);
+    setFakesReturnTo(null);
+    setSentToast({ bench: targetBench, label });
+    setTimeout(() => setSentToast(null), 6000);
+  };
 
   return (
     <div style={{ ...shellStyle, ...(theme.variables as CSSProperties) }}>
@@ -90,11 +116,41 @@ export function BenchesApp() {
       </header>
 
       <main>
-        {bench === 'fhirpath' ? <FhirPathBench /> : null}
-        {bench === 'fml' ? <FmlBench /> : null}
-        {bench === 'sqlonfhir' ? <SofBench /> : null}
-        {bench === 'fakes' ? <FakesBench /> : null}
+        {bench === 'fhirpath' ? <FhirPathBench onOpenFakes={() => openFakesFrom('fhirpath')} fakesSeed={fhirpathSeed} /> : null}
+        {bench === 'fml' ? <FmlBench onOpenFakes={() => openFakesFrom('fml')} fakesSeed={fmlSeed} /> : null}
+        {bench === 'sqlonfhir' ? <SofBench onOpenFakes={() => openFakesFrom('sqlonfhir')} fakesSeed={sofSeed} /> : null}
+        {bench === 'fakes' ? (
+          <FakesBench
+            returnTo={fakesReturnTo}
+            onDismissReturn={() => setFakesReturnTo(null)}
+            onSend={(targetBench, payload, label) => handleSend(targetBench, payload, label)}
+          />
+        ) : null}
       </main>
+
+      {sentToast ? (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 22,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 40,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '11px 18px',
+            borderRadius: 99,
+            background: 'var(--text)',
+            color: 'var(--bg)',
+            fontSize: 12.5,
+            fontWeight: 600,
+            boxShadow: '0 8px 24px rgba(0,0,0,.22)',
+          }}
+        >
+          <span style={{ color: '#4ade80' }}>✓</span> Received {sentToast.label}
+        </div>
+      ) : null}
     </div>
   );
 }

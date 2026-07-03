@@ -1,11 +1,16 @@
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { Card, ErrorBanner } from '../components/primitives';
 import { engineBadgeStyle, monoFont, monoTextareaStyle, primaryButtonStyle, sectionLabelStyle } from '../components/styles';
 import { useIsNarrowViewport } from '../../hooks/useIsNarrowViewport';
 import { runSof } from './sofEngine';
 import { DEFAULT_RESOURCES_TEXT, DEFAULT_VIEW_DEFINITION_TEXT } from './sofFixtures';
 
-export function SofBench() {
+export interface SofBenchProps {
+  onOpenFakes?: () => void;
+  fakesSeed?: { text: string } | null;
+}
+
+export function SofBench({ onOpenFakes, fakesSeed }: SofBenchProps) {
   const stacked = useIsNarrowViewport(720);
   const twoColumnStyle: CSSProperties = {
     display: 'grid',
@@ -17,6 +22,13 @@ export function SofBench() {
   const [viewDefinitionText, setViewDefinitionText] = useState(DEFAULT_VIEW_DEFINITION_TEXT);
   const [resourcesText, setResourcesText] = useState(DEFAULT_RESOURCES_TEXT);
   const [result, setResult] = useState(() => runSof(DEFAULT_VIEW_DEFINITION_TEXT, DEFAULT_RESOURCES_TEXT));
+
+  useEffect(() => {
+    if (fakesSeed) {
+      setResourcesText(fakesSeed.text);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fakesSeed]);
 
   const runView = () => setResult(runSof(viewDefinitionText, resourcesText));
   const gridColumns = result.columns.length ? `repeat(${result.columns.length}, minmax(110px, 1fr))` : '1fr';
@@ -45,7 +57,28 @@ export function SofBench() {
             />
           </Card>
           <Card>
-            <span style={sectionLabelStyle}>Resources · JSON array</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ ...sectionLabelStyle, flex: 1 }}>Resources · JSON array</span>
+              {onOpenFakes ? (
+                <button
+                  type="button"
+                  onClick={onOpenFakes}
+                  title="Generate a population with Fakes"
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    padding: '4px 11px',
+                    borderRadius: 99,
+                    cursor: 'pointer',
+                    background: 'var(--chip-vio-bg)',
+                    color: 'var(--accent)',
+                    border: '1px solid var(--accent-border)',
+                  }}
+                >
+                  ⚡ Fakes ↗
+                </button>
+              ) : null}
+            </div>
             <textarea
               value={resourcesText}
               onChange={(event) => setResourcesText(event.target.value)}

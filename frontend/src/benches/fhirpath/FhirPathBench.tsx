@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { Card, ErrorBanner, Pills, type PillItem } from '../components/primitives';
 import { HighlightedTextarea } from '../components/HighlightedTextarea';
 import { engineBadgeStyle, monoInputStyle, monoFont, sectionLabelStyle, chipStyle } from '../components/styles';
@@ -76,7 +76,12 @@ function AstRows({ node, depth }: { node: FpAstNode; depth: number }) {
   );
 }
 
-export function FhirPathBench() {
+export interface FhirPathBenchProps {
+  onOpenFakes?: () => void;
+  fakesSeed?: { text: string } | null;
+}
+
+export function FhirPathBench({ onOpenFakes, fakesSeed }: FhirPathBenchProps) {
   const stacked = useIsNarrowViewport(720);
   const twoColumnStyle: CSSProperties = {
     display: 'grid',
@@ -92,6 +97,14 @@ export function FhirPathBench() {
   const [resourceText, setResourceText] = useState(() => JSON.stringify(SAMPLE_RESOURCES[0].data, null, 2));
   const [variables, setVariables] = useState<FpVariable[]>([]);
   const [resultTab, setResultTab] = useState<ResultTab>('results');
+
+  useEffect(() => {
+    if (fakesSeed) {
+      setSampleId('custom');
+      setResourceText(fakesSeed.text);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fakesSeed]);
 
   const { result, isLoading } = useFhirPathEval({ version, expression, context, resourceText, variables });
 
@@ -258,6 +271,25 @@ export function FhirPathBench() {
                 {sample.label}
               </button>
             ))}
+            {onOpenFakes ? (
+              <button
+                type="button"
+                onClick={onOpenFakes}
+                title="Generate a test resource with Fakes"
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: '4px 11px',
+                  borderRadius: 99,
+                  cursor: 'pointer',
+                  background: 'var(--chip-vio-bg)',
+                  color: 'var(--accent)',
+                  border: '1px solid var(--accent-border)',
+                }}
+              >
+                ⚡ Fakes ↗
+              </button>
+            ) : null}
           </div>
           <HighlightedTextarea
             value={resourceText}
