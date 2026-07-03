@@ -52,10 +52,14 @@ public sealed class ScenarioDiscovery
         var args = new object?[allParameters.Length];
         args[0] = schemaProvider;
 
+        var overrides = parameters is null
+            ? null
+            : new Dictionary<string, JsonElement>(parameters, StringComparer.OrdinalIgnoreCase);
+
         for (var i = 1; i < allParameters.Length; i++)
         {
             var parameter = allParameters[i];
-            args[i] = parameters != null && parameters.TryGetValue(parameter.Name!, out var overrideValue)
+            args[i] = overrides != null && overrides.TryGetValue(parameter.Name!, out var overrideValue)
                 ? ConvertParameter(overrideValue, parameter.ParameterType)
                 : parameter.DefaultValue;
         }

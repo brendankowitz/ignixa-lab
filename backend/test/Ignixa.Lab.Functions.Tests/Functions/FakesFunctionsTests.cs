@@ -6,12 +6,14 @@ using Ignixa.Lab.Functions.Services.Fakes;
 using Ignixa.Lab.Functions.Services.FhirPath;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Ignixa.Lab.Functions.Tests.Functions;
 
 public sealed class FakesFunctionsTests
 {
     private static FakesFunctions CreateFunctions() => new(
+        NullLogger<FakesFunctions>.Instance,
         new SchemaProviderFactory(),
         new ScenarioDiscovery(),
         new ObservationStateDiscovery(),
@@ -32,6 +34,7 @@ public sealed class FakesFunctionsTests
         metadata.EdgeCaseFamilies.Select(f => f.Family).Should().Contain(["Unicode", "Temporal", "StringBoundary"]);
         metadata.EdgeCaseFamilies.Select(f => f.Family).Should().NotContain(["Cardinality", "Structural"]);
         metadata.ResourceTypes.Should().Contain("Patient");
+        metadata.PatientCities.Should().Contain("Boston");
     }
 
     [Fact]
@@ -168,6 +171,37 @@ public sealed class FakesFunctionsTests
     }
 
     [Fact]
+    public async Task GenerateResource_PatientWithKnownCity_SamplesRealisticGender()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { resourceType = "Patient", city = "Boston", seed = 1 });
+
+        var result = await functions.GenerateResource(request, CancellationToken.None);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        var body = JsonSerializer.Serialize(ok.Value);
+        using var doc = JsonDocument.Parse(body);
+        var resource = doc.RootElement.GetProperty("resource");
+        resource.GetProperty("gender").GetString().Should().NotBe("unknown");
+        resource.GetProperty("address")[0].GetProperty("city").GetString().Should().Be("Boston");
+    }
+
+    [Fact]
+    public async Task GenerateResource_PatientWithUnknownCityName_FallsBackToPlainCityText()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { resourceType = "Patient", city = "Notarealcityville", seed = 1 });
+
+        var result = await functions.GenerateResource(request, CancellationToken.None);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        var body = JsonSerializer.Serialize(ok.Value);
+        using var doc = JsonDocument.Parse(body);
+        var resource = doc.RootElement.GetProperty("resource");
+        resource.GetProperty("address")[0].GetProperty("city").GetString().Should().Be("Notarealcityville");
+    }
+
+    [Fact]
     public async Task GenerateResource_ObservationWithState_UsesRequestedState()
     {
         var functions = CreateFunctions();
@@ -218,6 +252,146 @@ public sealed class FakesFunctionsTests
         var body = JsonSerializer.Serialize(ok.Value);
         using var doc = JsonDocument.Parse(body);
         doc.RootElement.GetProperty("manifest").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task GenerateScenario_FractionalNumericParameter_ReturnsBadRequest()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { scenarioId = "DiabeticPatient", parameters = new { age = 3.7 } });
+
+        var result = await functions.GenerateScenario(request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task GenerateScenario_OversizedNumericParameter_ReturnsBadRequest()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { scenarioId = "DiabeticPatient", parameters = new { age = 999999999999L } });
+
+        var result = await functions.GenerateScenario(request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task GenerateScenario_FactoryRejectsArgument_ReturnsRealReasonNotReflectionBoilerplate()
+    {
+        var functions = CreateFunctions();
+        // age 999999 converts to a valid int but the scenario factory itself rejects it,
+        // throwing TargetInvocationException wrapping the real ArgumentOutOfRangeException.
+        var request = BuildJsonPostRequest(new { scenarioId = "DiabeticPatient", parameters = new { age = 999999 } });
+
+        var result = await functions.GenerateScenario(request, CancellationToken.None);
+
+        var bad = result.Should().BeOfType<BadRequestObjectResult>().Subject;
+        var body = JsonSerializer.Serialize(bad.Value);
+        body.Should().Contain("Invalid scenario parameters:");
+        body.Should().NotContain("Exception has been thrown by the target of an invocation");
+    }
+
+    [Fact]
+    public async Task GenerateScenario_CapitalizedParameterKey_RoutesToTargetParameter()
+    {
+        var functions = CreateFunctions();
+        // A capital-A "Age" key must reach the int `age` parameter for this non-numeric
+        // value to fail conversion. Case-sensitive matching would ignore it and fall back
+        // to the default (52), succeeding — so a 400 here proves matching is case-insensitive.
+        var request = BuildJsonPostRequest(new { scenarioId = "DiabeticPatient", parameters = new { Age = "not-a-number" } });
+
+        var result = await functions.GenerateScenario(request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task GenerateScenario_CapitalizedNumericParameterKey_Succeeds()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { scenarioId = "DiabeticPatient", parameters = new { Age = 30 } });
+
+        var result = await functions.GenerateScenario(request, CancellationToken.None);
+
+        result.Should().BeOfType<OkObjectResult>();
+    }
+
+    [Fact]
+    public async Task GenerateScenario_UnsupportedFhirVersion_ReturnsBadRequest()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { scenarioId = "DiabeticPatient", fhirVersion = (string?)null });
+
+        var result = await functions.GenerateScenario(request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task GeneratePopulation_UnsupportedFhirVersion_ReturnsBadRequest()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { source = "Massachusetts", count = 3, fhirVersion = "r4x" });
+
+        var result = await functions.GeneratePopulation(request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task GeneratePopulation_UnknownSource_ReturnsBadRequest()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { source = "Atlantis", count = 3 });
+
+        var result = await functions.GeneratePopulation(request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task GenerateResource_UnsupportedFhirVersion_ReturnsBadRequest()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { resourceType = "Patient", fhirVersion = (string?)null });
+
+        var result = await functions.GenerateResource(request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task GenerateResource_UnknownDensity_ReturnsBadRequest()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { resourceType = "Patient", density = "SuperDense" });
+
+        var result = await functions.GenerateResource(request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task GenerateResource_UnknownObservationState_ReturnsBadRequest()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { resourceType = "Observation", observationState = "NotARealState" });
+
+        var result = await functions.GenerateResource(request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task GenerateResource_UnknownEdgeCaseSelector_ReturnsBadRequest()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { resourceType = "Patient", seed = 1, edgeCaseSelectors = new[] { "not-a-real-selector" } });
+
+        var result = await functions.GenerateResource(request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
     }
 
     private static HttpRequest BuildJsonPostRequest(object body)

@@ -90,9 +90,16 @@ public sealed class FakesService(
         {
             context = scenarioDiscovery.Invoke(scenario, schemaProvider, parameters);
         }
-        catch (Exception ex) when (ex is InvalidOperationException or System.Reflection.TargetInvocationException)
+        catch (Exception ex) when (ex is InvalidOperationException
+            or System.Reflection.TargetInvocationException
+            or FormatException
+            or OverflowException
+            or ArgumentException)
         {
-            throw new InvalidScenarioParametersException($"Invalid scenario parameters: {ex.Message}");
+            var reason = ex is System.Reflection.TargetInvocationException tie
+                ? tie.InnerException?.Message ?? tie.Message
+                : ex.Message;
+            throw new InvalidScenarioParametersException($"Invalid scenario parameters: {reason}", ex);
         }
 
         if (resolvedReferences)
@@ -152,7 +159,16 @@ public sealed class FakesService(
         if (edgeCaseSelectors is { Count: > 0 })
         {
             var catalog = EdgeCaseCatalog.CreateDefault();
-            var strategies = catalog.Resolve(edgeCaseSelectors, out _);
+            var strategies = catalog.Resolve(edgeCaseSelectors, out var unmatched);
+            if (unmatched.Count > 0)
+            {
+                throw new UnknownEdgeCaseSelectorsException(
+                    $"Unknown edge case selector(s): {string.Join(", ", unmatched)}")
+                {
+                    Unmatched = unmatched,
+                };
+            }
+
             var pipeline = new EdgeCasePipeline(seed, schemaProvider);
             var manifest = pipeline.Apply(resource, strategies, includeInvalid);
             manifestJson = new JsonObject
@@ -204,6 +220,27 @@ public sealed class FakesService(
         if (string.Equals(resourceType, "Patient", StringComparison.OrdinalIgnoreCase))
         {
             var builder = PatientBuilderFactory.Create(schemaProvider, seed);
+
+            // .WithCity(string) only sets the address line's city text — it does not sample
+            // gender/age/zip/area code the way .FromCity(CityDemographics) does, so a plain
+            // .WithCity() call left gender unset and every generated Patient reported "unknown".
+            // Route through FromCity() for any of the known demographics cities so gender (and
+            // the rest of the profile) gets realistically sampled from the seeded RNG; an
+            // unrecognized city name (e.g. from a direct API caller) falls back to the old
+            // text-only behavior rather than being silently dropped.
+            var cityDemographics = !string.IsNullOrWhiteSpace(city)
+                ? KnownCities.All.FirstOrDefault(known => string.Equals(known.Name, city, StringComparison.OrdinalIgnoreCase))
+                : null;
+
+            if (cityDemographics != null)
+            {
+                builder = builder.FromCity(cityDemographics);
+            }
+            else if (!string.IsNullOrWhiteSpace(city))
+            {
+                builder = builder.WithCity(city);
+            }
+
             if (!string.IsNullOrWhiteSpace(firstName))
             {
                 builder = builder.WithGivenName(firstName);
@@ -214,26 +251,21 @@ public sealed class FakesService(
                 builder = builder.WithFamilyName(familyName);
             }
 
-            if (!string.IsNullOrWhiteSpace(city))
-            {
-                builder = builder.WithCity(city);
-            }
-
             return builder.Build();
         }
 
         if (string.Equals(resourceType, "Observation", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(observationState))
         {
-            var state = observationStateDiscovery.Create(observationState);
-            if (state != null)
-            {
-                var context = new ScenarioBuilder(schemaProvider).WithPatient().AddObservation(state).Build();
-                var observation = context.AllResources.FirstOrDefault(r => r.ResourceType == "Observation");
-                if (observation != null)
-                {
-                    return observation;
-                }
-            }
+            var state = observationStateDiscovery.Create(observationState)
+                ?? throw new InvalidOperationException(
+                    $"Observation state '{observationState}' passed validation but ObservationStateDiscovery.Create returned null.");
+
+            var context = new ScenarioBuilder(schemaProvider).WithPatient().AddObservation(state).Build();
+            var observation = context.AllResources.FirstOrDefault(r => r.ResourceType == "Observation")
+                ?? throw new InvalidOperationException(
+                    $"Observation state '{observationState}' produced a scenario with no Observation resource.");
+
+            return observation;
         }
 
         var faker = new SchemaBasedFhirResourceFaker(schemaProvider, seed) { Density = density };

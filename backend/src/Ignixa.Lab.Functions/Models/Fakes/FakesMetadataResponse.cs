@@ -8,6 +8,8 @@ public sealed class FakesMetadataResponse
     public required IReadOnlyList<string> ResourceTypes { get; init; }
     public required IReadOnlyList<string> ObservationStates { get; init; }
     public required IReadOnlyList<EdgeCaseFamilyMetadata> EdgeCaseFamilies { get; init; }
+    /// <summary>City names <see cref="Ignixa.Lab.Functions.Services.Fakes.FakesService"/> can sample realistic demographics (including gender) from via <c>PatientBuilder.FromCity</c>.</summary>
+    public required IReadOnlyList<string> PatientCities { get; init; }
 }
 
 public sealed class ScenarioMetadata

@@ -1,5 +1,7 @@
+using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Ignixa.FhirFakes;
 using Ignixa.FhirFakes.EdgeCases;
 using Ignixa.FhirFakes.Population;
 using Ignixa.Lab.Functions.Models.Fakes;
@@ -8,11 +10,13 @@ using Ignixa.Lab.Functions.Services.FhirPath;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 
 namespace Ignixa.Lab.Functions.Functions;
 
 /// <summary>Synthetic FHIR data generation endpoints, powering the Expression Benches Fakes bench.</summary>
 public sealed class FakesFunctions(
+    ILogger<FakesFunctions> logger,
     SchemaProviderFactory schemaProviderFactory,
     ScenarioDiscovery scenarioDiscovery,
     ObservationStateDiscovery observationStateDiscovery,
@@ -21,6 +25,12 @@ public sealed class FakesFunctions(
     private static readonly string[] FhirVersions = ["stu3", "r4", "r4b", "r5", "r6"];
     private static readonly string[] ActiveEdgeCaseFamilies = ["Unicode", "Temporal", "StringBoundary"];
     private static readonly JsonSerializerOptions RequestJsonOptions = new(JsonSerializerDefaults.Web);
+
+    private static bool IsSupportedFhirVersion(string? fhirVersion) =>
+        !string.IsNullOrWhiteSpace(fhirVersion) && FhirVersions.Contains(fhirVersion, StringComparer.OrdinalIgnoreCase);
+
+    private static BadRequestObjectResult UnsupportedFhirVersion(string? fhirVersion) =>
+        new(new { error = $"Unsupported fhirVersion '{fhirVersion}'. Supported: {string.Join(", ", FhirVersions)}." });
 
     [Function("FakesMetadata")]
     public IActionResult GetMetadata(
@@ -41,6 +51,7 @@ public sealed class FakesFunctions(
                 .Select(family => ToEdgeCaseFamilyMetadata(family, catalog))
                 .Where(family => family.Categories.Count > 0)
                 .ToList(),
+            PatientCities = populationGenerator.AvailableCities.Select(city => city.Name).ToList(),
         };
 
         return new OkObjectResult(response);
@@ -67,13 +78,41 @@ public sealed class FakesFunctions(
             return new BadRequestObjectResult(new { error = "A 'source' (US state name) is required." });
         }
 
-        if (populationRequest.Count is < 1 or > 100)
+        if (!IsSupportedFhirVersion(populationRequest.FhirVersion))
         {
-            return new BadRequestObjectResult(new { error = "count must be between 1 and 100." });
+            return UnsupportedFhirVersion(populationRequest.FhirVersion);
         }
 
-        var result = fakesService.GeneratePopulation(populationRequest.FhirVersion, populationRequest.Source, populationRequest.Count);
-        return new OkObjectResult(result);
+        if (populationRequest.Count is < PopulationRequest.MinCount or > PopulationRequest.MaxCount)
+        {
+            return new BadRequestObjectResult(new
+            {
+                error = $"count must be between {PopulationRequest.MinCount} and {PopulationRequest.MaxCount}.",
+            });
+        }
+
+        var schemaProvider = schemaProviderFactory.GetSchemaProvider(populationRequest.FhirVersion);
+        var availableStates = new PopulationGenerator(schemaProvider).AvailableStates;
+        if (!availableStates.Contains(populationRequest.Source, StringComparer.Ordinal))
+        {
+            return new BadRequestObjectResult(new { error = $"Unknown source state '{populationRequest.Source}'." });
+        }
+
+        try
+        {
+            var result = fakesService.GeneratePopulation(populationRequest.FhirVersion, populationRequest.Source, populationRequest.Count);
+            return new OkObjectResult(result);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(
+                ex,
+                "Population generation failed. fhirVersion={FhirVersion} source={Source} count={Count}",
+                populationRequest.FhirVersion,
+                populationRequest.Source,
+                populationRequest.Count);
+            return new ObjectResult(new { error = "Population generation failed." }) { StatusCode = (int)HttpStatusCode.InternalServerError };
+        }
     }
 
     [Function("FakesScenario")]
@@ -95,6 +134,11 @@ public sealed class FakesFunctions(
         if (scenarioRequest is null || string.IsNullOrWhiteSpace(scenarioRequest.ScenarioId))
         {
             return new BadRequestObjectResult(new { error = "A 'scenarioId' is required." });
+        }
+
+        if (!IsSupportedFhirVersion(scenarioRequest.FhirVersion))
+        {
+            return UnsupportedFhirVersion(scenarioRequest.FhirVersion);
         }
 
         JsonObject? result;
@@ -141,25 +185,61 @@ public sealed class FakesFunctions(
             return new BadRequestObjectResult(new { error = "A 'resourceType' is required." });
         }
 
+        if (!IsSupportedFhirVersion(resourceRequest.FhirVersion))
+        {
+            return UnsupportedFhirVersion(resourceRequest.FhirVersion);
+        }
+
         var schemaProvider = schemaProviderFactory.GetSchemaProvider(resourceRequest.FhirVersion);
         if (!schemaProvider.ResourceTypeNames.Contains(resourceRequest.ResourceType))
         {
             return new BadRequestObjectResult(new { error = $"Unknown resourceType '{resourceRequest.ResourceType}'." });
         }
 
-        var result = fakesService.GenerateResource(
-            resourceRequest.FhirVersion,
-            resourceRequest.ResourceType,
-            resourceRequest.Seed,
-            resourceRequest.Density,
-            resourceRequest.FirstName,
-            resourceRequest.FamilyName,
-            resourceRequest.City,
-            resourceRequest.ObservationState,
-            resourceRequest.EdgeCaseSelectors,
-            resourceRequest.IncludeInvalid);
+        if (!Enum.TryParse<GenerationDensity>(resourceRequest.Density, ignoreCase: true, out _))
+        {
+            return new BadRequestObjectResult(new
+            {
+                error = $"Unknown density '{resourceRequest.Density}'. Supported: {string.Join(", ", Enum.GetNames<GenerationDensity>())}.",
+            });
+        }
 
-        return new OkObjectResult(result);
+        if (!string.IsNullOrWhiteSpace(resourceRequest.ObservationState)
+            && !observationStateDiscovery.Names().Contains(resourceRequest.ObservationState, StringComparer.OrdinalIgnoreCase))
+        {
+            return new BadRequestObjectResult(new { error = $"Unknown observationState '{resourceRequest.ObservationState}'." });
+        }
+
+        try
+        {
+            var result = fakesService.GenerateResource(
+                resourceRequest.FhirVersion,
+                resourceRequest.ResourceType,
+                resourceRequest.Seed,
+                resourceRequest.Density,
+                resourceRequest.FirstName,
+                resourceRequest.FamilyName,
+                resourceRequest.City,
+                resourceRequest.ObservationState,
+                resourceRequest.EdgeCaseSelectors,
+                resourceRequest.IncludeInvalid);
+
+            return new OkObjectResult(result);
+        }
+        catch (UnknownEdgeCaseSelectorsException ex)
+        {
+            return new BadRequestObjectResult(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(
+                ex,
+                "Resource generation failed. fhirVersion={FhirVersion} resourceType={ResourceType} seed={Seed}",
+                resourceRequest.FhirVersion,
+                resourceRequest.ResourceType,
+                resourceRequest.Seed);
+            return new ObjectResult(new { error = "Resource generation failed." }) { StatusCode = (int)HttpStatusCode.InternalServerError };
+        }
     }
 
     private static ScenarioMetadata ToScenarioMetadata(DiscoveredScenario scenario) => new()
