@@ -338,17 +338,17 @@ export function FhirPathBench() {
             </span>
           ) : null}
 
-          {result.error === null && resultTab === 'ast' && result.ast ? (
+          {result.error === null && resultTab === 'ast' && result.ast && typeof result.ast === 'object' ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '4px 2px' }}>
               <AstRows node={result.ast} depth={0} />
             </div>
           ) : null}
-          {result.error === null && resultTab === 'ast' && !result.ast && result.astParseFailed ? (
+          {result.error === null && resultTab === 'ast' && result.ast === 'parse-failed' ? (
             <span style={{ fontSize: 11, color: 'var(--text4)' }}>
               The parse tree couldn't be rendered for this response.
             </span>
           ) : null}
-          {result.error === null && resultTab === 'ast' && !result.ast && !result.astParseFailed ? (
+          {result.error === null && resultTab === 'ast' && result.ast === null ? (
             <span style={{ fontSize: 11, color: 'var(--text4)' }}>
               No parse tree yet — evaluate an expression to see its structure.
             </span>

@@ -13,7 +13,7 @@ export interface FhirPathEvalInput {
 
 const DEBOUNCE_MS = 450;
 
-const EMPTY_RESULT: FpEvalResult = { error: null, evaluator: '', groups: [], trace: [], ast: null, astParseFailed: false };
+const EMPTY_RESULT: FpEvalResult = { error: null, evaluator: '', groups: [], trace: [], ast: null };
 
 /** Debounced, abortable evaluator: re-POSTs to the FHIRPath backend ~450ms after the last change to any input field, cancelling any still-in-flight request first. */
 export function useFhirPathEval(input: FhirPathEvalInput): { result: FpEvalResult; isLoading: boolean } {
@@ -48,11 +48,11 @@ export function useFhirPathEval(input: FhirPathEvalInput): { result: FpEvalResul
 
       runFhirPath(input.version, body, controller.signal)
         .then((response) => setResult(parseFhirPathResponse(response)))
-        .catch((error: Error) => {
-          if (error.name === 'AbortError') {
+        .catch((error: unknown) => {
+          if (error instanceof DOMException && error.name === 'AbortError') {
             return;
           }
-          setResult({ ...EMPTY_RESULT, error: error.message });
+          setResult({ ...EMPTY_RESULT, error: getErrorMessage(error) });
         })
         .finally(() => {
           if (abortControllerRef.current === controller) {

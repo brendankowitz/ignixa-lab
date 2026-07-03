@@ -32,8 +32,8 @@ export interface FpEvalResult {
   evaluator: string;
   groups: FpResultGroup[];
   trace: FpTraceRow[];
-  ast: FpAstNode | null;
-  astParseFailed: boolean;
+  /** `null` before any evaluation has produced an AST; `'parse-failed'` if the backend sent one but it couldn't be parsed. */
+  ast: FpAstNode | null | 'parse-failed';
 }
 
 /** A generic FHIR `Parameters.parameter[]` entry — permissive enough to cover every `value[x]`/`resource`/`part` shape the backend emits. */

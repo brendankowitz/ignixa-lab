@@ -6,10 +6,12 @@ const TOKEN_PATTERN = /('(?:\\.|[^'\\])*')|(%[A-Za-z_][\w]*)|(\d+(?:\.\d+)?)|([A
 
 /**
  * Lightweight FHIRPath syntax highlighter for the expression editor: string
- * literals, `%variables`, numbers, boolean/logical keywords, and function
- * calls (an identifier immediately followed by `(`). Everything else
- * (property-path segments, punctuation) is left in the default text color —
- * deliberately restrained rather than coloring every token.
+ * literals, `%variables`, numbers, and boolean/logical keywords each get a
+ * distinct color; function calls (an identifier immediately followed by `(`)
+ * get their own color too. Plain identifiers (property-path segments) fall
+ * back to the base text color (`--text`); punctuation, whitespace, and
+ * comparison operators (`!= <= >=`) are left at the token stream's default
+ * (`--text2`) — deliberately restrained rather than coloring every token.
  */
 export function highlightFhirPathExpression(text: string): HighlightLine[] {
   return text.split('\n').map((line) => {

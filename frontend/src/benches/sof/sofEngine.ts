@@ -108,6 +108,9 @@ export function runSof(viewDefinitionText: string, resourcesText: string): SofRu
   if (viewDefinition === null || typeof viewDefinition !== 'object') {
     return { error: 'ViewDefinition JSON must be an object', columns: [], rows: [], meta: '' };
   }
+  if (viewDefinition.select !== undefined && !Array.isArray(viewDefinition.select)) {
+    return { error: 'ViewDefinition.select must be an array', columns: [], rows: [], meta: '' };
+  }
   try {
     resources = JSON.parse(resourcesText);
   } catch (error) {
@@ -116,11 +119,10 @@ export function runSof(viewDefinitionText: string, resourcesText: string): SofRu
 
   const resourceList = Array.isArray(resources) ? resources : [resources];
   const columns: string[] = [];
-  collectColumnNames(viewDefinition.select, columns);
-
   const rows: Record<string, SofCellValue>[] = [];
   let scanned = 0;
   try {
+    collectColumnNames(viewDefinition.select, columns);
     for (const resource of resourceList) {
       const record = resource as { resourceType?: string };
       if (viewDefinition.resource && record.resourceType !== viewDefinition.resource) continue;

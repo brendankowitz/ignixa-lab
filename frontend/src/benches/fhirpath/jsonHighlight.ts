@@ -38,5 +38,15 @@ export function highlightJson(text: string): HighlightLine[] {
     });
   }
 
+  // A blank line has no segments, which HighlightedTextarea would render as an
+  // empty, zero-height <div> — collapsing it and misaligning every line below
+  // against the textarea's full-height blank line. Give it a space so it takes
+  // up a line's worth of height like its non-blank neighbors.
+  for (const line of lines) {
+    if (line.segments.length === 0) {
+      line.segments.push({ text: ' ', color: 'var(--tok-plain)' });
+    }
+  }
+
   return lines;
 }

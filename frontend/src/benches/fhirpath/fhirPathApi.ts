@@ -132,7 +132,7 @@ function parseAstNode(raw: RawAstNode): FpAstNode {
 /** Parses the FHIRPath evaluator's `Parameters` response into the shape the bench UI renders. */
 export function parseFhirPathResponse(response: FhirParameters): FpEvalResult {
   const parameters = response.parameter ?? [];
-  const emptyResult: FpEvalResult = { error: null, evaluator: '', groups: [], trace: [], ast: null, astParseFailed: false };
+  const emptyResult: FpEvalResult = { error: null, evaluator: '', groups: [], trace: [], ast: null };
 
   const errorParameter = parameters.find((parameter) => parameter.name === 'error');
   if (errorParameter) {
@@ -144,15 +144,13 @@ export function parseFhirPathResponse(response: FhirParameters): FpEvalResult {
   const evaluator = (evaluatorPart?.valueString as string) ?? '';
 
   const astPart = configPart?.part?.find((part) => part.name === 'parseDebugTree');
-  let ast: FpAstNode | null = null;
-  let astParseFailed = false;
+  let ast: FpAstNode | null | 'parse-failed' = null;
   if (typeof astPart?.valueString === 'string') {
     try {
       ast = parseAstNode(JSON.parse(astPart.valueString) as RawAstNode);
     } catch (error) {
       console.warn('Failed to parse parseDebugTree payload', error, astPart.valueString);
-      ast = null;
-      astParseFailed = true;
+      ast = 'parse-failed';
     }
   }
 
@@ -170,5 +168,5 @@ export function parseFhirPathResponse(response: FhirParameters): FpEvalResult {
     groups.push({ label: (resultParameter.valueString as string) ?? null, items });
   }
 
-  return { error: null, evaluator, groups, trace, ast, astParseFailed };
+  return { error: null, evaluator, groups, trace, ast };
 }

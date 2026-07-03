@@ -1,11 +1,4 @@
-export interface FmlHighlightSegment {
-  text: string;
-  color: string;
-}
-
-export interface FmlHighlightLine {
-  segments: FmlHighlightSegment[];
-}
+import type { HighlightLine, HighlightSegment } from '../components/HighlightedTextarea';
 
 const KEYWORD_PATTERN =
   /^(map|uses|group|source|target|as|alias|imports|extends|where|then|first|not_first|last|not_last|only_one|share|collate|check|log|types|default)$/;
@@ -13,9 +6,9 @@ const KEYWORD_PATTERN =
 const TOKEN_PATTERN = /("[^"]*")|('[^']*')|(->)|([A-Za-z_][\w]*)|(\d+)|(\s+)|(.)/g;
 
 /** Line-by-line syntax highlighter for the FML editor pane. */
-export function highlightFml(text: string): FmlHighlightLine[] {
+export function highlightFml(text: string): HighlightLine[] {
   return text.split('\n').map((line) => {
-    const segments: FmlHighlightSegment[] = [];
+    const segments: HighlightSegment[] = [];
     let rest = line;
     let comment: string | null = null;
     const commentIndex = line.indexOf('//');
