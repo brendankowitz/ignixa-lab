@@ -106,6 +106,42 @@ public sealed class FakesFunctions(
         return new OkObjectResult(result);
     }
 
+    [Function("FakesResource")]
+    public async Task<IActionResult> GenerateResource(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", "options", Route = "fakes/resource")] HttpRequest request,
+        CancellationToken cancellationToken)
+    {
+        ResourceGenerationRequest? resourceRequest;
+        try
+        {
+            resourceRequest = await JsonSerializer.DeserializeAsync<ResourceGenerationRequest>(
+                request.Body, RequestJsonOptions, cancellationToken);
+        }
+        catch (JsonException ex)
+        {
+            return new BadRequestObjectResult(new { error = $"Invalid request body: {ex.Message}" });
+        }
+
+        if (resourceRequest is null || string.IsNullOrWhiteSpace(resourceRequest.ResourceType))
+        {
+            return new BadRequestObjectResult(new { error = "A 'resourceType' is required." });
+        }
+
+        var result = fakesService.GenerateResource(
+            resourceRequest.FhirVersion,
+            resourceRequest.ResourceType,
+            resourceRequest.Seed,
+            resourceRequest.Density,
+            resourceRequest.FirstName,
+            resourceRequest.FamilyName,
+            resourceRequest.City,
+            resourceRequest.ObservationState,
+            resourceRequest.EdgeCaseSelectors,
+            resourceRequest.IncludeInvalid);
+
+        return new OkObjectResult(result);
+    }
+
     private static ScenarioMetadata ToScenarioMetadata(DiscoveredScenario scenario) => new()
     {
         Id = scenario.Id,

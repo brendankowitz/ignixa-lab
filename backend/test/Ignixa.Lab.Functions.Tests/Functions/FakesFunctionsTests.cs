@@ -15,7 +15,7 @@ public sealed class FakesFunctionsTests
         new SchemaProviderFactory(),
         new ScenarioDiscovery(),
         new ObservationStateDiscovery(),
-        new FakesService(new SchemaProviderFactory(), new ScenarioDiscovery()));
+        new FakesService(new SchemaProviderFactory(), new ScenarioDiscovery(), new ObservationStateDiscovery()));
 
     [Fact]
     public void GetMetadata_ReturnsPopulationStatesScenariosAndEdgeCaseFamilies()
@@ -103,6 +103,66 @@ public sealed class FakesFunctionsTests
         var body = JsonSerializer.Serialize(ok.Value);
         using var doc = JsonDocument.Parse(body);
         doc.RootElement.GetProperty("bundle").GetProperty("type").GetString().Should().Be("batch");
+    }
+
+    [Fact]
+    public async Task GenerateResource_PatientWithSameSeed_IsDeterministic()
+    {
+        var functions = CreateFunctions();
+        var request1 = BuildJsonPostRequest(new { resourceType = "Patient", seed = 1234 });
+        var request2 = BuildJsonPostRequest(new { resourceType = "Patient", seed = 1234 });
+
+        var result1 = await functions.GenerateResource(request1, CancellationToken.None);
+        var result2 = await functions.GenerateResource(request2, CancellationToken.None);
+
+        var body1 = JsonSerializer.Serialize(result1.Should().BeOfType<OkObjectResult>().Subject.Value);
+        var body2 = JsonSerializer.Serialize(result2.Should().BeOfType<OkObjectResult>().Subject.Value);
+        using var doc1 = JsonDocument.Parse(body1);
+        using var doc2 = JsonDocument.Parse(body2);
+        doc1.RootElement.GetProperty("resource").GetProperty("id").GetString()
+            .Should().Be(doc2.RootElement.GetProperty("resource").GetProperty("id").GetString());
+    }
+
+    [Fact]
+    public async Task GenerateResource_ObservationWithState_UsesRequestedState()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { resourceType = "Observation", observationState = "BloodGlucose", seed = 1 });
+
+        var result = await functions.GenerateResource(request, CancellationToken.None);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        var body = JsonSerializer.Serialize(ok.Value);
+        using var doc = JsonDocument.Parse(body);
+        doc.RootElement.GetProperty("resource").GetProperty("resourceType").GetString().Should().Be("Observation");
+    }
+
+    [Fact]
+    public async Task GenerateResource_WithEdgeCaseSelectors_ReturnsAManifest()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { resourceType = "Patient", seed = 1, edgeCaseSelectors = new[] { "unicode" } });
+
+        var result = await functions.GenerateResource(request, CancellationToken.None);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        var body = JsonSerializer.Serialize(ok.Value);
+        using var doc = JsonDocument.Parse(body);
+        doc.RootElement.GetProperty("manifest").ValueKind.Should().NotBe(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task GenerateResource_NoEdgeCaseSelectors_ReturnsNullManifest()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { resourceType = "Patient", seed = 1 });
+
+        var result = await functions.GenerateResource(request, CancellationToken.None);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        var body = JsonSerializer.Serialize(ok.Value);
+        using var doc = JsonDocument.Parse(body);
+        doc.RootElement.GetProperty("manifest").ValueKind.Should().Be(JsonValueKind.Null);
     }
 
     private static HttpRequest BuildJsonPostRequest(object body)

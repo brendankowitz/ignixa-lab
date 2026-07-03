@@ -1,6 +1,9 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Ignixa.Abstractions;
+using Ignixa.FhirFakes;
+using Ignixa.FhirFakes.Builders;
+using Ignixa.FhirFakes.EdgeCases;
 using Ignixa.FhirFakes.Population;
 using Ignixa.FhirFakes.Scenarios;
 using Ignixa.Lab.Functions.Services.FhirPath;
@@ -10,7 +13,10 @@ using Ignixa.Serialization.SourceNodes;
 namespace Ignixa.Lab.Functions.Services.Fakes;
 
 /// <summary>Orchestrates calls into <c>Ignixa.FhirFakes</c> and shapes the results into plain JSON for the Fakes bench endpoints.</summary>
-public sealed class FakesService(SchemaProviderFactory schemaProviderFactory, ScenarioDiscovery scenarioDiscovery)
+public sealed class FakesService(
+    SchemaProviderFactory schemaProviderFactory,
+    ScenarioDiscovery scenarioDiscovery,
+    ObservationStateDiscovery observationStateDiscovery)
 {
     public JsonObject GeneratePopulation(string fhirVersion, string source, int count)
     {
@@ -113,6 +119,117 @@ public sealed class FakesService(SchemaProviderFactory schemaProviderFactory, Sc
             ["resources"] = new JsonArray(resourceNodes.ToArray()),
             ["bundle"] = bundleNode,
         };
+    }
+
+    public JsonObject GenerateResource(
+        string fhirVersion,
+        string resourceType,
+        int seed,
+        string density,
+        string? firstName,
+        string? familyName,
+        string? city,
+        string? observationState,
+        IReadOnlyList<string>? edgeCaseSelectors,
+        bool includeInvalid)
+    {
+        var schemaProvider = schemaProviderFactory.GetSchemaProvider(fhirVersion);
+        var generationDensity = Enum.TryParse<GenerationDensity>(density, ignoreCase: true, out var parsedDensity)
+            ? parsedDensity
+            : GenerationDensity.Minimal;
+
+        var resource = BuildResource(schemaProvider, resourceType, seed, generationDensity, firstName, familyName, city, observationState);
+
+        JsonObject? manifestJson = null;
+        if (edgeCaseSelectors is { Count: > 0 })
+        {
+            var catalog = EdgeCaseCatalog.CreateDefault();
+            var strategies = catalog.Resolve(edgeCaseSelectors, out _);
+            var pipeline = new EdgeCasePipeline(seed, schemaProvider);
+            var manifest = pipeline.Apply(resource, strategies, includeInvalid);
+            manifestJson = new JsonObject
+            {
+                ["resourceId"] = manifest.ResourceId,
+                ["seed"] = manifest.Seed,
+                ["mutations"] = new JsonArray(manifest.Mutations.Select(m => (JsonNode)new JsonObject
+                {
+                    ["category"] = m.Category,
+                    ["path"] = m.Path,
+                    ["before"] = m.Before,
+                    ["after"] = m.After,
+                    ["description"] = m.Description,
+                }).ToArray()),
+            };
+        }
+
+        return new JsonObject
+        {
+            ["resource"] = JsonNode.Parse(resource.SerializeToString()),
+            ["manifest"] = manifestJson,
+        };
+    }
+
+    /// <summary>
+    /// Instance method (not static) because the Observation-with-state path needs
+    /// <c>observationStateDiscovery</c>. Patient uses <see cref="PatientBuilderFactory"/>
+    /// directly; Observation with a requested clinical state goes through
+    /// <see cref="ScenarioBuilder"/>.AddObservation(ObservationState) — the real,
+    /// public entry point that consumes an <c>ObservationState</c> (there is no
+    /// direct <c>ObservationBuilder.FromState(...)</c> — <c>ObservationBuilder</c>
+    /// has its own separate fluent API unrelated to <c>ObservationState</c>).
+    /// <c>WithPatient()</c> must run first: <c>ObservationState.Execute</c> throws
+    /// "Cannot create Observation without a Patient" if the scenario has no
+    /// initial Patient state, so we seed a default one and then extract the
+    /// resulting <see cref="ScenarioContext"/>'s Observation from
+    /// <c>AllResources</c>. Everything else uses the generic schema-driven faker.
+    /// </summary>
+    private Ignixa.Serialization.SourceNodes.ResourceJsonNode BuildResource(
+        Ignixa.Abstractions.IFhirSchemaProvider schemaProvider,
+        string resourceType,
+        int seed,
+        GenerationDensity density,
+        string? firstName,
+        string? familyName,
+        string? city,
+        string? observationState)
+    {
+        if (string.Equals(resourceType, "Patient", StringComparison.OrdinalIgnoreCase))
+        {
+            var builder = PatientBuilderFactory.Create(schemaProvider, seed);
+            if (!string.IsNullOrWhiteSpace(firstName))
+            {
+                builder = builder.WithGivenName(firstName);
+            }
+
+            if (!string.IsNullOrWhiteSpace(familyName))
+            {
+                builder = builder.WithFamilyName(familyName);
+            }
+
+            if (!string.IsNullOrWhiteSpace(city))
+            {
+                builder = builder.WithCity(city);
+            }
+
+            return builder.Build();
+        }
+
+        if (string.Equals(resourceType, "Observation", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(observationState))
+        {
+            var state = observationStateDiscovery.Create(observationState);
+            if (state != null)
+            {
+                var context = new ScenarioBuilder(schemaProvider).WithPatient().AddObservation(state).Build();
+                var observation = context.AllResources.FirstOrDefault(r => r.ResourceType == "Observation");
+                if (observation != null)
+                {
+                    return observation;
+                }
+            }
+        }
+
+        var faker = new SchemaBasedFhirResourceFaker(schemaProvider, seed) { Density = density };
+        return faker.Generate(resourceType);
     }
 
     private static void StampTag(JsonObject resource, string tag)
