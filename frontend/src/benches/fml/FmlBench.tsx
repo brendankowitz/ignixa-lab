@@ -19,9 +19,10 @@ const TAB_ITEMS: PillItem<FmlTab>[] = [
 export interface FmlBenchProps {
   onOpenFakes?: () => void;
   fakesSeed?: { text: string } | null;
+  onSeedConsumed?: () => void;
 }
 
-export function FmlBench({ onOpenFakes, fakesSeed }: FmlBenchProps) {
+export function FmlBench({ onOpenFakes, fakesSeed, onSeedConsumed }: FmlBenchProps) {
   const stacked = useIsNarrowViewport(720);
   const twoColumnStyle: CSSProperties = {
     display: 'grid',
@@ -39,6 +40,7 @@ export function FmlBench({ onOpenFakes, fakesSeed }: FmlBenchProps) {
   useEffect(() => {
     if (fakesSeed) {
       setSourceText(fakesSeed.text);
+      onSeedConsumed?.();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fakesSeed]);

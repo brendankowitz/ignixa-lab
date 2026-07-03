@@ -116,9 +116,9 @@ export function BenchesApp() {
       </header>
 
       <main>
-        {bench === 'fhirpath' ? <FhirPathBench onOpenFakes={() => openFakesFrom('fhirpath')} fakesSeed={fhirpathSeed} /> : null}
-        {bench === 'fml' ? <FmlBench onOpenFakes={() => openFakesFrom('fml')} fakesSeed={fmlSeed} /> : null}
-        {bench === 'sqlonfhir' ? <SofBench onOpenFakes={() => openFakesFrom('sqlonfhir')} fakesSeed={sofSeed} /> : null}
+        {bench === 'fhirpath' ? <FhirPathBench onOpenFakes={() => openFakesFrom('fhirpath')} fakesSeed={fhirpathSeed} onSeedConsumed={() => setFhirpathSeed(null)} /> : null}
+        {bench === 'fml' ? <FmlBench onOpenFakes={() => openFakesFrom('fml')} fakesSeed={fmlSeed} onSeedConsumed={() => setFmlSeed(null)} /> : null}
+        {bench === 'sqlonfhir' ? <SofBench onOpenFakes={() => openFakesFrom('sqlonfhir')} fakesSeed={sofSeed} onSeedConsumed={() => setSofSeed(null)} /> : null}
         {bench === 'fakes' ? (
           <FakesBench
             returnTo={fakesReturnTo}

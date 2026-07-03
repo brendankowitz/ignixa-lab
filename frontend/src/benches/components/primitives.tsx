@@ -11,6 +11,53 @@ export function ErrorBanner({ message }: { message: string }) {
   return <div style={errorBannerStyle}>{message}</div>;
 }
 
+/** A small on/off switch. The caller renders any adjacent label; this is just the track + knob. */
+export function Toggle({
+  checked,
+  onChange,
+  ariaLabel,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  ariaLabel?: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={ariaLabel}
+      onClick={() => onChange(!checked)}
+      style={{
+        width: 40,
+        height: 22,
+        borderRadius: 99,
+        border: 'none',
+        padding: 0,
+        position: 'relative',
+        cursor: 'pointer',
+        flex: 'none',
+        background: checked ? 'var(--accent)' : 'var(--border2)',
+        transition: 'background .15s',
+      }}
+    >
+      <span
+        style={{
+          position: 'absolute',
+          top: 2,
+          left: checked ? 20 : 2,
+          width: 18,
+          height: 18,
+          borderRadius: '50%',
+          background: '#fff',
+          transition: 'left .15s',
+          boxShadow: '0 1px 2px rgba(0,0,0,.2)',
+        }}
+      />
+    </button>
+  );
+}
+
 export interface PillItem<T extends string = string> {
   id: T;
   label: string;

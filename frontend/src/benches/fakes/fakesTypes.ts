@@ -26,6 +26,8 @@ export interface FakesMetadata {
   resourceTypes: string[];
   observationStates: string[];
   edgeCaseFamilies: EdgeCaseFamilyMetadata[];
+  /** City names the backend can sample realistic demographics (including gender) from for a generated Patient. */
+  patientCities: string[];
 }
 
 export interface PopulationSummary {

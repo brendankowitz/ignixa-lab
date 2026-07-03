@@ -79,9 +79,10 @@ function AstRows({ node, depth }: { node: FpAstNode; depth: number }) {
 export interface FhirPathBenchProps {
   onOpenFakes?: () => void;
   fakesSeed?: { text: string } | null;
+  onSeedConsumed?: () => void;
 }
 
-export function FhirPathBench({ onOpenFakes, fakesSeed }: FhirPathBenchProps) {
+export function FhirPathBench({ onOpenFakes, fakesSeed, onSeedConsumed }: FhirPathBenchProps) {
   const stacked = useIsNarrowViewport(720);
   const twoColumnStyle: CSSProperties = {
     display: 'grid',
@@ -102,6 +103,7 @@ export function FhirPathBench({ onOpenFakes, fakesSeed }: FhirPathBenchProps) {
     if (fakesSeed) {
       setSampleId('custom');
       setResourceText(fakesSeed.text);
+      onSeedConsumed?.();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fakesSeed]);

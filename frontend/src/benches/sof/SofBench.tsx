@@ -8,9 +8,10 @@ import { DEFAULT_RESOURCES_TEXT, DEFAULT_VIEW_DEFINITION_TEXT } from './sofFixtu
 export interface SofBenchProps {
   onOpenFakes?: () => void;
   fakesSeed?: { text: string } | null;
+  onSeedConsumed?: () => void;
 }
 
-export function SofBench({ onOpenFakes, fakesSeed }: SofBenchProps) {
+export function SofBench({ onOpenFakes, fakesSeed, onSeedConsumed }: SofBenchProps) {
   const stacked = useIsNarrowViewport(720);
   const twoColumnStyle: CSSProperties = {
     display: 'grid',
@@ -26,6 +27,7 @@ export function SofBench({ onOpenFakes, fakesSeed }: SofBenchProps) {
   useEffect(() => {
     if (fakesSeed) {
       setResourcesText(fakesSeed.text);
+      onSeedConsumed?.();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fakesSeed]);
