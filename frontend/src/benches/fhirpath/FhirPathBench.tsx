@@ -2,6 +2,7 @@ import { useMemo, useState, type CSSProperties } from 'react';
 import { Card, ErrorBanner, Pills, type PillItem } from '../components/primitives';
 import { HighlightedTextarea } from '../components/HighlightedTextarea';
 import { engineBadgeStyle, monoInputStyle, monoFont, sectionLabelStyle, chipStyle } from '../components/styles';
+import { useIsNarrowViewport } from '../../hooks/useIsNarrowViewport';
 import { highlightFhirPathExpression } from './fhirPathHighlight';
 import { highlightJson } from './jsonHighlight';
 import { DEFAULT_EXPRESSION, EXAMPLE_EXPRESSIONS, SAMPLE_RESOURCES, type SampleId } from './sampleResources';
@@ -75,14 +76,15 @@ function AstRows({ node, depth }: { node: FpAstNode; depth: number }) {
   );
 }
 
-const twoColumnStyle: CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'minmax(340px,42%) 1fr',
-  gap: 14,
-  alignItems: 'start',
-};
-
 export function FhirPathBench() {
+  const stacked = useIsNarrowViewport(720);
+  const twoColumnStyle: CSSProperties = {
+    display: 'grid',
+    gridTemplateColumns: stacked ? '1fr' : 'minmax(340px,42%) 1fr',
+    gap: 14,
+    alignItems: 'start',
+  };
+
   const [version, setVersion] = useState<FhirVersion>('r4');
   const [expression, setExpression] = useState(DEFAULT_EXPRESSION);
   const [context, setContext] = useState('');
@@ -229,7 +231,7 @@ export function FhirPathBench() {
       </Card>
 
       <div style={twoColumnStyle}>
-        <Card>
+        <Card style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ ...sectionLabelStyle, flex: 1 }}>Test resource</span>
             {SAMPLE_RESOURCES.map((sample) => (
@@ -264,7 +266,7 @@ export function FhirPathBench() {
           />
         </Card>
 
-        <Card style={{ minHeight: 400 }}>
+        <Card style={{ minHeight: 400, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Pills items={RESULT_TAB_ITEMS} activeId={resultTab} onChange={setResultTab} />
             <div style={{ flex: 1 }} />

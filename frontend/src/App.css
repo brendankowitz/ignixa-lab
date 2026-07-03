@@ -24,6 +24,7 @@
 
 .top-bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 14px;
   padding: 12px 20px;
@@ -517,6 +518,11 @@
   display: grid;
   grid-template-columns: 250px 1fr;
   flex: 1;
+  min-width: 0;
+}
+
+.runner-screen__body > * {
+  min-width: 0;
 }
 
 .runner-status {
@@ -1518,4 +1524,66 @@
   background: var(--inset);
   border: 1px dashed var(--border2);
   box-sizing: border-box;
+}
+
+/*
+ * Mobile overrides, kept in one block at the end of the file so every
+ * declaration here wins the cascade regardless of where the base rule it
+ * targets is defined above (a media query earlier in the file loses to a
+ * later unconditional rule of equal specificity, even when the query
+ * matches).
+ */
+@media (max-width: 640px) {
+  .top-bar {
+    padding: 10px 14px;
+    gap: 10px;
+  }
+
+  .top-bar__nav {
+    margin-left: 0;
+  }
+
+  .top-bar__nav-item {
+    padding: 6px 10px;
+  }
+
+  .top-bar__readout {
+    display: none;
+  }
+
+  .runner-screen__body {
+    grid-template-columns: 1fr;
+  }
+
+  .suite-tree {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .test-list {
+    padding: 12px 14px 32px;
+  }
+
+  .test-list__toolbar {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  .assertion__header {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  .assertion__meta {
+    flex-basis: 100%;
+  }
+
+  .assertion__diff-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .coverage-map {
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
 }

@@ -23,6 +23,7 @@ const shellStyle: CSSProperties = {
 
 const topBarStyle: CSSProperties = {
   display: 'flex',
+  flexWrap: 'wrap',
   alignItems: 'center',
   gap: 14,
   padding: '12px 20px',

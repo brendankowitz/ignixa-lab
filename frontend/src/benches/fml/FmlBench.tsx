@@ -2,6 +2,7 @@ import { useMemo, useState, type CSSProperties } from 'react';
 import { HighlightedTextarea } from '../components/HighlightedTextarea';
 import { Card, ErrorBanner, Pills, type PillItem } from '../components/primitives';
 import { engineBadgeStyle, monoFont, monoTextareaStyle, primaryButtonStyle, sectionLabelStyle } from '../components/styles';
+import { useIsNarrowViewport } from '../../hooks/useIsNarrowViewport';
 import { diffLines } from './diffLines';
 import { runFml } from './fmlEngine';
 import { DEFAULT_EXPECTED_TEXT, DEFAULT_MAP_TEXT, DEFAULT_SOURCE_TEXT } from './fmlFixtures';
@@ -15,14 +16,15 @@ const TAB_ITEMS: PillItem<FmlTab>[] = [
   { id: 'log', label: 'Execution log' },
 ];
 
-const twoColumnStyle: CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'minmax(420px,52%) 1fr',
-  gap: 14,
-  alignItems: 'start',
-};
-
 export function FmlBench() {
+  const stacked = useIsNarrowViewport(720);
+  const twoColumnStyle: CSSProperties = {
+    display: 'grid',
+    gridTemplateColumns: stacked ? '1fr' : 'minmax(420px,52%) 1fr',
+    gap: 14,
+    alignItems: 'start',
+  };
+
   const [mapText, setMapText] = useState(DEFAULT_MAP_TEXT);
   const [sourceText, setSourceText] = useState(DEFAULT_SOURCE_TEXT);
   const [expectedText, setExpectedText] = useState(DEFAULT_EXPECTED_TEXT);
@@ -48,7 +50,7 @@ export function FmlBench() {
       </div>
 
       <div style={twoColumnStyle}>
-        <Card>
+        <Card style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ ...sectionLabelStyle, flex: 1 }}>Map source · .fml</span>
             <span style={{ fontFamily: monoFont, fontSize: 10.5, color: 'var(--text3)' }}>{result.mapName}</span>
@@ -56,7 +58,7 @@ export function FmlBench() {
           <HighlightedTextarea value={mapText} onChange={setMapText} lines={highlightedLines} style={{ height: 300 }} />
         </Card>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
           <Card>
             <span style={sectionLabelStyle}>Source resource</span>
             <textarea
@@ -139,10 +141,10 @@ export function FmlBench() {
 
             {tab === 'log'
               ? result.log.map((row, index) => (
-                  <div key={index} style={{ display: 'flex', gap: 12, alignItems: 'baseline', padding: '8px 10px', borderBottom: '1px solid var(--border)' }}>
+                  <div key={index} style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'baseline', padding: '8px 10px', borderBottom: '1px solid var(--border)' }}>
                     <span style={{ fontFamily: monoFont, fontSize: 10, color: 'var(--text4)', width: 18, textAlign: 'right', flex: 'none' }}>{index + 1}</span>
                     <span style={{ fontFamily: monoFont, fontSize: 11.5, fontWeight: 600, color: 'var(--accent)', flex: 'none', minWidth: 110 }}>{row.rule}</span>
-                    <span style={{ fontFamily: monoFont, fontSize: 11, color: 'var(--text2)', flex: 'none' }}>
+                    <span style={{ fontFamily: monoFont, fontSize: 11, color: 'var(--text2)', flex: '1 1 auto', minWidth: 0, wordBreak: 'break-word' }}>
                       {row.src} → {row.tgt}
                     </span>
                     <span style={{ fontFamily: monoFont, fontSize: 10.5, color: 'var(--text3)', flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
