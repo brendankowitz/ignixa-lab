@@ -1,5 +1,5 @@
 import { tokenizeJson, type JsonTokenClass } from '../../lib/httpFormat';
-import type { HighlightLine } from '../components/HighlightedTextarea';
+import type { HighlightLine } from './HighlightedTextarea';
 
 function tokenColor(cls: JsonTokenClass): string {
   switch (cls) {

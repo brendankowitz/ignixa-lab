@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { Card, ErrorBanner, Pills, Toggle, type PillItem } from '../components/primitives';
+import { HighlightedJsonBlock } from '../components/HighlightedJsonBlock';
 import {
   chipStyle,
   engineBadgeStyle,
@@ -101,10 +102,33 @@ export interface FakesBenchProps {
 
 export function FakesBench({ returnTo, onDismissReturn, onSend }: FakesBenchProps) {
   const stacked = useIsNarrowViewport(720);
-  const [mode, setMode] = useState<FakesMode>('scenario');
+  const [mode, setMode] = useState<FakesMode>('resource');
   const [metadata, setMetadata] = useState<FakesMetadata | null>(null);
   const [metadataError, setMetadataError] = useState<string | null>(null);
   const [fhirVersion, setFhirVersion] = useState('r4');
+
+  // FHIRPath evaluates a single resource against an expression — Population/Scenario
+  // produce a cohort or bundle, neither of which fits what "⚡ Fakes ↗" from that
+  // bench is asking for, so restrict to Resource mode rather than let the user
+  // generate something that can't actually be sent back.
+  const resourceOnly = returnTo === 'fhirpath';
+
+  useEffect(() => {
+    if (resourceOnly) {
+      setMode('resource');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resourceOnly]);
+
+  const modeItems = useMemo(
+    () =>
+      resourceOnly
+        ? MODE_ITEMS.map((item) =>
+            item.id === 'resource' ? item : { ...item, disabled: true, title: 'FHIRPath needs a single resource' },
+          )
+        : MODE_ITEMS,
+    [resourceOnly],
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -137,13 +161,13 @@ export function FakesBench({ returnTo, onDismissReturn, onSend }: FakesBenchProp
           Generate realistic synthetic FHIR data — populations, clinical scenarios, and edge-case fuzzing.
         </span>
         <div style={{ flex: 1 }} />
-        <span style={engineBadgeStyle}>ignixa-fakes 0.5</span>
+        <span style={engineBadgeStyle}>{metadata ? `ignixa-fakes ${metadata.libraryVersion}` : 'ignixa-fakes'}</span>
       </div>
 
       {metadataError ? <ErrorBanner message={`Failed to load Fakes metadata: ${metadataError}`} /> : null}
 
       <div style={deliveryBarStyle}>
-        <Pills items={MODE_ITEMS} activeId={mode} onChange={setMode} />
+        <Pills items={modeItems} activeId={mode} onChange={setMode} />
         {fhirVersionItems.length > 0 ? (
           <>
             <div style={barDividerStyle} />
@@ -346,7 +370,9 @@ const POPULATION_FORMATS: { id: PopulationFormat; label: string; sub: string }[]
 ];
 
 function PopulationPanel({ metadata, fhirVersion, stacked }: { metadata: FakesMetadata; fhirVersion: string; stacked: boolean }) {
-  const [source, setSource] = useState(metadata.populationStates[0] ?? 'Massachusetts');
+  const [source, setSource] = useState(
+    metadata.populationStates.find((state) => state === 'Washington') ?? metadata.populationStates[0] ?? 'Massachusetts',
+  );
   const [count, setCount] = useState(10);
   const [format, setFormat] = useState<PopulationFormat>('transaction');
   const [result, setResult] = useState<PopulationResult | null>(null);
@@ -472,7 +498,7 @@ function PopulationPanel({ metadata, fhirVersion, stacked }: { metadata: FakesMe
             {result.patients[0] ? (
               <>
                 <span style={sectionLabelStyle}>Sample patient · first in cohort</span>
-                <pre style={{ ...resultPreStyle, maxHeight: 240 }}>{JSON.stringify(result.patients[0], null, 2)}</pre>
+                <HighlightedJsonBlock text={JSON.stringify(result.patients[0], null, 2)} style={{ ...resultPreStyle, maxHeight: 240 }} />
               </>
             ) : null}
 
@@ -730,7 +756,7 @@ function ScenarioPanel({
               {view === 'tree' ? (
                 <ScenarioTree resources={result.resources} />
               ) : (
-                <pre style={{ ...resultPreStyle, maxHeight: 460 }}>{JSON.stringify(result.bundle, null, 2)}</pre>
+                <HighlightedJsonBlock text={JSON.stringify(result.bundle, null, 2)} style={{ ...resultPreStyle, maxHeight: 460 }} />
               )}
 
               <ResultActions
@@ -979,14 +1005,29 @@ function ScenarioParameterControl({
   }
 
   if (param.name === 'gender') {
-    const genderItems: PillItem<string>[] = [
-      { id: 'male', label: 'Male' },
-      { id: 'female', label: 'Female' },
-    ];
+    // Several scenarios reflect a `gender = null` default, meaning the underlying
+    // library picks randomly unless overridden — defaulting the pill display to
+    // "Male" in that case would show a selection that isn't actually being sent,
+    // so a genuinely-random default gets its own pill rather than a fake pick.
+    const isRandom = value == null;
+    const genderItems: PillItem<string>[] = isRandom
+      ? [
+          { id: 'random', label: 'Random' },
+          { id: 'male', label: 'Male' },
+          { id: 'female', label: 'Female' },
+        ]
+      : [
+          { id: 'male', label: 'Male' },
+          { id: 'female', label: 'Female' },
+        ];
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         <span style={sectionLabelStyle}>Gender</span>
-        <Pills items={genderItems} activeId={String(value ?? 'male')} onChange={onChange} />
+        <Pills
+          items={genderItems}
+          activeId={isRandom ? 'random' : String(value)}
+          onChange={(id) => onChange(id === 'random' ? null : id)}
+        />
       </div>
     );
   }
@@ -1062,7 +1103,9 @@ function ResourcePanel({
   const [observationState, setObservationState] = useState(metadata.observationStates[0] ?? '');
   const [firstName, setFirstName] = useState('');
   const [familyName, setFamilyName] = useState('');
-  const [city, setCity] = useState(metadata.patientCities[0] ?? '');
+  const [city, setCity] = useState(
+    metadata.patientCities.find((cityName) => cityName === 'Seattle') ?? metadata.patientCities[0] ?? '',
+  );
   const [edgeCaseOn, setEdgeCaseOn] = useState(false);
   const [includeInvalid, setIncludeInvalid] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<Record<string, boolean>>(() => initialCategorySelection(metadata.edgeCaseFamilies));
@@ -1071,15 +1114,20 @@ function ResourcePanel({
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const resourceTypes = useMemo(
+    () => metadata.resourceTypesByVersion[fhirVersion.toLowerCase()] ?? [],
+    [metadata.resourceTypesByVersion, fhirVersion],
+  );
+
   const pillTypes = useMemo(() => {
-    const common = COMMON_RESOURCE_TYPES.filter((type) => metadata.resourceTypes.includes(type));
-    return common.length > 0 ? common : metadata.resourceTypes.slice(0, 6);
-  }, [metadata.resourceTypes]);
+    const common = COMMON_RESOURCE_TYPES.filter((type) => resourceTypes.includes(type));
+    return common.length > 0 ? common : resourceTypes.slice(0, 6);
+  }, [resourceTypes]);
   const isCustomType = !pillTypes.includes(resourceType);
 
   const filteredTypes = useMemo(
-    () => metadata.resourceTypes.filter((type) => type.toLowerCase().includes(typeFilter.trim().toLowerCase())),
-    [metadata.resourceTypes, typeFilter],
+    () => resourceTypes.filter((type) => type.toLowerCase().includes(typeFilter.trim().toLowerCase())),
+    [resourceTypes, typeFilter],
   );
 
   const activeSelectors = useMemo(() => {
@@ -1233,10 +1281,10 @@ function ResourcePanel({
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ ...sectionLabelStyle, flex: 1 }}>Seed</span>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text3)', cursor: 'pointer' }}>
-              <input type="checkbox" checked={randomizeSeed} onChange={(event) => setRandomizeSeed(event.target.checked)} />
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text3)' }}>
               Randomize
-            </label>
+              <Toggle checked={randomizeSeed} onChange={setRandomizeSeed} ariaLabel="Randomize seed on every generate" />
+            </span>
             <input
               value={String(seed)}
               onChange={(event) => setSeed(Number(event.target.value) || 0)}
@@ -1299,7 +1347,7 @@ function ResourcePanel({
                   ))}
                 </div>
               ) : (
-                <pre style={{ ...resultPreStyle, maxHeight: 460 }}>{JSON.stringify(result.resource, null, 2)}</pre>
+                <HighlightedJsonBlock text={JSON.stringify(result.resource, null, 2)} style={{ ...resultPreStyle, maxHeight: 460 }} />
               )}
 
               <ResultActions

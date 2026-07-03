@@ -20,10 +20,13 @@ export interface EdgeCaseFamilyMetadata {
 }
 
 export interface FakesMetadata {
+  /** The referenced Ignixa.FhirFakes package version (e.g. "0.5.13"), reflected server-side from the assembly. */
+  libraryVersion: string;
   fhirVersions: string[];
   populationStates: string[];
   scenarios: ScenarioMetadata[];
-  resourceTypes: string[];
+  /** Valid FHIR resource type names, keyed by lowercase FHIR version — differs between versions (e.g. R6 added/dropped types vs R4). */
+  resourceTypesByVersion: Record<string, string[]>;
   observationStates: string[];
   edgeCaseFamilies: EdgeCaseFamilyMetadata[];
   /** City names the backend can sample realistic demographics (including gender) from for a generated Patient. */

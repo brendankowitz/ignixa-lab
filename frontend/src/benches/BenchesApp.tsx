@@ -11,8 +11,8 @@ type BenchId = 'fhirpath' | 'fml' | 'sqlonfhir' | 'fakes';
 
 const BENCH_TABS: PillItem<BenchId>[] = [
   { id: 'fhirpath', label: 'FHIRPath' },
-  { id: 'fml', label: 'FML' },
-  { id: 'sqlonfhir', label: 'SQL on FHIR' },
+  { id: 'fml', label: 'FML', disabled: true, title: 'Not yet implemented' },
+  { id: 'sqlonfhir', label: 'SQL on FHIR', disabled: true, title: 'Not yet implemented' },
   { id: 'fakes', label: 'Fakes' },
 ];
 
