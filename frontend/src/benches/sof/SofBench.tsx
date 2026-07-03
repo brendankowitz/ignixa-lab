@@ -1,8 +1,9 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Card, ErrorBanner } from '../components/primitives';
 import { engineBadgeStyle, monoFont, monoTextareaStyle, primaryButtonStyle, sectionLabelStyle } from '../components/styles';
 import { useIsNarrowViewport } from '../../hooks/useIsNarrowViewport';
-import { runSof } from './sofEngine';
+import { getErrorMessage } from '../shared/errorMessage';
+import { buildSofRequest, parseSofResponse, runSof, type SofEvalResult } from './sofApi';
 import { DEFAULT_RESOURCES_TEXT, DEFAULT_VIEW_DEFINITION_TEXT } from './sofFixtures';
 
 export interface SofBenchProps {
@@ -10,6 +11,8 @@ export interface SofBenchProps {
   fakesSeed?: { text: string } | null;
   onSeedConsumed?: () => void;
 }
+
+const EMPTY_RESULT: SofEvalResult = { error: null, columns: [], rows: [], meta: '' };
 
 export function SofBench({ onOpenFakes, fakesSeed, onSeedConsumed }: SofBenchProps) {
   const stacked = useIsNarrowViewport(720);
@@ -22,7 +25,42 @@ export function SofBench({ onOpenFakes, fakesSeed, onSeedConsumed }: SofBenchPro
 
   const [viewDefinitionText, setViewDefinitionText] = useState(DEFAULT_VIEW_DEFINITION_TEXT);
   const [resourcesText, setResourcesText] = useState(DEFAULT_RESOURCES_TEXT);
-  const [result, setResult] = useState(() => runSof(DEFAULT_VIEW_DEFINITION_TEXT, DEFAULT_RESOURCES_TEXT));
+  const [result, setResult] = useState<SofEvalResult>(EMPTY_RESULT);
+  const [isLoading, setIsLoading] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Abort any in-flight request if the bench unmounts mid-run.
+  useEffect(() => () => abortControllerRef.current?.abort(), []);
+
+  const runView = () => {
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    setIsLoading(true);
+
+    let body;
+    try {
+      body = buildSofRequest({ viewDefinitionText, resourcesText });
+    } catch (error) {
+      setIsLoading(false);
+      setResult({ ...EMPTY_RESULT, error: getErrorMessage(error) });
+      return;
+    }
+
+    runSof(body, controller.signal)
+      .then((rows) => setResult(parseSofResponse(rows)))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          return;
+        }
+        setResult({ ...EMPTY_RESULT, error: getErrorMessage(error) });
+      })
+      .finally(() => {
+        if (abortControllerRef.current === controller) {
+          setIsLoading(false);
+        }
+      });
+  };
 
   useEffect(() => {
     if (fakesSeed) {
@@ -32,7 +70,6 @@ export function SofBench({ onOpenFakes, fakesSeed, onSeedConsumed }: SofBenchPro
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fakesSeed]);
 
-  const runView = () => setResult(runSof(viewDefinitionText, resourcesText));
   const gridColumns = result.columns.length ? `repeat(${result.columns.length}, minmax(110px, 1fr))` : '1fr';
 
   return (
@@ -41,8 +78,8 @@ export function SofBench({ onOpenFakes, fakesSeed, onSeedConsumed }: SofBenchPro
         <h1 style={{ margin: 0, fontSize: 21, fontWeight: 700, letterSpacing: '-.02em' }}>SQL on FHIR</h1>
         <span style={{ fontSize: 12.5, color: 'var(--text3)' }}>Run a ViewDefinition over resources and inspect the flattened table.</span>
         <div style={{ flex: 1 }} />
-        <span style={engineBadgeStyle}>mock engine · ignixa-views 0.1</span>
-        <button type="button" onClick={runView} style={primaryButtonStyle}>
+        <span style={engineBadgeStyle}>{isLoading ? 'running…' : 'ignixa-lab'}</span>
+        <button type="button" onClick={runView} style={primaryButtonStyle} disabled={isLoading}>
           ▶ Run view
         </button>
       </div>
