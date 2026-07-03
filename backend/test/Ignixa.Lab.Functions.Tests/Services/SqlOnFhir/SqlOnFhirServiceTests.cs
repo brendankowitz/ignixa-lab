@@ -95,4 +95,28 @@ public sealed class SqlOnFhirServiceTests
         result.IsSuccess.Should().BeFalse();
         result.Error.Should().Contain("ViewDefinition evaluation error");
     }
+
+    // The underlying SqlOnFhirEvaluator doesn't validate `select`'s structure before
+    // processing it - a non-array `select` is silently treated as "no select items"
+    // (producing an empty row) rather than throwing, so this must be checked explicitly
+    // before evaluation. Found via a live end-to-end smoke test during final verification.
+    [Fact]
+    public void Evaluate_SelectIsNotAnArray_ReturnsStructuredError()
+    {
+        const string badView = """
+            {
+              "resourceType": "ViewDefinition",
+              "status": "active",
+              "resource": "Patient",
+              "select": "not-an-array"
+            }
+            """;
+        var service = new SqlOnFhirService(new SchemaProviderFactory());
+        var request = MakeRequest(badView, """{"resourceType":"Patient","id":"p1"}""");
+
+        var result = service.Evaluate(request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("select").And.Contain("array");
+    }
 }

@@ -2791,6 +2791,14 @@ Expected: all four checks pass with no console errors in the browser dev tools.
 
 If Step 4 uncovered any issues and required fixes, commit them now with a descriptive message and the standard trailer. If no fixes were needed, there is nothing to commit for this task.
 
+**A 5th bug found during Task 13's own manual verification:**
+
+Step 4's invalid-ViewDefinition check (`"select": "not-an-array"`) was expected to produce a validation-error banner. Instead, POSTing this exact payload to the real `ViewDefinition/$viewdefinition-run` endpoint returned **HTTP 200** with a silent `[{}]` (one empty-object row per input resource) — `Ignixa.SqlOnFhir`'s evaluator doesn't check that `select` is an array before processing it, so a malformed `select` was silently treated as "no select items" rather than raising an error. None of the 179 pre-existing backend tests covered this exact scenario (the existing `Evaluate_MalformedColumnPath_ReturnsStructuredError` test covers a malformed column *path*, not a malformed `select` *type*).
+
+Fixed in `SqlOnFhirService.Evaluate()` (`backend/src/Ignixa.Lab.Functions/Services/SqlOnFhir/SqlOnFhirService.cs`): before invoking the evaluator, check `request.ViewResource.MutableNode["select"]` — if present and not a `System.Text.Json.Nodes.JsonArray`, return a structured `SqlOnFhirResult.Error` (mirroring the existing error-reporting pathway used for evaluator exceptions) instead of proceeding. Added a new test, `Evaluate_SelectIsNotAnArray_ReturnsStructuredError`, following the existing `MakeRequest`/test pattern. Re-ran the full suite (180/180 passing) and re-verified live against the real backend: the same payload now returns HTTP 400 with a proper `OperationOutcome` ("ViewDefinition evaluation error: 'select' must be an array."), and the valid-ViewDefinition path was re-checked to confirm no regression.
+
+This is the 5th genuine bug found via live testing this session (following the 4 documented after Task 10) — again, one that no implementer's self-review or reviewer subagent's diff-level analysis could have caught, since it required actually exercising the real evaluator with malformed input rather than just the shapes each task's spec anticipated.
+
 ---
 
 ## Self-Review

@@ -1,6 +1,7 @@
 using Ignixa.Lab.Functions.Models;
 using Ignixa.Lab.Functions.Services.FhirPath;
 using Ignixa.SqlOnFhir.Evaluation;
+using System.Text.Json.Nodes;
 
 namespace Ignixa.Lab.Functions.Services.SqlOnFhir;
 
@@ -27,6 +28,19 @@ public sealed class SqlOnFhirService
 
     public SqlOnFhirResult Evaluate(SqlOnFhirRequest request)
     {
+        // SqlOnFhirEvaluator doesn't validate `select`'s structure before processing it -
+        // a non-array `select` (e.g. a string) is silently treated as "no select items",
+        // producing an empty row rather than an error. Check explicitly so malformed
+        // input surfaces as a validation error instead of a silent, confusing result.
+        if (request.ViewResource.MutableNode["select"] is { } selectNode and not JsonArray)
+        {
+            return new SqlOnFhirResult
+            {
+                Request = request,
+                Error = "ViewDefinition evaluation error: 'select' must be an array."
+            };
+        }
+
         try
         {
             var schema = _schemaFactory.GetSchema("R4");
