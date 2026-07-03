@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Ignixa.Lab.Functions.Models;
 using Ignixa.Lab.Functions.Services.FhirPath;
 using Ignixa.Lab.Functions.Services.SqlOnFhir;
@@ -111,10 +112,16 @@ public sealed class SqlOnFhirFunctions(ILogger<SqlOnFhirFunctions> logger, SqlOn
             {
                 return (null, $"Invalid resource: {ex.Message}");
             }
-            if (resource != null)
+            if (resource == null)
             {
-                resources.Add(resource);
+                // Previously this silently skipped the malformed entry (e.g. a
+                // 'resource' parameter sent as valueString instead of an embedded
+                // resource), so the ViewDefinition would run against fewer
+                // resources than the caller sent with no indication anything
+                // was dropped. Fail loudly instead, matching 'viewResource'.
+                return (null, "Each 'resource' parameter must be an embedded resource.");
             }
+            resources.Add(resource);
         }
 
         if (resources.Count == 0)
@@ -126,7 +133,17 @@ public sealed class SqlOnFhirFunctions(ILogger<SqlOnFhirFunctions> logger, SqlOn
         var limitParam = operationParameters.FindParameter("_limit");
         if (limitParam != null)
         {
-            limit = limitParam.GetValueAs<int>();
+            // GetValueAs<int>() swallows conversion failures and returns 0 for
+            // any non-integer value (a numeric string, a decimal, a boolean,
+            // or a mistyped value key), which SqlOnFhirService then silently
+            // interprets as "truncate to zero rows" - a wrong-but-plausible
+            // 200 response instead of a 400 validation error. Validate the
+            // underlying JSON value directly instead.
+            if (limitParam.GetValue() is not JsonValue limitValue || !limitValue.TryGetValue<int>(out var limitInt))
+            {
+                return (null, "The '_limit' parameter must be an integer.");
+            }
+            limit = limitInt;
         }
 
         return (new SqlOnFhirRequest { ViewResource = viewResource, Resources = resources, Limit = limit }, null);

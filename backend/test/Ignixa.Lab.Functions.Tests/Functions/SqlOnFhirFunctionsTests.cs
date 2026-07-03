@@ -136,6 +136,53 @@ public sealed class SqlOnFhirFunctionsTests
         json["resourceType"]!.GetValue<string>().Should().Be("OperationOutcome");
     }
 
+    // GetValueAs<int>() (the naive approach) silently returns 0 for any
+    // non-integer _limit value, which the service then interprets as
+    // "truncate to zero rows" - a wrong-but-plausible 200 response instead of
+    // a validation error. Found via final-review live/decompiled verification.
+    [Theory]
+    [InlineData(@"{""name"":""_limit"",""valueString"":""5""}")]
+    [InlineData(@"{""name"":""_limit"",""valueDecimal"":2.5}")]
+    [InlineData(@"{""name"":""_limit"",""valueBoolean"":true}")]
+    public async Task RunViewDefinition_LimitNotAnInteger_ReturnsBadRequestOperationOutcome(string malformedLimitParam)
+    {
+        var function = CreateFunction();
+        var body = @"{""resourceType"":""Parameters"",""parameter"":[
+                {""name"":""viewResource"",""resource"":" + ValidViewDefinitionJson + @"},
+                {""name"":""resource"",""resource"":{""resourceType"":""Patient"",""id"":""p1""}},
+                " + malformedLimitParam + @"
+            ]}";
+
+        var result = await function.RunViewDefinition(BuildPostRequest(body), CancellationToken.None);
+
+        var content = result.Should().BeOfType<ContentResult>().Subject;
+        content.StatusCode.Should().Be(400);
+        var json = JsonNode.Parse(content.Content!)!;
+        json["resourceType"]!.GetValue<string>().Should().Be("OperationOutcome");
+    }
+
+    // Previously a 'resource' parameter with no embedded resource (e.g. sent as
+    // valueString) was silently dropped from evaluation rather than rejected,
+    // so the ViewDefinition ran against fewer resources than the caller sent
+    // with a 200 response and no indication anything was wrong.
+    [Fact]
+    public async Task RunViewDefinition_ResourceParameterNotEmbedded_ReturnsBadRequestOperationOutcome()
+    {
+        var function = CreateFunction();
+        var body = @"{""resourceType"":""Parameters"",""parameter"":[
+                {""name"":""viewResource"",""resource"":" + ValidViewDefinitionJson + @"},
+                {""name"":""resource"",""resource"":{""resourceType"":""Patient"",""id"":""p1""}},
+                {""name"":""resource"",""valueString"":""not-a-resource""}
+            ]}";
+
+        var result = await function.RunViewDefinition(BuildPostRequest(body), CancellationToken.None);
+
+        var content = result.Should().BeOfType<ContentResult>().Subject;
+        content.StatusCode.Should().Be(400);
+        var json = JsonNode.Parse(content.Content!)!;
+        json["resourceType"]!.GetValue<string>().Should().Be("OperationOutcome");
+    }
+
     private static SqlOnFhirFunctions CreateFunction()
     {
         var schemaFactory = new SchemaProviderFactory();

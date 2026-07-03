@@ -11,14 +11,6 @@ namespace Ignixa.Lab.Functions.Services.SqlOnFhir;
 /// </summary>
 public sealed class SqlOnFhirService
 {
-    // SqlOnFhirEvaluator exposes a parameterless ctor and a ClearCache()
-    // method, implying it internally parses/caches the ViewDefinition rather
-    // than holding per-execution mutable state (the same shape as
-    // MappingParser/FhirPathParser, which are safely used as static fields
-    // elsewhere in this codebase) - so a shared static instance is used here
-    // rather than constructing one per request.
-    private static readonly SqlOnFhirEvaluator Evaluator = new();
-
     private readonly SchemaProviderFactory _schemaFactory;
 
     public SqlOnFhirService(SchemaProviderFactory schemaFactory)
@@ -47,7 +39,18 @@ public sealed class SqlOnFhirService
             var navigator = request.ViewResource.ToSourceNavigator();
             var elements = request.Resources.Select(r => r.ToElement(schema));
 
-            var rows = Evaluator.EvaluateBatch(navigator, elements).ToList();
+            // SqlOnFhirEvaluator is NOT stateless: it caches compiled
+            // ViewDefinitionExpressions in a plain, unsynchronized Dictionary
+            // keyed by the navigator's default (identity-based) hash code.
+            // A shared/static instance would (a) never actually hit its own
+            // cache, since every request builds a fresh navigator with a
+            // fresh identity hash, leaking one never-evicted entry per
+            // request forever, and (b) be unsafe under Azure Functions'
+            // concurrent request dispatch, since the dictionary is mutated
+            // via unsynchronized TryGetValue+indexer-set. Constructing one
+            // per call avoids both problems at a negligible per-request cost.
+            var evaluator = new SqlOnFhirEvaluator();
+            var rows = evaluator.EvaluateBatch(navigator, elements).ToList();
 
             if (request.Limit is { } limit && limit >= 0 && limit < rows.Count)
             {

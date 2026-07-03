@@ -119,4 +119,26 @@ public sealed class SqlOnFhirServiceTests
         result.IsSuccess.Should().BeFalse();
         result.Error.Should().Contain("select").And.Contain("array");
     }
+
+    // Regression test for a shared/static SqlOnFhirEvaluator field this service
+    // used to hold: SqlOnFhirEvaluator caches compiled ViewDefinitions in a plain,
+    // unsynchronized Dictionary, which is unsafe to mutate concurrently (as Azure
+    // Functions HTTP triggers can dispatch requests in parallel). Evaluate() now
+    // constructs a fresh evaluator per call, so this just confirms many concurrent
+    // evaluations complete without throwing.
+    [Fact]
+    public async Task Evaluate_CalledConcurrently_DoesNotThrow()
+    {
+        var service = new SqlOnFhirService(new SchemaProviderFactory());
+
+        var tasks = Enumerable.Range(0, 50).Select(i => Task.Run(() =>
+        {
+            var request = MakeRequest(ValidViewDefinition, $$"""{"resourceType":"Patient","id":"p{{i}}","gender":"male"}""");
+            return service.Evaluate(request);
+        }));
+
+        var results = await Task.WhenAll(tasks);
+
+        results.Should().OnlyContain(r => r.IsSuccess);
+    }
 }
