@@ -239,15 +239,18 @@ namespace Ignixa.Lab.Functions.Tests.Services.Fml;
 
 public sealed class FmlServiceTests
 {
+    // Note: FML string literals must use single quotes ('...') - the tokenizer
+    // treats double-quoted text as a DelimitedIdentifier, not a StringLiteral,
+    // so double-quoted map URLs/names/rule names fail to parse.
     private const string ValidMap = """
-        map "http://ignixa.dev/StructureMap/PatientToPerson" = "PatientToPerson"
+        map 'http://ignixa.dev/StructureMap/PatientToPerson' = 'PatientToPerson'
 
-        uses "http://hl7.org/fhir/StructureDefinition/Patient" alias Patient as source
-        uses "http://hl7.org/fhir/StructureDefinition/Person" alias Person as target
+        uses 'http://hl7.org/fhir/StructureDefinition/Patient' alias Patient as source
+        uses 'http://hl7.org/fhir/StructureDefinition/Person' alias Person as target
 
         group PatientToPerson(source src : Patient, target tgt : Person) {
-          src.gender as vG -> tgt.gender = vG "copy_gender";
-          src.birthDate as vB -> tgt.birthDate = vB "copy_birthDate";
+          src.gender as vG -> tgt.gender = vG 'copy_gender';
+          src.birthDate as vB -> tgt.birthDate = vB 'copy_birthDate';
         }
         """;
 
@@ -294,12 +297,12 @@ public sealed class FmlServiceTests
     public void Transform_UsesAliasNotDeclared_ReturnsUnsupportedModelReferenceError()
     {
         const string mapWithUndeclaredTargetAlias = """
-            map "http://ignixa.dev/StructureMap/Bad" = "Bad"
+            map 'http://ignixa.dev/StructureMap/Bad' = 'Bad'
 
-            uses "http://hl7.org/fhir/StructureDefinition/Patient" alias Patient as source
+            uses 'http://hl7.org/fhir/StructureDefinition/Patient' alias Patient as source
 
             group Bad(source src : Patient, target tgt : SomeLogicalModel) {
-              src.gender as vG -> tgt.gender = vG "copy_gender";
+              src.gender as vG -> tgt.gender = vG 'copy_gender';
             }
             """;
         var service = new FmlService(new SchemaProviderFactory());
@@ -320,12 +323,12 @@ public sealed class FmlServiceTests
     public void Transform_EntryGroupMissingSourceOrTarget_ReturnsStructuredError()
     {
         const string mapWithNoTarget = """
-            map "http://ignixa.dev/StructureMap/Bad" = "Bad"
+            map 'http://ignixa.dev/StructureMap/Bad' = 'Bad'
 
-            uses "http://hl7.org/fhir/StructureDefinition/Patient" alias Patient as source
+            uses 'http://hl7.org/fhir/StructureDefinition/Patient' alias Patient as source
 
             group Bad(source src : Patient) {
-              src.gender as vG -> src.gender = vG "noop";
+              src.gender as vG -> src.gender = vG 'noop';
             }
             """;
         var service = new FmlService(new SchemaProviderFactory());
@@ -345,15 +348,13 @@ public sealed class FmlServiceTests
     public void Transform_LogClauseInMap_CapturesLogLines()
     {
         const string mapWithLog = """
-            map "http://ignixa.dev/StructureMap/PatientToPerson" = "PatientToPerson"
+            map 'http://ignixa.dev/StructureMap/PatientToPerson' = 'PatientToPerson'
 
-            uses "http://hl7.org/fhir/StructureDefinition/Patient" alias Patient as source
-            uses "http://hl7.org/fhir/StructureDefinition/Person" alias Person as target
+            uses 'http://hl7.org/fhir/StructureDefinition/Patient' alias Patient as source
+            uses 'http://hl7.org/fhir/StructureDefinition/Person' alias Person as target
 
             group PatientToPerson(source src : Patient, target tgt : Person) {
-              src.gender as vG -> tgt.gender = vG "copy_gender" then {
-                log('copied gender');
-              };
+              src.gender as vG log 'copied gender' -> tgt.gender = vG 'copy_gender';
             }
             """;
         var service = new FmlService(new SchemaProviderFactory());
@@ -497,6 +498,7 @@ public sealed class FmlService
         {
             var sourceElement = request.Resource.ToElement(schema);
             var targetResource = new ResourceJsonNode { ResourceType = targetTypeName };
+            var targetElement = targetResource.ToElement(schema);
 
             var logLines = new List<string>();
             var context = new MappingContext
@@ -505,6 +507,11 @@ public sealed class FmlService
                 Logger = line => logLines.Add(line)
             };
             context.SetSource(sourceParam.Name, sourceElement);
+            // MappingEvaluator's required-parameter check reads context.GetTarget
+            // (the IElement dictionary), not GetTargetResource, so both must be set:
+            // SetTarget satisfies that check, SetTargetResource is what the
+            // JsonNodeMutator actually mutates.
+            context.SetTarget(targetParam.Name, targetElement);
             context.SetTargetResource(targetParam.Name, targetResource);
 
             var mutator = new JsonNodeMutator(new FhirPathEvaluator(), new FhirPathParser(), () => schema);
@@ -727,7 +734,11 @@ public sealed class FmlResultFormatter
     {
         if (!result.IsSuccess)
         {
-            return FhirPath.ResultFormatter.CreateOperationOutcomeResult("error", "invalid", result.Error!, result.ErrorDiagnostics);
+            // Per the design spec, the top-level failure diagnostics must be the parser/error
+            // message itself (result.Error), not result.ErrorDiagnostics (which holds the raw
+            // map text) - unlike the FhirPath formatter this reuses, whose ErrorDiagnostics field
+            // holds a distinct diagnostic message.
+            return FhirPath.ResultFormatter.CreateOperationOutcomeResult("error", "invalid", result.Error!, result.Error);
         }
 
         var parameters = new ParametersJsonNode();
@@ -860,14 +871,16 @@ namespace Ignixa.Lab.Functions.Tests.Functions;
 
 public sealed class FmlFunctionsTests
 {
+    // FML string literals must be single-quoted - the tokenizer treats double-quoted
+    // text as a DelimitedIdentifier, not a StringLiteral (see Task 3's notes).
     private const string ValidMap = """
-        map "http://ignixa.dev/StructureMap/PatientToPerson" = "PatientToPerson"
+        map 'http://ignixa.dev/StructureMap/PatientToPerson' = 'PatientToPerson'
 
-        uses "http://hl7.org/fhir/StructureDefinition/Patient" alias Patient as source
-        uses "http://hl7.org/fhir/StructureDefinition/Person" alias Person as target
+        uses 'http://hl7.org/fhir/StructureDefinition/Patient' alias Patient as source
+        uses 'http://hl7.org/fhir/StructureDefinition/Person' alias Person as target
 
         group PatientToPerson(source src : Patient, target tgt : Person) {
-          src.gender as vG -> tgt.gender = vG "copy_gender";
+          src.gender as vG -> tgt.gender = vG 'copy_gender';
         }
         """;
 
@@ -875,12 +888,13 @@ public sealed class FmlFunctionsTests
     public async Task RunTransform_PostWithValidMapAndEmbeddedResource_ReturnsSuccessParameters()
     {
         var function = CreateFunction();
-        var body = $$"""
-            {"resourceType":"Parameters","parameter":[
-                {"name":"map","valueString":{{JsonValue.Create(ValidMap).ToJsonString()}}},
-                {"name":"resource","resource":{"resourceType":"Patient","gender":"male"}}
-            ]}
-            """;
+        // Note: `$$"""..."""` raw-string interpolation can't be used here - the JSON
+        // body's `}}}` sequence (interpolation hole immediately followed by a literal
+        // closing brace) triggers CS9007. Verbatim string concatenation avoids that.
+        var body = @"{""resourceType"":""Parameters"",""parameter"":[
+                {""name"":""map"",""valueString"":" + JsonValue.Create(ValidMap).ToJsonString() + @"},
+                {""name"":""resource"",""resource"":{""resourceType"":""Patient"",""gender"":""male""}}
+            ]}";
 
         var result = await function.RunTransform(BuildPostRequest(body), CancellationToken.None);
 
@@ -927,12 +941,10 @@ public sealed class FmlFunctionsTests
     public async Task RunTransform_RejectsPrivateResourceUrlTarget_WithoutMakingAnHttpCall()
     {
         var function = CreateFunction();
-        var body = $$"""
-            {"resourceType":"Parameters","parameter":[
-                {"name":"map","valueString":{{JsonValue.Create(ValidMap).ToJsonString()}}},
-                {"name":"resource","valueString":"http://127.0.0.1/fhir/Patient/1"}
-            ]}
-            """;
+        var body = @"{""resourceType"":""Parameters"",""parameter"":[
+                {""name"":""map"",""valueString"":" + JsonValue.Create(ValidMap).ToJsonString() + @"},
+                {""name"":""resource"",""valueString"":""http://127.0.0.1/fhir/Patient/1""}
+            ]}";
 
         var result = await function.RunTransform(BuildPostRequest(body), CancellationToken.None);
 
@@ -946,12 +958,10 @@ public sealed class FmlFunctionsTests
     public async Task RunTransform_ResourceAsRawJsonString_IsParsedAndTransformed()
     {
         var function = CreateFunction();
-        var body = $$"""
-            {"resourceType":"Parameters","parameter":[
-                {"name":"map","valueString":{{JsonValue.Create(ValidMap).ToJsonString()}}},
-                {"name":"resource","valueString":"{\"resourceType\":\"Patient\",\"gender\":\"female\"}"}
-            ]}
-            """;
+        var body = @"{""resourceType"":""Parameters"",""parameter"":[
+                {""name"":""map"",""valueString"":" + JsonValue.Create(ValidMap).ToJsonString() + @"},
+                {""name"":""resource"",""valueString"":""{\""resourceType\"":\""Patient\"",\""gender\"":\""female\""}""}
+            ]}";
 
         var result = await function.RunTransform(BuildPostRequest(body), CancellationToken.None);
 
@@ -2379,6 +2389,17 @@ git commit -m "feat: wire FmlBench.tsx to the real StructureMap/\$transform back
 
 Co-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>"
 ```
+
+**Bugs found during a real live smoke test (not caught by any prior review — none of these files were in Task 10's declared list):**
+
+After the implementer's commit passed both reviews, the controller ran `func start` locally and POSTed the actual `DEFAULT_MAP_TEXT`/`PATIENT_EXAMPLE` fixtures to the real `StructureMap/$transform` endpoint (rather than trusting the implementer's "couldn't test against a live backend" report). This surfaced three real bugs, all fixed directly by the controller and committed separately from Task 10's own commit:
+
+1. **`fmlFixtures.ts`'s `DEFAULT_MAP_TEXT` used double-quoted FML string literals** (`map "url" = "Name"`, `"copy_gender"`, etc.) — the same tokenizer bug found 3 times earlier in Tasks 3/5 (`Ignixa.FhirMappingLanguage` treats `"..."` as a `DelimitedIdentifier`, not a string literal), but this was a 4th occurrence in a file no task's file list covered. Fixed by converting to single-quoted literals throughout.
+2. **`fmlFixtures.ts`'s `DEFAULT_EXPECTED_TEXT` didn't match the real engine's output** — it was hand-authored against the old mock engine's naive semantics (accumulating every repeated-source value into an array). The real engine respects actual FHIR `Person` cardinalities: rules that fire once per repeating source item (`name.family`, `name.given`, `telecom.value`) overwrite the single target node each time, so only the *last* value survives as a scalar; `identifier` is the one exception since `Person.identifier` is itself list-typed. Fixed by updating the expected fixture to the real, verified output so the "Diff vs expected" tab shows a clean match on the default example.
+3. **`parseFmlResponse()` (in `fmlApi.ts`) didn't normalize line endings** — the backend pretty-prints JSON with `\r\n`, but `diffLines()` splits strictly on `\n`, so *every* successful transform's output would show every line as changed vs. the LF-only expected text, regardless of whether the content actually matched. This is a generic bug (not specific to the default fixture) that would have affected every use of the Diff tab. Fixed by normalizing `\r\n` → `\n` when extracting `output` from the response.
+4. **`FmlBench.tsx`'s `extractMapName` regex only matched double-quoted map declarations** (`map\s+"[^"]*"\s*=\s*"([^"]+)"`, copied from this plan's own now-corrected example syntax above). Once the map text fixture was corrected to valid single-quoted FML, this regex stopped matching, so the map-name label next to the editor went silently blank for any map the real backend can actually parse. Fixed by rewriting the regex to match single quotes.
+
+This is why running a real live smoke test against the actual backend (not just "build succeeds, dev server starts with no console errors") mattered here: none of these four bugs live in a file Task 10's spec or either reviewer's diff covered, so a per-task review — however thorough — could not have caught them.
 
 ### Task 11: `sofApi.ts` — SQL-on-FHIR backend client
 
