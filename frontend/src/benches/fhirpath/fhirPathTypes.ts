@@ -25,6 +25,12 @@ export interface FpAstNode {
   name: string;
   returnType: string | null;
   arguments: FpAstNode[];
+  /** Character offset of this node's source span in the expression text, when the backend's parser recorded a location for it (synthetic nodes like the implicit expression scope have none). */
+  position?: number;
+  /** Length in characters of this node's source span. */
+  length?: number;
+  line?: number;
+  column?: number;
 }
 
 export interface FpEvalResult {
