@@ -14,4 +14,5 @@ public sealed record ConformanceReport(
     [property: JsonPropertyName("fhirVersion")] string FhirVersion,
     [property: JsonPropertyName("startedAt")] DateTimeOffset StartedAt,
     [property: JsonPropertyName("duration_ms")] long DurationMs,
-    [property: JsonPropertyName("results")] IReadOnlyList<ConformanceResult> Results);
+    [property: JsonPropertyName("results")] IReadOnlyList<ConformanceResult> Results,
+    [property: JsonPropertyName("capabilityWarning")] string? CapabilityWarning = null);

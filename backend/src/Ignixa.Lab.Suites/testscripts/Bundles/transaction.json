@@ -3,6 +3,12 @@
   "name": "Bundles/transaction",
   "description": "Bundle transaction conformance tests. POSTs a type=transaction Bundle to the FHIR base URL. The engine has no dedicated transaction operation code — type.code='transaction' is unrecognised by DeriveMethod and falls through to POST, and with no url/resource/params the request URL resolves to the empty relative path (the server base), which is exactly the transaction endpoint. The Bundle bodies are static fixtures (server-assigned IDs) so no client IDs are needed. Idempotency is exercised via request.ifNoneExist (conditional create).",
   "status": "active",
+  "extension": [
+    {
+      "url": "http://ignixa.io/testscript/requiresCapability",
+      "valueString": "rest.interaction.where(code='transaction').exists()"
+    }
+  ],
   "fixture": [
     {
       "id": "tx-bundle",

@@ -31,6 +31,7 @@ builder.Services.AddHttpClient(FhirPathService.HttpClientName)
 
 builder.Services.AddSingleton<ISuiteCatalog, SuiteCatalog>();
 builder.Services.AddSingleton<IEvaluatorFactory, HttpEvaluatorFactory>();
+builder.Services.AddSingleton<CapabilityStatementFetcher>();
 builder.Services.AddScoped<TestScriptRunner>();
 
 builder.Services.AddSingleton<SchemaProviderFactory>();

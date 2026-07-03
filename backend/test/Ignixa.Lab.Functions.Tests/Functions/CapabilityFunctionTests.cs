@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Ignixa.Lab.Functions.Configuration;
+using Ignixa.Lab.Functions.Execution;
 using Ignixa.Lab.Functions.Functions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -17,7 +18,7 @@ public sealed class CapabilityFunctionTests
     public async Task Run_RejectsPrivateTarget_WithoutMakingAnHttpCall(string target)
     {
         var function = new CapabilityFunction(
-            new ThrowingHttpClientFactory(),
+            CreateFetcher(),
             Options.Create(new IgnixaLabOptions()),
             NullLogger<CapabilityFunction>.Instance);
 
@@ -31,7 +32,7 @@ public sealed class CapabilityFunctionTests
     public async Task Run_RejectsMissingTarget_WithoutMakingAnHttpCall()
     {
         var function = new CapabilityFunction(
-            new ThrowingHttpClientFactory(),
+            CreateFetcher(),
             Options.Create(new IgnixaLabOptions()),
             NullLogger<CapabilityFunction>.Instance);
 
@@ -39,6 +40,9 @@ public sealed class CapabilityFunctionTests
 
         result.Should().BeOfType<BadRequestObjectResult>();
     }
+
+    private static CapabilityStatementFetcher CreateFetcher() =>
+        new(new ThrowingHttpClientFactory(), Options.Create(new IgnixaLabOptions()));
 
     private static HttpRequest BuildRequest(string? targetUrl)
     {

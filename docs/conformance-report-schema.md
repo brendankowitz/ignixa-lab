@@ -57,6 +57,7 @@ The C# records live in
 | `startedAt` | string (date-time) | When the run started (UTC, ISO 8601). |
 | `duration_ms` | number | Total wall-clock duration in milliseconds. |
 | `results` | `ConformanceResult[]` | One entry per executed test case. |
+| `capabilityWarning` | string \| null | Present when the target's CapabilityStatement could not be fetched/parsed, meaning any `requiresCapability`-gated tests ran ungated (fail-open) rather than being skipped as intended. |
 
 ## `ConformanceResult`
 
