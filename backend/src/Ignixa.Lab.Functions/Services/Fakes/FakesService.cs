@@ -1,5 +1,8 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
+using Ignixa.Abstractions;
 using Ignixa.FhirFakes.Population;
+using Ignixa.FhirFakes.Scenarios;
 using Ignixa.Lab.Functions.Services.FhirPath;
 using Ignixa.Serialization;
 using Ignixa.Serialization.SourceNodes;
@@ -7,7 +10,7 @@ using Ignixa.Serialization.SourceNodes;
 namespace Ignixa.Lab.Functions.Services.Fakes;
 
 /// <summary>Orchestrates calls into <c>Ignixa.FhirFakes</c> and shapes the results into plain JSON for the Fakes bench endpoints.</summary>
-public sealed class FakesService(SchemaProviderFactory schemaProviderFactory)
+public sealed class FakesService(SchemaProviderFactory schemaProviderFactory, ScenarioDiscovery scenarioDiscovery)
 {
     public JsonObject GeneratePopulation(string fhirVersion, string source, int count)
     {
@@ -59,6 +62,82 @@ public sealed class FakesService(SchemaProviderFactory schemaProviderFactory)
                 ["ageBuckets"] = ToJsonObject(ageBuckets),
             },
         };
+    }
+
+    /// <summary>Returns null when <paramref name="scenarioId"/> doesn't match a discovered scenario.</summary>
+    public JsonObject? GenerateScenario(
+        string fhirVersion,
+        string scenarioId,
+        IReadOnlyDictionary<string, JsonElement>? parameters,
+        string? tag,
+        bool resolvedReferences)
+    {
+        var scenario = scenarioDiscovery.Find(scenarioId);
+        if (scenario is null)
+        {
+            return null;
+        }
+
+        var schemaProvider = schemaProviderFactory.GetSchemaProvider(fhirVersion);
+        var context = scenarioDiscovery.Invoke(scenario, schemaProvider, parameters);
+
+        if (resolvedReferences)
+        {
+            context.RewriteReferences(schemaProvider.ReferenceMetadataProvider, ReferenceFormat.Resolved);
+        }
+
+        var bundle = resolvedReferences ? context.ToBatchBundle() : context.ToBundle();
+
+        var patientNode = context.Patient != null ? JsonNode.Parse(context.Patient.SerializeToString()) : null;
+        var resourceNodes = context.AllResources.Select(r => JsonNode.Parse(r.SerializeToString())!).ToList();
+        var bundleNode = JsonNode.Parse(bundle.SerializeToString())!.AsObject();
+
+        if (!string.IsNullOrWhiteSpace(tag))
+        {
+            if (patientNode != null)
+            {
+                StampTag(patientNode.AsObject(), tag);
+            }
+
+            foreach (var resourceNode in resourceNodes)
+            {
+                StampTag(resourceNode.AsObject(), tag);
+            }
+
+            StampBundleEntryTags(bundleNode, tag);
+        }
+
+        return new JsonObject
+        {
+            ["patient"] = patientNode,
+            ["resources"] = new JsonArray(resourceNodes.ToArray()),
+            ["bundle"] = bundleNode,
+        };
+    }
+
+    private static void StampTag(JsonObject resource, string tag)
+    {
+        var meta = resource["meta"]?.AsObject() ?? new JsonObject();
+        var tags = meta["tag"]?.AsArray() ?? new JsonArray();
+        tags.Add(new JsonObject { ["system"] = "urn:ignixa:test", ["code"] = tag });
+        meta["tag"] = tags;
+        resource["meta"] = meta;
+    }
+
+    private static void StampBundleEntryTags(JsonObject bundle, string tag)
+    {
+        if (bundle["entry"] is not JsonArray entries)
+        {
+            return;
+        }
+
+        foreach (var entry in entries)
+        {
+            if (entry?["resource"] is JsonObject resource)
+            {
+                StampTag(resource, tag);
+            }
+        }
     }
 
     private static void Tally(Dictionary<string, int> counts, string key) =>

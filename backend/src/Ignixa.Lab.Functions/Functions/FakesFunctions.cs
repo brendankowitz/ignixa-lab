@@ -19,7 +19,7 @@ public sealed class FakesFunctions(
 {
     private static readonly string[] FhirVersions = ["stu3", "r4", "r4b", "r5", "r6"];
     private static readonly string[] ActiveEdgeCaseFamilies = ["Unicode", "Temporal", "StringBoundary"];
-    private static readonly JsonSerializerOptions PopulationRequestJsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions RequestJsonOptions = new(JsonSerializerDefaults.Web);
 
     [Function("FakesMetadata")]
     public IActionResult GetMetadata(
@@ -54,7 +54,7 @@ public sealed class FakesFunctions(
         try
         {
             populationRequest = await JsonSerializer.DeserializeAsync<PopulationRequest>(
-                request.Body, PopulationRequestJsonOptions, cancellationToken);
+                request.Body, RequestJsonOptions, cancellationToken);
         }
         catch (JsonException ex)
         {
@@ -67,6 +67,42 @@ public sealed class FakesFunctions(
         }
 
         var result = fakesService.GeneratePopulation(populationRequest.FhirVersion, populationRequest.Source, populationRequest.Count);
+        return new OkObjectResult(result);
+    }
+
+    [Function("FakesScenario")]
+    public async Task<IActionResult> GenerateScenario(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", "options", Route = "fakes/scenario")] HttpRequest request,
+        CancellationToken cancellationToken)
+    {
+        ScenarioRequest? scenarioRequest;
+        try
+        {
+            scenarioRequest = await JsonSerializer.DeserializeAsync<ScenarioRequest>(
+                request.Body, RequestJsonOptions, cancellationToken);
+        }
+        catch (JsonException ex)
+        {
+            return new BadRequestObjectResult(new { error = $"Invalid request body: {ex.Message}" });
+        }
+
+        if (scenarioRequest is null || string.IsNullOrWhiteSpace(scenarioRequest.ScenarioId))
+        {
+            return new BadRequestObjectResult(new { error = "A 'scenarioId' is required." });
+        }
+
+        var result = fakesService.GenerateScenario(
+            scenarioRequest.FhirVersion,
+            scenarioRequest.ScenarioId,
+            scenarioRequest.Parameters,
+            scenarioRequest.Tag,
+            scenarioRequest.ResolvedReferences);
+
+        if (result is null)
+        {
+            return new BadRequestObjectResult(new { error = $"Unknown scenarioId '{scenarioRequest.ScenarioId}'." });
+        }
+
         return new OkObjectResult(result);
     }
 
