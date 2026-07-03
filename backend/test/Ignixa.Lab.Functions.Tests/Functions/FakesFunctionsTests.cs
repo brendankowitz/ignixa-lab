@@ -33,8 +33,25 @@ public sealed class FakesFunctionsTests
         metadata.ObservationStates.Should().Contain("BloodGlucose");
         metadata.EdgeCaseFamilies.Select(f => f.Family).Should().Contain(["Unicode", "Temporal", "StringBoundary"]);
         metadata.EdgeCaseFamilies.Select(f => f.Family).Should().NotContain(["Cardinality", "Structural"]);
-        metadata.ResourceTypes.Should().Contain("Patient");
+        metadata.ResourceTypesByVersion["r4"].Should().Contain("Patient");
         metadata.PatientCities.Should().Contain("Boston");
+        metadata.LibraryVersion.Should().MatchRegex(@"^\d+\.\d+\.\d+$");
+    }
+
+    [Fact]
+    public void GetMetadata_ResourceTypesByVersion_DifferBetweenFhirVersions()
+    {
+        var functions = CreateFunctions();
+
+        var result = functions.GetMetadata(new DefaultHttpContext().Request);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        var metadata = ok.Value.Should().BeOfType<FakesMetadataResponse>().Subject;
+        metadata.ResourceTypesByVersion.Keys.Should().BeEquivalentTo(["stu3", "r4", "r4b", "r5", "r6"]);
+        // R6 added resource types (e.g. Requirements, Transport) that don't exist in R4 —
+        // regression guard for the metadata endpoint returning one flat R4-only list.
+        metadata.ResourceTypesByVersion["r6"].Should().Contain("Requirements");
+        metadata.ResourceTypesByVersion["r4"].Should().NotContain("Requirements");
     }
 
     [Fact]

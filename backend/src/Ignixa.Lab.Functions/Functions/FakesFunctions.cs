@@ -1,4 +1,5 @@
 using System.Net;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Ignixa.FhirFakes;
@@ -25,6 +26,35 @@ public sealed class FakesFunctions(
     private static readonly string[] FhirVersions = ["stu3", "r4", "r4b", "r5", "r6"];
     private static readonly string[] ActiveEdgeCaseFamilies = ["Unicode", "Temporal", "StringBoundary"];
     private static readonly JsonSerializerOptions RequestJsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly string LibraryVersion = GetLibraryVersion();
+
+    /// <summary>
+    /// Reflects the referenced <c>Ignixa.FhirFakes</c> assembly's own informational
+    /// version (e.g. "0.5.13") instead of a hand-maintained literal, so the bench's
+    /// engine badge can't drift out of sync with the package actually in use — same
+    /// approach as <see cref="Services.FhirPath.ResultFormatter"/>'s evaluator version.
+    /// </summary>
+    private static string GetLibraryVersion()
+    {
+        var assembly = typeof(EdgeCaseCatalog).Assembly;
+        var fullVersion = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+            ?? assembly.GetName().Version?.ToString()
+            ?? "unknown";
+
+        var version = fullVersion;
+        var dashIndex = fullVersion.IndexOf('-');
+        var plusIndex = fullVersion.IndexOf('+');
+        if (dashIndex > 0)
+        {
+            version = fullVersion[..dashIndex];
+        }
+        else if (plusIndex > 0)
+        {
+            version = fullVersion[..plusIndex];
+        }
+
+        return version;
+    }
 
     private static bool IsSupportedFhirVersion(string? fhirVersion) =>
         !string.IsNullOrWhiteSpace(fhirVersion) && FhirVersions.Contains(fhirVersion, StringComparer.OrdinalIgnoreCase);
@@ -42,10 +72,16 @@ public sealed class FakesFunctions(
 
         var response = new FakesMetadataResponse
         {
+            LibraryVersion = LibraryVersion,
             FhirVersions = FhirVersions,
             PopulationStates = populationGenerator.AvailableStates,
             Scenarios = scenarioDiscovery.All().Select(ToScenarioMetadata).ToList(),
-            ResourceTypes = schemaProvider.ResourceTypeNames.OrderBy(name => name, StringComparer.Ordinal).ToList(),
+            ResourceTypesByVersion = FhirVersions.ToDictionary(
+                version => version,
+                version => (IReadOnlyList<string>)schemaProviderFactory.GetSchemaProvider(version).ResourceTypeNames
+                    .OrderBy(name => name, StringComparer.Ordinal)
+                    .ToList(),
+                StringComparer.OrdinalIgnoreCase),
             ObservationStates = observationStateDiscovery.Names(),
             EdgeCaseFamilies = ActiveEdgeCaseFamilies
                 .Select(family => ToEdgeCaseFamilyMetadata(family, catalog))
