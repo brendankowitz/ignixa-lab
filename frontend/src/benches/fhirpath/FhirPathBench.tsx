@@ -122,6 +122,7 @@ export function FhirPathBench() {
             onChange={setExpression}
             lines={expressionHighlight}
             style={{ height: 54, fontSize: 13.5 }}
+            autoGrowMaxHeight={240}
           />
         </div>
 
