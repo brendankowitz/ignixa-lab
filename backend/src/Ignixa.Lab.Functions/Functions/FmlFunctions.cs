@@ -46,7 +46,7 @@ public sealed class FmlFunctions(
             return CreateErrorResponse(error, errorDiagnostics);
         }
 
-        var result = fmlService.Transform(built!);
+        var result = fmlService.Transform(built!, cancellationToken);
         var debug = bool.TryParse(request.Query["debug"], out var debugFlag) && debugFlag;
         var formatted = resultFormatter.FormatResult(result, debug);
 
@@ -90,7 +90,7 @@ public sealed class FmlFunctions(
         var resourceParam = operationParameters.FindParameter("resource");
 
         var map = mapParam?.GetValueAs<string>();
-        if (string.IsNullOrEmpty(map))
+        if (string.IsNullOrWhiteSpace(map))
         {
             return (null, "The 'map' parameter is required", null);
         }

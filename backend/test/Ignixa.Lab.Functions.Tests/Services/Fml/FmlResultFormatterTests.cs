@@ -20,12 +20,7 @@ public sealed class FmlResultFormatterTests
     public void FormatResult_TopLevelFailure_ReturnsOperationOutcome()
     {
         var formatter = new FmlResultFormatter();
-        var result = new FmlResult
-        {
-            Request = MakeRequest(),
-            Error = "Failed to parse FML map: unexpected token",
-            ErrorDiagnostics = "bad map text"
-        };
+        var result = FmlResult.Failure(MakeRequest(), "Failed to parse FML map: unexpected token", "bad map text");
 
         var formatted = formatter.FormatResult(result, debug: false);
 
@@ -39,13 +34,7 @@ public sealed class FmlResultFormatterTests
     {
         var formatter = new FmlResultFormatter();
         var output = JsonSourceNodeFactory.Parse<ResourceJsonNode>("""{"resourceType":"Person","gender":"male"}""");
-        var result = new FmlResult
-        {
-            Request = MakeRequest("map \"http://x\" = \"x\""),
-            Output = output,
-            LogLines = ["copied gender"],
-            Errors = []
-        };
+        var result = FmlResult.Success(MakeRequest("map \"http://x\" = \"x\""), output, ["copied gender"], []);
 
         var formatted = formatter.FormatResult(result, debug: false);
 
@@ -75,13 +64,7 @@ public sealed class FmlResultFormatterTests
         var formatter = new FmlResultFormatter();
         var output = JsonSourceNodeFactory.Parse<ResourceJsonNode>("""{"resourceType":"Person"}""");
         var errors = new List<ExecutionError> { new("Element not found", ruleName: "copy_gender", groupName: "PatientToPerson") };
-        var result = new FmlResult
-        {
-            Request = MakeRequest(),
-            Output = output,
-            LogLines = [],
-            Errors = errors
-        };
+        var result = FmlResult.Success(MakeRequest(), output, [], errors);
 
         var formatted = formatter.FormatResult(result, debug: false);
 
@@ -98,7 +81,7 @@ public sealed class FmlResultFormatterTests
         var formatter = new FmlResultFormatter();
         var output = JsonSourceNodeFactory.Parse<ResourceJsonNode>("""{"resourceType":"Person"}""");
         var errors = new List<ExecutionError> { new("Element not found", ruleName: "copy_gender", groupName: "PatientToPerson") };
-        var result = new FmlResult { Request = MakeRequest(), Output = output, LogLines = [], Errors = errors };
+        var result = FmlResult.Success(MakeRequest(), output, [], errors);
 
         var formatted = formatter.FormatResult(result, debug: false);
 
@@ -113,7 +96,7 @@ public sealed class FmlResultFormatterTests
         var formatter = new FmlResultFormatter();
         var output = JsonSourceNodeFactory.Parse<ResourceJsonNode>("""{"resourceType":"Person"}""");
         var errors = new List<ExecutionError> { new("Element not found", ruleName: "copy_gender", groupName: "PatientToPerson") };
-        var result = new FmlResult { Request = MakeRequest(), Output = output, LogLines = [], Errors = errors };
+        var result = FmlResult.Success(MakeRequest(), output, [], errors);
 
         var formatted = formatter.FormatResult(result, debug: true);
 

@@ -4,6 +4,7 @@ using Ignixa.Lab.Functions.Services.FhirPath;
 using Ignixa.Lab.Functions.Services.SqlOnFhir;
 using Ignixa.Serialization;
 using Ignixa.Serialization.SourceNodes;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Ignixa.Lab.Functions.Tests.Services.SqlOnFhir;
 
@@ -29,7 +30,7 @@ public sealed class SqlOnFhirServiceTests
     [Fact]
     public void Evaluate_ValidViewDefinitionAndResource_ReturnsRow()
     {
-        var service = new SqlOnFhirService(new SchemaProviderFactory());
+        var service = new SqlOnFhirService(new SchemaProviderFactory(), NullLogger<SqlOnFhirService>.Instance);
         var request = MakeRequest(ValidViewDefinition, """{"resourceType":"Patient","id":"p1","gender":"male"}""");
 
         var result = service.Evaluate(request);
@@ -43,7 +44,7 @@ public sealed class SqlOnFhirServiceTests
     [Fact]
     public void Evaluate_MultipleResources_ReturnsOneRowPerResource()
     {
-        var service = new SqlOnFhirService(new SchemaProviderFactory());
+        var service = new SqlOnFhirService(new SchemaProviderFactory(), NullLogger<SqlOnFhirService>.Instance);
         var request = MakeRequest(
             ValidViewDefinition,
             """{"resourceType":"Patient","id":"p1","gender":"male"}""",
@@ -58,7 +59,7 @@ public sealed class SqlOnFhirServiceTests
     [Fact]
     public void Evaluate_LimitLowerThanRowCount_TruncatesRows()
     {
-        var service = new SqlOnFhirService(new SchemaProviderFactory());
+        var service = new SqlOnFhirService(new SchemaProviderFactory(), NullLogger<SqlOnFhirService>.Instance);
         var request = new SqlOnFhirRequest
         {
             ViewResource = JsonSourceNodeFactory.Parse<ResourceJsonNode>(ValidViewDefinition),
@@ -87,7 +88,7 @@ public sealed class SqlOnFhirServiceTests
               "select": [ { "column": [ { "name": "bad", "path": "id.." } ] } ]
             }
             """;
-        var service = new SqlOnFhirService(new SchemaProviderFactory());
+        var service = new SqlOnFhirService(new SchemaProviderFactory(), NullLogger<SqlOnFhirService>.Instance);
         var request = MakeRequest(badView, """{"resourceType":"Patient","id":"p1"}""");
 
         var result = service.Evaluate(request);
@@ -111,7 +112,29 @@ public sealed class SqlOnFhirServiceTests
               "select": "not-an-array"
             }
             """;
-        var service = new SqlOnFhirService(new SchemaProviderFactory());
+        var service = new SqlOnFhirService(new SchemaProviderFactory(), NullLogger<SqlOnFhirService>.Instance);
+        var request = MakeRequest(badView, """{"resourceType":"Patient","id":"p1"}""");
+
+        var result = service.Evaluate(request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("select").And.Contain("array");
+    }
+
+    // A ViewDefinition with no `select` key at all hits the same silent-empty-row
+    // path as a non-array `select`: MutableNode["select"] is null, so the guard must
+    // reject "missing" as well as "wrong type", not just the latter.
+    [Fact]
+    public void Evaluate_SelectMissingEntirely_ReturnsStructuredError()
+    {
+        const string badView = """
+            {
+              "resourceType": "ViewDefinition",
+              "status": "active",
+              "resource": "Patient"
+            }
+            """;
+        var service = new SqlOnFhirService(new SchemaProviderFactory(), NullLogger<SqlOnFhirService>.Instance);
         var request = MakeRequest(badView, """{"resourceType":"Patient","id":"p1"}""");
 
         var result = service.Evaluate(request);
@@ -129,7 +152,7 @@ public sealed class SqlOnFhirServiceTests
     [Fact]
     public async Task Evaluate_CalledConcurrently_DoesNotThrow()
     {
-        var service = new SqlOnFhirService(new SchemaProviderFactory());
+        var service = new SqlOnFhirService(new SchemaProviderFactory(), NullLogger<SqlOnFhirService>.Instance);
 
         var tasks = Enumerable.Range(0, 50).Select(i => Task.Run(() =>
         {

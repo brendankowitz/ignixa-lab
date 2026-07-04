@@ -1,6 +1,7 @@
 using Ignixa.Lab.Functions.Models;
 using Ignixa.Lab.Functions.Services.FhirPath;
 using Ignixa.SqlOnFhir.Evaluation;
+using Microsoft.Extensions.Logging;
 using System.Text.Json.Nodes;
 
 namespace Ignixa.Lab.Functions.Services.SqlOnFhir;
@@ -12,25 +13,30 @@ namespace Ignixa.Lab.Functions.Services.SqlOnFhir;
 public sealed class SqlOnFhirService
 {
     private readonly SchemaProviderFactory _schemaFactory;
+    private readonly ILogger<SqlOnFhirService> _logger;
 
-    public SqlOnFhirService(SchemaProviderFactory schemaFactory)
+    public SqlOnFhirService(SchemaProviderFactory schemaFactory, ILogger<SqlOnFhirService> logger)
     {
         _schemaFactory = schemaFactory;
+        _logger = logger;
     }
 
-    public SqlOnFhirResult Evaluate(SqlOnFhirRequest request)
+    public SqlOnFhirResult Evaluate(SqlOnFhirRequest request, CancellationToken cancellationToken = default)
     {
+        // SqlOnFhirEvaluator is fully synchronous and exposes no cancellation hook,
+        // so the token can only be observed at the method boundary - a cancelled
+        // request is rejected before the (CPU-bound) evaluation begins rather than
+        // being interruptible mid-evaluation.
+        cancellationToken.ThrowIfCancellationRequested();
+
         // SqlOnFhirEvaluator doesn't validate `select`'s structure before processing it -
-        // a non-array `select` (e.g. a string) is silently treated as "no select items",
-        // producing an empty row rather than an error. Check explicitly so malformed
-        // input surfaces as a validation error instead of a silent, confusing result.
-        if (request.ViewResource.MutableNode["select"] is { } selectNode and not JsonArray)
+        // a non-array `select` (e.g. a string) OR a missing `select` is silently treated
+        // as "no select items", producing an empty row rather than an error. Check
+        // explicitly so malformed input surfaces as a validation error instead of a
+        // silent, confusing result. `select` is required and must be an array.
+        if (request.ViewResource.MutableNode["select"] is not JsonArray)
         {
-            return new SqlOnFhirResult
-            {
-                Request = request,
-                Error = "ViewDefinition evaluation error: 'select' must be an array."
-            };
+            return SqlOnFhirResult.Failure(request, "ViewDefinition evaluation error: 'select' must be an array.");
         }
 
         try
@@ -57,15 +63,15 @@ public sealed class SqlOnFhirService
                 rows = rows.Take(limit).ToList();
             }
 
-            return new SqlOnFhirResult { Request = request, Rows = rows! };
+            return SqlOnFhirResult.Success(request, rows);
         }
         catch (Exception ex)
         {
-            return new SqlOnFhirResult
-            {
-                Request = request,
-                Error = $"ViewDefinition evaluation error: {ex.Message}"
-            };
+            // A failure here is an engine-side fault (not user input validation), so
+            // log it server-side. Log the resource count, not the resource payloads,
+            // to avoid writing potentially large/sensitive data to logs.
+            _logger.LogError(ex, "SQL-on-FHIR evaluation failed ({ResourceCount} resources).", request.Resources.Count);
+            return SqlOnFhirResult.Failure(request, $"ViewDefinition evaluation error: {ex.Message}");
         }
     }
 }

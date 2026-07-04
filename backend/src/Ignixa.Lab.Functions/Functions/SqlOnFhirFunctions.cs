@@ -31,6 +31,14 @@ public sealed class SqlOnFhirFunctions(ILogger<SqlOnFhirFunctions> logger, SqlOn
     private static readonly string[] UnsupportedParameterNames =
         ["viewReference", "patient", "group", "source", "_since"];
 
+    // This is an anonymous, unauthenticated bench endpoint with no persistent
+    // store, so an unbounded number of inline resources is a DoS vector (each is
+    // parsed into an IElement and evaluated). Cap it to bound per-request work.
+    // 1000 is generous for interactive bench use yet far below what would exhaust
+    // memory/CPU - mirroring the FML path's implicit bounding via
+    // MappingEvaluatorOptions (MaxElementsCreated / MaxInputResourceSizeBytes).
+    private const int MaxInputResourceCount = 1000;
+
     [Function("SqlOnFhirViewDefinitionRun")]
     public async Task<IActionResult> RunViewDefinition(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", "options", Route = "ViewDefinition/$viewdefinition-run")] HttpRequest request,
@@ -54,7 +62,7 @@ public sealed class SqlOnFhirFunctions(ILogger<SqlOnFhirFunctions> logger, SqlOn
             return CreateErrorResponse(error);
         }
 
-        var result = sqlOnFhirService.Evaluate(built!);
+        var result = sqlOnFhirService.Evaluate(built!, cancellationToken);
         if (!result.IsSuccess)
         {
             return CreateErrorResponse(result.Error!, result.ErrorDiagnostics);
@@ -100,8 +108,14 @@ public sealed class SqlOnFhirFunctions(ILogger<SqlOnFhirFunctions> logger, SqlOn
             return (null, "The 'viewResource' parameter is required and must be an embedded ViewDefinition resource.");
         }
 
+        var resourceParams = operationParameters.Parameter.Where(p => p.Name == "resource").ToList();
+        if (resourceParams.Count > MaxInputResourceCount)
+        {
+            return (null, $"Too many 'resource' parameters: {resourceParams.Count} supplied, maximum is {MaxInputResourceCount}.");
+        }
+
         var resources = new List<ResourceJsonNode>();
-        foreach (var resourceParam in operationParameters.Parameter.Where(p => p.Name == "resource"))
+        foreach (var resourceParam in resourceParams)
         {
             ResourceJsonNode? resource;
             try
@@ -142,6 +156,13 @@ public sealed class SqlOnFhirFunctions(ILogger<SqlOnFhirFunctions> logger, SqlOn
             if (limitParam.GetValue() is not JsonValue limitValue || !limitValue.TryGetValue<int>(out var limitInt))
             {
                 return (null, "The '_limit' parameter must be an integer.");
+            }
+            // SqlOnFhirService only truncates when limit >= 0, so a negative _limit
+            // silently means "return all rows" - the same wrong-but-plausible 200 the
+            // non-integer guard above exists to prevent. Reject it explicitly.
+            if (limitInt < 0)
+            {
+                return (null, "The '_limit' parameter must be a non-negative integer.");
             }
             limit = limitInt;
         }

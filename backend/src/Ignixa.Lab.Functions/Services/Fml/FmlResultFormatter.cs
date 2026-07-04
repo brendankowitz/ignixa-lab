@@ -45,8 +45,13 @@ public sealed class FmlResultFormatter
             }
         }
 
+        // FmlResult.Success guarantees a non-null Output whenever IsSuccess is true;
+        // this guards that invariant explicitly rather than suppressing it with `!`.
+        var output = result.Output
+            ?? throw new InvalidOperationException("A successful FmlResult must carry a non-null Output.");
+
         var resultParam = new ParameterJsonNode { Name = "result" };
-        resultParam.SetValue("valueString", result.Output!.SerializeToString(pretty: true));
+        resultParam.SetValue("valueString", output.SerializeToString(pretty: true));
         parameters.Parameter.Add(resultParam);
 
         var outcomeParam = new ParameterJsonNode { Name = "outcome" };

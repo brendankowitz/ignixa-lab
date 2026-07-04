@@ -7,6 +7,7 @@ using Ignixa.FhirPath.Parser;
 using Ignixa.Lab.Functions.Models;
 using Ignixa.Lab.Functions.Services.FhirPath;
 using Ignixa.Serialization.SourceNodes;
+using Microsoft.Extensions.Logging;
 
 namespace Ignixa.Lab.Functions.Services.Fml;
 
@@ -24,10 +25,12 @@ public sealed class FmlService
     private static readonly MappingParser Parser = new();
 
     private readonly SchemaProviderFactory _schemaFactory;
+    private readonly ILogger<FmlService> _logger;
 
-    public FmlService(SchemaProviderFactory schemaFactory)
+    public FmlService(SchemaProviderFactory schemaFactory, ILogger<FmlService> logger)
     {
         _schemaFactory = schemaFactory;
+        _logger = logger;
     }
 
     /// <summary>
@@ -36,31 +39,32 @@ public sealed class FmlService
     /// both are constructed fresh here on every call rather than
     /// shared/injected as singletons.
     /// </summary>
-    public FmlResult Transform(FmlRequest request)
+    public FmlResult Transform(FmlRequest request, CancellationToken cancellationToken = default)
     {
+        // The underlying MappingParser/MappingEvaluator are fully synchronous and
+        // expose no cancellation hook, so the token can only be observed at the
+        // method boundary - a cancelled request is rejected before the (CPU-bound)
+        // parse/execute work begins rather than being interruptible mid-transform.
+        cancellationToken.ThrowIfCancellationRequested();
+
         MapExpression map;
         try
         {
             map = Parser.Parse(request.Map);
         }
-        catch (ParseException ex)
+        // ParseException is the documented failure, but MappingParser also throws
+        // a raw ArgumentException for whitespace-only input (not wrapped in
+        // ParseException). Catch broadly so any parser-side gap surfaces as a
+        // structured error instead of an unhandled 500 - there is no global
+        // exception middleware in this project.
+        catch (Exception ex) when (ex is ParseException or ArgumentException)
         {
-            return new FmlResult
-            {
-                Request = request,
-                Error = $"Failed to parse FML map: {ex.Message}",
-                ErrorDiagnostics = request.Map
-            };
+            return FmlResult.Failure(request, $"Failed to parse FML map: {ex.Message}", request.Map);
         }
 
         if (map.Groups.Count == 0)
         {
-            return new FmlResult
-            {
-                Request = request,
-                Error = "The map defines no groups.",
-                ErrorDiagnostics = request.Map
-            };
+            return FmlResult.Failure(request, "The map defines no groups.", request.Map);
         }
 
         var entryGroup = map.Groups[0];
@@ -69,13 +73,11 @@ public sealed class FmlService
 
         if (sourceParams.Count != 1 || targetParams.Count != 1)
         {
-            return new FmlResult
-            {
-                Request = request,
-                Error = $"Only a single source and single target parameter are supported on the entry " +
-                        $"group '{entryGroup.Name}' (found {sourceParams.Count} source, {targetParams.Count} target).",
-                ErrorDiagnostics = request.Map
-            };
+            return FmlResult.Failure(
+                request,
+                $"Only a single source and single target parameter are supported on the entry " +
+                $"group '{entryGroup.Name}' (found {sourceParams.Count} source, {targetParams.Count} target).",
+                request.Map);
         }
 
         var sourceParam = sourceParams[0];
@@ -83,13 +85,11 @@ public sealed class FmlService
 
         if (string.IsNullOrEmpty(sourceParam.Type) || string.IsNullOrEmpty(targetParam.Type))
         {
-            return new FmlResult
-            {
-                Request = request,
-                Error = $"The entry group's source and target parameters must both declare a type, e.g. " +
-                        $"'group {entryGroup.Name}(source {sourceParam.Name} : Patient, target {targetParam.Name} : Bundle)'.",
-                ErrorDiagnostics = request.Map
-            };
+            return FmlResult.Failure(
+                request,
+                $"The entry group's source and target parameters must both declare a type, e.g. " +
+                $"'group {entryGroup.Name}(source {sourceParam.Name} : Patient, target {targetParam.Name} : Bundle)'.",
+                request.Map);
         }
 
         var sourceUses = map.Uses.FirstOrDefault(u => u.Alias == sourceParam.Type);
@@ -98,13 +98,11 @@ public sealed class FmlService
         if (sourceUses == null || targetUses == null)
         {
             var missingAlias = sourceUses == null ? sourceParam.Type : targetParam.Type;
-            return new FmlResult
-            {
-                Request = request,
-                Error = $"Unsupported model reference: no 'uses' declaration found for type alias '{missingAlias}'. " +
-                        "Custom or logical StructureDefinitions supplied via a 'model' parameter are not yet supported.",
-                ErrorDiagnostics = request.Map
-            };
+            return FmlResult.Failure(
+                request,
+                $"Unsupported model reference: no 'uses' declaration found for type alias '{missingAlias}'. " +
+                "Custom or logical StructureDefinitions supplied via a 'model' parameter are not yet supported.",
+                request.Map);
         }
 
         var targetTypeName = ExtractResourceTypeName(targetUses.Url);
@@ -137,22 +135,15 @@ public sealed class FmlService
 
             evaluator.ExecuteGroup(map, entryGroup.Name, context);
 
-            return new FmlResult
-            {
-                Request = request,
-                Output = targetResource,
-                LogLines = logLines,
-                Errors = context.Errors
-            };
+            return FmlResult.Success(request, targetResource, logLines, context.Errors);
         }
         catch (Exception ex)
         {
-            return new FmlResult
-            {
-                Request = request,
-                Error = $"Transform execution error: {ex.Message}",
-                ErrorDiagnostics = request.Map
-            };
+            // A failure here is an engine-side fault (not user input validation), so
+            // log it server-side. Log the map length, not the map text, to avoid
+            // writing potentially large/sensitive payloads to logs.
+            _logger.LogError(ex, "FML transform execution failed (map length {MapLength}).", request.Map.Length);
+            return FmlResult.Failure(request, $"Transform execution error: {ex.Message}", request.Map);
         }
     }
 

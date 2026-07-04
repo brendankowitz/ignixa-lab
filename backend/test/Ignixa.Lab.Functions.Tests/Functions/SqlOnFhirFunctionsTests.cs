@@ -140,10 +140,13 @@ public sealed class SqlOnFhirFunctionsTests
     // non-integer _limit value, which the service then interprets as
     // "truncate to zero rows" - a wrong-but-plausible 200 response instead of
     // a validation error. Found via final-review live/decompiled verification.
+    // A negative _limit is the mirror image: the service treats it as "no limit"
+    // (return all rows) rather than truncating, so it must be rejected too.
     [Theory]
     [InlineData(@"{""name"":""_limit"",""valueString"":""5""}")]
     [InlineData(@"{""name"":""_limit"",""valueDecimal"":2.5}")]
     [InlineData(@"{""name"":""_limit"",""valueBoolean"":true}")]
+    [InlineData(@"{""name"":""_limit"",""valueInteger"":-1}")]
     public async Task RunViewDefinition_LimitNotAnInteger_ReturnsBadRequestOperationOutcome(string malformedLimitParam)
     {
         var function = CreateFunction();
@@ -183,10 +186,32 @@ public sealed class SqlOnFhirFunctionsTests
         json["resourceType"]!.GetValue<string>().Should().Be("OperationOutcome");
     }
 
+    // The endpoint is anonymous and unauthenticated, so an unbounded number of
+    // inline resources is a DoS vector. Requests over the cap must be rejected
+    // with a 400 rather than evaluated.
+    [Fact]
+    public async Task RunViewDefinition_TooManyResources_ReturnsBadRequestOperationOutcome()
+    {
+        var function = CreateFunction();
+        var resourceParams = string.Join(",", Enumerable.Range(0, 1001)
+            .Select(i => $@"{{""name"":""resource"",""resource"":{{""resourceType"":""Patient"",""id"":""p{i}""}}}}"));
+        var body = @"{""resourceType"":""Parameters"",""parameter"":[
+                {""name"":""viewResource"",""resource"":" + ValidViewDefinitionJson + @"},
+                " + resourceParams + @"
+            ]}";
+
+        var result = await function.RunViewDefinition(BuildPostRequest(body), CancellationToken.None);
+
+        var content = result.Should().BeOfType<ContentResult>().Subject;
+        content.StatusCode.Should().Be(400);
+        var json = JsonNode.Parse(content.Content!)!;
+        json["resourceType"]!.GetValue<string>().Should().Be("OperationOutcome");
+    }
+
     private static SqlOnFhirFunctions CreateFunction()
     {
         var schemaFactory = new SchemaProviderFactory();
-        var service = new SqlOnFhirService(schemaFactory);
+        var service = new SqlOnFhirService(schemaFactory, NullLogger<SqlOnFhirService>.Instance);
         return new SqlOnFhirFunctions(NullLogger<SqlOnFhirFunctions>.Instance, service);
     }
 

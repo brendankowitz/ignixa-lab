@@ -73,7 +73,12 @@ export async function runSof(body: FhirParameters, signal: AbortSignal): Promise
   if (!response.ok || operationOutcomeMessage !== null) {
     throw new Error(operationOutcomeMessage ?? `Request failed with status ${response.status}`);
   }
-  return Array.isArray(json) ? json : [];
+  // A 2xx body that is neither a row array nor a recognized OperationOutcome is a
+  // contract violation - surface it instead of silently returning an empty table.
+  if (!Array.isArray(json)) {
+    throw new Error('Unexpected response shape from ViewDefinition endpoint');
+  }
+  return json;
 }
 
 /** Parses the SQL-on-FHIR runner's JSON-array response into the table shape `SofBench.tsx` renders — column order is the union of keys in first-seen order across all rows. */

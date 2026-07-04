@@ -113,7 +113,7 @@ public sealed class FmlFunctionsTests
     private static FmlFunctions CreateFunction()
     {
         var schemaFactory = new SchemaProviderFactory();
-        var fmlService = new FmlService(schemaFactory);
+        var fmlService = new FmlService(schemaFactory, NullLogger<FmlService>.Instance);
         var resultFormatter = new FmlResultFormatter();
 
         var analyzer = new ExpressionAnalyzer(schemaFactory);

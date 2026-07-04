@@ -4,6 +4,7 @@ using Ignixa.Lab.Functions.Services.Fml;
 using Ignixa.Lab.Functions.Services.FhirPath;
 using Ignixa.Serialization;
 using Ignixa.Serialization.SourceNodes;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Ignixa.Lab.Functions.Tests.Services.Fml;
 
@@ -26,7 +27,7 @@ public sealed class FmlServiceTests
     [Fact]
     public void Transform_ValidMapAndResource_ProducesExpectedOutput()
     {
-        var service = new FmlService(new SchemaProviderFactory());
+        var service = new FmlService(new SchemaProviderFactory(), NullLogger<FmlService>.Instance);
         var request = new FmlRequest
         {
             Map = ValidMap,
@@ -47,10 +48,31 @@ public sealed class FmlServiceTests
     [Fact]
     public void Transform_MalformedMap_ReturnsStructuredParseError()
     {
-        var service = new FmlService(new SchemaProviderFactory());
+        var service = new FmlService(new SchemaProviderFactory(), NullLogger<FmlService>.Instance);
         var request = new FmlRequest
         {
             Map = "this is not valid FML",
+            Resource = JsonSourceNodeFactory.Parse<ResourceJsonNode>(PatientJson)
+        };
+
+        var result = service.Transform(request);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("Failed to parse FML map");
+    }
+
+    // MappingParser throws a raw ArgumentException (not ParseException) for
+    // whitespace-only input; without a widened catch this propagated as an
+    // unhandled 500 since the project has no global exception middleware.
+    [Theory]
+    [InlineData(" ")]
+    [InlineData("\t\n  ")]
+    public void Transform_WhitespaceOnlyMap_ReturnsStructuredParseError(string whitespaceMap)
+    {
+        var service = new FmlService(new SchemaProviderFactory(), NullLogger<FmlService>.Instance);
+        var request = new FmlRequest
+        {
+            Map = whitespaceMap,
             Resource = JsonSourceNodeFactory.Parse<ResourceJsonNode>(PatientJson)
         };
 
@@ -72,7 +94,7 @@ public sealed class FmlServiceTests
               src.gender as vG -> tgt.gender = vG 'copy_gender';
             }
             """;
-        var service = new FmlService(new SchemaProviderFactory());
+        var service = new FmlService(new SchemaProviderFactory(), NullLogger<FmlService>.Instance);
         var request = new FmlRequest
         {
             Map = mapWithUndeclaredTargetAlias,
@@ -98,7 +120,7 @@ public sealed class FmlServiceTests
               src.gender as vG -> src.gender = vG 'noop';
             }
             """;
-        var service = new FmlService(new SchemaProviderFactory());
+        var service = new FmlService(new SchemaProviderFactory(), NullLogger<FmlService>.Instance);
         var request = new FmlRequest
         {
             Map = mapWithNoTarget,
@@ -124,7 +146,7 @@ public sealed class FmlServiceTests
               src.gender as vG log 'copied gender' -> tgt.gender = vG 'copy_gender';
             }
             """;
-        var service = new FmlService(new SchemaProviderFactory());
+        var service = new FmlService(new SchemaProviderFactory(), NullLogger<FmlService>.Instance);
         var request = new FmlRequest
         {
             Map = mapWithLog,
