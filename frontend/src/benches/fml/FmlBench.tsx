@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { HighlightedTextarea } from '../components/HighlightedTextarea';
 import { Card, ErrorBanner, Pills, type PillItem } from '../components/primitives';
 import { engineBadgeStyle, monoFont, monoTextareaStyle, primaryButtonStyle, sectionLabelStyle } from '../components/styles';
@@ -16,7 +16,13 @@ const TAB_ITEMS: PillItem<FmlTab>[] = [
   { id: 'log', label: 'Execution log' },
 ];
 
-export function FmlBench() {
+export interface FmlBenchProps {
+  onOpenFakes?: () => void;
+  fakesSeed?: { text: string } | null;
+  onSeedConsumed?: () => void;
+}
+
+export function FmlBench({ onOpenFakes, fakesSeed, onSeedConsumed }: FmlBenchProps) {
   const stacked = useIsNarrowViewport(720);
   const twoColumnStyle: CSSProperties = {
     display: 'grid',
@@ -30,6 +36,14 @@ export function FmlBench() {
   const [expectedText, setExpectedText] = useState(DEFAULT_EXPECTED_TEXT);
   const [tab, setTab] = useState<FmlTab>('output');
   const [result, setResult] = useState(() => runFml(DEFAULT_MAP_TEXT, DEFAULT_SOURCE_TEXT));
+
+  useEffect(() => {
+    if (fakesSeed) {
+      setSourceText(fakesSeed.text);
+      onSeedConsumed?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fakesSeed]);
 
   const highlightedLines = useMemo(() => highlightFml(mapText), [mapText]);
   const outputText = useMemo(() => (result.output ? JSON.stringify(result.output, null, 2) : '—'), [result.output]);
@@ -60,7 +74,28 @@ export function FmlBench() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
           <Card>
-            <span style={sectionLabelStyle}>Source resource</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ ...sectionLabelStyle, flex: 1 }}>Source resource</span>
+              {onOpenFakes ? (
+                <button
+                  type="button"
+                  onClick={onOpenFakes}
+                  title="Generate a source resource with Fakes"
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    padding: '4px 11px',
+                    borderRadius: 99,
+                    cursor: 'pointer',
+                    background: 'var(--chip-vio-bg)',
+                    color: 'var(--accent)',
+                    border: '1px solid var(--accent-border)',
+                  }}
+                >
+                  ⚡ Fakes ↗
+                </button>
+              ) : null}
+            </div>
             <textarea
               value={sourceText}
               onChange={(event) => setSourceText(event.target.value)}

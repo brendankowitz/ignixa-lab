@@ -1,10 +1,11 @@
-import { useMemo, useState, type CSSProperties } from 'react';
-import { Card, ErrorBanner, Pills, type PillItem } from '../components/primitives';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { Card, ErrorBanner, Pills, Toggle, type PillItem } from '../components/primitives';
 import { HighlightedTextarea } from '../components/HighlightedTextarea';
 import { engineBadgeStyle, monoInputStyle, monoFont, sectionLabelStyle, chipStyle } from '../components/styles';
 import { useIsNarrowViewport } from '../../hooks/useIsNarrowViewport';
 import { highlightFhirPathExpression } from './fhirPathHighlight';
-import { highlightJson } from './jsonHighlight';
+import { highlightJson } from '../components/jsonHighlight';
+import { invertAstTree } from './astInvert';
 import { DEFAULT_EXPRESSION, EXAMPLE_EXPRESSIONS, SAMPLE_RESOURCES, type SampleId } from './sampleResources';
 import { useFhirPathEval } from './useFhirPathEval';
 import type { FhirVersion, FpAstNode, FpVariable } from './fhirPathTypes';
@@ -57,11 +58,36 @@ function astChipColors(expressionType: string): { bg: string; fg: string } {
   }
 }
 
-function AstRows({ node, depth }: { node: FpAstNode; depth: number }) {
+function AstRows({ node, depth, onNodeClick }: { node: FpAstNode; depth: number; onNodeClick: (node: FpAstNode) => void }) {
   const colors = astChipColors(node.expressionType);
+  const hasSpan = node.position != null && node.length != null;
   return (
     <>
-      <div style={{ padding: `3px 0 3px ${depth * 18 + 2}px`, display: 'flex', gap: 8, alignItems: 'baseline' }}>
+      <div
+        onMouseDown={
+          hasSpan
+            ? (event) => {
+                // Prevent the browser's default mousedown behavior, which blurs
+                // whatever currently has focus (the expression textarea) before
+                // this row's click handler even runs — losing the focus we're
+                // about to set right back below the moment the click completes.
+                event.preventDefault();
+                onNodeClick(node);
+              }
+            : undefined
+        }
+        title={hasSpan ? 'Select this part of the expression' : undefined}
+        style={{
+          padding: `3px 0 3px ${depth * 18 + 2}px`,
+          display: 'flex',
+          gap: 8,
+          alignItems: 'baseline',
+          cursor: hasSpan ? 'pointer' : 'default',
+          borderRadius: 4,
+        }}
+        onMouseEnter={hasSpan ? (event) => (event.currentTarget.style.background = 'var(--inset)') : undefined}
+        onMouseLeave={hasSpan ? (event) => (event.currentTarget.style.background = 'transparent') : undefined}
+      >
         <span style={{ fontFamily: monoFont, fontSize: 10, color: 'var(--text4)' }}>├─</span>
         <span style={chipStyle(colors.bg, colors.fg)}>{node.expressionType}</span>
         <span style={{ fontFamily: monoFont, fontSize: 12, color: 'var(--text)' }}>
@@ -70,13 +96,19 @@ function AstRows({ node, depth }: { node: FpAstNode; depth: number }) {
         </span>
       </div>
       {node.arguments.map((child, index) => (
-        <AstRows key={index} node={child} depth={depth + 1} />
+        <AstRows key={index} node={child} depth={depth + 1} onNodeClick={onNodeClick} />
       ))}
     </>
   );
 }
 
-export function FhirPathBench() {
+export interface FhirPathBenchProps {
+  onOpenFakes?: () => void;
+  fakesSeed?: { text: string } | null;
+  onSeedConsumed?: () => void;
+}
+
+export function FhirPathBench({ onOpenFakes, fakesSeed, onSeedConsumed }: FhirPathBenchProps) {
   const stacked = useIsNarrowViewport(720);
   const twoColumnStyle: CSSProperties = {
     display: 'grid',
@@ -92,6 +124,17 @@ export function FhirPathBench() {
   const [resourceText, setResourceText] = useState(() => JSON.stringify(SAMPLE_RESOURCES[0].data, null, 2));
   const [variables, setVariables] = useState<FpVariable[]>([]);
   const [resultTab, setResultTab] = useState<ResultTab>('results');
+  const [astInverted, setAstInverted] = useState(false);
+  const expressionRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (fakesSeed) {
+      setSampleId('custom');
+      setResourceText(fakesSeed.text);
+      onSeedConsumed?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fakesSeed]);
 
   const { result, isLoading } = useFhirPathEval({ version, expression, context, resourceText, variables });
 
@@ -102,6 +145,20 @@ export function FhirPathBench() {
     setVariables((current) => current.map((variable, i) => (i === index ? { ...variable, ...patch } : variable)));
 
   const removeVariable = (index: number) => setVariables((current) => current.filter((_, i) => i !== index));
+
+  const handleAstNodeClick = (node: FpAstNode) => {
+    const textarea = expressionRef.current;
+    if (!textarea || node.position == null || node.length == null) {
+      return;
+    }
+    textarea.focus();
+    textarea.setSelectionRange(node.position, node.position + node.length);
+  };
+
+  const invertedAstRoots = useMemo(
+    () => (result.ast && typeof result.ast === 'object' ? invertAstTree(result.ast) : []),
+    [result.ast],
+  );
 
   return (
     <div style={{ maxWidth: 1280, margin: '0 auto', padding: '22px 24px 60px', display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -118,6 +175,7 @@ export function FhirPathBench() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <span style={sectionLabelStyle}>Expression</span>
           <HighlightedTextarea
+            ref={expressionRef}
             value={expression}
             onChange={setExpression}
             lines={expressionHighlight}
@@ -258,6 +316,25 @@ export function FhirPathBench() {
                 {sample.label}
               </button>
             ))}
+            {onOpenFakes ? (
+              <button
+                type="button"
+                onClick={onOpenFakes}
+                title="Generate a test resource with Fakes"
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: '4px 11px',
+                  borderRadius: 99,
+                  cursor: 'pointer',
+                  background: 'var(--chip-vio-bg)',
+                  color: 'var(--accent)',
+                  border: '1px solid var(--accent-border)',
+                }}
+              >
+                ⚡ Fakes ↗
+              </button>
+            ) : null}
           </div>
           <HighlightedTextarea
             value={resourceText}
@@ -271,6 +348,12 @@ export function FhirPathBench() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Pills items={RESULT_TAB_ITEMS} activeId={resultTab} onChange={setResultTab} />
             <div style={{ flex: 1 }} />
+            {resultTab === 'ast' ? (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text3)' }}>
+                Inverted tree
+                <Toggle checked={astInverted} onChange={setAstInverted} ariaLabel="Show inverted (flattened chain) parse tree" />
+              </span>
+            ) : null}
             {isLoading ? <span style={{ fontFamily: monoFont, fontSize: 10.5, color: 'var(--text3)' }}>evaluating…</span> : null}
           </div>
 
@@ -343,7 +426,9 @@ export function FhirPathBench() {
 
           {result.error === null && resultTab === 'ast' && result.ast && typeof result.ast === 'object' ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '4px 2px' }}>
-              <AstRows node={result.ast} depth={0} />
+              {astInverted
+                ? invertedAstRoots.map((node, index) => <AstRows key={index} node={node} depth={0} onNodeClick={handleAstNodeClick} />)
+                : <AstRows node={result.ast} depth={0} onNodeClick={handleAstNodeClick} />}
             </div>
           ) : null}
           {result.error === null && resultTab === 'ast' && result.ast === 'parse-failed' ? (
