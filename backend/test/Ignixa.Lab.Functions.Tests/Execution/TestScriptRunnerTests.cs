@@ -45,6 +45,20 @@ public sealed class TestScriptRunnerTests
         ]
     };
 
+    private static TestScriptDefinition VersionGatedDefinition(params string[] fhirVersions) => new()
+    {
+        Metadata = new TestScriptMetadata { Name = "VersionGated" },
+        Tests =
+        [
+            new TestPhaseDefinition
+            {
+                Name = "ReadPatient",
+                FhirVersions = fhirVersions,
+                Actions = [new OperationExpression { Type = "read", Resource = "Patient", Params = "/1" }]
+            }
+        ]
+    };
+
     [Fact]
     public async Task GivenSuiteRequiringUndeclaredCapability_WhenRun_ThenTestIsSkippedAndNoRequestIsSent()
     {
@@ -113,6 +127,62 @@ public sealed class TestScriptRunnerTests
         // Fail-open: with no capability statement available, the gate can't be evaluated, so the test still runs.
         outcome.Report.Results[0].Status.Should().NotBe(ConformanceStatus.Skipped);
         provider.CallCount.Should().Be(1);
+    }
+
+    [Theory]
+    [InlineData("R4", "4.0")]
+    [InlineData("r4", "4.0")]
+    [InlineData("R4B", "4.3")]
+    [InlineData("R5", "5.0")]
+    [InlineData("STU3", "3.0")]
+    [InlineData("R3", "3.0")]
+    [InlineData("R6", "6.0")]
+    public async Task GivenSuiteGatedToNumericFhirVersion_WhenRunRequestsMatchingReleaseLabel_ThenTestRunsAndReportKeepsRequestedLabel(
+        string requestedFhirVersion, string declaredNumericVersion)
+    {
+        var provider = new RecordingRequestProvider(new TestResponse { StatusCode = 200 });
+        var runner = new TestScriptRunner(
+            new FakeSuiteCatalog("versioned.json", VersionGatedDefinition(declaredNumericVersion)),
+            new FakeEvaluatorFactory(provider),
+            new CapabilityStatementFetcher(
+                new FixedResponseHttpClientFactory(CapabilityStatementWithoutReindex),
+                Options.Create(new IgnixaLabOptions())),
+            Options.Create(new IgnixaLabOptions()),
+            NullLogger<TestScriptRunner>.Instance);
+
+        var outcome = await runner.RunAsync(
+            new RunRequest { TargetUrl = TargetUrl, SuiteIds = ["versioned.json"], FhirVersion = requestedFhirVersion },
+            CancellationToken.None);
+
+        outcome.IsValid.Should().BeTrue();
+        // Regression: previously the release label ("R4") was passed straight to the
+        // engine, which compares it verbatim against the suite's numeric fhirVersions
+        // extension ("4.0"), so the test was always skipped.
+        outcome.Report!.Results[0].Status.Should().NotBe(ConformanceStatus.Skipped);
+        outcome.Report.FhirVersion.Should().Be(requestedFhirVersion);
+        provider.CallCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task GivenSuiteGatedToIncompatibleFhirVersion_WhenRun_ThenTestIsStillSkipped()
+    {
+        var provider = new RecordingRequestProvider(new TestResponse { StatusCode = 200 });
+        var runner = new TestScriptRunner(
+            new FakeSuiteCatalog("versioned.json", VersionGatedDefinition("5.0")),
+            new FakeEvaluatorFactory(provider),
+            new CapabilityStatementFetcher(
+                new FixedResponseHttpClientFactory(CapabilityStatementWithoutReindex),
+                Options.Create(new IgnixaLabOptions())),
+            Options.Create(new IgnixaLabOptions()),
+            NullLogger<TestScriptRunner>.Instance);
+
+        var outcome = await runner.RunAsync(
+            new RunRequest { TargetUrl = TargetUrl, SuiteIds = ["versioned.json"], FhirVersion = "R4" },
+            CancellationToken.None);
+
+        outcome.IsValid.Should().BeTrue();
+        outcome.Report!.Results[0].Status.Should().Be(ConformanceStatus.Skipped);
+        provider.CallCount.Should().Be(0);
     }
 
     private sealed class FakeSuiteCatalog(string id, TestScriptDefinition definition) : ISuiteCatalog
