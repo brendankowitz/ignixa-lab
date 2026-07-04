@@ -97,7 +97,11 @@ public sealed class TestScriptRunner(
         var report = new ConformanceReport(
             Impl: "ignixa-lab",
             Target: target.ToString(),
-            FhirVersion: fhirVersion,
+            // Numeric form, not the raw request label: this field must stay
+            // identical in shape and value convention to the ignixa-fhir
+            // conformance/latest.json artifact (see ConformanceReport's doc
+            // comment), which is always numeric (e.g. "4.0"), never "R4".
+            FhirVersion: engineFhirVersion,
             StartedAt: startedAt,
             DurationMs: stopwatch.ElapsedMilliseconds,
             Results: results,

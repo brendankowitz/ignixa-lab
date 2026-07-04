@@ -137,7 +137,7 @@ public sealed class TestScriptRunnerTests
     [InlineData("STU3", "3.0")]
     [InlineData("R3", "3.0")]
     [InlineData("R6", "6.0")]
-    public async Task GivenSuiteGatedToNumericFhirVersion_WhenRunRequestsMatchingReleaseLabel_ThenTestRunsAndReportKeepsRequestedLabel(
+    public async Task GivenSuiteGatedToNumericFhirVersion_WhenRunRequestsMatchingReleaseLabel_ThenTestRunsAndReportUsesNormalizedVersion(
         string requestedFhirVersion, string declaredNumericVersion)
     {
         var provider = new RecordingRequestProvider(new TestResponse { StatusCode = 200 });
@@ -159,7 +159,9 @@ public sealed class TestScriptRunnerTests
         // engine, which compares it verbatim against the suite's numeric fhirVersions
         // extension ("4.0"), so the test was always skipped.
         outcome.Report!.Results[0].Status.Should().NotBe(ConformanceStatus.Skipped);
-        outcome.Report.FhirVersion.Should().Be(requestedFhirVersion);
+        // The report must carry the numeric form, not the raw label: it's interchangeable
+        // with the ignixa-fhir conformance/latest.json artifact, which is always numeric.
+        outcome.Report.FhirVersion.Should().Be(declaredNumericVersion);
         provider.CallCount.Should().Be(1);
     }
 
