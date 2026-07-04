@@ -1,25 +1,34 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { HighlightedTextarea } from '../components/HighlightedTextarea';
 import { Card, ErrorBanner, Pills, type PillItem } from '../components/primitives';
 import { engineBadgeStyle, monoFont, monoTextareaStyle, primaryButtonStyle, sectionLabelStyle } from '../components/styles';
 import { useIsNarrowViewport } from '../../hooks/useIsNarrowViewport';
+import { getErrorMessage } from '../shared/errorMessage';
 import { diffLines } from './diffLines';
-import { runFml } from './fmlEngine';
+import { buildFmlRequest, parseFmlResponse, runFml, type FmlEvalResult } from './fmlApi';
 import { DEFAULT_EXPECTED_TEXT, DEFAULT_MAP_TEXT, DEFAULT_SOURCE_TEXT } from './fmlFixtures';
 import { highlightFml } from './fmlHighlight';
 
-type FmlTab = 'output' | 'diff' | 'log';
+type FmlTab = 'output' | 'diff' | 'trace';
 
 const TAB_ITEMS: PillItem<FmlTab>[] = [
   { id: 'output', label: 'Output' },
   { id: 'diff', label: 'Diff vs expected' },
-  { id: 'log', label: 'Execution log' },
+  { id: 'trace', label: 'Trace' },
 ];
 
 export interface FmlBenchProps {
   onOpenFakes?: () => void;
   fakesSeed?: { text: string } | null;
   onSeedConsumed?: () => void;
+}
+
+const EMPTY_RESULT: FmlEvalResult = { error: null, evaluator: '', output: null, trace: [], outcomeIssues: [] };
+
+/** Reads the `'MapName'` string out of a map's declaration line (`map 'url' = 'MapName'`), for display next to the editor. Returns '' if the map has no declaration line yet. FML string literals are single-quoted (the tokenizer treats double-quoted text as a DelimitedIdentifier, not a string literal), so this must match single quotes to work with any map the real backend can actually parse. */
+function extractMapName(mapText: string): string {
+  const match = mapText.match(/map\s+'[^']*'\s*=\s*'([^']+)'/);
+  return match ? match[1] : '';
 }
 
 export function FmlBench({ onOpenFakes, fakesSeed, onSeedConsumed }: FmlBenchProps) {
@@ -35,7 +44,12 @@ export function FmlBench({ onOpenFakes, fakesSeed, onSeedConsumed }: FmlBenchPro
   const [sourceText, setSourceText] = useState(DEFAULT_SOURCE_TEXT);
   const [expectedText, setExpectedText] = useState(DEFAULT_EXPECTED_TEXT);
   const [tab, setTab] = useState<FmlTab>('output');
-  const [result, setResult] = useState(() => runFml(DEFAULT_MAP_TEXT, DEFAULT_SOURCE_TEXT));
+  const [result, setResult] = useState<FmlEvalResult>(EMPTY_RESULT);
+  const [isLoading, setIsLoading] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Abort any in-flight request if the bench unmounts mid-run.
+  useEffect(() => () => abortControllerRef.current?.abort(), []);
 
   useEffect(() => {
     if (fakesSeed) {
@@ -46,10 +60,38 @@ export function FmlBench({ onOpenFakes, fakesSeed, onSeedConsumed }: FmlBenchPro
   }, [fakesSeed]);
 
   const highlightedLines = useMemo(() => highlightFml(mapText), [mapText]);
-  const outputText = useMemo(() => (result.output ? JSON.stringify(result.output, null, 2) : '—'), [result.output]);
-  const diffRows = useMemo(() => (result.output ? diffLines(outputText, expectedText) : []), [result.output, outputText, expectedText]);
+  const mapName = useMemo(() => extractMapName(mapText), [mapText]);
+  const diffRows = useMemo(() => (result.output ? diffLines(result.output, expectedText) : []), [result.output, expectedText]);
 
-  const runMap = () => setResult(runFml(mapText, sourceText));
+  const runMap = () => {
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    setIsLoading(true);
+
+    let body;
+    try {
+      body = buildFmlRequest({ mapText, resourceText: sourceText });
+    } catch (error) {
+      setIsLoading(false);
+      setResult({ ...EMPTY_RESULT, error: `Source JSON — ${getErrorMessage(error)}` });
+      return;
+    }
+
+    runFml(body, controller.signal)
+      .then((response) => setResult(parseFmlResponse(response)))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          return;
+        }
+        setResult({ ...EMPTY_RESULT, error: getErrorMessage(error) });
+      })
+      .finally(() => {
+        if (abortControllerRef.current === controller) {
+          setIsLoading(false);
+        }
+      });
+  };
 
   return (
     <div style={{ maxWidth: 1380, margin: '0 auto', padding: '22px 24px 60px', display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -57,8 +99,8 @@ export function FmlBench({ onOpenFakes, fakesSeed, onSeedConsumed }: FmlBenchPro
         <h1 style={{ margin: 0, fontSize: 21, fontWeight: 700, letterSpacing: '-.02em' }}>FHIR Mapping Language</h1>
         <span style={{ fontSize: 12.5, color: 'var(--text3)' }}>Author a StructureMap in FML and debug it rule by rule.</span>
         <div style={{ flex: 1 }} />
-        <span style={engineBadgeStyle}>mock engine · ignixa-fml 0.1</span>
-        <button type="button" onClick={runMap} style={primaryButtonStyle}>
+        <span style={engineBadgeStyle}>{result.evaluator || (isLoading ? 'transforming…' : 'ignixa-lab')}</span>
+        <button type="button" onClick={runMap} style={primaryButtonStyle} disabled={isLoading}>
           ▶ Run map
         </button>
       </div>
@@ -67,7 +109,7 @@ export function FmlBench({ onOpenFakes, fakesSeed, onSeedConsumed }: FmlBenchPro
         <Card style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ ...sectionLabelStyle, flex: 1 }}>Map source · .fml</span>
-            <span style={{ fontFamily: monoFont, fontSize: 10.5, color: 'var(--text3)' }}>{result.mapName}</span>
+            <span style={{ fontFamily: monoFont, fontSize: 10.5, color: 'var(--text3)' }}>{mapName}</span>
           </div>
           <HighlightedTextarea value={mapText} onChange={setMapText} lines={highlightedLines} style={{ height: 300 }} />
         </Card>
@@ -109,11 +151,14 @@ export function FmlBench({ onOpenFakes, fakesSeed, onSeedConsumed }: FmlBenchPro
               <Pills items={TAB_ITEMS} activeId={tab} onChange={setTab} />
               <div style={{ flex: 1 }} />
               <span style={{ fontFamily: monoFont, fontSize: 10.5, color: 'var(--text3)' }}>
-                {result.output ? `${result.applied} applied · ${result.skipped} skipped` : ''}
+                {result.output ? `${result.trace.length} trace ${result.trace.length === 1 ? 'entry' : 'entries'}` : ''}
               </span>
             </div>
 
             {result.error ? <ErrorBanner message={result.error} /> : null}
+            {!result.error && result.outcomeIssues.length > 0 ? (
+              <ErrorBanner message={`${result.outcomeIssues.length} rule error(s): ${result.outcomeIssues.join('; ')}`} />
+            ) : null}
 
             {!result.error && tab === 'output' ? (
               <pre
@@ -133,7 +178,7 @@ export function FmlBench({ onOpenFakes, fakesSeed, onSeedConsumed }: FmlBenchPro
                   overflow: 'auto',
                 }}
               >
-                {outputText}
+                {result.output ?? '—'}
               </pre>
             ) : null}
 
@@ -174,34 +219,29 @@ export function FmlBench({ onOpenFakes, fakesSeed, onSeedConsumed }: FmlBenchPro
               </div>
             ) : null}
 
-            {tab === 'log'
-              ? result.log.map((row, index) => (
-                  <div key={index} style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'baseline', padding: '8px 10px', borderBottom: '1px solid var(--border)' }}>
-                    <span style={{ fontFamily: monoFont, fontSize: 10, color: 'var(--text4)', width: 18, textAlign: 'right', flex: 'none' }}>{index + 1}</span>
-                    <span style={{ fontFamily: monoFont, fontSize: 11.5, fontWeight: 600, color: 'var(--accent)', flex: 'none', minWidth: 110 }}>{row.rule}</span>
-                    <span style={{ fontFamily: monoFont, fontSize: 11, color: 'var(--text2)', flex: '1 1 auto', minWidth: 0, wordBreak: 'break-word' }}>
-                      {row.src} → {row.tgt}
-                    </span>
-                    <span style={{ fontFamily: monoFont, fontSize: 10.5, color: 'var(--text3)', flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {row.val}
-                    </span>
+            {!result.error && tab === 'trace' ? (
+              result.trace.length > 0 ? (
+                result.trace.map((line, index) => (
+                  <div
+                    key={index}
+                    style={{ display: 'flex', gap: 12, padding: '8px 10px', borderBottom: '1px solid var(--border)' }}
+                  >
                     <span
-                      style={{
-                        fontFamily: monoFont,
-                        fontSize: 9.5,
-                        fontWeight: 600,
-                        padding: '2px 8px',
-                        borderRadius: 99,
-                        flex: 'none',
-                        background: row.status === 'applied' ? 'var(--pass-bg)' : row.status === 'skipped' ? 'var(--chip-gray-bg)' : 'var(--fail-bg)',
-                        color: row.status === 'applied' ? 'var(--pass)' : row.status === 'skipped' ? 'var(--chip-gray-fg)' : 'var(--fail)',
-                      }}
+                      style={{ fontFamily: monoFont, fontSize: 10, color: 'var(--text4)', width: 18, textAlign: 'right', flex: 'none' }}
                     >
-                      {row.status}
+                      {index + 1}
+                    </span>
+                    <span style={{ fontFamily: monoFont, fontSize: 11.5, color: 'var(--text2)', flex: 1, minWidth: 0, wordBreak: 'break-word' }}>
+                      {line}
                     </span>
                   </div>
                 ))
-              : null}
+              ) : (
+                <span style={{ fontSize: 11, color: 'var(--text4)' }}>
+                  No trace output — add <span style={{ fontFamily: monoFont }}>log(...)</span> anywhere in a rule to log a checkpoint.
+                </span>
+              )
+            ) : null}
           </Card>
         </div>
       </div>

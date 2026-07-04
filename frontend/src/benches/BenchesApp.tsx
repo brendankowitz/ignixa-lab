@@ -11,8 +11,8 @@ type BenchId = 'fhirpath' | 'fml' | 'sqlonfhir' | 'fakes';
 
 const BENCH_TABS: PillItem<BenchId>[] = [
   { id: 'fhirpath', label: 'FHIRPath' },
-  { id: 'fml', label: 'FML', disabled: true, title: 'Not yet implemented' },
-  { id: 'sqlonfhir', label: 'SQL on FHIR', disabled: true, title: 'Not yet implemented' },
+  { id: 'fml', label: 'FML' },
+  { id: 'sqlonfhir', label: 'SQL on FHIR' },
   { id: 'fakes', label: 'Fakes' },
 ];
 
@@ -91,7 +91,7 @@ export function BenchesApp() {
         <div style={{ flex: 1 }} />
 
         <span style={{ fontFamily: monoFont, fontSize: 11, color: 'var(--text3)' }}>
-          {bench === 'fhirpath' ? 'live engine' : 'mock engine · exploration'}
+          {bench === 'fakes' ? 'generator · exploration' : 'live engine'}
         </span>
 
         <button

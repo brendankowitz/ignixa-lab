@@ -20,6 +20,10 @@
 
     <!-- Synthetic FHIR data generator (populations, clinical scenarios, single resources, edge-case fuzzing), powering the Fakes bench -->
     <PackageVersion Include="Ignixa.FhirFakes" Version="0.5.13" />
+    <!-- FHIR Mapping Language (FML) parser/evaluator, powering the FML bench endpoint -->
+    <PackageVersion Include="Ignixa.FhirMappingLanguage" Version="0.5.13-beta" />
+    <!-- SQL-on-FHIR-v2 ViewDefinition evaluator, powering the SQL on FHIR bench endpoint -->
+    <PackageVersion Include="Ignixa.SqlOnFhir" Version="0.5.13" />
 
     <!--
       Canonical TestScript suites (ADR-2607). Interim local package built by

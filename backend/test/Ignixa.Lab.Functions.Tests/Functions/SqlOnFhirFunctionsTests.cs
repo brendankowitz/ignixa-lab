@@ -1,0 +1,226 @@
+using System.Text;
+using System.Text.Json.Nodes;
+using FluentAssertions;
+using Ignixa.Lab.Functions.Functions;
+using Ignixa.Lab.Functions.Services.FhirPath;
+using Ignixa.Lab.Functions.Services.SqlOnFhir;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging.Abstractions;
+
+namespace Ignixa.Lab.Functions.Tests.Functions;
+
+public sealed class SqlOnFhirFunctionsTests
+{
+    private const string ValidViewDefinitionJson = """
+        {
+          "resourceType": "ViewDefinition",
+          "status": "active",
+          "resource": "Patient",
+          "select": [ { "column": [ { "name": "id", "path": "id" }, { "name": "gender", "path": "gender" } ] } ]
+        }
+        """;
+
+    [Fact]
+    public async Task RunViewDefinition_ValidRequest_ReturnsJsonArrayOfRows()
+    {
+        var function = CreateFunction();
+        var body = @"{""resourceType"":""Parameters"",""parameter"":[
+                {""name"":""viewResource"",""resource"":" + ValidViewDefinitionJson + @"},
+                {""name"":""resource"",""resource"":{""resourceType"":""Patient"",""id"":""p1"",""gender"":""male""}}
+            ]}";
+
+        var result = await function.RunViewDefinition(BuildPostRequest(body), CancellationToken.None);
+
+        var content = result.Should().BeOfType<ContentResult>().Subject;
+        content.StatusCode.Should().Be(200);
+        content.ContentType.Should().Be("application/json");
+        var json = JsonNode.Parse(content.Content!)!.AsArray();
+        json.Should().ContainSingle();
+        json[0]!["id"]!.GetValue<string>().Should().Be("p1");
+    }
+
+    [Fact]
+    public async Task RunViewDefinition_MissingViewResource_ReturnsBadRequestOperationOutcome()
+    {
+        var function = CreateFunction();
+        const string body = """{"resourceType":"Parameters","parameter":[{"name":"resource","resource":{"resourceType":"Patient","id":"p1"}}]}""";
+
+        var result = await function.RunViewDefinition(BuildPostRequest(body), CancellationToken.None);
+
+        var content = result.Should().BeOfType<ContentResult>().Subject;
+        content.StatusCode.Should().Be(400);
+        var json = JsonNode.Parse(content.Content!)!;
+        json["resourceType"]!.GetValue<string>().Should().Be("OperationOutcome");
+    }
+
+    [Fact]
+    public async Task RunViewDefinition_NoResourceParameters_ReturnsBadRequestOperationOutcome()
+    {
+        var function = CreateFunction();
+        var body = @"{""resourceType"":""Parameters"",""parameter"":[{""name"":""viewResource"",""resource"":" + ValidViewDefinitionJson + @"}]}";
+
+        var result = await function.RunViewDefinition(BuildPostRequest(body), CancellationToken.None);
+
+        var content = result.Should().BeOfType<ContentResult>().Subject;
+        content.StatusCode.Should().Be(400);
+        var json = JsonNode.Parse(content.Content!)!;
+        json["resourceType"]!.GetValue<string>().Should().Be("OperationOutcome");
+    }
+
+    [Fact]
+    public async Task RunViewDefinition_UnsupportedFormat_ReturnsBadRequestOperationOutcome()
+    {
+        var function = CreateFunction();
+        var body = @"{""resourceType"":""Parameters"",""parameter"":[
+                {""name"":""viewResource"",""resource"":" + ValidViewDefinitionJson + @"},
+                {""name"":""resource"",""resource"":{""resourceType"":""Patient"",""id"":""p1""}},
+                {""name"":""_format"",""valueCode"":""csv""}
+            ]}";
+
+        var result = await function.RunViewDefinition(BuildPostRequest(body), CancellationToken.None);
+
+        var content = result.Should().BeOfType<ContentResult>().Subject;
+        content.StatusCode.Should().Be(400);
+        var json = JsonNode.Parse(content.Content!)!;
+        json["resourceType"]!.GetValue<string>().Should().Be("OperationOutcome");
+    }
+
+    [Fact]
+    public async Task RunViewDefinition_UnsupportedParameter_ReturnsBadRequestOperationOutcome()
+    {
+        var function = CreateFunction();
+        var body = @"{""resourceType"":""Parameters"",""parameter"":[
+                {""name"":""viewResource"",""resource"":" + ValidViewDefinitionJson + @"},
+                {""name"":""resource"",""resource"":{""resourceType"":""Patient"",""id"":""p1""}},
+                {""name"":""patient"",""valueString"":""Patient/1""}
+            ]}";
+
+        var result = await function.RunViewDefinition(BuildPostRequest(body), CancellationToken.None);
+
+        var content = result.Should().BeOfType<ContentResult>().Subject;
+        content.StatusCode.Should().Be(400);
+        var json = JsonNode.Parse(content.Content!)!;
+        json["resourceType"]!.GetValue<string>().Should().Be("OperationOutcome");
+    }
+
+    [Fact]
+    public async Task RunViewDefinition_LimitParameter_TruncatesRows()
+    {
+        var function = CreateFunction();
+        var body = @"{""resourceType"":""Parameters"",""parameter"":[
+                {""name"":""viewResource"",""resource"":" + ValidViewDefinitionJson + @"},
+                {""name"":""resource"",""resource"":{""resourceType"":""Patient"",""id"":""p1"",""gender"":""male""}},
+                {""name"":""resource"",""resource"":{""resourceType"":""Patient"",""id"":""p2"",""gender"":""female""}},
+                {""name"":""_limit"",""valueInteger"":1}
+            ]}";
+
+        var result = await function.RunViewDefinition(BuildPostRequest(body), CancellationToken.None);
+
+        var content = result.Should().BeOfType<ContentResult>().Subject;
+        content.StatusCode.Should().Be(200);
+        var json = JsonNode.Parse(content.Content!)!.AsArray();
+        json.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task RunViewDefinition_MalformedPostBody_ReturnsBadRequestOperationOutcome()
+    {
+        var function = CreateFunction();
+
+        var result = await function.RunViewDefinition(BuildPostRequest("{ this is not valid json"), CancellationToken.None);
+
+        var content = result.Should().BeOfType<ContentResult>().Subject;
+        content.StatusCode.Should().Be(400);
+        var json = JsonNode.Parse(content.Content!)!;
+        json["resourceType"]!.GetValue<string>().Should().Be("OperationOutcome");
+    }
+
+    // GetValueAs<int>() (the naive approach) silently returns 0 for any
+    // non-integer _limit value, which the service then interprets as
+    // "truncate to zero rows" - a wrong-but-plausible 200 response instead of
+    // a validation error. Found via final-review live/decompiled verification.
+    // A negative _limit is the mirror image: the service treats it as "no limit"
+    // (return all rows) rather than truncating, so it must be rejected too.
+    [Theory]
+    [InlineData(@"{""name"":""_limit"",""valueString"":""5""}")]
+    [InlineData(@"{""name"":""_limit"",""valueDecimal"":2.5}")]
+    [InlineData(@"{""name"":""_limit"",""valueBoolean"":true}")]
+    [InlineData(@"{""name"":""_limit"",""valueInteger"":-1}")]
+    public async Task RunViewDefinition_LimitNotAnInteger_ReturnsBadRequestOperationOutcome(string malformedLimitParam)
+    {
+        var function = CreateFunction();
+        var body = @"{""resourceType"":""Parameters"",""parameter"":[
+                {""name"":""viewResource"",""resource"":" + ValidViewDefinitionJson + @"},
+                {""name"":""resource"",""resource"":{""resourceType"":""Patient"",""id"":""p1""}},
+                " + malformedLimitParam + @"
+            ]}";
+
+        var result = await function.RunViewDefinition(BuildPostRequest(body), CancellationToken.None);
+
+        var content = result.Should().BeOfType<ContentResult>().Subject;
+        content.StatusCode.Should().Be(400);
+        var json = JsonNode.Parse(content.Content!)!;
+        json["resourceType"]!.GetValue<string>().Should().Be("OperationOutcome");
+    }
+
+    // Previously a 'resource' parameter with no embedded resource (e.g. sent as
+    // valueString) was silently dropped from evaluation rather than rejected,
+    // so the ViewDefinition ran against fewer resources than the caller sent
+    // with a 200 response and no indication anything was wrong.
+    [Fact]
+    public async Task RunViewDefinition_ResourceParameterNotEmbedded_ReturnsBadRequestOperationOutcome()
+    {
+        var function = CreateFunction();
+        var body = @"{""resourceType"":""Parameters"",""parameter"":[
+                {""name"":""viewResource"",""resource"":" + ValidViewDefinitionJson + @"},
+                {""name"":""resource"",""resource"":{""resourceType"":""Patient"",""id"":""p1""}},
+                {""name"":""resource"",""valueString"":""not-a-resource""}
+            ]}";
+
+        var result = await function.RunViewDefinition(BuildPostRequest(body), CancellationToken.None);
+
+        var content = result.Should().BeOfType<ContentResult>().Subject;
+        content.StatusCode.Should().Be(400);
+        var json = JsonNode.Parse(content.Content!)!;
+        json["resourceType"]!.GetValue<string>().Should().Be("OperationOutcome");
+    }
+
+    // The endpoint is anonymous and unauthenticated, so an unbounded number of
+    // inline resources is a DoS vector. Requests over the cap must be rejected
+    // with a 400 rather than evaluated.
+    [Fact]
+    public async Task RunViewDefinition_TooManyResources_ReturnsBadRequestOperationOutcome()
+    {
+        var function = CreateFunction();
+        var resourceParams = string.Join(",", Enumerable.Range(0, 1001)
+            .Select(i => $@"{{""name"":""resource"",""resource"":{{""resourceType"":""Patient"",""id"":""p{i}""}}}}"));
+        var body = @"{""resourceType"":""Parameters"",""parameter"":[
+                {""name"":""viewResource"",""resource"":" + ValidViewDefinitionJson + @"},
+                " + resourceParams + @"
+            ]}";
+
+        var result = await function.RunViewDefinition(BuildPostRequest(body), CancellationToken.None);
+
+        var content = result.Should().BeOfType<ContentResult>().Subject;
+        content.StatusCode.Should().Be(400);
+        var json = JsonNode.Parse(content.Content!)!;
+        json["resourceType"]!.GetValue<string>().Should().Be("OperationOutcome");
+    }
+
+    private static SqlOnFhirFunctions CreateFunction()
+    {
+        var schemaFactory = new SchemaProviderFactory();
+        var service = new SqlOnFhirService(schemaFactory, NullLogger<SqlOnFhirService>.Instance);
+        return new SqlOnFhirFunctions(NullLogger<SqlOnFhirFunctions>.Instance, service);
+    }
+
+    private static HttpRequest BuildPostRequest(string body)
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Method = "POST";
+        context.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body));
+
+        return context.Request;
+    }
+}

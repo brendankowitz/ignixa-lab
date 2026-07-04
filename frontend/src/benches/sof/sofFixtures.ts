@@ -2,6 +2,7 @@ import { PATIENT_EXAMPLE } from '../fhirpath/sampleResources';
 
 export const DEFAULT_VIEW_DEFINITION_TEXT = JSON.stringify(
   {
+    resourceType: 'ViewDefinition',
     resource: 'Patient',
     status: 'active',
     name: 'patient_demographics',
