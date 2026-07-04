@@ -22,7 +22,7 @@ public sealed class FmlResultFormatter
     {
         if (!result.IsSuccess)
         {
-            return FhirPath.ResultFormatter.CreateOperationOutcomeResult("error", "invalid", result.Error!, result.Error);
+            return FhirPath.ResultFormatter.CreateOperationOutcomeResult("error", "invalid", result.Error!, result.ErrorDiagnostics);
         }
 
         var parameters = new ParametersJsonNode();

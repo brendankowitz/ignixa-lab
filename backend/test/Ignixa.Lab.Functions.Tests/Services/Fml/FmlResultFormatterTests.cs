@@ -26,7 +26,7 @@ public sealed class FmlResultFormatterTests
 
         var json = JsonNode.Parse(formatted.SerializeToString())!;
         json["resourceType"]!.GetValue<string>().Should().Be("OperationOutcome");
-        json["issue"]![0]!["diagnostics"]!.GetValue<string>().Should().Be("Failed to parse FML map: unexpected token");
+        json["issue"]![0]!["diagnostics"]!.GetValue<string>().Should().Be("bad map text");
     }
 
     [Fact]
