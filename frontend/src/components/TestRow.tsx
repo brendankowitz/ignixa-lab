@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { extractAssertions, STATUS_LABELS } from '../lib/conformance';
-import { testScriptGithubUrl } from '../lib/github';
 import type { ConformanceResult, ConformanceStep } from '../types/conformance';
 import { HttpRequestView, HttpResponseView } from './HttpMessage';
 
@@ -11,12 +10,12 @@ export interface TestRowProps {
   suiteLabel: string;
 }
 
-type DetailTab = 'assertions' | 'steps' | 'script';
+type DetailTab = 'assertions' | 'steps';
 
 /**
  * A single test-case row. Collapsed, it shows the pass/fail chip, test name,
- * and file context; expanded, it reveals Assertions / Steps / Test Script
- * tabs built from the result's step trace.
+ * and file context; expanded, it reveals Assertions and Steps tabs built from
+ * the result's step trace.
  */
 export function TestRow({ result, suiteLabel }: TestRowProps) {
   const [expanded, setExpanded] = useState(false);
@@ -49,7 +48,6 @@ export function TestRow({ result, suiteLabel }: TestRowProps) {
           <div className="test-row__tabs">
             <TabButton label="Assertions" active={tab === 'assertions'} onClick={() => setTab('assertions')} />
             <TabButton label="Steps" active={tab === 'steps'} onClick={() => setTab('steps')} />
-            <TabButton label="Test Script" active={tab === 'script'} onClick={() => setTab('script')} />
           </div>
 
           {tab === 'assertions' ? (
@@ -104,29 +102,6 @@ export function TestRow({ result, suiteLabel }: TestRowProps) {
               )}
             </div>
           ) : null}
-
-          {tab === 'script' ? (
-            <div className="test-row__panel">
-              <div className="test-script">
-                <span className="test-script__path">{result.file}</span>
-                {result.category === 'uploaded' ? (
-                  <p className="test-row__empty">
-                    This test script was uploaded for this run, not bundled with the app — no GitHub source to
-                    link to.
-                  </p>
-                ) : (
-                  <a
-                    className="test-script__link"
-                    href={testScriptGithubUrl(result.file)}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    View test script on GitHub ↗
-                  </a>
-                )}
-              </div>
-            </div>
-          ) : null}
         </div>
       ) : null}
     </div>
@@ -144,8 +119,9 @@ function TabButton({ label, active, onClick }: { label: string; active: boolean;
 /**
  * A single row in the Steps tab's walkthrough: a compact, collapsed-by-default
  * summary (status chip, title, phase/kind/duration meta) that expands in
- * place to show the captured request/response (operation steps) or message
- * (assertion steps) when there's detail worth showing.
+ * place to show the captured request/response when present, or a plain
+ * message otherwise (in practice: request/response for operation steps,
+ * message for assertion steps).
  */
 function StepRow({ step, index }: { step: ConformanceStep; index: number }) {
   const [open, setOpen] = useState(false);
@@ -201,7 +177,10 @@ function StepRow({ step, index }: { step: ConformanceStep; index: number }) {
   );
 }
 
-/** Reduces a captured request URL down to its path + query for a compact step title. */
+/**
+ * Reduces a captured request URL down to its path + query for a compact step
+ * title; falls back to the raw string if it isn't a parseable absolute URL.
+ */
 function shortUrl(url: string): string {
   try {
     const parsed = new URL(url);

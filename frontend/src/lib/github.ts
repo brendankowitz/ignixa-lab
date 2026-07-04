@@ -1,7 +1,7 @@
 /**
  * Links from a {@link ConformanceResult} back to its source TestScript fixture
- * in the `ignixa-lab` GitHub repo, shown on the Runner screen's "Test Script"
- * tab. See {@link file:../../../backend/src/Ignixa.Lab.Functions/Suites/SuiteCatalog.cs}
+ * in the `ignixa-lab` GitHub repo, shown in the Runner screen's test list
+ * group header. See {@link file:../../../backend/src/Ignixa.Lab.Functions/Suites/SuiteCatalog.cs}
  * for how `ConformanceResult.file` (e.g. `"Search/intervals.json"`) is derived
  * as a path relative to this same `testscripts/` directory.
  */
@@ -11,7 +11,8 @@ const GITHUB_REPO = 'brendankowitz/ignixa-lab';
 
 /** Ref used to build fixture links. The running engine doesn't currently
  * expose the commit it was built from, so this isn't a true commit-pinned
- * permalink — it always resolves to the tip of `main`. */
+ * permalink — links default to the tip of `main` unless a caller passes an
+ * explicit `ref` (none currently do). */
 const GITHUB_DEFAULT_REF = 'main';
 
 /** Suite root the `file` field on a {@link ConformanceResult} is relative to. */
