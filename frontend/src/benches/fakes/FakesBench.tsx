@@ -1138,6 +1138,7 @@ function ResourcePanel({
   initialState?: FakesShareState['resource'];
   onShareStateChange?: (state: NonNullable<FakesShareState['resource']>) => void;
 }) {
+  const edgeCaseFamilies = metadata.edgeCaseFamilies;
   const [resourceType, setResourceType] = useState(initialState?.resourceType ?? 'Patient');
   const [pickerOpen, setPickerOpen] = useState(false);
   const [typeFilter, setTypeFilter] = useState('');
@@ -1152,7 +1153,7 @@ function ResourcePanel({
   );
   const [edgeCaseOn, setEdgeCaseOn] = useState(initialState?.edgeCaseOn ?? false);
   const [includeInvalid, setIncludeInvalid] = useState(initialState?.includeInvalid ?? false);
-  const [selectedCategories, setSelectedCategories] = useState<Record<string, boolean>>(() => initialState?.selectedCategories ?? initialCategorySelection(metadata.edgeCaseFamilies ?? []));
+  const [selectedCategories, setSelectedCategories] = useState<Record<string, boolean>>(() => initialState?.selectedCategories ?? initialCategorySelection(edgeCaseFamilies));
   const [view, setView] = useState<'resource' | 'manifest'>('resource');
   const [result, setResult] = useState<ResourceResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -1208,7 +1209,7 @@ function ResourcePanel({
       return [];
     }
     const selectors: string[] = [];
-    for (const family of metadata.edgeCaseFamilies) {
+    for (const family of edgeCaseFamilies) {
       for (const category of family.categories) {
         if (category.intent !== 'PreservesValidity' && !includeInvalid) {
           continue;
@@ -1219,7 +1220,7 @@ function ResourcePanel({
       }
     }
     return selectors;
-  }, [edgeCaseOn, includeInvalid, metadata.edgeCaseFamilies, selectedCategories]);
+  }, [edgeCaseFamilies, edgeCaseOn, includeInvalid, selectedCategories]);
 
   const generate = () => {
     const activeSeed = randomizeSeed ? Math.floor(Math.random() * 100000) : seed;
@@ -1460,7 +1461,7 @@ function ResourcePanel({
         {edgeCaseOn ? (
           <>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))', gap: 12 }}>
-              {metadata.edgeCaseFamilies.map((family) => (
+              {edgeCaseFamilies.map((family) => (
                 <EdgeCaseFamilyCard
                   key={family.family}
                   family={family}

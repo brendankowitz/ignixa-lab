@@ -204,7 +204,7 @@ function fakesStateFromRecord(record: Record<string, unknown>): FakesShareState 
 function populationStateFromRecord(record: Record<string, unknown>): NonNullable<FakesShareState['population']> {
   return {
     source: typeof record.source === 'string' ? record.source : undefined,
-    count: typeof record.count === 'number' && Number.isFinite(record.count) ? record.count : undefined,
+    count: typeof record.count === 'number' && Number.isFinite(record.count) && record.count >= 0 && Number.isInteger(record.count) ? record.count : undefined,
     format: POPULATION_FORMATS.includes(record.format as NonNullable<NonNullable<FakesShareState['population']>['format']>)
       ? (record.format as NonNullable<NonNullable<FakesShareState['population']>['format']>)
       : undefined,
@@ -224,7 +224,7 @@ function resourceStateFromRecord(record: Record<string, unknown>): NonNullable<F
   return {
     resourceType: typeof record.resourceType === 'string' ? record.resourceType : undefined,
     density: typeof record.density === 'string' ? record.density : undefined,
-    seed: typeof record.seed === 'number' && Number.isFinite(record.seed) ? record.seed : undefined,
+    seed: typeof record.seed === 'number' && Number.isFinite(record.seed) && Number.isInteger(record.seed) ? record.seed : undefined,
     randomizeSeed: typeof record.randomizeSeed === 'boolean' ? record.randomizeSeed : undefined,
     observationState: typeof record.observationState === 'string' ? record.observationState : undefined,
     firstName: typeof record.firstName === 'string' ? record.firstName : undefined,
