@@ -40,6 +40,7 @@ export interface FakesShareState {
   resource?: {
     resourceType?: string;
     density?: string;
+    theme?: string;
     seed?: number;
     randomizeSeed?: boolean;
     observationState?: string;
@@ -228,6 +229,7 @@ function resourceStateFromRecord(record: Record<string, unknown>): NonNullable<F
   return {
     resourceType: typeof record.resourceType === 'string' ? record.resourceType : undefined,
     density: DENSITY_VALUES.includes(record.density as string) ? (record.density as string) : undefined,
+    theme: typeof record.theme === 'string' ? record.theme : undefined,
     seed: typeof record.seed === 'number' && Number.isFinite(record.seed) && Number.isInteger(record.seed) ? record.seed : undefined,
     randomizeSeed: typeof record.randomizeSeed === 'boolean' ? record.randomizeSeed : undefined,
     observationState: typeof record.observationState === 'string' ? record.observationState : undefined,

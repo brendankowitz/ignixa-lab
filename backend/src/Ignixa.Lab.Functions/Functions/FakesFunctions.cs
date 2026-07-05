@@ -88,6 +88,7 @@ public sealed class FakesFunctions(
                 .Where(family => family.Categories.Count > 0)
                 .ToList(),
             PatientCities = populationGenerator.AvailableCities.Select(city => city.Name).ToList(),
+            ClinicalDomains = Enum.GetNames<ClinicalDomain>().Where(name => name != nameof(ClinicalDomain.Unspecified)).ToList(),
         };
 
         return new OkObjectResult(response);
@@ -240,6 +241,14 @@ public sealed class FakesFunctions(
             });
         }
 
+        if (!string.IsNullOrWhiteSpace(resourceRequest.Theme) && !Enum.TryParse<ClinicalDomain>(resourceRequest.Theme, ignoreCase: true, out _))
+        {
+            return new BadRequestObjectResult(new
+            {
+                error = $"Unknown theme '{resourceRequest.Theme}'. Supported: {string.Join(", ", Enum.GetNames<ClinicalDomain>().Where(name => name != nameof(ClinicalDomain.Unspecified)))}.",
+            });
+        }
+
         if (!string.IsNullOrWhiteSpace(resourceRequest.ObservationState)
             && !ObservationStateCatalog.GetNames().Contains(resourceRequest.ObservationState, StringComparer.OrdinalIgnoreCase))
         {
@@ -253,6 +262,7 @@ public sealed class FakesFunctions(
                 resourceRequest.ResourceType,
                 resourceRequest.Seed,
                 resourceRequest.Density,
+                resourceRequest.Theme,
                 resourceRequest.FirstName,
                 resourceRequest.FamilyName,
                 resourceRequest.City,

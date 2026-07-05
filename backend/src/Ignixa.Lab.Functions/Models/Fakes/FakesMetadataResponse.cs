@@ -13,6 +13,8 @@ public sealed class FakesMetadataResponse
     public required IReadOnlyList<EdgeCaseFamilyMetadata> EdgeCaseFamilies { get; init; }
     /// <summary>City names <see cref="Ignixa.Lab.Functions.Services.Fakes.FakesService"/> can sample realistic demographics (including gender) from via <c>PatientBuilder.FromCity</c>.</summary>
     public required IReadOnlyList<string> PatientCities { get; init; }
+    /// <summary>Clinical specialty names usable as a Maximum-density generation Theme (see Ignixa.FhirFakes.ClinicalDomain), excluding "Unspecified".</summary>
+    public required IReadOnlyList<string> ClinicalDomains { get; init; }
 }
 
 public sealed class ScenarioMetadata

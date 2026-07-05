@@ -1135,6 +1135,7 @@ function ResourcePanel({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [typeFilter, setTypeFilter] = useState('');
   const [density, setDensity] = useState(initialState?.density ?? 'Minimal');
+  const [theme, setTheme] = useState(initialState?.theme ?? '');
   const [seed, setSeed] = useState(initialState?.seed ?? 42);
   const [randomizeSeed, setRandomizeSeed] = useState(initialState?.randomizeSeed ?? true);
   const [observationState, setObservationState] = useState(initialState?.observationState ?? metadata.observationStates[0] ?? '');
@@ -1155,6 +1156,7 @@ function ResourcePanel({
     onShareStateChange?.({
       resourceType,
       density,
+      theme,
       seed,
       randomizeSeed,
       observationState,
@@ -1168,6 +1170,7 @@ function ResourcePanel({
   }, [
     city,
     density,
+    theme,
     edgeCaseOn,
     familyName,
     firstName,
@@ -1226,6 +1229,7 @@ function ResourcePanel({
       resourceType,
       seed: activeSeed,
       density,
+      theme: theme || undefined,
       firstName: firstName || undefined,
       familyName: familyName || undefined,
       city: city || undefined,
@@ -1344,6 +1348,20 @@ function ResourcePanel({
 
           <span style={sectionLabelStyle}>Generation density</span>
           <Pills items={DENSITY_ITEMS} activeId={density} onChange={setDensity} />
+
+          {density === 'Maximum' ? (
+            <>
+              <span style={sectionLabelStyle}>Theme · optional, keeps coded fields clinically coherent</span>
+              <select value={theme} onChange={(event) => setTheme(event.target.value)} style={monoInputStyle}>
+                <option value="">Random per generation</option>
+                {metadata.clinicalDomains.map((domain) => (
+                  <option key={domain} value={domain}>
+                    {domain}
+                  </option>
+                ))}
+              </select>
+            </>
+          ) : null}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ ...sectionLabelStyle, flex: 1 }}>Seed</span>

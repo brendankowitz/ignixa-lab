@@ -46,6 +46,7 @@ export function generateResource(
     resourceType: string;
     seed: number;
     density: string;
+    theme?: string;
     firstName?: string;
     familyName?: string;
     city?: string;

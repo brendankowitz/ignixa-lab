@@ -34,6 +34,7 @@ public sealed class FakesFunctionsTests
         metadata.ResourceTypesByVersion["r4"].Should().Contain("Patient");
         metadata.PatientCities.Should().Contain("Boston");
         metadata.LibraryVersion.Should().MatchRegex(@"^\d+\.\d+\.\d+$");
+        metadata.ClinicalDomains.Should().Contain("Cardiology");
     }
 
     [Fact]
@@ -407,6 +408,28 @@ public sealed class FakesFunctionsTests
         var result = await functions.GenerateResource(request, CancellationToken.None);
 
         result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task GenerateResource_UnknownTheme_ReturnsBadRequest()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { resourceType = "Patient", density = "Maximum", theme = "NotARealTheme" });
+
+        var result = await functions.GenerateResource(request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task GenerateResource_MaximumDensityWithTheme_Succeeds()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { resourceType = "Condition", density = "Maximum", theme = "Cardiology", seed = 1 });
+
+        var result = await functions.GenerateResource(request, CancellationToken.None);
+
+        result.Should().BeOfType<OkObjectResult>();
     }
 
     private static HttpRequest BuildJsonPostRequest(object body)

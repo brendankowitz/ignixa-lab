@@ -35,6 +35,8 @@ export interface FakesMetadata {
   edgeCaseFamilies: EdgeCaseFamilyMetadata[];
   /** City names the backend can sample realistic demographics (including gender) from for a generated Patient. */
   patientCities: string[];
+  /** Clinical specialty names usable as a Maximum-density generation Theme, excluding "Unspecified". */
+  clinicalDomains: string[];
 }
 
 export interface PopulationSummary {

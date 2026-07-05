@@ -134,6 +134,7 @@ public sealed class FakesService(SchemaProviderFactory schemaProviderFactory)
         string resourceType,
         int seed,
         string density,
+        string? theme,
         string? firstName,
         string? familyName,
         string? city,
@@ -145,8 +146,11 @@ public sealed class FakesService(SchemaProviderFactory schemaProviderFactory)
         var generationDensity = Enum.TryParse<GenerationDensity>(density, ignoreCase: true, out var parsedDensity)
             ? parsedDensity
             : GenerationDensity.Minimal;
+        ClinicalDomain? clinicalTheme = !string.IsNullOrWhiteSpace(theme) && Enum.TryParse<ClinicalDomain>(theme, ignoreCase: true, out var parsedTheme)
+            ? parsedTheme
+            : null;
 
-        var resource = BuildResource(schemaProvider, resourceType, seed, generationDensity, firstName, familyName, city, observationState);
+        var resource = BuildResource(schemaProvider, resourceType, seed, generationDensity, clinicalTheme, firstName, familyName, city, observationState);
 
         JsonObject? manifestJson = null;
         if (edgeCaseSelectors is { Count: > 0 })
@@ -251,6 +255,7 @@ public sealed class FakesService(SchemaProviderFactory schemaProviderFactory)
         string resourceType,
         int seed,
         GenerationDensity density,
+        ClinicalDomain? theme,
         string? firstName,
         string? familyName,
         string? city,
@@ -309,7 +314,7 @@ public sealed class FakesService(SchemaProviderFactory schemaProviderFactory)
             return observation;
         }
 
-        var faker = new SchemaBasedFhirResourceFaker(schemaProvider, seed) { Density = density };
+        var faker = new SchemaBasedFhirResourceFaker(schemaProvider, seed) { Density = density, Theme = theme };
         return faker.Generate(resourceType);
     }
 
