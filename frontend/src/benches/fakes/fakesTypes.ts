@@ -6,6 +6,10 @@ export interface ScenarioParameterMetadata {
 
 export interface ScenarioMetadata {
   id: string;
+  /** Free-text grouping label from the library's ScenarioAttribute.Category, or null if unannotated. */
+  category: string | null;
+  /** Clinical specialty from the library's ScenarioAttribute.Domain, or null if undeclared. */
+  domain: string | null;
   parameters: ScenarioParameterMetadata[];
 }
 

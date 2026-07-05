@@ -603,10 +603,10 @@ function ScenarioPanel({
   }, [onShareStateChange, paramValues, resolvedReferences, scenarioId, tag]);
 
   const scenario = useMemo(() => metadata.scenarios.find((s) => s.id === scenarioId), [metadata.scenarios, scenarioId]);
-  const description = describeScenario(scenarioId);
+  const description = describeScenario(scenarioId, scenario?.category);
 
   const scenarioInfos = useMemo(
-    () => metadata.scenarios.map((s) => ({ id: s.id, ...describeScenario(s.id) })),
+    () => metadata.scenarios.map((s) => ({ id: s.id, ...describeScenario(s.id, s.category) })),
     [metadata.scenarios],
   );
 

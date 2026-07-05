@@ -2,10 +2,10 @@
  * Curated group + blurb text for predefined clinical scenarios, keyed by the real
  * scenario id `Ignixa.FhirFakes`'s `ScenarioDiscovery` reports (the `Get` prefix is
  * stripped by the discovery convention, so ids look like `DiabeticPatient`). Grouping
- * mirrors the source file each scenario lives in. Scenarios with no entry here fall
- * back to a humanized id and a generic group (see `describeScenario`), so the bench
- * keeps working if the library adds scenarios later — same pattern as
- * `edgeCaseDescriptions.ts`.
+ * prefers the library's own `Category` over this curated map; the curated map remains
+ * the source for `blurb` text, and the `Scenario` fallback still applies when neither
+ * the library nor the curated map has a group (see `describeScenario`). This pattern
+ * lets the bench keep working if the library adds scenarios later — same as `edgeCaseDescriptions.ts`.
  */
 interface ScenarioDescription {
   group: string;
@@ -82,10 +82,13 @@ function humanize(scenarioId: string): string {
  * Returns the display group + blurb for a scenario id, falling back to a humanized
  * name and a generic group when the id is not in the curated map.
  */
-export function describeScenario(scenarioId: string): { group: string; label: string; blurb: string } {
+export function describeScenario(
+  scenarioId: string,
+  category?: string | null,
+): { group: string; label: string; blurb: string } {
   const curated = SCENARIO_DESCRIPTIONS[scenarioId];
   return {
-    group: curated?.group ?? 'Scenario',
+    group: category ?? curated?.group ?? 'Scenario',
     label: humanize(scenarioId),
     blurb: curated?.blurb ?? 'Predefined clinical scenario.',
   };
