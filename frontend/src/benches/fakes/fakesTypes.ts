@@ -37,6 +37,8 @@ export interface FakesMetadata {
   patientCities: string[];
   /** Clinical specialty names usable as a Maximum-density generation Theme, excluding "Unspecified". */
   clinicalDomains: string[];
+  /** Discoverable workflow scenario packs (e.g. "DailyAppointmentSchedule"), same shape as `scenarios`. */
+  workflowPacks: ScenarioMetadata[];
 }
 
 export interface PopulationSummary {
@@ -56,6 +58,12 @@ export interface ScenarioResult {
   patient: Record<string, unknown> | null;
   resources: Record<string, unknown>[];
   bundle: Record<string, unknown>;
+}
+
+export interface WorkflowResult {
+  resources: Record<string, unknown>[];
+  bundle: Record<string, unknown>;
+  resourceCountsByType: Record<string, number>;
 }
 
 export interface MutationRecord {

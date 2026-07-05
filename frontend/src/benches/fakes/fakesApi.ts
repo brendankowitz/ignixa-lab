@@ -1,4 +1,4 @@
-import type { FakesMetadata, PopulationResult, ResourceResult, ScenarioResult } from './fakesTypes';
+import type { FakesMetadata, PopulationResult, ResourceResult, ScenarioResult, WorkflowResult } from './fakesTypes';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
 
@@ -57,4 +57,18 @@ export function generateResource(
   signal?: AbortSignal,
 ): Promise<ResourceResult> {
   return request<ResourceResult>('/api/fakes/resource', { method: 'POST', body: JSON.stringify(body), signal });
+}
+
+export function generateWorkflow(
+  body: {
+    fhirVersion: string;
+    packId: string;
+    parameters?: Record<string, unknown>;
+    seed?: number;
+    tag?: string;
+    resolvedReferences: boolean;
+  },
+  signal?: AbortSignal,
+): Promise<WorkflowResult> {
+  return request<WorkflowResult>('/api/fakes/workflow', { method: 'POST', body: JSON.stringify(body), signal });
 }

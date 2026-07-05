@@ -14,16 +14,17 @@ import { useIsNarrowViewport } from '../../hooks/useIsNarrowViewport';
 import { COPY_FEEDBACK_DURATION_MS, type FakesShareState } from '../../lib/shareLinks';
 import { describeEdgeCase } from './edgeCaseDescriptions';
 import { describeScenario } from './scenarioDescriptions';
-import { generatePopulation, generateResource, generateScenario, getFakesMetadata } from './fakesApi';
+import { generatePopulation, generateResource, generateScenario, generateWorkflow, getFakesMetadata } from './fakesApi';
 import type {
   EdgeCaseFamilyMetadata,
   FakesMetadata,
   PopulationResult,
   ResourceResult,
   ScenarioResult,
+  WorkflowResult,
 } from './fakesTypes';
 
-type FakesMode = 'population' | 'scenario' | 'resource';
+type FakesMode = 'population' | 'scenario' | 'resource' | 'workflow';
 type TargetBench = 'fhirpath' | 'fml' | 'sqlonfhir';
 type OnSend = (targetBench: TargetBench, payload: Record<string, unknown> | Record<string, unknown>[], label: string) => void;
 
@@ -31,6 +32,7 @@ const MODE_ITEMS: PillItem<FakesMode>[] = [
   { id: 'population', label: 'Population' },
   { id: 'scenario', label: 'Scenario' },
   { id: 'resource', label: 'Resource' },
+  { id: 'workflow', label: 'Workflow' },
 ];
 
 const DENSITY_ITEMS: PillItem<string>[] = [
@@ -156,8 +158,10 @@ export function FakesBench({ returnTo, onDismissReturn, onSend, initialState, on
   }, []);
 
   useEffect(() => {
+    // Workflow mode has no share-state fields of its own (see WorkflowPanel), so it's
+    // never persisted into the URL — falls back to the default mode on reload instead.
     onShareStateChange?.({
-      mode,
+      mode: mode === 'workflow' ? undefined : mode,
       fhirVersion,
       population: populationShare,
       scenario: scenarioShare,
@@ -226,6 +230,7 @@ export function FakesBench({ returnTo, onDismissReturn, onSend, initialState, on
           {mode === 'population' ? <PopulationPanel metadata={metadata} fhirVersion={fhirVersion} stacked={stacked} initialState={initialState?.population} onShareStateChange={setPopulationShare} /> : null}
           {mode === 'scenario' ? <ScenarioPanel metadata={metadata} fhirVersion={fhirVersion} stacked={stacked} onSend={onSend} initialState={initialState?.scenario} onShareStateChange={setScenarioShare} /> : null}
           {mode === 'resource' ? <ResourcePanel metadata={metadata} fhirVersion={fhirVersion} stacked={stacked} onSend={onSend} initialState={initialState?.resource} onShareStateChange={setResourceShare} /> : null}
+          {mode === 'workflow' ? <WorkflowPanel metadata={metadata} fhirVersion={fhirVersion} stacked={stacked} /> : null}
         </>
       )}
     </div>
@@ -1499,6 +1504,100 @@ function ResourcePanel({
           </>
         ) : null}
       </Card>
+    </div>
+  );
+}
+
+function WorkflowPanel({
+  metadata,
+  fhirVersion,
+  stacked,
+}: {
+  metadata: FakesMetadata;
+  fhirVersion: string;
+  stacked: boolean;
+}) {
+  const [packId, setPackId] = useState(metadata.workflowPacks[0]?.id ?? '');
+  const [paramValues, setParamValues] = useState<Record<string, unknown>>({});
+  const [tag, setTag] = useState('');
+  const [resolvedReferences, setResolvedReferences] = useState(false);
+  const [result, setResult] = useState<WorkflowResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const pack = useMemo(() => metadata.workflowPacks.find((p) => p.id === packId), [metadata.workflowPacks, packId]);
+
+  const selectPack = (id: string) => {
+    setPackId(id);
+    setParamValues({});
+  };
+
+  const generate = () => {
+    setIsLoading(true);
+    setError(null);
+    generateWorkflow({ fhirVersion, packId, parameters: paramValues, tag: tag || undefined, resolvedReferences })
+      .then(setResult)
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setIsLoading(false));
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={twoColumnStyle(stacked, 'minmax(300px,32%)')}>
+        <Card style={{ minWidth: 0 }}>
+          <span style={sectionLabelStyle}>Workflow scenario pack</span>
+          <Pills
+            items={metadata.workflowPacks.map((p) => ({ id: p.id, label: p.id }))}
+            activeId={packId}
+            onChange={selectPack}
+          />
+
+          {pack?.parameters.map((param) => (
+            <ScenarioParameterControl
+              key={param.name}
+              param={param}
+              value={paramValues[param.name] ?? param.defaultValue}
+              onChange={(value) => setParamValues((current) => ({ ...current, [param.name]: value }))}
+            />
+          ))}
+
+          <span style={sectionLabelStyle}>Test-isolation tag · optional</span>
+          <input value={tag} onChange={(event) => setTag(event.target.value)} placeholder="e.g. test-run-123" style={monoInputStyle} />
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1 }}>
+              <span style={{ fontSize: 12.5, fontWeight: 600 }}>Resolved references</span>
+              <span style={{ fontSize: 10.5, color: 'var(--text4)' }}>batch bundle instead of transaction</span>
+            </div>
+            <Toggle checked={resolvedReferences} onChange={setResolvedReferences} ariaLabel="Resolved references" />
+          </div>
+
+          <button type="button" onClick={generate} disabled={isLoading || !packId} style={primaryButtonStyle}>
+            {isLoading ? 'Generating…' : '⚡ Generate workflow'}
+          </button>
+        </Card>
+
+        <Card style={{ minHeight: 360, minWidth: 0 }}>
+          {error ? <ErrorBanner message={error} /> : null}
+          {result ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontFamily: monoFont, fontSize: 10.5, color: 'var(--text3)' }}>{result.resources.length} resources</span>
+              </div>
+              <HighlightedJsonBlock text={JSON.stringify(result.bundle, null, 2)} style={{ ...resultPreStyle, maxHeight: 460 }} />
+              <button
+                type="button"
+                onClick={() => downloadJson(`workflow-${slug(packId)}.json`, result.bundle)}
+                style={{ fontSize: 12, fontWeight: 600, padding: '6px 13px', borderRadius: 7, border: '1px solid var(--border2)', color: 'var(--accent)', background: 'transparent', cursor: 'pointer', alignSelf: 'flex-start' }}
+              >
+                ⬇ Download bundle
+              </button>
+            </>
+          ) : (
+            <span style={{ fontSize: 12, color: 'var(--text3)' }}>Generate a workflow pack to see its resources here.</span>
+          )}
+        </Card>
+      </div>
     </div>
   );
 }
