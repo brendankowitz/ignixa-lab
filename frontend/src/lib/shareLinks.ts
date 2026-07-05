@@ -5,6 +5,7 @@ import type { SampleId } from '../benches/fhirpath/sampleResources';
 
 export type BenchId = 'fhirpath' | 'fml' | 'sqlonfhir' | 'fakes';
 export type FakesMode = 'population' | 'scenario' | 'resource';
+export const COPY_FEEDBACK_DURATION_MS = 1400;
 
 export interface ConformanceShareState {
   tab?: TabId;
@@ -82,7 +83,8 @@ export function decodeShareState(value: string | null): unknown {
     return null;
   }
   try {
-    const padded = value.replaceAll('-', '+').replaceAll('_', '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
+    const base64 = value.replaceAll('-', '+').replaceAll('_', '/');
+    const padded = base64.padEnd(value.length + ((4 - (value.length % 4)) % 4), '=');
     const binary = atob(padded);
     const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
     return JSON.parse(new TextDecoder().decode(bytes)) as unknown;

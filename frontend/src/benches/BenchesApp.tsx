@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useTheme } from '../hooks/useTheme';
-import { buildBenchShareUrl, readBenchShare, type BenchShareState, type FakesShareState, type FhirPathShareState } from '../lib/shareLinks';
+import { COPY_FEEDBACK_DURATION_MS, buildBenchShareUrl, readBenchShare, type BenchShareState, type FakesShareState, type FhirPathShareState } from '../lib/shareLinks';
 import { Pills, type PillItem } from './components/primitives';
 import { monoFont } from './components/styles';
 import { FhirPathBench } from './fhirpath/FhirPathBench';
@@ -91,7 +91,7 @@ export function BenchesApp() {
         if (copiedTimeout.current !== null) {
           window.clearTimeout(copiedTimeout.current);
         }
-        copiedTimeout.current = window.setTimeout(() => setCopied(false), 1400);
+        copiedTimeout.current = window.setTimeout(() => setCopied(false), COPY_FEEDBACK_DURATION_MS);
       },
       () => undefined,
     );

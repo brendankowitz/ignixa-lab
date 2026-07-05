@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ThemeState } from '../hooks/useTheme';
+import { COPY_FEEDBACK_DURATION_MS } from '../lib/shareLinks';
 
 /** The three top-level screens. Tab state is component-local — no router. */
 export type TabId = 'setup' | 'runner' | 'report';
@@ -60,7 +61,7 @@ export function TopBar({
         if (copiedTimeout.current !== null) {
           window.clearTimeout(copiedTimeout.current);
         }
-        copiedTimeout.current = window.setTimeout(() => setCopied(false), 1400);
+        copiedTimeout.current = window.setTimeout(() => setCopied(false), COPY_FEEDBACK_DURATION_MS);
       },
       () => undefined,
     );
