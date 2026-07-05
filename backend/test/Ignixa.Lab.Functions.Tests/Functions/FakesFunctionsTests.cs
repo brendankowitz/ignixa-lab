@@ -447,7 +447,9 @@ public sealed class FakesFunctionsTests
         resources.GetArrayLength().Should().BeGreaterThan(0);
         foreach (var resource in resources.EnumerateArray())
         {
-            resource.GetProperty("meta").GetProperty("tag")[0].GetProperty("code").GetString().Should().Be("test-run-456");
+            var tags = resource.GetProperty("meta").GetProperty("tag");
+            tags.GetArrayLength().Should().Be(1);
+            tags[0].GetProperty("code").GetString().Should().Be("test-run-456");
         }
     }
 

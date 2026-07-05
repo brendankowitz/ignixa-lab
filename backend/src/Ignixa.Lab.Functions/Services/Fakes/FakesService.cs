@@ -148,7 +148,7 @@ public sealed class FakesService(SchemaProviderFactory schemaProviderFactory)
         var overrides = ConvertParameterOverrides(pack, parameters);
 
         var schemaProvider = schemaProviderFactory.GetSchemaProvider(fhirVersion);
-        var options = new WorkflowScenarioOptions { Seed = seed, Tag = tag };
+        var options = new WorkflowScenarioOptions { Seed = seed };
 
         WorkflowScenarioResult result;
         try
