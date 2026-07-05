@@ -106,7 +106,11 @@ export function useConformanceRun(): ConformanceRunState {
     // and testScriptGithubUrl falls back to linking against `main`.
     getHealth(abort.signal)
       .then((health) => setTestScriptsRevision(health.testScriptsRevision))
-      .catch(() => {});
+      .catch((error: unknown) => {
+        if (!abort.signal.aborted) {
+          console.error('Failed to load /api/health; testscript links will fall back to main', error);
+        }
+      });
     return () => abort.abort();
   }, []);
 

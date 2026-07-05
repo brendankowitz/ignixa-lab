@@ -98,8 +98,9 @@ export interface SuiteDescriptor {
 export interface HealthResponse {
   status: string;
   engineVersion: string;
-  /** Commit the bundled testscripts fixtures were packed from; see `lib/github.ts#testScriptGithubUrl`. */
-  testScriptsRevision: string;
+  /** Commit the bundled testscripts fixtures were packed from, or `null` if it couldn't be
+   * determined; see `lib/github.ts#testScriptGithubUrl`. */
+  testScriptsRevision: string | null;
 }
 
 /** An inline TestScript supplied in a run request. */
