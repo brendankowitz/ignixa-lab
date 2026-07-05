@@ -39,6 +39,9 @@ builder.Services.AddSingleton<ExpressionAnalyzer>();
 builder.Services.AddSingleton<ExpressionEvaluator>();
 builder.Services.AddSingleton<ResultFormatter>();
 builder.Services.AddSingleton<FhirPathService>();
+builder.Services.AddSingleton<Ignixa.Lab.Functions.Services.Fakes.ScenarioDiscovery>();
+builder.Services.AddSingleton<Ignixa.Lab.Functions.Services.Fakes.ObservationStateDiscovery>();
+builder.Services.AddSingleton<Ignixa.Lab.Functions.Services.Fakes.FakesService>();
 
 builder.Services
     .AddApplicationInsightsTelemetryWorkerService()

@@ -57,4 +57,22 @@ public sealed class SchemaProviderFactory
         "R6" => R6Analyzer.Value,
         _ => R4Analyzer.Value
     };
+
+    /// <summary>
+    /// Gets the FHIR schema provider for the specified FHIR version, typed as
+    /// <see cref="IFhirSchemaProvider"/> for callers (like the Fakes services)
+    /// that need its full surface rather than just the <see cref="ISchema"/> subset.
+    /// </summary>
+    /// <param name="fhirVersion">The FHIR version (e.g., "R4", "R5", "STU3").</param>
+    /// <returns>The schema provider for the specified version, defaults to R4 if unknown.</returns>
+    [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Instance method by design so it can be consumed via DI and mocked in tests.")]
+    public IFhirSchemaProvider GetSchemaProvider(string fhirVersion) => fhirVersion.ToUpperInvariant() switch
+    {
+        "STU3" or "R3" => Stu3Schema.Value,
+        "R4" => R4Schema.Value,
+        "R4B" => R4BSchema.Value,
+        "R5" => R5Schema.Value,
+        "R6" => R6Schema.Value,
+        _ => R4Schema.Value
+    };
 }

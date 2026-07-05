@@ -23,6 +23,12 @@ export interface RunConfig {
   selection: SuiteSelection;
 }
 
+export interface InitialRunConfig {
+  targetUrl?: string;
+  fhirVersion?: FhirVersion;
+  suiteIds?: string[];
+}
+
 /**
  * Matches a leading `http://` or `https://` a user may have typed or pasted
  * into the endpoint field. The field always renders a fixed `https://`
@@ -32,15 +38,23 @@ export interface RunConfig {
  */
 const LEADING_SCHEME = /^https?:\/\//i;
 
+function endpointFromTargetUrl(targetUrl: string | undefined): string {
+  return targetUrl?.replace(LEADING_SCHEME, '') ?? '';
+}
+
 /**
  * Owns the Setup screen's run configuration: target endpoint, FHIR version,
  * and selected suite IDs. Deliberately holds no auth field — `RunRequest`
  * carries none, so a Bearer-token control would have nothing to wire up.
  */
-export function useRunConfig(): RunConfig {
-  const [endpoint, setEndpointRaw] = useState('');
-  const [fhirVersion, setFhirVersion] = useState<FhirVersion>('R4');
-  const selection = useSuiteSelection();
+export function useRunConfig(initial: InitialRunConfig = {}): RunConfig {
+  // Preserve the original scheme from the share-link-decoded targetUrl.
+  // If initial URL was explicit `http://`, keep it; otherwise default to `https://`.
+  const initialScheme = /^http:\/\//i.test(initial.targetUrl ?? '') ? 'http://' : 'https://';
+
+  const [endpoint, setEndpointRaw] = useState(() => endpointFromTargetUrl(initial.targetUrl));
+  const [fhirVersion, setFhirVersion] = useState<FhirVersion>(initial.fhirVersion ?? 'R4');
+  const selection = useSuiteSelection(initial.suiteIds);
 
   // Strip any scheme the user typed or pasted so it can never combine with
   // the field's fixed `https://` prefix into a malformed double-scheme URL
@@ -51,7 +65,7 @@ export function useRunConfig(): RunConfig {
   return {
     endpoint,
     setEndpoint,
-    targetUrl: endpoint.trim() === '' ? '' : `https://${endpoint.trim()}`,
+    targetUrl: endpoint.trim() === '' ? '' : `${initialScheme}${endpoint.trim()}`,
     fhirVersion,
     setFhirVersion,
     selection,

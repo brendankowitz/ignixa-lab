@@ -32,6 +32,11 @@ public static class EndpointClassifier
             // Capability), not a fan-out run — classify at the same tier.
             "FhirPathMetadata" or "FhirPathStu3" or "FhirPathR4" or "FhirPathR4B"
                 or "FhirPathR5" or "FhirPathR6" => EndpointClass.Capability,
+            // Fakes generation is likewise a single in-process unit of work per
+            // call with no outbound HTTP (no amplification risk) — the Run tier
+            // was never meant for this and was only hit because these endpoints
+            // fell through to the fail-safe default below.
+            "FakesMetadata" or "FakesPopulation" or "FakesScenario" or "FakesResource" => EndpointClass.Capability,
             // Fail safe: an unrecognized (e.g. newly added) endpoint gets the
             // strictest tier rather than silently running unlimited.
             _ => EndpointClass.Run,

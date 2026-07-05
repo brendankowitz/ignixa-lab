@@ -13,11 +13,50 @@
     </Description>
     <!-- Content-only package: nothing to compile, so skip the empty-lib warning. -->
     <NoWarn>$(NoWarn);NU5128</NoWarn>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
   <ItemGroup>
     <None Include="testscripts/**/*.json" Pack="true" PackagePath="testscripts/" />
     <None Include="build/IgnixaLab.TestScript.Suites.targets" Pack="true" PackagePath="build/" />
   </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All" />
+  </ItemGroup>
+
+  <!--
+    Stamps the packed testscripts with the exact commit they came from, so the
+    Functions app can link back to a permalink blob instead of a moving `main`
+    ref. Written to obj/ (not source-controlled) and packed alongside the JSON
+    fixtures via NuGet's documented TfmSpecificPackageFile extension point (see
+    build/IgnixaLab.TestScript.Suites.targets for how consumers receive it) —
+    a plain BeforeTargets="Pack"/"GenerateNuspec" hook is unreliable here since
+    MSBuild can skip those targets outright via their own up-to-date checks.
+  -->
+  <PropertyGroup>
+    <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);WriteSourceRevisionFile</TargetsForTfmSpecificContentInPackage>
+  </PropertyGroup>
+
+  <Target Name="WriteSourceRevisionFile" DependsOnTargets="InitializeSourceControlInformation">
+    <PropertyGroup>
+      <!--
+        TfmSpecificPackageFile's PackagePath is a target *directory* that
+        preserves the source file's own name (PackagePath="testscripts/"
+        below, not "testscripts/source-revision.txt" — that would nest it
+        under a same-named subdirectory instead of naming the file). A dotfile
+        name isn't an option here: NuGet's default pack excludes anything
+        starting with '.'.
+      -->
+      <SourceRevisionFilePath>$(IntermediateOutputPath)source-revision.txt</SourceRevisionFilePath>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(SourceRevisionFilePath)" Lines="$(SourceRevisionId)" Overwrite="true" />
+    <ItemGroup>
+      <TfmSpecificPackageFile Include="$(SourceRevisionFilePath)">
+        <PackagePath>testscripts/</PackagePath>
+      </TfmSpecificPackageFile>
+    </ItemGroup>
+  </Target>
 
 </Project>

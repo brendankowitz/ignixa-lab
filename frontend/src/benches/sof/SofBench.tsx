@@ -1,20 +1,36 @@
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { Card, ErrorBanner } from '../components/primitives';
 import { engineBadgeStyle, monoFont, monoTextareaStyle, primaryButtonStyle, sectionLabelStyle } from '../components/styles';
+import { useIsNarrowViewport } from '../../hooks/useIsNarrowViewport';
 import { runSof } from './sofEngine';
 import { DEFAULT_RESOURCES_TEXT, DEFAULT_VIEW_DEFINITION_TEXT } from './sofFixtures';
 
-const twoColumnStyle: CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'minmax(380px,44%) 1fr',
-  gap: 14,
-  alignItems: 'start',
-};
+export interface SofBenchProps {
+  onOpenFakes?: () => void;
+  fakesSeed?: { text: string } | null;
+  onSeedConsumed?: () => void;
+}
 
-export function SofBench() {
+export function SofBench({ onOpenFakes, fakesSeed, onSeedConsumed }: SofBenchProps) {
+  const stacked = useIsNarrowViewport(720);
+  const twoColumnStyle: CSSProperties = {
+    display: 'grid',
+    gridTemplateColumns: stacked ? '1fr' : 'minmax(380px,44%) 1fr',
+    gap: 14,
+    alignItems: 'start',
+  };
+
   const [viewDefinitionText, setViewDefinitionText] = useState(DEFAULT_VIEW_DEFINITION_TEXT);
   const [resourcesText, setResourcesText] = useState(DEFAULT_RESOURCES_TEXT);
   const [result, setResult] = useState(() => runSof(DEFAULT_VIEW_DEFINITION_TEXT, DEFAULT_RESOURCES_TEXT));
+
+  useEffect(() => {
+    if (fakesSeed) {
+      setResourcesText(fakesSeed.text);
+      onSeedConsumed?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fakesSeed]);
 
   const runView = () => setResult(runSof(viewDefinitionText, resourcesText));
   const gridColumns = result.columns.length ? `repeat(${result.columns.length}, minmax(110px, 1fr))` : '1fr';
@@ -32,7 +48,7 @@ export function SofBench() {
       </div>
 
       <div style={twoColumnStyle}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
           <Card>
             <span style={sectionLabelStyle}>ViewDefinition</span>
             <textarea
@@ -43,7 +59,28 @@ export function SofBench() {
             />
           </Card>
           <Card>
-            <span style={sectionLabelStyle}>Resources · JSON array</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ ...sectionLabelStyle, flex: 1 }}>Resources · JSON array</span>
+              {onOpenFakes ? (
+                <button
+                  type="button"
+                  onClick={onOpenFakes}
+                  title="Generate a population with Fakes"
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    padding: '4px 11px',
+                    borderRadius: 99,
+                    cursor: 'pointer',
+                    background: 'var(--chip-vio-bg)',
+                    color: 'var(--accent)',
+                    border: '1px solid var(--accent-border)',
+                  }}
+                >
+                  ⚡ Fakes ↗
+                </button>
+              ) : null}
+            </div>
             <textarea
               value={resourcesText}
               onChange={(event) => setResourcesText(event.target.value)}
@@ -53,7 +90,7 @@ export function SofBench() {
           </Card>
         </div>
 
-        <Card style={{ minHeight: 400 }}>
+        <Card style={{ minHeight: 400, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ ...sectionLabelStyle, flex: 1 }}>Result table</span>
             <span style={{ fontFamily: monoFont, fontSize: 10.5, color: 'var(--text3)' }}>{result.meta}</span>
