@@ -91,7 +91,7 @@ public sealed class FakesService(SchemaProviderFactory schemaProviderFactory)
         {
             context = ScenarioCatalog.Invoke(scenario, schemaProvider, overrides);
         }
-        catch (ScenarioInvocationException ex)
+        catch (Exception ex) when (ex is ScenarioInvocationException or ArgumentException)
         {
             throw new InvalidScenarioParametersException($"Invalid scenario parameters: {ex.Message}", ex);
         }
@@ -148,6 +148,9 @@ public sealed class FakesService(SchemaProviderFactory schemaProviderFactory)
         var overrides = ConvertParameterOverrides(pack, parameters);
 
         var schemaProvider = schemaProviderFactory.GetSchemaProvider(fhirVersion);
+        // Tag deliberately omitted: some packs (e.g. DailyAppointmentSchedule) honor options.Tag
+        // themselves, which would double-stamp meta.tag alongside the StampTag/StampBundleEntryTags
+        // calls below. Rely solely on the external stamping helpers, matching /fakes/scenario and /fakes/resource.
         var options = new WorkflowScenarioOptions { Seed = seed };
 
         WorkflowScenarioResult result;
@@ -155,7 +158,7 @@ public sealed class FakesService(SchemaProviderFactory schemaProviderFactory)
         {
             result = WorkflowScenarioCatalog.Invoke(pack, schemaProvider, options, overrides);
         }
-        catch (ScenarioInvocationException ex)
+        catch (Exception ex) when (ex is ScenarioInvocationException or ArgumentException)
         {
             throw new InvalidScenarioParametersException($"Invalid scenario parameters: {ex.Message}", ex);
         }
@@ -253,8 +256,9 @@ public sealed class FakesService(SchemaProviderFactory schemaProviderFactory)
     /// <see cref="DiscoveredScenarioParameter.TryParseValue(string, out object?, out string?)"/> —
     /// which already applies invariant-culture parsing and the scenario's declared Min/Max range,
     /// so this method no longer needs its own type-conversion switch. An override key with no
-    /// matching parameter is ignored here and left for <see cref="ScenarioCatalog.Invoke"/>'s own
-    /// binder to silently skip, matching this method's prior behavior of not pre-validating names.
+    /// matching parameter is dropped here (via the <c>TryGetValue</c> check below) and never
+    /// reaches the library's binder at all, matching this method's prior behavior of not
+    /// pre-validating names.
     /// </summary>
     private static IReadOnlyDictionary<string, object?>? ConvertParameterOverrides(
         DiscoveredScenario scenario,
@@ -277,6 +281,12 @@ public sealed class FakesService(SchemaProviderFactory schemaProviderFactory)
 
             if (jsonValue.ValueKind == JsonValueKind.Null)
             {
+                if (Nullable.GetUnderlyingType(parameter.Type) is null && parameter.Type.IsValueType)
+                {
+                    throw new InvalidScenarioParametersException(
+                        $"Invalid scenario parameters: parameter '{parameter.Name}' cannot be null; the parameter type '{parameter.Type.Name}' is a non-nullable value type.");
+                }
+
                 overrides[parameter.Name] = null;
                 continue;
             }

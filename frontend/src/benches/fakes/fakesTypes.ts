@@ -35,7 +35,7 @@ export interface FakesMetadata {
   edgeCaseFamilies: EdgeCaseFamilyMetadata[];
   /** City names the backend can sample realistic demographics (including gender) from for a generated Patient. */
   patientCities: string[];
-  /** Clinical specialty names usable as a Maximum-density generation Theme, excluding "Unspecified". */
+  /** Clinical specialty names selectable as a generation Theme, excluding "Unspecified". The bench's Resource panel only surfaces this control at Maximum density, but the API itself applies Theme at any density. */
   clinicalDomains: string[];
   /** Discoverable workflow scenario packs (e.g. "DailyAppointmentSchedule"), same shape as `scenarios`. */
   workflowPacks: ScenarioMetadata[];

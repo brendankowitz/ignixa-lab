@@ -311,8 +311,11 @@ public sealed class FakesFunctionsTests
     public async Task GenerateScenario_FactoryRejectsArgument_ReturnsRealReasonNotReflectionBoilerplate()
     {
         var functions = CreateFunctions();
-        // age 999999 converts to a valid int but the scenario factory itself rejects it,
-        // throwing TargetInvocationException wrapping the real ArgumentOutOfRangeException.
+        // age 999999 converts to a valid int, but DiabeticPatient declares Min=18, Max=90, so
+        // DiscoveredScenarioParameter.TryParseValue's own range check rejects it in
+        // ConvertParameterOverrides before ScenarioCatalog.Invoke is ever called — still
+        // producing the same "Invalid scenario parameters:" 400, just via an earlier check
+        // rather than a wrapped factory-level exception.
         var request = BuildJsonPostRequest(new { scenarioId = "DiabeticPatient", parameters = new { age = 999999 } });
 
         var result = await functions.GenerateScenario(request, CancellationToken.None);
@@ -346,6 +349,17 @@ public sealed class FakesFunctionsTests
         var result = await functions.GenerateScenario(request, CancellationToken.None);
 
         result.Should().BeOfType<OkObjectResult>();
+    }
+
+    [Fact]
+    public async Task GenerateScenario_NullOverrideForNonNullableParameter_ReturnsBadRequest()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { scenarioId = "DiabeticPatient", parameters = new { age = (int?)null } });
+
+        var result = await functions.GenerateScenario(request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
     }
 
     [Fact]
@@ -437,6 +451,17 @@ public sealed class FakesFunctionsTests
     }
 
     [Fact]
+    public async Task GenerateResource_UnspecifiedTheme_ReturnsBadRequest()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { resourceType = "Patient", theme = "Unspecified" });
+
+        var result = await functions.GenerateResource(request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
     public async Task GenerateResource_MaximumDensityWithTheme_Succeeds()
     {
         var functions = CreateFunctions();
@@ -491,6 +516,60 @@ public sealed class FakesFunctionsTests
         var body = JsonSerializer.Serialize(ok.Value);
         using var doc = JsonDocument.Parse(body);
         doc.RootElement.GetProperty("bundle").GetProperty("type").GetString().Should().Be("batch");
+    }
+
+    [Fact]
+    public async Task GenerateWorkflow_ResolvedReferencesFalse_ReturnsTransactionBundle()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { packId = "DailyAppointmentSchedule", parameters = new { appointmentCount = 1 } });
+
+        var result = await functions.GenerateWorkflow(request, CancellationToken.None);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        var body = JsonSerializer.Serialize(ok.Value);
+        using var doc = JsonDocument.Parse(body);
+        doc.RootElement.GetProperty("bundle").GetProperty("type").GetString().Should().Be("transaction");
+    }
+
+    [Fact]
+    public async Task GenerateWorkflow_SameSeed_IsDeterministic()
+    {
+        var functions = CreateFunctions();
+        var request1 = BuildJsonPostRequest(new { packId = "DailyAppointmentSchedule", seed = 1234 });
+        var request2 = BuildJsonPostRequest(new { packId = "DailyAppointmentSchedule", seed = 1234 });
+
+        var result1 = await functions.GenerateWorkflow(request1, CancellationToken.None);
+        var result2 = await functions.GenerateWorkflow(request2, CancellationToken.None);
+
+        var body1 = JsonSerializer.Serialize(result1.Should().BeOfType<OkObjectResult>().Subject.Value);
+        var body2 = JsonSerializer.Serialize(result2.Should().BeOfType<OkObjectResult>().Subject.Value);
+        using var doc1 = JsonDocument.Parse(body1);
+        using var doc2 = JsonDocument.Parse(body2);
+        // Only Patient ids are seeded deterministically by this pack; Practitioner/Encounter/
+        // Appointment ids are freshly generated per invocation regardless of seed, so comparing
+        // those would produce a flaky assertion unrelated to what Seed is documented to control.
+        var patientIds1 = doc1.RootElement.GetProperty("resources").EnumerateArray()
+            .Where(r => r.GetProperty("resourceType").GetString() == "Patient")
+            .Select(r => r.GetProperty("id").GetString())
+            .ToList();
+        var patientIds2 = doc2.RootElement.GetProperty("resources").EnumerateArray()
+            .Where(r => r.GetProperty("resourceType").GetString() == "Patient")
+            .Select(r => r.GetProperty("id").GetString())
+            .ToList();
+        patientIds1.Should().NotBeEmpty();
+        patientIds1.Should().Equal(patientIds2);
+    }
+
+    [Fact]
+    public async Task GenerateWorkflow_NullOverrideForNonNullableParameter_ReturnsBadRequest()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { packId = "DailyAppointmentSchedule", parameters = new { practitionerCount = (int?)null } });
+
+        var result = await functions.GenerateWorkflow(request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
     }
 
     private static HttpRequest BuildJsonPostRequest(object body)

@@ -31,7 +31,7 @@ public sealed class FakesFunctions(
 
     /// <summary>
     /// Reflects the referenced <c>Ignixa.FhirFakes</c> assembly's own informational
-    /// version (e.g. "0.5.13") instead of a hand-maintained literal, so the bench's
+    /// version (e.g. "0.6.4") instead of a hand-maintained literal, so the bench's
     /// engine badge can't drift out of sync with the package actually in use — same
     /// approach as <see cref="Services.FhirPath.ResultFormatter"/>'s evaluator version.
     /// </summary>
@@ -244,6 +244,16 @@ public sealed class FakesFunctions(
         {
             return new BadRequestObjectResult(new { error = ex.Message });
         }
+        catch (Exception ex)
+        {
+            logger.LogError(
+                ex,
+                "Workflow generation failed. fhirVersion={FhirVersion} packId={PackId} seed={Seed}",
+                workflowRequest.FhirVersion,
+                workflowRequest.PackId,
+                workflowRequest.Seed);
+            return new ObjectResult(new { error = "Workflow generation failed." }) { StatusCode = (int)HttpStatusCode.InternalServerError };
+        }
 
         if (result is null)
         {
@@ -293,7 +303,8 @@ public sealed class FakesFunctions(
             });
         }
 
-        if (!string.IsNullOrWhiteSpace(resourceRequest.Theme) && !Enum.TryParse<ClinicalDomain>(resourceRequest.Theme, ignoreCase: true, out _))
+        if (!string.IsNullOrWhiteSpace(resourceRequest.Theme)
+            && (!Enum.TryParse<ClinicalDomain>(resourceRequest.Theme, ignoreCase: true, out var parsedTheme) || parsedTheme == ClinicalDomain.Unspecified))
         {
             return new BadRequestObjectResult(new
             {
