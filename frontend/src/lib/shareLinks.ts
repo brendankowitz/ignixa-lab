@@ -1,0 +1,168 @@
+import type { TabId } from '../components/TopBar';
+import type { FhirVersion as ConformanceFhirVersion } from '../hooks/useRunConfig';
+import type { FhirVersion as FhirPathVersion, FpVariable } from '../benches/fhirpath/fhirPathTypes';
+import type { SampleId } from '../benches/fhirpath/sampleResources';
+
+export type BenchId = 'fhirpath' | 'fml' | 'sqlonfhir' | 'fakes';
+export type FakesMode = 'population' | 'scenario' | 'resource';
+
+export interface ConformanceShareState {
+  tab?: TabId;
+  targetUrl?: string;
+  fhirVersion?: ConformanceFhirVersion;
+  suiteIds?: string[];
+}
+
+export interface FhirPathShareState {
+  version?: FhirPathVersion;
+  expression?: string;
+  context?: string;
+  sampleId?: SampleId;
+  resourceText?: string;
+  variables?: FpVariable[];
+}
+
+export interface FakesShareState {
+  mode?: FakesMode;
+  fhirVersion?: string;
+  population?: {
+    source?: string;
+    count?: number;
+    format?: 'transaction' | 'ndjson';
+  };
+  scenario?: {
+    scenarioId?: string;
+    paramValues?: Record<string, unknown>;
+    tag?: string;
+    resolvedReferences?: boolean;
+  };
+  resource?: {
+    resourceType?: string;
+    density?: string;
+    seed?: number;
+    randomizeSeed?: boolean;
+    observationState?: string;
+    firstName?: string;
+    familyName?: string;
+    city?: string;
+    edgeCaseOn?: boolean;
+    includeInvalid?: boolean;
+    selectedCategories?: Record<string, boolean>;
+  };
+}
+
+export interface BenchShareState {
+  fhirpath?: FhirPathShareState;
+  fakes?: FakesShareState;
+}
+
+const CONFORMANCE_FHIR_VERSIONS: ConformanceFhirVersion[] = ['R4', 'R4B', 'R5', 'STU3'];
+const CONFORMANCE_TABS: TabId[] = ['setup', 'runner', 'report'];
+const BENCHES: BenchId[] = ['fhirpath', 'fml', 'sqlonfhir', 'fakes'];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+export function encodeShareState(value: unknown): string {
+  const bytes = new TextEncoder().encode(JSON.stringify(value));
+  let binary = '';
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
+}
+
+export function decodeShareState(value: string | null): unknown {
+  if (!value) {
+    return null;
+  }
+  try {
+    const padded = value.replaceAll('-', '+').replaceAll('_', '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
+    const binary = atob(padded);
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    return JSON.parse(new TextDecoder().decode(bytes)) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+export function readConformanceShareState(): ConformanceShareState {
+  const params = new URLSearchParams(window.location.search);
+  const decoded = decodeShareState(params.get('state'));
+  const state: ConformanceShareState = isRecord(decoded) ? conformanceStateFromRecord(decoded) : {};
+  const tab = params.get('tab');
+  const fhirVersion = params.get('fhirVersion');
+  const suiteIds = params.get('suites');
+  const targetUrl = params.get('url');
+
+  if (CONFORMANCE_TABS.includes(tab as TabId)) {
+    state.tab = tab as TabId;
+  }
+  if (CONFORMANCE_FHIR_VERSIONS.includes(fhirVersion as ConformanceFhirVersion)) {
+    state.fhirVersion = fhirVersion as ConformanceFhirVersion;
+  }
+  if (targetUrl) {
+    state.targetUrl = targetUrl;
+  }
+  if (suiteIds) {
+    state.suiteIds = suiteIds.split(',').map((id) => id.trim()).filter(Boolean);
+  }
+  return state;
+}
+
+export function buildConformanceShareUrl(state: ConformanceShareState): string {
+  const url = new URL(window.location.href);
+  url.search = '';
+  url.hash = '';
+  if (state.tab) {
+    url.searchParams.set('tab', state.tab);
+  }
+  if (state.targetUrl) {
+    url.searchParams.set('url', state.targetUrl);
+  }
+  if (state.fhirVersion) {
+    url.searchParams.set('fhirVersion', state.fhirVersion);
+  }
+  if (state.suiteIds && state.suiteIds.length > 0) {
+    url.searchParams.set('suites', state.suiteIds.join(','));
+  }
+  return url.toString();
+}
+
+export function readBenchShare(): { bench?: BenchId; state: BenchShareState } {
+  const params = new URLSearchParams(window.location.search);
+  const bench = params.get('bench');
+  const decoded = decodeShareState(params.get('state'));
+  return {
+    bench: BENCHES.includes(bench as BenchId) ? (bench as BenchId) : undefined,
+    state: isRecord(decoded) ? benchStateFromRecord(decoded) : {},
+  };
+}
+
+export function buildBenchShareUrl(bench: BenchId, state: BenchShareState): string {
+  const url = new URL(window.location.href);
+  url.search = '';
+  url.hash = '';
+  url.searchParams.set('bench', bench);
+  url.searchParams.set('state', encodeShareState(state));
+  return url.toString();
+}
+
+function conformanceStateFromRecord(record: Record<string, unknown>): ConformanceShareState {
+  return {
+    tab: CONFORMANCE_TABS.includes(record.tab as TabId) ? (record.tab as TabId) : undefined,
+    targetUrl: typeof record.targetUrl === 'string' ? record.targetUrl : undefined,
+    fhirVersion: CONFORMANCE_FHIR_VERSIONS.includes(record.fhirVersion as ConformanceFhirVersion)
+      ? (record.fhirVersion as ConformanceFhirVersion)
+      : undefined,
+    suiteIds: Array.isArray(record.suiteIds) ? record.suiteIds.filter((id): id is string => typeof id === 'string') : undefined,
+  };
+}
+
+function benchStateFromRecord(record: Record<string, unknown>): BenchShareState {
+  return {
+    fhirpath: isRecord(record.fhirpath) ? (record.fhirpath as FhirPathShareState) : undefined,
+    fakes: isRecord(record.fakes) ? (record.fakes as FakesShareState) : undefined,
+  };
+}

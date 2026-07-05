@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { ThemeState } from '../hooks/useTheme';
 
 /** The three top-level screens. Tab state is component-local — no router. */
@@ -22,6 +23,7 @@ export interface TopBarProps {
   canStart: boolean;
   onStart: () => void;
   onStop: () => void;
+  shareUrl: string;
 }
 
 /**
@@ -38,7 +40,20 @@ export function TopBar({
   canStart,
   onStart,
   onStop,
+  shareUrl,
 }: TopBarProps) {
+  const [copied, setCopied] = useState(false);
+
+  const copyShareLink = () => {
+    navigator.clipboard?.writeText(shareUrl).then(
+      () => {
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 1400);
+      },
+      () => undefined,
+    );
+  };
+
   return (
     <header className="top-bar">
       <div className="top-bar__brand">
@@ -71,6 +86,15 @@ export function TopBar({
       <span className="top-bar__readout">
         {serverHost || 'no target'} · {fhirVersion}
       </span>
+
+      <button
+        type="button"
+        className="top-bar__theme-toggle"
+        title="Copy share link"
+        onClick={copyShareLink}
+      >
+        {copied ? '✓' : '🔗'}
+      </button>
 
       <button
         type="button"

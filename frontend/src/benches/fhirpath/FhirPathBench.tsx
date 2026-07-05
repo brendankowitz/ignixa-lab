@@ -9,6 +9,7 @@ import { invertAstTree } from './astInvert';
 import { DEFAULT_EXPRESSION, EXAMPLE_EXPRESSIONS, SAMPLE_RESOURCES, type SampleId } from './sampleResources';
 import { useFhirPathEval } from './useFhirPathEval';
 import type { FhirVersion, FpAstNode, FpVariable } from './fhirPathTypes';
+import type { FhirPathShareState } from '../../lib/shareLinks';
 
 const VERSION_ITEMS: PillItem<FhirVersion>[] = [
   { id: 'stu3', label: 'STU3' },
@@ -106,9 +107,11 @@ export interface FhirPathBenchProps {
   onOpenFakes?: () => void;
   fakesSeed?: { text: string } | null;
   onSeedConsumed?: () => void;
+  initialState?: FhirPathShareState;
+  onShareStateChange?: (state: FhirPathShareState) => void;
 }
 
-export function FhirPathBench({ onOpenFakes, fakesSeed, onSeedConsumed }: FhirPathBenchProps) {
+export function FhirPathBench({ onOpenFakes, fakesSeed, onSeedConsumed, initialState, onShareStateChange }: FhirPathBenchProps) {
   const stacked = useIsNarrowViewport(720);
   const twoColumnStyle: CSSProperties = {
     display: 'grid',
@@ -117,15 +120,19 @@ export function FhirPathBench({ onOpenFakes, fakesSeed, onSeedConsumed }: FhirPa
     alignItems: 'start',
   };
 
-  const [version, setVersion] = useState<FhirVersion>('r4');
-  const [expression, setExpression] = useState(DEFAULT_EXPRESSION);
-  const [context, setContext] = useState('');
-  const [sampleId, setSampleId] = useState<SampleId>('patient');
-  const [resourceText, setResourceText] = useState(() => JSON.stringify(SAMPLE_RESOURCES[0].data, null, 2));
-  const [variables, setVariables] = useState<FpVariable[]>([]);
+  const [version, setVersion] = useState<FhirVersion>(initialState?.version ?? 'r4');
+  const [expression, setExpression] = useState(initialState?.expression ?? DEFAULT_EXPRESSION);
+  const [context, setContext] = useState(initialState?.context ?? '');
+  const [sampleId, setSampleId] = useState<SampleId>(initialState?.sampleId ?? 'patient');
+  const [resourceText, setResourceText] = useState(() => initialState?.resourceText ?? JSON.stringify(SAMPLE_RESOURCES[0].data, null, 2));
+  const [variables, setVariables] = useState<FpVariable[]>(initialState?.variables ?? []);
   const [resultTab, setResultTab] = useState<ResultTab>('results');
   const [astInverted, setAstInverted] = useState(false);
   const expressionRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    onShareStateChange?.({ version, expression, context, sampleId, resourceText, variables });
+  }, [context, expression, onShareStateChange, resourceText, sampleId, variables, version]);
 
   useEffect(() => {
     if (fakesSeed) {

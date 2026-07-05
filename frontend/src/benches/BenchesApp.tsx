@@ -1,5 +1,6 @@
-import { useState, type CSSProperties } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import { useTheme } from '../hooks/useTheme';
+import { buildBenchShareUrl, readBenchShare, type BenchShareState, type FakesShareState, type FhirPathShareState } from '../lib/shareLinks';
 import { Pills, type PillItem } from './components/primitives';
 import { monoFont } from './components/styles';
 import { FhirPathBench } from './fhirpath/FhirPathBench';
@@ -38,13 +39,20 @@ const topBarStyle: CSSProperties = {
 
 /** Top-level shell for the Expression Benches page: top bar + bench-switching tabs. No router — tab state is component-local, same convention as the conformance app's `App.tsx`. */
 export function BenchesApp() {
+  const initialLink = useMemo(readBenchShare, []);
   const theme = useTheme();
-  const [bench, setBench] = useState<BenchId>('fhirpath');
+  const [bench, setBench] = useState<BenchId>(initialLink.bench ?? 'fhirpath');
   const [fakesReturnTo, setFakesReturnTo] = useState<Exclude<BenchId, 'fakes'> | null>(null);
   const [sentToast, setSentToast] = useState<{ bench: BenchId; label: string } | null>(null);
   const [fhirpathSeed, setFhirpathSeed] = useState<{ text: string } | null>(null);
   const [fmlSeed, setFmlSeed] = useState<{ text: string } | null>(null);
   const [sofSeed, setSofSeed] = useState<{ text: string } | null>(null);
+  const [fhirpathShare, setFhirpathShare] = useState<FhirPathShareState | undefined>(initialLink.state.fhirpath);
+  const [fakesShare, setFakesShare] = useState<FakesShareState | undefined>(initialLink.state.fakes);
+  const [copied, setCopied] = useState(false);
+
+  const shareState: BenchShareState = { fhirpath: fhirpathShare, fakes: fakesShare };
+  const shareUrl = buildBenchShareUrl(bench, shareState);
 
   const openFakesFrom = (fromBench: Exclude<BenchId, 'fakes'>) => {
     setBench('fakes');
@@ -65,6 +73,16 @@ export function BenchesApp() {
     setFakesReturnTo(null);
     setSentToast({ bench: targetBench, label });
     setTimeout(() => setSentToast(null), 6000);
+  };
+
+  const copyShareLink = () => {
+    navigator.clipboard?.writeText(shareUrl).then(
+      () => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1400);
+      },
+      () => undefined,
+    );
   };
 
   return (
@@ -96,6 +114,26 @@ export function BenchesApp() {
 
         <button
           type="button"
+          onClick={copyShareLink}
+          title="Copy share link"
+          style={{
+            width: 32,
+            height: 32,
+            display: 'grid',
+            placeItems: 'center',
+            border: '1px solid var(--border2)',
+            borderRadius: 8,
+            background: 'transparent',
+            color: 'var(--text3)',
+            fontSize: 14,
+            cursor: 'pointer',
+          }}
+        >
+          {copied ? '✓' : '🔗'}
+        </button>
+
+        <button
+          type="button"
           onClick={theme.toggle}
           title="Toggle theme"
           style={{
@@ -116,7 +154,7 @@ export function BenchesApp() {
       </header>
 
       <main>
-        {bench === 'fhirpath' ? <FhirPathBench onOpenFakes={() => openFakesFrom('fhirpath')} fakesSeed={fhirpathSeed} onSeedConsumed={() => setFhirpathSeed(null)} /> : null}
+        {bench === 'fhirpath' ? <FhirPathBench onOpenFakes={() => openFakesFrom('fhirpath')} fakesSeed={fhirpathSeed} onSeedConsumed={() => setFhirpathSeed(null)} initialState={initialLink.state.fhirpath} onShareStateChange={setFhirpathShare} /> : null}
         {bench === 'fml' ? <FmlBench onOpenFakes={() => openFakesFrom('fml')} fakesSeed={fmlSeed} onSeedConsumed={() => setFmlSeed(null)} /> : null}
         {bench === 'sqlonfhir' ? <SofBench onOpenFakes={() => openFakesFrom('sqlonfhir')} fakesSeed={sofSeed} onSeedConsumed={() => setSofSeed(null)} /> : null}
         {bench === 'fakes' ? (
@@ -124,6 +162,8 @@ export function BenchesApp() {
             returnTo={fakesReturnTo}
             onDismissReturn={() => setFakesReturnTo(null)}
             onSend={(targetBench, payload, label) => handleSend(targetBench, payload, label)}
+            initialState={initialLink.state.fakes}
+            onShareStateChange={setFakesShare}
           />
         ) : null}
       </main>

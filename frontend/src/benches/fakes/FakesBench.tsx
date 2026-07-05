@@ -10,6 +10,7 @@ import {
   sectionLabelStyle,
 } from '../components/styles';
 import { useIsNarrowViewport } from '../../hooks/useIsNarrowViewport';
+import type { FakesShareState } from '../../lib/shareLinks';
 import { describeEdgeCase } from './edgeCaseDescriptions';
 import { describeScenario } from './scenarioDescriptions';
 import { generatePopulation, generateResource, generateScenario, getFakesMetadata } from './fakesApi';
@@ -98,14 +99,19 @@ export interface FakesBenchProps {
   onDismissReturn?: () => void;
   /** Called with the target bench and generated payload when the user sends it to another bench. Omitted in Population mode, which has no single-resource payload to send. */
   onSend?: OnSend;
+  initialState?: FakesShareState;
+  onShareStateChange?: (state: FakesShareState) => void;
 }
 
-export function FakesBench({ returnTo, onDismissReturn, onSend }: FakesBenchProps) {
+export function FakesBench({ returnTo, onDismissReturn, onSend, initialState, onShareStateChange }: FakesBenchProps) {
   const stacked = useIsNarrowViewport(720);
-  const [mode, setMode] = useState<FakesMode>('resource');
+  const [mode, setMode] = useState<FakesMode>(initialState?.mode ?? 'resource');
   const [metadata, setMetadata] = useState<FakesMetadata | null>(null);
   const [metadataError, setMetadataError] = useState<string | null>(null);
-  const [fhirVersion, setFhirVersion] = useState('r4');
+  const [fhirVersion, setFhirVersion] = useState(initialState?.fhirVersion ?? 'r4');
+  const [populationShare, setPopulationShare] = useState(initialState?.population);
+  const [scenarioShare, setScenarioShare] = useState(initialState?.scenario);
+  const [resourceShare, setResourceShare] = useState(initialState?.resource);
 
   // FHIRPath evaluates a single resource against an expression — Population/Scenario
   // produce a cohort or bundle, neither of which fits what "⚡ Fakes ↗" from that
@@ -147,6 +153,16 @@ export function FakesBench({ returnTo, onDismissReturn, onSend }: FakesBenchProp
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    onShareStateChange?.({
+      mode,
+      fhirVersion,
+      population: populationShare,
+      scenario: scenarioShare,
+      resource: resourceShare,
+    });
+  }, [fhirVersion, mode, onShareStateChange, populationShare, resourceShare, scenarioShare]);
 
   const fhirVersionItems = useMemo<PillItem<string>[]>(
     () => (metadata?.fhirVersions ?? []).map((version) => ({ id: version, label: version.toUpperCase() })),
@@ -206,9 +222,9 @@ export function FakesBench({ returnTo, onDismissReturn, onSend }: FakesBenchProp
         <span style={{ fontFamily: monoFont, fontSize: 11, color: 'var(--text3)' }}>Loading…</span>
       ) : (
         <>
-          {mode === 'population' ? <PopulationPanel metadata={metadata} fhirVersion={fhirVersion} stacked={stacked} /> : null}
-          {mode === 'scenario' ? <ScenarioPanel metadata={metadata} fhirVersion={fhirVersion} stacked={stacked} onSend={onSend} /> : null}
-          {mode === 'resource' ? <ResourcePanel metadata={metadata} fhirVersion={fhirVersion} stacked={stacked} onSend={onSend} /> : null}
+          {mode === 'population' ? <PopulationPanel metadata={metadata} fhirVersion={fhirVersion} stacked={stacked} initialState={initialState?.population} onShareStateChange={setPopulationShare} /> : null}
+          {mode === 'scenario' ? <ScenarioPanel metadata={metadata} fhirVersion={fhirVersion} stacked={stacked} onSend={onSend} initialState={initialState?.scenario} onShareStateChange={setScenarioShare} /> : null}
+          {mode === 'resource' ? <ResourcePanel metadata={metadata} fhirVersion={fhirVersion} stacked={stacked} onSend={onSend} initialState={initialState?.resource} onShareStateChange={setResourceShare} /> : null}
         </>
       )}
     </div>
@@ -369,15 +385,31 @@ const POPULATION_FORMATS: { id: PopulationFormat; label: string; sub: string }[]
   { id: 'ndjson', label: 'NDJSON', sub: 'one resource per line · .ndjson' },
 ];
 
-function PopulationPanel({ metadata, fhirVersion, stacked }: { metadata: FakesMetadata; fhirVersion: string; stacked: boolean }) {
+function PopulationPanel({
+  metadata,
+  fhirVersion,
+  stacked,
+  initialState,
+  onShareStateChange,
+}: {
+  metadata: FakesMetadata;
+  fhirVersion: string;
+  stacked: boolean;
+  initialState?: FakesShareState['population'];
+  onShareStateChange?: (state: NonNullable<FakesShareState['population']>) => void;
+}) {
   const [source, setSource] = useState(
-    metadata.populationStates.find((state) => state === 'Washington') ?? metadata.populationStates[0] ?? 'Massachusetts',
+    initialState?.source ?? metadata.populationStates.find((state) => state === 'Washington') ?? metadata.populationStates[0] ?? 'Massachusetts',
   );
-  const [count, setCount] = useState(10);
-  const [format, setFormat] = useState<PopulationFormat>('transaction');
+  const [count, setCount] = useState(initialState?.count ?? 10);
+  const [format, setFormat] = useState<PopulationFormat>(initialState?.format ?? 'transaction');
   const [result, setResult] = useState<PopulationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    onShareStateChange?.({ source, count, format });
+  }, [count, format, onShareStateChange, source]);
 
   const generate = () => {
     setIsLoading(true);
@@ -553,22 +585,30 @@ function ScenarioPanel({
   fhirVersion,
   stacked,
   onSend,
+  initialState,
+  onShareStateChange,
 }: {
   metadata: FakesMetadata;
   fhirVersion: string;
   stacked: boolean;
   onSend?: OnSend;
+  initialState?: FakesShareState['scenario'];
+  onShareStateChange?: (state: NonNullable<FakesShareState['scenario']>) => void;
 }) {
-  const [scenarioId, setScenarioId] = useState(metadata.scenarios[0]?.id ?? '');
-  const [paramValues, setParamValues] = useState<Record<string, unknown>>({});
-  const [tag, setTag] = useState('');
-  const [resolvedReferences, setResolvedReferences] = useState(false);
+  const [scenarioId, setScenarioId] = useState(initialState?.scenarioId ?? metadata.scenarios[0]?.id ?? '');
+  const [paramValues, setParamValues] = useState<Record<string, unknown>>(initialState?.paramValues ?? {});
+  const [tag, setTag] = useState(initialState?.tag ?? '');
+  const [resolvedReferences, setResolvedReferences] = useState(initialState?.resolvedReferences ?? false);
   const [view, setView] = useState<'tree' | 'bundle'>('tree');
   const [result, setResult] = useState<ScenarioResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
+
+  useEffect(() => {
+    onShareStateChange?.({ scenarioId, paramValues, tag, resolvedReferences });
+  }, [onShareStateChange, paramValues, resolvedReferences, scenarioId, tag]);
 
   const scenario = useMemo(() => metadata.scenarios.find((s) => s.id === scenarioId), [metadata.scenarios, scenarioId]);
   const description = describeScenario(scenarioId);
@@ -1088,31 +1128,64 @@ function ResourcePanel({
   fhirVersion,
   stacked,
   onSend,
+  initialState,
+  onShareStateChange,
 }: {
   metadata: FakesMetadata;
   fhirVersion: string;
   stacked: boolean;
   onSend?: OnSend;
+  initialState?: FakesShareState['resource'];
+  onShareStateChange?: (state: NonNullable<FakesShareState['resource']>) => void;
 }) {
-  const [resourceType, setResourceType] = useState('Patient');
+  const [resourceType, setResourceType] = useState(initialState?.resourceType ?? 'Patient');
   const [pickerOpen, setPickerOpen] = useState(false);
   const [typeFilter, setTypeFilter] = useState('');
-  const [density, setDensity] = useState('Minimal');
-  const [seed, setSeed] = useState(42);
-  const [randomizeSeed, setRandomizeSeed] = useState(true);
-  const [observationState, setObservationState] = useState(metadata.observationStates[0] ?? '');
-  const [firstName, setFirstName] = useState('');
-  const [familyName, setFamilyName] = useState('');
+  const [density, setDensity] = useState(initialState?.density ?? 'Minimal');
+  const [seed, setSeed] = useState(initialState?.seed ?? 42);
+  const [randomizeSeed, setRandomizeSeed] = useState(initialState?.randomizeSeed ?? true);
+  const [observationState, setObservationState] = useState(initialState?.observationState ?? metadata.observationStates[0] ?? '');
+  const [firstName, setFirstName] = useState(initialState?.firstName ?? '');
+  const [familyName, setFamilyName] = useState(initialState?.familyName ?? '');
   const [city, setCity] = useState(
-    metadata.patientCities.find((cityName) => cityName === 'Seattle') ?? metadata.patientCities[0] ?? '',
+    initialState?.city ?? metadata.patientCities.find((cityName) => cityName === 'Seattle') ?? metadata.patientCities[0] ?? '',
   );
-  const [edgeCaseOn, setEdgeCaseOn] = useState(false);
-  const [includeInvalid, setIncludeInvalid] = useState(false);
-  const [selectedCategories, setSelectedCategories] = useState<Record<string, boolean>>(() => initialCategorySelection(metadata.edgeCaseFamilies));
+  const [edgeCaseOn, setEdgeCaseOn] = useState(initialState?.edgeCaseOn ?? false);
+  const [includeInvalid, setIncludeInvalid] = useState(initialState?.includeInvalid ?? false);
+  const [selectedCategories, setSelectedCategories] = useState<Record<string, boolean>>(() => initialState?.selectedCategories ?? initialCategorySelection(metadata.edgeCaseFamilies));
   const [view, setView] = useState<'resource' | 'manifest'>('resource');
   const [result, setResult] = useState<ResourceResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    onShareStateChange?.({
+      resourceType,
+      density,
+      seed,
+      randomizeSeed,
+      observationState,
+      firstName,
+      familyName,
+      city,
+      edgeCaseOn,
+      includeInvalid,
+      selectedCategories,
+    });
+  }, [
+    city,
+    density,
+    edgeCaseOn,
+    familyName,
+    firstName,
+    includeInvalid,
+    observationState,
+    onShareStateChange,
+    randomizeSeed,
+    resourceType,
+    seed,
+    selectedCategories,
+  ]);
 
   const resourceTypes = useMemo(
     () => metadata.resourceTypesByVersion[fhirVersion.toLowerCase()] ?? [],

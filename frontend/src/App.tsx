@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import './App.css';
 import { ReportScreen } from './components/ReportScreen';
 import { RunnerScreen } from './components/RunnerScreen';
@@ -7,6 +7,7 @@ import { TopBar, type TabId } from './components/TopBar';
 import { useConformanceRun } from './hooks/useConformanceRun';
 import { useRunConfig } from './hooks/useRunConfig';
 import { useTheme } from './hooks/useTheme';
+import { buildConformanceShareUrl, readConformanceShareState } from './lib/shareLinks';
 
 /**
  * Top-level application shell: a tabbed Setup / Runner / Report workflow over
@@ -15,11 +16,12 @@ import { useTheme } from './hooks/useTheme';
  * screens.
  */
 function App() {
+  const initialLink = useMemo(readConformanceShareState, []);
   const theme = useTheme();
-  const config = useRunConfig();
+  const config = useRunConfig(initialLink);
   const run = useConformanceRun();
 
-  const [activeTab, setActiveTab] = useState<TabId>('setup');
+  const [activeTab, setActiveTab] = useState<TabId>(initialLink.tab ?? 'setup');
   const [failingOnly, setFailingOnly] = useState(false);
 
   const running = run.phase === 'running';
@@ -42,6 +44,13 @@ function App() {
     setActiveTab('runner');
   }, []);
 
+  const shareUrl = buildConformanceShareUrl({
+    tab: activeTab,
+    targetUrl: config.targetUrl || undefined,
+    fhirVersion: config.fhirVersion,
+    suiteIds: Array.from(config.selection.selected),
+  });
+
   return (
     <div className="app-shell" style={theme.variables}>
       <TopBar
@@ -54,6 +63,7 @@ function App() {
         canStart={canStart}
         onStart={startRun}
         onStop={run.cancel}
+        shareUrl={shareUrl}
       />
 
       <main className="app-shell__main">
