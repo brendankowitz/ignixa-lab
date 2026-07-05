@@ -61,6 +61,7 @@ public sealed class TestScriptRunner(
         var fhirVersion = string.IsNullOrWhiteSpace(request.FhirVersion)
             ? _options.DefaultFhirVersion
             : request.FhirVersion!;
+        var engineFhirVersion = NormalizeFhirVersionForEngine(fhirVersion);
 
         var (capabilityStatement, capabilityWarning) = await FetchCapabilityStatementAsync(target, cancellationToken);
 
@@ -88,7 +89,7 @@ public sealed class TestScriptRunner(
         foreach (var job in jobs)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            results.AddRange(await ExecuteJobAsync(evaluator, job, fhirVersion, capabilityStatement, cancellationToken));
+            results.AddRange(await ExecuteJobAsync(evaluator, job, engineFhirVersion, capabilityStatement, cancellationToken));
         }
 
         stopwatch.Stop();
@@ -96,7 +97,11 @@ public sealed class TestScriptRunner(
         var report = new ConformanceReport(
             Impl: "ignixa-lab",
             Target: target.ToString(),
-            FhirVersion: fhirVersion,
+            // Numeric form, not the raw request label: this field must stay
+            // identical in shape and value convention to the ignixa-fhir
+            // conformance/latest.json artifact, which is always numeric
+            // (e.g. "4.0"), never "R4".
+            FhirVersion: engineFhirVersion,
             StartedAt: startedAt,
             DurationMs: stopwatch.ElapsedMilliseconds,
             Results: results,
@@ -104,6 +109,27 @@ public sealed class TestScriptRunner(
 
         return RunOutcome.Completed(report);
     }
+
+    /// <summary>
+    /// Maps a FHIR release label (for example <c>"R4"</c>, <c>"R4B"</c>) to the
+    /// numeric major.minor form (for example <c>"4.0"</c>, <c>"4.3"</c>) used by
+    /// the bundled suites' <c>http://ignixa.io/testscript/fhirVersions</c> gating
+    /// extension. The 0.6.4 engine matches the requested version against a test's
+    /// declared versions via <c>SemVersion.TryParse</c>, which fails on a release
+    /// label — so passing one straight through causes every version-gated test
+    /// to be skipped even when the label and number refer to the same release.
+    /// Values already in numeric form, or not recognized as a release label,
+    /// pass through unchanged.
+    /// </summary>
+    private static string NormalizeFhirVersionForEngine(string fhirVersion) => fhirVersion.ToUpperInvariant() switch
+    {
+        "STU3" or "R3" => "3.0",
+        "R4" => "4.0",
+        "R4B" => "4.3",
+        "R5" => "5.0",
+        "R6" => "6.0",
+        _ => fhirVersion
+    };
 
     /// <summary>
     /// Fetches the target's CapabilityStatement once per run so every job's
