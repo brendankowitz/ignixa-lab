@@ -160,16 +160,16 @@ public sealed class SuiteCatalogTests : IDisposable
     {
         var suites = CreateBundledCatalog().GetSuites();
 
-        suites.Should().HaveCount(71);
+        suites.Should().HaveCount(76);
     }
 
     [Fact]
-    public void GetSuites_BundledCanonicalSuites_SpanExactlySevenCategories()
+    public void GetSuites_BundledCanonicalSuites_SpanExactlyEightCategories()
     {
         var suites = CreateBundledCatalog().GetSuites();
 
         suites.Select(s => s.Category).Distinct()
-            .Should().BeEquivalentTo(new[] { "Bundles", "CRUD", "Foundation", "Operations", "Regression", "Search", "Validation" });
+            .Should().BeEquivalentTo(new[] { "Bundles", "CRUD", "Foundation", "Operations", "Regression", "Search", "Subscriptions", "Validation" });
     }
 
     [Fact]
