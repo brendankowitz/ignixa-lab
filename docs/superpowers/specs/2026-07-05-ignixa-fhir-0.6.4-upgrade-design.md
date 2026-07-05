@@ -43,6 +43,11 @@ Expect compile breaks from #299's pre-freeze renames:
 
 ### 2. TestScript version gating (`TestScriptRunner.cs`)
 
+**Superseded during implementation.** The initial approach (below, as originally shipped and reviewed) added a `NormalizeFhirVersionForEngine(string)` mapping release labels to numeric major.minor before the value was passed to the engine. Once in place, it was replaced with a more correct design: instead of guessing the target's version from a UI-selected release label, `TestScriptRunner.RunAsync` now resolves the engine's `fhirVersion` from the target's own declared `CapabilityStatement.fhirVersion` (already fetched for `requiresCapability` gating), falling back to the request's `FhirVersion`/`IgnixaLabOptions.DefaultFhirVersion` only when the CapabilityStatement can't be fetched or omits the field. This realizes exactly what ignixa-fhir PR #301's own "Why" section describes as the eventual downstream use case: detecting a target's real patch-level FHIR version and gating tests against it deterministically, rather than approximating it from a label. See `ResolveFhirVersion` in `TestScriptRunner.cs`.
+
+<details>
+<summary>Original approach (superseded)</summary>
+
 Add back a `NormalizeFhirVersionForEngine(string)` mapping release labels to numeric major.minor before the value is passed to `TestScriptEvaluator.ExecuteAsync` and stored on `ConformanceReport.FhirVersion`:
 
 ```
@@ -55,6 +60,8 @@ Add back a `NormalizeFhirVersionForEngine(string)` mapping release labels to num
 ```
 
 Port the intent of PR #12's test coverage: a suite declaring a numeric `fhirVersions` token runs (not skipped) when the request supplies the matching release label, and normalization is reflected in the report's `FhirVersion` field, which must stay numeric to remain interchangeable with `ignixa-fhir`'s own `conformance/latest.json` artifact.
+
+</details>
 
 Once merged, comment on ignixa-lab PR #12 pointing at this branch; it becomes redundant as a standalone PR once its fix ships here.
 

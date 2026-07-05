@@ -85,6 +85,8 @@ git commit -m "Bump Ignixa.* package references to 0.6.4"
 
 ### Task 2: Fix FHIR release-label gating in TestScriptRunner
 
+**Superseded post-merge:** after this task shipped and passed review, it was redesigned per user request — `NormalizeFhirVersionForEngine` was removed in favor of resolving the engine's `fhirVersion` from the target's own declared `CapabilityStatement.fhirVersion` (already fetched for `requiresCapability` gating), falling back to the request/default value only when unavailable. See `ResolveFhirVersion` in `TestScriptRunner.cs` and the corresponding note in the design spec's §2. The task text below reflects the original, since-replaced approach.
+
 **Files:**
 - Modify: `backend/src/Ignixa.Lab.Functions/Execution/TestScriptRunner.cs`
 - Test: `backend/test/Ignixa.Lab.Functions.Tests/Execution/TestScriptRunnerTests.cs`
