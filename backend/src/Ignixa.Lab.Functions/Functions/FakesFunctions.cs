@@ -344,7 +344,7 @@ public sealed class FakesFunctions(
     {
         Id = scenario.Id,
         Category = scenario.Category,
-        Domain = scenario.Domain?.ToString(),
+        Domain = scenario.Domain is null or ClinicalDomain.Unspecified ? null : scenario.Domain.ToString(),
         Parameters = scenario.Parameters.Select(parameter => new ScenarioParameterMetadata
         {
             Name = parameter.Name,

@@ -1,6 +1,6 @@
 /**
  * Curated group + blurb text for predefined clinical scenarios, keyed by the real
- * scenario id `Ignixa.FhirFakes`'s `ScenarioDiscovery` reports (the `Get` prefix is
+ * scenario id `Ignixa.FhirFakes`'s `ScenarioCatalog` reports (the `Get` prefix is
  * stripped by the discovery convention, so ids look like `DiabeticPatient`). Grouping
  * prefers the library's own `Category` over this curated map; the curated map remains
  * the source for `blurb` text, and the `Scenario` fallback still applies when neither
@@ -81,6 +81,11 @@ function humanize(scenarioId: string): string {
 /**
  * Returns the display group + blurb for a scenario id, falling back to a humanized
  * name and a generic group when the id is not in the curated map.
+ *
+ * Group resolution is a three-tier priority: the `category` argument (the library's
+ * own `Category`, when reported) wins if present; otherwise the curated map's `group`
+ * is used; otherwise the literal `'Scenario'` fallback applies. `blurb` always comes
+ * from the curated map, with a generic fallback text when the id is unlisted.
  */
 export function describeScenario(
   scenarioId: string,

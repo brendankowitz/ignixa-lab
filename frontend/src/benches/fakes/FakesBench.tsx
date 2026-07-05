@@ -1161,7 +1161,7 @@ function ResourcePanel({
     onShareStateChange?.({
       resourceType,
       density,
-      theme,
+      theme: density === 'Maximum' ? theme : undefined,
       seed,
       randomizeSeed,
       observationState,
@@ -1234,7 +1234,7 @@ function ResourcePanel({
       resourceType,
       seed: activeSeed,
       density,
-      theme: theme || undefined,
+      theme: density === 'Maximum' ? theme || undefined : undefined,
       firstName: firstName || undefined,
       familyName: familyName || undefined,
       city: city || undefined,
@@ -1521,6 +1521,8 @@ function WorkflowPanel({
   const [paramValues, setParamValues] = useState<Record<string, unknown>>({});
   const [tag, setTag] = useState('');
   const [resolvedReferences, setResolvedReferences] = useState(false);
+  const [seed, setSeed] = useState(42);
+  const [randomizeSeed, setRandomizeSeed] = useState(true);
   const [result, setResult] = useState<WorkflowResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -1533,9 +1535,13 @@ function WorkflowPanel({
   };
 
   const generate = () => {
+    const activeSeed = randomizeSeed ? Math.floor(Math.random() * 100000) : seed;
+    if (randomizeSeed) {
+      setSeed(activeSeed);
+    }
     setIsLoading(true);
     setError(null);
-    generateWorkflow({ fhirVersion, packId, parameters: paramValues, tag: tag || undefined, resolvedReferences })
+    generateWorkflow({ fhirVersion, packId, parameters: paramValues, seed: activeSeed, tag: tag || undefined, resolvedReferences })
       .then(setResult)
       .catch((err: Error) => setError(err.message))
       .finally(() => setIsLoading(false));
@@ -1572,6 +1578,20 @@ function WorkflowPanel({
             <Toggle checked={resolvedReferences} onChange={setResolvedReferences} ariaLabel="Resolved references" />
           </div>
 
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ ...sectionLabelStyle, flex: 1 }}>Seed</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text3)' }}>
+              Randomize
+              <Toggle checked={randomizeSeed} onChange={setRandomizeSeed} ariaLabel="Randomize seed on every generate" />
+            </span>
+            <input
+              value={String(seed)}
+              onChange={(event) => setSeed(Number(event.target.value) || 0)}
+              disabled={randomizeSeed}
+              style={{ ...monoInputStyle, width: 110, opacity: randomizeSeed ? 0.6 : 1 }}
+            />
+          </div>
+
           <button type="button" onClick={generate} disabled={isLoading || !packId} style={primaryButtonStyle}>
             {isLoading ? 'Generating…' : '⚡ Generate workflow'}
           </button>
@@ -1583,6 +1603,13 @@ function WorkflowPanel({
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontFamily: monoFont, fontSize: 10.5, color: 'var(--text3)' }}>{result.resources.length} resources</span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {Object.entries(result.resourceCountsByType).map(([resourceType, count]) => (
+                  <span key={resourceType} style={chipStyle('var(--chip-vio-bg)', 'var(--chip-vio-fg)')}>
+                    {resourceType}: {count}
+                  </span>
+                ))}
               </div>
               <HighlightedJsonBlock text={JSON.stringify(result.bundle, null, 2)} style={{ ...resultPreStyle, maxHeight: 460 }} />
               <button

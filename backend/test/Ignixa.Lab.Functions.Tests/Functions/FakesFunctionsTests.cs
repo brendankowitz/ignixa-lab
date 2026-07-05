@@ -38,6 +38,21 @@ public sealed class FakesFunctionsTests
     }
 
     [Fact]
+    public void GetMetadata_ScenarioDomain_NeverSerializesUnspecifiedSentinel()
+    {
+        var functions = CreateFunctions();
+
+        var result = functions.GetMetadata(new DefaultHttpContext().Request);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        var metadata = ok.Value.Should().BeOfType<FakesMetadataResponse>().Subject;
+        // Domain should be null (not the literal "Unspecified" string) for scenarios that
+        // don't declare a clinical domain, consistent with ClinicalDomains excluding it.
+        metadata.Scenarios.Select(s => s.Domain).Should().NotContain("Unspecified");
+        metadata.WorkflowPacks.Select(s => s.Domain).Should().NotContain("Unspecified");
+    }
+
+    [Fact]
     public void GetMetadata_ResourceTypesByVersion_DifferBetweenFhirVersions()
     {
         var functions = CreateFunctions();
