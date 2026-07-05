@@ -59,6 +59,10 @@ export interface BenchShareState {
 const CONFORMANCE_FHIR_VERSIONS: ConformanceFhirVersion[] = ['R4', 'R4B', 'R5', 'STU3'];
 const CONFORMANCE_TABS: TabId[] = ['setup', 'runner', 'report'];
 const BENCHES: BenchId[] = ['fhirpath', 'fml', 'sqlonfhir', 'fakes'];
+const FHIRPATH_VERSIONS: FhirPathVersion[] = ['stu3', 'r4', 'r4b', 'r5', 'r6'];
+const SAMPLE_IDS: SampleId[] = ['patient', 'observation', 'custom'];
+const FAKES_MODES: FakesMode[] = ['population', 'scenario', 'resource'];
+const POPULATION_FORMATS: NonNullable<NonNullable<FakesShareState['population']>['format']>[] = ['transaction', 'ndjson'];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -162,7 +166,80 @@ function conformanceStateFromRecord(record: Record<string, unknown>): Conformanc
 
 function benchStateFromRecord(record: Record<string, unknown>): BenchShareState {
   return {
-    fhirpath: isRecord(record.fhirpath) ? (record.fhirpath as FhirPathShareState) : undefined,
-    fakes: isRecord(record.fakes) ? (record.fakes as FakesShareState) : undefined,
+    fhirpath: isRecord(record.fhirpath) ? fhirPathStateFromRecord(record.fhirpath) : undefined,
+    fakes: isRecord(record.fakes) ? fakesStateFromRecord(record.fakes) : undefined,
   };
+}
+
+function fhirPathStateFromRecord(record: Record<string, unknown>): FhirPathShareState {
+  return {
+    version: FHIRPATH_VERSIONS.includes(record.version as FhirPathVersion) ? (record.version as FhirPathVersion) : undefined,
+    expression: typeof record.expression === 'string' ? record.expression : undefined,
+    context: typeof record.context === 'string' ? record.context : undefined,
+    sampleId: SAMPLE_IDS.includes(record.sampleId as SampleId) ? (record.sampleId as SampleId) : undefined,
+    resourceText: typeof record.resourceText === 'string' ? record.resourceText : undefined,
+    variables: Array.isArray(record.variables)
+      ? record.variables
+          .filter(isRecord)
+          .map((variable) => ({
+            name: typeof variable.name === 'string' ? variable.name : '',
+            value: typeof variable.value === 'string' ? variable.value : '',
+          }))
+      : undefined,
+  };
+}
+
+function fakesStateFromRecord(record: Record<string, unknown>): FakesShareState {
+  return {
+    mode: FAKES_MODES.includes(record.mode as FakesMode) ? (record.mode as FakesMode) : undefined,
+    fhirVersion: typeof record.fhirVersion === 'string' ? record.fhirVersion : undefined,
+    population: isRecord(record.population) ? populationStateFromRecord(record.population) : undefined,
+    scenario: isRecord(record.scenario) ? scenarioStateFromRecord(record.scenario) : undefined,
+    resource: isRecord(record.resource) ? resourceStateFromRecord(record.resource) : undefined,
+  };
+}
+
+function populationStateFromRecord(record: Record<string, unknown>): NonNullable<FakesShareState['population']> {
+  return {
+    source: typeof record.source === 'string' ? record.source : undefined,
+    count: typeof record.count === 'number' && Number.isFinite(record.count) ? record.count : undefined,
+    format: POPULATION_FORMATS.includes(record.format as NonNullable<NonNullable<FakesShareState['population']>['format']>)
+      ? (record.format as NonNullable<NonNullable<FakesShareState['population']>['format']>)
+      : undefined,
+  };
+}
+
+function scenarioStateFromRecord(record: Record<string, unknown>): NonNullable<FakesShareState['scenario']> {
+  return {
+    scenarioId: typeof record.scenarioId === 'string' ? record.scenarioId : undefined,
+    paramValues: isRecord(record.paramValues) ? record.paramValues : undefined,
+    tag: typeof record.tag === 'string' ? record.tag : undefined,
+    resolvedReferences: typeof record.resolvedReferences === 'boolean' ? record.resolvedReferences : undefined,
+  };
+}
+
+function resourceStateFromRecord(record: Record<string, unknown>): NonNullable<FakesShareState['resource']> {
+  return {
+    resourceType: typeof record.resourceType === 'string' ? record.resourceType : undefined,
+    density: typeof record.density === 'string' ? record.density : undefined,
+    seed: typeof record.seed === 'number' && Number.isFinite(record.seed) ? record.seed : undefined,
+    randomizeSeed: typeof record.randomizeSeed === 'boolean' ? record.randomizeSeed : undefined,
+    observationState: typeof record.observationState === 'string' ? record.observationState : undefined,
+    firstName: typeof record.firstName === 'string' ? record.firstName : undefined,
+    familyName: typeof record.familyName === 'string' ? record.familyName : undefined,
+    city: typeof record.city === 'string' ? record.city : undefined,
+    edgeCaseOn: typeof record.edgeCaseOn === 'boolean' ? record.edgeCaseOn : undefined,
+    includeInvalid: typeof record.includeInvalid === 'boolean' ? record.includeInvalid : undefined,
+    selectedCategories: isRecord(record.selectedCategories) ? stringBooleanRecord(record.selectedCategories) : undefined,
+  };
+}
+
+function stringBooleanRecord(record: Record<string, unknown>): Record<string, boolean> {
+  const result: Record<string, boolean> = {};
+  for (const [key, value] of Object.entries(record)) {
+    if (typeof value === 'boolean') {
+      result[key] = value;
+    }
+  }
+  return result;
 }

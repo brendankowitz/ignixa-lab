@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useTheme } from '../hooks/useTheme';
 import { buildBenchShareUrl, readBenchShare, type BenchShareState, type FakesShareState, type FhirPathShareState } from '../lib/shareLinks';
 import { Pills, type PillItem } from './components/primitives';
@@ -50,6 +50,15 @@ export function BenchesApp() {
   const [fhirpathShare, setFhirpathShare] = useState<FhirPathShareState | undefined>(initialLink.state.fhirpath);
   const [fakesShare, setFakesShare] = useState<FakesShareState | undefined>(initialLink.state.fakes);
   const [copied, setCopied] = useState(false);
+  const copiedTimeout = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copiedTimeout.current !== null) {
+        window.clearTimeout(copiedTimeout.current);
+      }
+    };
+  }, []);
 
   const shareState: BenchShareState = { fhirpath: fhirpathShare, fakes: fakesShare };
   const shareUrl = buildBenchShareUrl(bench, shareState);
@@ -79,7 +88,10 @@ export function BenchesApp() {
     navigator.clipboard?.writeText(shareUrl).then(
       () => {
         setCopied(true);
-        setTimeout(() => setCopied(false), 1400);
+        if (copiedTimeout.current !== null) {
+          window.clearTimeout(copiedTimeout.current);
+        }
+        copiedTimeout.current = window.setTimeout(() => setCopied(false), 1400);
       },
       () => undefined,
     );

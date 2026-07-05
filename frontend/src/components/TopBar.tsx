@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ThemeState } from '../hooks/useTheme';
 
 /** The three top-level screens. Tab state is component-local — no router. */
@@ -43,12 +43,24 @@ export function TopBar({
   shareUrl,
 }: TopBarProps) {
   const [copied, setCopied] = useState(false);
+  const copiedTimeout = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copiedTimeout.current !== null) {
+        window.clearTimeout(copiedTimeout.current);
+      }
+    };
+  }, []);
 
   const copyShareLink = () => {
     navigator.clipboard?.writeText(shareUrl).then(
       () => {
         setCopied(true);
-        window.setTimeout(() => setCopied(false), 1400);
+        if (copiedTimeout.current !== null) {
+          window.clearTimeout(copiedTimeout.current);
+        }
+        copiedTimeout.current = window.setTimeout(() => setCopied(false), 1400);
       },
       () => undefined,
     );
