@@ -15,6 +15,8 @@ public sealed class FakesMetadataResponse
     public required IReadOnlyList<string> PatientCities { get; init; }
     /// <summary>Clinical specialty names usable as a Maximum-density generation Theme (see Ignixa.FhirFakes.ClinicalDomain), excluding "Unspecified".</summary>
     public required IReadOnlyList<string> ClinicalDomains { get; init; }
+    /// <summary>Discoverable workflow scenario packs (e.g. "DailyAppointmentSchedule"), same shape as <see cref="Scenarios"/>.</summary>
+    public required IReadOnlyList<ScenarioMetadata> WorkflowPacks { get; init; }
 }
 
 public sealed class ScenarioMetadata

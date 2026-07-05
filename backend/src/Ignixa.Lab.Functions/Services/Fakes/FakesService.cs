@@ -7,6 +7,7 @@ using Ignixa.FhirFakes.EdgeCases;
 using Ignixa.FhirFakes.Population;
 using Ignixa.FhirFakes.Scenarios;
 using Ignixa.FhirFakes.Scenarios.States;
+using Ignixa.FhirFakes.Workflow;
 using Ignixa.Lab.Functions.Services.FhirPath;
 using Ignixa.Serialization;
 using Ignixa.Serialization.SourceNodes;
@@ -126,6 +127,62 @@ public sealed class FakesService(SchemaProviderFactory schemaProviderFactory)
             ["patient"] = patientNode,
             ["resources"] = new JsonArray(resourceNodes.ToArray()),
             ["bundle"] = bundleNode,
+        };
+    }
+
+    /// <summary>Returns null when <paramref name="packId"/> doesn't match a discovered workflow scenario pack.</summary>
+    public JsonObject? GenerateWorkflow(
+        string fhirVersion,
+        string packId,
+        IReadOnlyDictionary<string, JsonElement>? parameters,
+        int? seed,
+        string? tag,
+        bool resolvedReferences)
+    {
+        var pack = WorkflowScenarioCatalog.Find(packId);
+        if (pack is null)
+        {
+            return null;
+        }
+
+        var overrides = ConvertParameterOverrides(pack, parameters);
+
+        var schemaProvider = schemaProviderFactory.GetSchemaProvider(fhirVersion);
+        var options = new WorkflowScenarioOptions { Seed = seed, Tag = tag };
+
+        WorkflowScenarioResult result;
+        try
+        {
+            result = WorkflowScenarioCatalog.Invoke(pack, schemaProvider, options, overrides);
+        }
+        catch (ScenarioInvocationException ex)
+        {
+            throw new InvalidScenarioParametersException($"Invalid scenario parameters: {ex.Message}", ex);
+        }
+
+        var resources = result.Graph.AllResources;
+        var bundle = resolvedReferences
+            ? ResourceBundleComposer.ToBatchBundle(resources)
+            : ResourceBundleComposer.ToTransactionBundle(resources);
+
+        var resourceNodes = resources.Select(r => JsonNode.Parse(r.SerializeToString())!).ToList();
+        var bundleNode = JsonNode.Parse(bundle.SerializeToString())!.AsObject();
+
+        if (!string.IsNullOrWhiteSpace(tag))
+        {
+            foreach (var resourceNode in resourceNodes)
+            {
+                StampTag(resourceNode.AsObject(), tag);
+            }
+
+            StampBundleEntryTags(bundleNode, tag);
+        }
+
+        return new JsonObject
+        {
+            ["resources"] = new JsonArray(resourceNodes.ToArray()),
+            ["bundle"] = bundleNode,
+            ["resourceCountsByType"] = ToJsonObject(result.Manifest.ResourceCountsByType),
         };
     }
 
@@ -346,7 +403,7 @@ public sealed class FakesService(SchemaProviderFactory schemaProviderFactory)
     private static void Tally(Dictionary<string, int> counts, string key) =>
         counts[key] = counts.GetValueOrDefault(key) + 1;
 
-    private static JsonObject ToJsonObject(Dictionary<string, int> counts)
+    private static JsonObject ToJsonObject(IReadOnlyDictionary<string, int> counts)
     {
         var obj = new JsonObject();
         foreach (var (key, value) in counts)

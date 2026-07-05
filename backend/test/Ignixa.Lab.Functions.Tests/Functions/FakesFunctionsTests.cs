@@ -432,6 +432,50 @@ public sealed class FakesFunctionsTests
         result.Should().BeOfType<OkObjectResult>();
     }
 
+    [Fact]
+    public async Task GenerateWorkflow_DailyAppointmentScheduleWithTag_StampsTagOnEveryResource()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { packId = "DailyAppointmentSchedule", tag = "test-run-456", parameters = new { appointmentCount = 2 } });
+
+        var result = await functions.GenerateWorkflow(request, CancellationToken.None);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        var body = JsonSerializer.Serialize(ok.Value);
+        using var doc = JsonDocument.Parse(body);
+        var resources = doc.RootElement.GetProperty("resources");
+        resources.GetArrayLength().Should().BeGreaterThan(0);
+        foreach (var resource in resources.EnumerateArray())
+        {
+            resource.GetProperty("meta").GetProperty("tag")[0].GetProperty("code").GetString().Should().Be("test-run-456");
+        }
+    }
+
+    [Fact]
+    public async Task GenerateWorkflow_UnknownPackId_ReturnsBadRequest()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { packId = "NotARealPack" });
+
+        var result = await functions.GenerateWorkflow(request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task GenerateWorkflow_ResolvedReferencesTrue_ReturnsBatchBundle()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { packId = "DailyAppointmentSchedule", resolvedReferences = true, parameters = new { appointmentCount = 1 } });
+
+        var result = await functions.GenerateWorkflow(request, CancellationToken.None);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        var body = JsonSerializer.Serialize(ok.Value);
+        using var doc = JsonDocument.Parse(body);
+        doc.RootElement.GetProperty("bundle").GetProperty("type").GetString().Should().Be("batch");
+    }
+
     private static HttpRequest BuildJsonPostRequest(object body)
     {
         var context = new DefaultHttpContext();

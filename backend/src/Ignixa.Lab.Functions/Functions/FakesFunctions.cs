@@ -7,6 +7,7 @@ using Ignixa.FhirFakes.EdgeCases;
 using Ignixa.FhirFakes.Population;
 using Ignixa.FhirFakes.Scenarios;
 using Ignixa.FhirFakes.Scenarios.States;
+using Ignixa.FhirFakes.Workflow;
 using Ignixa.Lab.Functions.Models.Fakes;
 using Ignixa.Lab.Functions.Services.Fakes;
 using Ignixa.Lab.Functions.Services.FhirPath;
@@ -89,6 +90,7 @@ public sealed class FakesFunctions(
                 .ToList(),
             PatientCities = populationGenerator.AvailableCities.Select(city => city.Name).ToList(),
             ClinicalDomains = Enum.GetNames<ClinicalDomain>().Where(name => name != nameof(ClinicalDomain.Unspecified)).ToList(),
+            WorkflowPacks = WorkflowScenarioCatalog.GetAll().Select(ToScenarioMetadata).ToList(),
         };
 
         return new OkObjectResult(response);
@@ -196,6 +198,56 @@ public sealed class FakesFunctions(
         if (result is null)
         {
             return new BadRequestObjectResult(new { error = $"Unknown scenarioId '{scenarioRequest.ScenarioId}'." });
+        }
+
+        return new OkObjectResult(result);
+    }
+
+    [Function("FakesWorkflow")]
+    public async Task<IActionResult> GenerateWorkflow(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", "options", Route = "fakes/workflow")] HttpRequest request,
+        CancellationToken cancellationToken)
+    {
+        WorkflowRequest? workflowRequest;
+        try
+        {
+            workflowRequest = await JsonSerializer.DeserializeAsync<WorkflowRequest>(
+                request.Body, RequestJsonOptions, cancellationToken);
+        }
+        catch (JsonException ex)
+        {
+            return new BadRequestObjectResult(new { error = $"Invalid request body: {ex.Message}" });
+        }
+
+        if (workflowRequest is null || string.IsNullOrWhiteSpace(workflowRequest.PackId))
+        {
+            return new BadRequestObjectResult(new { error = "A 'packId' is required." });
+        }
+
+        if (!IsSupportedFhirVersion(workflowRequest.FhirVersion))
+        {
+            return UnsupportedFhirVersion(workflowRequest.FhirVersion);
+        }
+
+        JsonObject? result;
+        try
+        {
+            result = fakesService.GenerateWorkflow(
+                workflowRequest.FhirVersion,
+                workflowRequest.PackId,
+                workflowRequest.Parameters,
+                workflowRequest.Seed,
+                workflowRequest.Tag,
+                workflowRequest.ResolvedReferences);
+        }
+        catch (InvalidScenarioParametersException ex)
+        {
+            return new BadRequestObjectResult(new { error = ex.Message });
+        }
+
+        if (result is null)
+        {
+            return new BadRequestObjectResult(new { error = $"Unknown packId '{workflowRequest.PackId}'." });
         }
 
         return new OkObjectResult(result);
