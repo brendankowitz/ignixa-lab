@@ -158,10 +158,10 @@ export function FakesBench({ returnTo, onDismissReturn, onSend, initialState, on
   }, []);
 
   useEffect(() => {
-    // Workflow mode has no share-state fields of its own (see WorkflowPanel), so it's
-    // never persisted into the URL — falls back to the default mode on reload instead.
+    // Workflow mode has no share-state fields of its own (see WorkflowPanel), but the
+    // mode itself still round-trips through the URL like the other modes.
     onShareStateChange?.({
-      mode: mode === 'workflow' ? undefined : mode,
+      mode,
       fhirVersion,
       population: populationShare,
       scenario: scenarioShare,

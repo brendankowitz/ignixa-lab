@@ -4,7 +4,7 @@ import type { FhirVersion as FhirPathVersion, FpVariable } from '../benches/fhir
 import type { SampleId } from '../benches/fhirpath/sampleResources';
 
 export type BenchId = 'fhirpath' | 'fml' | 'sqlonfhir' | 'fakes';
-export type FakesMode = 'population' | 'scenario' | 'resource';
+export type FakesMode = 'population' | 'scenario' | 'resource' | 'workflow';
 export const COPY_FEEDBACK_DURATION_MS = 1400;
 
 export interface ConformanceShareState {
@@ -66,7 +66,7 @@ const CONFORMANCE_TABS: TabId[] = ['setup'];
 const BENCHES: BenchId[] = ['fhirpath', 'fml', 'sqlonfhir', 'fakes'];
 const FHIRPATH_VERSIONS: FhirPathVersion[] = ['stu3', 'r4', 'r4b', 'r5', 'r6'];
 const SAMPLE_IDS: SampleId[] = ['patient', 'observation', 'custom'];
-const FAKES_MODES: FakesMode[] = ['population', 'scenario', 'resource'];
+const FAKES_MODES: FakesMode[] = ['population', 'scenario', 'resource', 'workflow'];
 const POPULATION_FORMATS: NonNullable<NonNullable<FakesShareState['population']>['format']>[] = ['transaction', 'ndjson'];
 const DENSITY_VALUES: string[] = ['Minimal', 'Maximum'];
 
