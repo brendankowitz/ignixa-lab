@@ -15,9 +15,7 @@ public sealed class FakesFunctionsTests
     private static FakesFunctions CreateFunctions() => new(
         NullLogger<FakesFunctions>.Instance,
         new SchemaProviderFactory(),
-        new ScenarioDiscovery(),
-        new ObservationStateDiscovery(),
-        new FakesService(new SchemaProviderFactory(), new ScenarioDiscovery(), new ObservationStateDiscovery()));
+        new FakesService(new SchemaProviderFactory()));
 
     [Fact]
     public void GetMetadata_ReturnsPopulationStatesScenariosAndEdgeCaseFamilies()

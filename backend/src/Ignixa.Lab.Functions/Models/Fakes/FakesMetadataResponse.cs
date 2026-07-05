@@ -18,6 +18,10 @@ public sealed class FakesMetadataResponse
 public sealed class ScenarioMetadata
 {
     public required string Id { get; init; }
+    /// <summary>Free-text grouping label from the library's <c>ScenarioAttribute.Category</c>, or null if unannotated.</summary>
+    public string? Category { get; init; }
+    /// <summary>Clinical specialty from the library's <c>ScenarioAttribute.Domain</c>, or null if undeclared.</summary>
+    public string? Domain { get; init; }
     public required IReadOnlyList<ScenarioParameterMetadata> Parameters { get; init; }
 }
 

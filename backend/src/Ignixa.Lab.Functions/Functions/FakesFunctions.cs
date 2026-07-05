@@ -5,6 +5,8 @@ using System.Text.Json.Nodes;
 using Ignixa.FhirFakes;
 using Ignixa.FhirFakes.EdgeCases;
 using Ignixa.FhirFakes.Population;
+using Ignixa.FhirFakes.Scenarios;
+using Ignixa.FhirFakes.Scenarios.States;
 using Ignixa.Lab.Functions.Models.Fakes;
 using Ignixa.Lab.Functions.Services.Fakes;
 using Ignixa.Lab.Functions.Services.FhirPath;
@@ -19,8 +21,6 @@ namespace Ignixa.Lab.Functions.Functions;
 public sealed class FakesFunctions(
     ILogger<FakesFunctions> logger,
     SchemaProviderFactory schemaProviderFactory,
-    ScenarioDiscovery scenarioDiscovery,
-    ObservationStateDiscovery observationStateDiscovery,
     FakesService fakesService)
 {
     private static readonly string[] FhirVersions = ["stu3", "r4", "r4b", "r5", "r6"];
@@ -75,14 +75,14 @@ public sealed class FakesFunctions(
             LibraryVersion = LibraryVersion,
             FhirVersions = FhirVersions,
             PopulationStates = populationGenerator.AvailableStates,
-            Scenarios = scenarioDiscovery.All().Select(ToScenarioMetadata).ToList(),
+            Scenarios = ScenarioCatalog.GetAll().Select(ToScenarioMetadata).ToList(),
             ResourceTypesByVersion = FhirVersions.ToDictionary(
                 version => version,
                 version => (IReadOnlyList<string>)schemaProviderFactory.GetSchemaProvider(version).ResourceTypeNames
                     .OrderBy(name => name, StringComparer.Ordinal)
                     .ToList(),
                 StringComparer.OrdinalIgnoreCase),
-            ObservationStates = observationStateDiscovery.Names(),
+            ObservationStates = ObservationStateCatalog.GetNames(),
             EdgeCaseFamilies = ActiveEdgeCaseFamilies
                 .Select(family => ToEdgeCaseFamilyMetadata(family, catalog))
                 .Where(family => family.Categories.Count > 0)
@@ -241,7 +241,7 @@ public sealed class FakesFunctions(
         }
 
         if (!string.IsNullOrWhiteSpace(resourceRequest.ObservationState)
-            && !observationStateDiscovery.Names().Contains(resourceRequest.ObservationState, StringComparer.OrdinalIgnoreCase))
+            && !ObservationStateCatalog.GetNames().Contains(resourceRequest.ObservationState, StringComparer.OrdinalIgnoreCase))
         {
             return new BadRequestObjectResult(new { error = $"Unknown observationState '{resourceRequest.ObservationState}'." });
         }
@@ -281,10 +281,12 @@ public sealed class FakesFunctions(
     private static ScenarioMetadata ToScenarioMetadata(DiscoveredScenario scenario) => new()
     {
         Id = scenario.Id,
+        Category = scenario.Category,
+        Domain = scenario.Domain?.ToString(),
         Parameters = scenario.Parameters.Select(parameter => new ScenarioParameterMetadata
         {
-            Name = parameter.Name!,
-            Type = parameter.ParameterType.Name,
+            Name = parameter.Name,
+            Type = parameter.Type.Name,
             DefaultValue = parameter.HasDefaultValue ? parameter.DefaultValue : null,
         }).ToList(),
     };

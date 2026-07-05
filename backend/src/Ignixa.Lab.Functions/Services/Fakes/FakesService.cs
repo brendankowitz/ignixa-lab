@@ -6,6 +6,7 @@ using Ignixa.FhirFakes.Builders;
 using Ignixa.FhirFakes.EdgeCases;
 using Ignixa.FhirFakes.Population;
 using Ignixa.FhirFakes.Scenarios;
+using Ignixa.FhirFakes.Scenarios.States;
 using Ignixa.Lab.Functions.Services.FhirPath;
 using Ignixa.Serialization;
 using Ignixa.Serialization.SourceNodes;
@@ -13,10 +14,7 @@ using Ignixa.Serialization.SourceNodes;
 namespace Ignixa.Lab.Functions.Services.Fakes;
 
 /// <summary>Orchestrates calls into <c>Ignixa.FhirFakes</c> and shapes the results into plain JSON for the Fakes bench endpoints.</summary>
-public sealed class FakesService(
-    SchemaProviderFactory schemaProviderFactory,
-    ScenarioDiscovery scenarioDiscovery,
-    ObservationStateDiscovery observationStateDiscovery)
+public sealed class FakesService(SchemaProviderFactory schemaProviderFactory)
 {
     public JsonObject GeneratePopulation(string fhirVersion, string source, int count)
     {
@@ -78,28 +76,23 @@ public sealed class FakesService(
         string? tag,
         bool resolvedReferences)
     {
-        var scenario = scenarioDiscovery.Find(scenarioId);
+        var scenario = ScenarioCatalog.Find(scenarioId);
         if (scenario is null)
         {
             return null;
         }
 
+        var overrides = ConvertParameterOverrides(scenario, parameters);
+
         var schemaProvider = schemaProviderFactory.GetSchemaProvider(fhirVersion);
         ScenarioContext context;
         try
         {
-            context = scenarioDiscovery.Invoke(scenario, schemaProvider, parameters);
+            context = ScenarioCatalog.Invoke(scenario, schemaProvider, overrides);
         }
-        catch (Exception ex) when (ex is InvalidOperationException
-            or System.Reflection.TargetInvocationException
-            or FormatException
-            or OverflowException
-            or ArgumentException)
+        catch (ScenarioInvocationException ex)
         {
-            var reason = ex is System.Reflection.TargetInvocationException tie
-                ? tie.InnerException?.Message ?? tie.Message
-                : ex.Message;
-            throw new InvalidScenarioParametersException($"Invalid scenario parameters: {reason}", ex);
+            throw new InvalidScenarioParametersException($"Invalid scenario parameters: {ex.Message}", ex);
         }
 
         if (resolvedReferences)
@@ -194,9 +187,55 @@ public sealed class FakesService(
     }
 
     /// <summary>
-    /// Instance method (not static) because the Observation-with-state path needs
-    /// <c>observationStateDiscovery</c>. Patient uses <see cref="PatientBuilderFactory"/>
-    /// directly; Observation with a requested clinical state goes through
+    /// Converts the request's raw JSON parameter overrides into the strongly-typed values
+    /// <see cref="ScenarioCatalog.Invoke"/> expects, using each parameter's own
+    /// <see cref="DiscoveredScenarioParameter.TryParseValue(string, out object?, out string?)"/> —
+    /// which already applies invariant-culture parsing and the scenario's declared Min/Max range,
+    /// so this method no longer needs its own type-conversion switch. An override key with no
+    /// matching parameter is ignored here and left for <see cref="ScenarioCatalog.Invoke"/>'s own
+    /// binder to silently skip, matching this method's prior behavior of not pre-validating names.
+    /// </summary>
+    private static IReadOnlyDictionary<string, object?>? ConvertParameterOverrides(
+        DiscoveredScenario scenario,
+        IReadOnlyDictionary<string, JsonElement>? parameters)
+    {
+        if (parameters is null || parameters.Count == 0)
+        {
+            return null;
+        }
+
+        var parameterMetadata = scenario.Parameters.ToDictionary(p => p.Name, StringComparer.OrdinalIgnoreCase);
+        var overrides = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var (key, jsonValue) in parameters)
+        {
+            if (!parameterMetadata.TryGetValue(key, out var parameter))
+            {
+                continue;
+            }
+
+            if (jsonValue.ValueKind == JsonValueKind.Null)
+            {
+                overrides[parameter.Name] = null;
+                continue;
+            }
+
+            var rawValue = jsonValue.ValueKind == JsonValueKind.String ? jsonValue.GetString()! : jsonValue.GetRawText();
+            if (!parameter.TryParseValue(rawValue, out var value, out var failureReason))
+            {
+                throw new InvalidScenarioParametersException(
+                    $"Invalid scenario parameters: parameter '{parameter.Name}' {failureReason ?? $"could not be converted from '{rawValue}'."}");
+            }
+
+            overrides[parameter.Name] = value;
+        }
+
+        return overrides;
+    }
+
+    /// <summary>
+    /// Patient uses <see cref="PatientBuilderFactory"/> directly; Observation with a
+    /// requested clinical state goes through
     /// <see cref="ScenarioBuilder"/>.AddObservation(ObservationState) — the real,
     /// public entry point that consumes an <c>ObservationState</c> (there is no
     /// direct <c>ObservationBuilder.FromState(...)</c> — <c>ObservationBuilder</c>
@@ -207,7 +246,7 @@ public sealed class FakesService(
     /// resulting <see cref="ScenarioContext"/>'s Observation from
     /// <c>AllResources</c>. Everything else uses the generic schema-driven faker.
     /// </summary>
-    private Ignixa.Serialization.SourceNodes.ResourceJsonNode BuildResource(
+    private static Ignixa.Serialization.SourceNodes.ResourceJsonNode BuildResource(
         Ignixa.Abstractions.IFhirSchemaProvider schemaProvider,
         string resourceType,
         int seed,
@@ -256,9 +295,11 @@ public sealed class FakesService(
 
         if (string.Equals(resourceType, "Observation", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(observationState))
         {
-            var state = observationStateDiscovery.Create(observationState)
-                ?? throw new InvalidOperationException(
-                    $"Observation state '{observationState}' passed validation but ObservationStateDiscovery.Create returned null.");
+            if (!ObservationStateCatalog.TryCreate(observationState, out var state))
+            {
+                throw new InvalidOperationException(
+                    $"Observation state '{observationState}' passed validation but ObservationStateCatalog.TryCreate returned false.");
+            }
 
             var context = new ScenarioBuilder(schemaProvider).WithPatient().AddObservation(state).Build();
             var observation = context.AllResources.FirstOrDefault(r => r.ResourceType == "Observation")
