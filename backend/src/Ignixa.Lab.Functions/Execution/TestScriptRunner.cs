@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json.Nodes;
 using Ignixa.Lab.Functions.Conformance;
 using Ignixa.Lab.Functions.Configuration;
 using Ignixa.Lab.Functions.Models;
@@ -58,12 +59,13 @@ public sealed class TestScriptRunner(
             return RunOutcome.Invalid($"A run may include at most {_options.MaxSuitesPerRun} suites.");
         }
 
-        var fhirVersion = string.IsNullOrWhiteSpace(request.FhirVersion)
+        var requestedFhirVersion = string.IsNullOrWhiteSpace(request.FhirVersion)
             ? _options.DefaultFhirVersion
             : request.FhirVersion!;
-        var engineFhirVersion = NormalizeFhirVersionForEngine(fhirVersion);
 
         var (capabilityStatement, capabilityWarning) = await FetchCapabilityStatementAsync(target, cancellationToken);
+
+        var fhirVersion = ResolveFhirVersion(capabilityStatement, requestedFhirVersion);
 
         var startedAt = DateTimeOffset.UtcNow;
         var stopwatch = Stopwatch.StartNew();
@@ -89,7 +91,7 @@ public sealed class TestScriptRunner(
         foreach (var job in jobs)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            results.AddRange(await ExecuteJobAsync(evaluator, job, engineFhirVersion, capabilityStatement, cancellationToken));
+            results.AddRange(await ExecuteJobAsync(evaluator, job, fhirVersion, capabilityStatement, cancellationToken));
         }
 
         stopwatch.Stop();
@@ -97,11 +99,11 @@ public sealed class TestScriptRunner(
         var report = new ConformanceReport(
             Impl: "ignixa-lab",
             Target: target.ToString(),
-            // Numeric form, not the raw request label: this field must stay
-            // identical in shape and value convention to the ignixa-fhir
-            // conformance/latest.json artifact, which is always numeric
-            // (e.g. "4.0"), never "R4".
-            FhirVersion: engineFhirVersion,
+            // The target's own declared version (e.g. "4.0.1"), not the raw
+            // request label: this field must stay identical in shape and value
+            // convention to the ignixa-fhir conformance/latest.json artifact,
+            // which is always numeric, never a release label like "R4".
+            FhirVersion: fhirVersion,
             StartedAt: startedAt,
             DurationMs: stopwatch.ElapsedMilliseconds,
             Results: results,
@@ -111,25 +113,25 @@ public sealed class TestScriptRunner(
     }
 
     /// <summary>
-    /// Maps a FHIR release label (for example <c>"R4"</c>, <c>"R4B"</c>) to the
-    /// numeric major.minor form (for example <c>"4.0"</c>, <c>"4.3"</c>) used by
-    /// the bundled suites' <c>http://ignixa.io/testscript/fhirVersions</c> gating
-    /// extension. The 0.6.4 engine matches the requested version against a test's
-    /// declared versions via <c>SemVersion.TryParse</c>, which fails on a release
-    /// label — so passing one straight through causes every version-gated test
-    /// to be skipped even when the label and number refer to the same release.
-    /// Values already in numeric form, or not recognized as a release label,
-    /// pass through unchanged.
+    /// Resolves the FHIR version used for the engine's <c>fhirVersions</c> gating
+    /// extension and the report's <see cref="ConformanceReport.FhirVersion"/>
+    /// field, preferring the target's own declared <c>CapabilityStatement.fhirVersion</c>
+    /// (e.g. <c>"4.0.1"</c>) over <paramref name="fallbackFhirVersion"/> (the
+    /// request's release-label selector, or <see cref="IgnixaLabOptions.DefaultFhirVersion"/>).
+    /// Gating against the target's own declared, patch-precise version — rather than
+    /// a UI-selected label — lets the engine's granular <c>fhirVersions</c> matching
+    /// (major/minor/patch/wildcard specs) work as designed instead of comparing an
+    /// approximate guess. Falls back to <paramref name="fallbackFhirVersion"/> only
+    /// when the CapabilityStatement couldn't be fetched/parsed or omits <c>fhirVersion</c>.
     /// </summary>
-    private static string NormalizeFhirVersionForEngine(string fhirVersion) => fhirVersion.ToUpperInvariant() switch
+    private static string ResolveFhirVersion(ResourceJsonNode? capabilityStatement, string fallbackFhirVersion)
     {
-        "STU3" or "R3" => "3.0",
-        "R4" => "4.0",
-        "R4B" => "4.3",
-        "R5" => "5.0",
-        "R6" => "6.0",
-        _ => fhirVersion
-    };
+        var declaredVersion = capabilityStatement?.MutableNode["fhirVersion"] is JsonValue value && value.TryGetValue<string>(out var declared)
+            ? declared
+            : null;
+
+        return string.IsNullOrWhiteSpace(declaredVersion) ? fallbackFhirVersion : declaredVersion;
+    }
 
     /// <summary>
     /// Fetches the target's CapabilityStatement once per run so every job's

@@ -31,6 +31,16 @@ public sealed class TestScriptRunnerTests
         }
         """;
 
+    /// <summary>A CapabilityStatement declaring a specific, patch-precise <c>fhirVersion</c> — the shape a real server returns.</summary>
+    private static string CapabilityStatementWithFhirVersion(string fhirVersion) => $$"""
+        {
+          "resourceType": "CapabilityStatement",
+          "status": "active",
+          "fhirVersion": "{{fhirVersion}}",
+          "rest": [{ "mode": "server", "resource": [{ "type": "Patient", "interaction": [{"code": "read"}] }] }]
+        }
+        """;
+
     private static TestScriptDefinition GatedDefinition(string requiresCapability) => new()
     {
         Metadata = new TestScriptMetadata { Name = "Gated" },
@@ -130,61 +140,110 @@ public sealed class TestScriptRunnerTests
     }
 
     [Theory]
-    [InlineData("R4", "4.0")]
-    [InlineData("r4", "4.0")]
-    [InlineData("R4B", "4.3")]
-    [InlineData("R5", "5.0")]
-    [InlineData("STU3", "3.0")]
-    [InlineData("R3", "3.0")]
-    [InlineData("R6", "6.0")]
-    public async Task GivenSuiteGatedToNumericFhirVersion_WhenRunRequestsMatchingReleaseLabel_ThenTestRunsAndReportUsesNormalizedVersion(
-        string requestedFhirVersion, string declaredNumericVersion)
+    [InlineData("4.0.1", "4.0")]
+    [InlineData("4.0", "4.0")]
+    [InlineData("4.3.0", "4.3")]
+    [InlineData("5.0.0", "5.0")]
+    [InlineData("3.0.2", "3.0")]
+    [InlineData("6.0.0-ballot3", "6.0")]
+    public async Task GivenSuiteGatedToMajorMinorFhirVersion_WhenTargetDeclaresMatchingPatchVersion_ThenTestRunsAndReportUsesDeclaredVersion(
+        string declaredCapabilityVersion, string suiteGatedVersion)
     {
         var provider = new RecordingRequestProvider(new TestResponse { StatusCode = 200 });
         var runner = new TestScriptRunner(
-            new FakeSuiteCatalog("versioned.json", VersionGatedDefinition(declaredNumericVersion)),
+            new FakeSuiteCatalog("versioned.json", VersionGatedDefinition(suiteGatedVersion)),
             new FakeEvaluatorFactory(provider),
             new CapabilityStatementFetcher(
-                new FixedResponseHttpClientFactory(CapabilityStatementWithoutReindex),
+                new FixedResponseHttpClientFactory(CapabilityStatementWithFhirVersion(declaredCapabilityVersion)),
                 Options.Create(new IgnixaLabOptions())),
             Options.Create(new IgnixaLabOptions()),
             NullLogger<TestScriptRunner>.Instance);
 
         var outcome = await runner.RunAsync(
-            new RunRequest { TargetUrl = TargetUrl, SuiteIds = ["versioned.json"], FhirVersion = requestedFhirVersion },
+            new RunRequest { TargetUrl = TargetUrl, SuiteIds = ["versioned.json"] },
             CancellationToken.None);
 
         outcome.IsValid.Should().BeTrue();
-        // Regression: previously the release label ("R4") was passed straight to the
-        // engine, which compares it verbatim against the suite's numeric fhirVersions
-        // extension ("4.0"), so the test was always skipped.
+        // The engine's granular fhirVersions matching (major/minor/patch/wildcard specs)
+        // matches the suite's major.minor spec against the target's real, patch-precise
+        // declared version — this is the whole point of gating against the target's own
+        // CapabilityStatement instead of a UI-selected release label.
         outcome.Report!.Results[0].Status.Should().NotBe(ConformanceStatus.Skipped);
-        // The report must carry the numeric form, not the raw label: it's interchangeable
-        // with the ignixa-fhir conformance/latest.json artifact, which is always numeric.
-        outcome.Report.FhirVersion.Should().Be(declaredNumericVersion);
+        // The report must carry the target's own declared version verbatim (patch included,
+        // and any prerelease/build metadata), not a normalized/truncated guess: it's
+        // interchangeable with the ignixa-fhir conformance/latest.json artifact.
+        outcome.Report.FhirVersion.Should().Be(declaredCapabilityVersion);
         provider.CallCount.Should().Be(1);
     }
 
     [Fact]
-    public async Task GivenSuiteGatedToIncompatibleFhirVersion_WhenRun_ThenTestIsStillSkipped()
+    public async Task GivenSuiteGatedToIncompatibleFhirVersion_WhenTargetDeclaresADifferentVersion_ThenTestIsSkipped()
     {
         var provider = new RecordingRequestProvider(new TestResponse { StatusCode = 200 });
         var runner = new TestScriptRunner(
             new FakeSuiteCatalog("versioned.json", VersionGatedDefinition("5.0")),
             new FakeEvaluatorFactory(provider),
             new CapabilityStatementFetcher(
+                new FixedResponseHttpClientFactory(CapabilityStatementWithFhirVersion("4.0.1")),
+                Options.Create(new IgnixaLabOptions())),
+            Options.Create(new IgnixaLabOptions()),
+            NullLogger<TestScriptRunner>.Instance);
+
+        var outcome = await runner.RunAsync(
+            new RunRequest { TargetUrl = TargetUrl, SuiteIds = ["versioned.json"] },
+            CancellationToken.None);
+
+        outcome.IsValid.Should().BeTrue();
+        outcome.Report!.Results[0].Status.Should().Be(ConformanceStatus.Skipped);
+        provider.CallCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task GivenCapabilityStatementOmitsFhirVersion_WhenRun_ThenReportFallsBackToRequestFhirVersion()
+    {
+        var provider = new RecordingRequestProvider(new TestResponse { StatusCode = 200 });
+        var runner = new TestScriptRunner(
+            new FakeSuiteCatalog("versioned.json", VersionGatedDefinition("4.0")),
+            new FakeEvaluatorFactory(provider),
+            new CapabilityStatementFetcher(
+                // No "fhirVersion" field at all — some malformed/legacy server response.
                 new FixedResponseHttpClientFactory(CapabilityStatementWithoutReindex),
                 Options.Create(new IgnixaLabOptions())),
             Options.Create(new IgnixaLabOptions()),
             NullLogger<TestScriptRunner>.Instance);
 
         var outcome = await runner.RunAsync(
-            new RunRequest { TargetUrl = TargetUrl, SuiteIds = ["versioned.json"], FhirVersion = "R4" },
+            new RunRequest { TargetUrl = TargetUrl, SuiteIds = ["versioned.json"], FhirVersion = "4.0" },
             CancellationToken.None);
 
         outcome.IsValid.Should().BeTrue();
-        outcome.Report!.Results[0].Status.Should().Be(ConformanceStatus.Skipped);
-        provider.CallCount.Should().Be(0);
+        outcome.Report!.Results[0].Status.Should().NotBe(ConformanceStatus.Skipped);
+        outcome.Report.FhirVersion.Should().Be("4.0");
+        provider.CallCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task GivenCapabilityFetchFails_WhenRun_ThenReportFallsBackToDefaultFhirVersion()
+    {
+        var provider = new RecordingRequestProvider(new TestResponse { StatusCode = 200 });
+        var runner = new TestScriptRunner(
+            new FakeSuiteCatalog("versioned.json", VersionGatedDefinition("4.0")),
+            new FakeEvaluatorFactory(provider),
+            new CapabilityStatementFetcher(
+                new ThrowingHttpClientFactory(),
+                Options.Create(new IgnixaLabOptions())),
+            Options.Create(new IgnixaLabOptions { DefaultFhirVersion = "4.0" }),
+            NullLogger<TestScriptRunner>.Instance);
+
+        var outcome = await runner.RunAsync(
+            new RunRequest { TargetUrl = TargetUrl, SuiteIds = ["versioned.json"] },
+            CancellationToken.None);
+
+        outcome.IsValid.Should().BeTrue();
+        outcome.Report!.CapabilityWarning.Should().NotBeNullOrEmpty();
+        outcome.Report.Results[0].Status.Should().NotBe(ConformanceStatus.Skipped);
+        outcome.Report.FhirVersion.Should().Be("4.0");
+        provider.CallCount.Should().Be(1);
     }
 
     private sealed class FakeSuiteCatalog(string id, TestScriptDefinition definition) : ISuiteCatalog
