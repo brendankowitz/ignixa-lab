@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import './App.css';
 import { ReportScreen } from './components/ReportScreen';
 import { RunnerScreen } from './components/RunnerScreen';
@@ -24,6 +24,20 @@ function App() {
   const [activeTab, setActiveTab] = useState<TabId>(initialLink.tab ?? 'setup');
   const [failingOnly, setFailingOnly] = useState(false);
 
+  // Remove any suite IDs from the selection that are no longer in the loaded catalog.
+  // This handles stale/invalid suite IDs from share links after the catalog loads.
+  useEffect(() => {
+    if (run.suitesLoading || run.suites.length === 0) {
+      return;
+    }
+    const knownIds = new Set(run.suites.map((suite) => suite.id));
+    const staleIds = Array.from(config.selection.selected).filter((id) => !knownIds.has(id));
+    if (staleIds.length > 0) {
+      config.selection.setMany(staleIds, false);
+    }
+  }, [run.suites, run.suitesLoading, config.selection]);
+
+
   const running = run.phase === 'running';
   const canStart = config.targetUrl !== '' && config.selection.selected.size > 0 && !running;
 
@@ -44,12 +58,16 @@ function App() {
     setActiveTab('runner');
   }, []);
 
-  const shareUrl = buildConformanceShareUrl({
-    tab: activeTab,
-    targetUrl: config.targetUrl || undefined,
-    fhirVersion: config.fhirVersion,
-    suiteIds: Array.from(config.selection.selected),
-  });
+  const shareUrl = useMemo(
+    () =>
+      buildConformanceShareUrl({
+        tab: activeTab,
+        targetUrl: config.targetUrl || undefined,
+        fhirVersion: config.fhirVersion,
+        suiteIds: Array.from(config.selection.selected),
+      }),
+    [activeTab, config.targetUrl, config.fhirVersion, config.selection.selected],
+  );
 
   return (
     <div className="app-shell" style={theme.variables}>

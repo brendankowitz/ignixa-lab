@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
+import { useCopyToClipboard } from '../hooks/useCopyToClipboard';
 import { useTheme } from '../hooks/useTheme';
 import { COPY_FEEDBACK_DURATION_MS, buildBenchShareUrl, readBenchShare, type BenchShareState, type FakesShareState, type FhirPathShareState } from '../lib/shareLinks';
 import { Pills, type PillItem } from './components/primitives';
@@ -49,19 +50,13 @@ export function BenchesApp() {
   const [sofSeed, setSofSeed] = useState<{ text: string } | null>(null);
   const [fhirpathShare, setFhirpathShare] = useState<FhirPathShareState | undefined>(initialLink.state.fhirpath);
   const [fakesShare, setFakesShare] = useState<FakesShareState | undefined>(initialLink.state.fakes);
-  const [copied, setCopied] = useState(false);
-  const copiedTimeout = useRef<number | null>(null);
 
-  useEffect(() => {
-    return () => {
-      if (copiedTimeout.current !== null) {
-        window.clearTimeout(copiedTimeout.current);
-      }
-    };
-  }, []);
+  const shareUrl = useMemo(() => {
+    const shareState: BenchShareState = { fhirpath: fhirpathShare, fakes: fakesShare };
+    return buildBenchShareUrl(bench, shareState);
+  }, [bench, fhirpathShare, fakesShare]);
 
-  const shareState: BenchShareState = { fhirpath: fhirpathShare, fakes: fakesShare };
-  const shareUrl = buildBenchShareUrl(bench, shareState);
+  const { copied, copy: copyShareLink } = useCopyToClipboard(shareUrl, COPY_FEEDBACK_DURATION_MS);
 
   const openFakesFrom = (fromBench: Exclude<BenchId, 'fakes'>) => {
     setBench('fakes');
@@ -82,19 +77,6 @@ export function BenchesApp() {
     setFakesReturnTo(null);
     setSentToast({ bench: targetBench, label });
     setTimeout(() => setSentToast(null), 6000);
-  };
-
-  const copyShareLink = () => {
-    navigator.clipboard?.writeText(shareUrl).then(
-      () => {
-        setCopied(true);
-        if (copiedTimeout.current !== null) {
-          window.clearTimeout(copiedTimeout.current);
-        }
-        copiedTimeout.current = window.setTimeout(() => setCopied(false), COPY_FEEDBACK_DURATION_MS);
-      },
-      () => undefined,
-    );
   };
 
   return (
@@ -166,7 +148,7 @@ export function BenchesApp() {
       </header>
 
       <main>
-        {bench === 'fhirpath' ? <FhirPathBench onOpenFakes={() => openFakesFrom('fhirpath')} fakesSeed={fhirpathSeed} onSeedConsumed={() => setFhirpathSeed(null)} initialState={initialLink.state.fhirpath} onShareStateChange={setFhirpathShare} /> : null}
+        {bench === 'fhirpath' ? <FhirPathBench onOpenFakes={() => openFakesFrom('fhirpath')} fakesSeed={fhirpathSeed} onSeedConsumed={() => setFhirpathSeed(null)} initialState={fhirpathShare} onShareStateChange={setFhirpathShare} /> : null}
         {bench === 'fml' ? <FmlBench onOpenFakes={() => openFakesFrom('fml')} fakesSeed={fmlSeed} onSeedConsumed={() => setFmlSeed(null)} /> : null}
         {bench === 'sqlonfhir' ? <SofBench onOpenFakes={() => openFakesFrom('sqlonfhir')} fakesSeed={sofSeed} onSeedConsumed={() => setSofSeed(null)} /> : null}
         {bench === 'fakes' ? (
@@ -174,7 +156,7 @@ export function BenchesApp() {
             returnTo={fakesReturnTo}
             onDismissReturn={() => setFakesReturnTo(null)}
             onSend={(targetBench, payload, label) => handleSend(targetBench, payload, label)}
-            initialState={initialLink.state.fakes}
+            initialState={fakesShare}
             onShareStateChange={setFakesShare}
           />
         ) : null}

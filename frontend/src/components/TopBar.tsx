@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCopyToClipboard } from '../hooks/useCopyToClipboard';
 import type { ThemeState } from '../hooks/useTheme';
 import { COPY_FEEDBACK_DURATION_MS } from '../lib/shareLinks';
 
@@ -43,29 +43,7 @@ export function TopBar({
   onStop,
   shareUrl,
 }: TopBarProps) {
-  const [copied, setCopied] = useState(false);
-  const copiedTimeout = useRef<number | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (copiedTimeout.current !== null) {
-        window.clearTimeout(copiedTimeout.current);
-      }
-    };
-  }, []);
-
-  const copyShareLink = () => {
-    navigator.clipboard?.writeText(shareUrl).then(
-      () => {
-        setCopied(true);
-        if (copiedTimeout.current !== null) {
-          window.clearTimeout(copiedTimeout.current);
-        }
-        copiedTimeout.current = window.setTimeout(() => setCopied(false), COPY_FEEDBACK_DURATION_MS);
-      },
-      () => undefined,
-    );
-  };
+  const { copied, copy: copyShareLink } = useCopyToClipboard(shareUrl, COPY_FEEDBACK_DURATION_MS);
 
   return (
     <header className="top-bar">

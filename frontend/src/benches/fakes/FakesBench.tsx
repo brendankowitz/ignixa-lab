@@ -9,8 +9,9 @@ import {
   primaryButtonStyle,
   sectionLabelStyle,
 } from '../components/styles';
+import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 import { useIsNarrowViewport } from '../../hooks/useIsNarrowViewport';
-import type { FakesShareState } from '../../lib/shareLinks';
+import { COPY_FEEDBACK_DURATION_MS, type FakesShareState } from '../../lib/shareLinks';
 import { describeEdgeCase } from './edgeCaseDescriptions';
 import { describeScenario } from './scenarioDescriptions';
 import { generatePopulation, generateResource, generateScenario, getFakesMetadata } from './fakesApi';
@@ -323,16 +324,7 @@ function resourceCli(params: {
 
 /** A copyable monospace `$ ignixa-fakes …` hint reflecting the current UI selections. Decorative, but syntactically real. */
 function CliHint({ command }: { command: string }) {
-  const [copied, setCopied] = useState(false);
-  const copy = () => {
-    navigator.clipboard?.writeText(command).then(
-      () => {
-        setCopied(true);
-        window.setTimeout(() => setCopied(false), 1200);
-      },
-      () => undefined,
-    );
-  };
+  const { copied, copy } = useCopyToClipboard(command, COPY_FEEDBACK_DURATION_MS);
   return (
     <button
       type="button"

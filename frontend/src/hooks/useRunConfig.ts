@@ -48,6 +48,10 @@ function endpointFromTargetUrl(targetUrl: string | undefined): string {
  * carries none, so a Bearer-token control would have nothing to wire up.
  */
 export function useRunConfig(initial: InitialRunConfig = {}): RunConfig {
+  // Preserve the original scheme from the share-link-decoded targetUrl.
+  // If initial URL was explicit `http://`, keep it; otherwise default to `https://`.
+  const initialScheme = /^http:\/\//i.test(initial.targetUrl ?? '') ? 'http://' : 'https://';
+
   const [endpoint, setEndpointRaw] = useState(() => endpointFromTargetUrl(initial.targetUrl));
   const [fhirVersion, setFhirVersion] = useState<FhirVersion>(initial.fhirVersion ?? 'R4');
   const selection = useSuiteSelection(initial.suiteIds);
@@ -61,7 +65,7 @@ export function useRunConfig(initial: InitialRunConfig = {}): RunConfig {
   return {
     endpoint,
     setEndpoint,
-    targetUrl: endpoint.trim() === '' ? '' : `https://${endpoint.trim()}`,
+    targetUrl: endpoint.trim() === '' ? '' : `${initialScheme}${endpoint.trim()}`,
     fhirVersion,
     setFhirVersion,
     selection,

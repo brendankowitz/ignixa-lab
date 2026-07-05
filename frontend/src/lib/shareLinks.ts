@@ -58,12 +58,16 @@ export interface BenchShareState {
 }
 
 const CONFORMANCE_FHIR_VERSIONS: ConformanceFhirVersion[] = ['R4', 'R4B', 'R5', 'STU3'];
-const CONFORMANCE_TABS: TabId[] = ['setup', 'runner', 'report'];
+// Runner/Report show live run/result state that a fresh page load never has,
+// so a deep link can only ever restore the Setup tab. buildConformanceShareUrl
+// still encodes whatever tab the user is on when they copy the link.
+const CONFORMANCE_TABS: TabId[] = ['setup'];
 const BENCHES: BenchId[] = ['fhirpath', 'fml', 'sqlonfhir', 'fakes'];
 const FHIRPATH_VERSIONS: FhirPathVersion[] = ['stu3', 'r4', 'r4b', 'r5', 'r6'];
 const SAMPLE_IDS: SampleId[] = ['patient', 'observation', 'custom'];
 const FAKES_MODES: FakesMode[] = ['population', 'scenario', 'resource'];
 const POPULATION_FORMATS: NonNullable<NonNullable<FakesShareState['population']>['format']>[] = ['transaction', 'ndjson'];
+const DENSITY_VALUES: string[] = ['Minimal', 'Maximum'];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -204,7 +208,7 @@ function fakesStateFromRecord(record: Record<string, unknown>): FakesShareState 
 function populationStateFromRecord(record: Record<string, unknown>): NonNullable<FakesShareState['population']> {
   return {
     source: typeof record.source === 'string' ? record.source : undefined,
-    count: typeof record.count === 'number' && Number.isFinite(record.count) && record.count >= 0 && Number.isInteger(record.count) ? record.count : undefined,
+    count: typeof record.count === 'number' && Number.isInteger(record.count) && record.count >= 1 && record.count <= 100 ? record.count : undefined,
     format: POPULATION_FORMATS.includes(record.format as NonNullable<NonNullable<FakesShareState['population']>['format']>)
       ? (record.format as NonNullable<NonNullable<FakesShareState['population']>['format']>)
       : undefined,
@@ -223,7 +227,7 @@ function scenarioStateFromRecord(record: Record<string, unknown>): NonNullable<F
 function resourceStateFromRecord(record: Record<string, unknown>): NonNullable<FakesShareState['resource']> {
   return {
     resourceType: typeof record.resourceType === 'string' ? record.resourceType : undefined,
-    density: typeof record.density === 'string' ? record.density : undefined,
+    density: DENSITY_VALUES.includes(record.density as string) ? (record.density as string) : undefined,
     seed: typeof record.seed === 'number' && Number.isFinite(record.seed) && Number.isInteger(record.seed) ? record.seed : undefined,
     randomizeSeed: typeof record.randomizeSeed === 'boolean' ? record.randomizeSeed : undefined,
     observationState: typeof record.observationState === 'string' ? record.observationState : undefined,
