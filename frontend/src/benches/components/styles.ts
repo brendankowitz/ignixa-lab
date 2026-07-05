@@ -58,6 +58,7 @@ export const errorBannerStyle: CSSProperties = {
 
 export const pillGroupStyle: CSSProperties = {
   display: 'flex',
+  flexWrap: 'wrap',
   gap: 2,
   background: 'var(--inset)',
   borderRadius: 8,

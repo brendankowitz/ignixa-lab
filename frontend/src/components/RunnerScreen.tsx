@@ -74,6 +74,7 @@ export function RunnerScreen({ run, suites, failingOnly, onFailingOnlyChange, on
           failingOnly={failingOnly}
           onFailingOnlyChange={onFailingOnlyChange}
           totalFailingCount={tallies.fail}
+          testScriptsRevision={run.testScriptsRevision}
         />
       </div>
     </div>

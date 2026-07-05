@@ -10,22 +10,18 @@ export interface TestRowProps {
   suiteLabel: string;
 }
 
-type DetailTab = 'assertions' | 'request' | 'response';
+type DetailTab = 'assertions' | 'steps';
 
 /**
  * A single test-case row. Collapsed, it shows the pass/fail chip, test name,
- * and file context; expanded, it reveals Assertions / Request / Response
- * tabs built from the result's step trace.
+ * and file context; expanded, it reveals Assertions and Steps tabs built from
+ * the result's step trace.
  */
 export function TestRow({ result, suiteLabel }: TestRowProps) {
   const [expanded, setExpanded] = useState(false);
   const [tab, setTab] = useState<DetailTab>('assertions');
 
   const assertions = useMemo(() => extractAssertions(result.steps), [result.steps]);
-  const operationSteps = useMemo(
-    () => result.steps.filter((step) => step.kind === 'operation' && (step.request || step.response)),
-    [result.steps],
-  );
   // The backend records only its first failing assertion (`result.error`); attach
   // the expected/actual diff to that one row and leave the rest as plain steps.
   const firstFailureIndex = assertions.findIndex((a) => a.status === 'fail' || a.status === 'error');
@@ -51,8 +47,7 @@ export function TestRow({ result, suiteLabel }: TestRowProps) {
         <div className="test-row__detail">
           <div className="test-row__tabs">
             <TabButton label="Assertions" active={tab === 'assertions'} onClick={() => setTab('assertions')} />
-            <TabButton label="Request" active={tab === 'request'} onClick={() => setTab('request')} />
-            <TabButton label="Response" active={tab === 'response'} onClick={() => setTab('response')} />
+            <TabButton label="Steps" active={tab === 'steps'} onClick={() => setTab('steps')} />
           </div>
 
           {tab === 'assertions' ? (
@@ -96,39 +91,13 @@ export function TestRow({ result, suiteLabel }: TestRowProps) {
             </div>
           ) : null}
 
-          {tab === 'request' ? (
-            <div className="test-row__panel">
-              {operationSteps.length === 0 ? (
-                <p className="test-row__empty">No request captured for this test.</p>
+          {tab === 'steps' ? (
+            <div className="test-row__panel step-list">
+              {result.steps.length === 0 ? (
+                <p className="test-row__empty">No steps recorded for this test.</p>
               ) : (
-                operationSteps.map((step, index) => (
-                  <div key={index} className="http-message__step">
-                    <span className="http-message__step-heading">{stepHeading(step)}</span>
-                    {step.request ? (
-                      <HttpRequestView request={step.request} />
-                    ) : (
-                      <p className="test-row__empty">(no request captured)</p>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          ) : null}
-
-          {tab === 'response' ? (
-            <div className="test-row__panel">
-              {operationSteps.length === 0 ? (
-                <p className="test-row__empty">No response captured for this test.</p>
-              ) : (
-                operationSteps.map((step, index) => (
-                  <div key={index} className="http-message__step">
-                    <span className="http-message__step-heading">{stepHeading(step)}</span>
-                    {step.response ? (
-                      <HttpResponseView response={step.response} />
-                    ) : (
-                      <p className="test-row__empty">(no response captured)</p>
-                    )}
-                  </div>
+                result.steps.map((step, index) => (
+                  <StepRow key={`${step.phase}-${step.kind}-${index}`} step={step} index={index} />
                 ))
               )}
             </div>
@@ -147,8 +116,76 @@ function TabButton({ label, active, onClick }: { label: string; active: boolean;
   );
 }
 
-/** A short "<phase> · <label>" heading identifying which step a request/response block belongs to. */
-function stepHeading(step: ConformanceStep): string {
-  const label = step.label ?? step.description ?? 'operation';
-  return `${step.phase} · ${label}`;
+/**
+ * A single row in the Steps tab's walkthrough: a compact, collapsed-by-default
+ * summary (status chip, title, phase/kind/duration meta) that expands in
+ * place to show the captured request/response when present, or a plain
+ * message otherwise (in practice: request/response for operation steps,
+ * message for assertion steps).
+ */
+function StepRow({ step, index }: { step: ConformanceStep; index: number }) {
+  const [open, setOpen] = useState(false);
+  const hasDetail = step.request !== null || step.response !== null || Boolean(step.message);
+
+  const title =
+    step.kind === 'operation' && step.request
+      ? `${step.request.method.toUpperCase()} ${shortUrl(step.request.url)}`
+      : (step.label ?? step.description ?? `Step ${index + 1}`);
+
+  const headerContent = (
+    <>
+      <span className={`step__chip step__chip--${step.status}`}>{STATUS_LABELS[step.status]}</span>
+      <div className="step__text">
+        <span className="step__title">{title}</span>
+        <span className="step__meta">
+          {step.phase} · {step.kind} · {step.duration_ms}ms
+        </span>
+      </div>
+      {hasDetail ? (
+        <span className={`step__chevron${open ? ' step__chevron--open' : ''}`} aria-hidden="true">
+          ▸
+        </span>
+      ) : null}
+    </>
+  );
+
+  return (
+    <div className={`step step--${step.status}`}>
+      {hasDetail ? (
+        <button
+          type="button"
+          className="step__header"
+          aria-expanded={open}
+          onClick={() => setOpen((value) => !value)}
+        >
+          {headerContent}
+        </button>
+      ) : (
+        <div className="step__header step__header--static">{headerContent}</div>
+      )}
+
+      {hasDetail && open ? (
+        <div className="step__body">
+          {step.request ? <HttpRequestView request={step.request} /> : null}
+          {step.response ? <HttpResponseView response={step.response} /> : null}
+          {!step.request && !step.response && step.message ? (
+            <p className="step__message">{step.message}</p>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Reduces a captured request URL down to its path + query for a compact step
+ * title; falls back to the raw string if it isn't a parseable absolute URL.
+ */
+function shortUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.pathname}${parsed.search}`;
+  } catch {
+    return url;
+  }
 }

@@ -15,8 +15,8 @@ export interface SuiteSelection {
 }
 
 /** Manages the set of selected suite IDs for the picker. */
-export function useSuiteSelection(): SuiteSelection {
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+export function useSuiteSelection(initialSelected: readonly string[] = []): SuiteSelection {
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(initialSelected));
 
   const toggle = useCallback((suiteId: string) => {
     setSelected((previous) => {

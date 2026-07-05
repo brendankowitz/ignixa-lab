@@ -24,8 +24,8 @@ mockup, wired to the real .NET Functions backend (`/api/health`, `/api/suites`, 
 - **Auth control: omitted for v1.** `RunRequest` carries no auth field, so a Bearer box would do
   nothing. A code comment marks the extension point.
 - **Per-suite counts / time estimates on Setup: omitted.** Not present in `SuiteDescriptor`.
-- **TestScript raw tab: omitted.** The report does not carry raw script text; row detail shows
-  Assertions / Request / Response only.
+- **TestScript raw tab: omitted.** The report does not carry raw script text, so the Test Script
+  tab links out to the fixture on GitHub instead of rendering its contents inline.
 
 ## Live progress approach
 
@@ -68,10 +68,16 @@ Granularity is per-suite, not per-test — acceptable for the ~4 bundled suites 
 - Left suite tree: per-suite status (spinner / ✓ / ✕) + counts; click a suite to filter the list.
   (Sparkline omitted.)
 - Right list: filter box, "Failing only · N" toggle, shown-count, grouped by file/category.
-  Row expands to tabs **Assertions / Request / Response**:
+  Row expands to tabs **Assertions / Steps / Test Script**:
   - Assertions: from `ConformanceStep`s with `kind === 'assertion'`; failing ones show
     expected/actual diff + hint sourced from `result.error` / `step.message`.
-  - Request / Response: from `step.request` / `step.response`.
+  - Steps: a compact, collapsed-by-default walkthrough of every `result.steps` entry (setup,
+    test, and teardown, operations and assertions alike) in execution order. Each row expands
+    in place to show the captured request/response (operation steps) or message (assertion
+    steps) — superseded the earlier separate Request / Response tabs.
+  - Test Script: links out to the fixture's `github.com/brendankowitz/ignixa-lab/blob/main/...`
+    location (`lib/github.ts#testScriptGithubUrl`), built from `result.file` — not a true
+    commit-pinned permalink, since the engine doesn't expose the commit it was built from.
 
 ### Report screen (`ReportScreen`)
 - Header: overall conformance % (pass rate), PASS/FAIL/SKIP pills, `target · version · duration`,

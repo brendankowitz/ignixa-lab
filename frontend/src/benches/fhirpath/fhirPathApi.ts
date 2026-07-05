@@ -118,6 +118,10 @@ interface RawAstNode {
   Name: string;
   ReturnType?: string;
   Arguments?: RawAstNode[];
+  Position?: number;
+  Length?: number;
+  Line?: number;
+  Column?: number;
 }
 
 function parseAstNode(raw: RawAstNode): FpAstNode {
@@ -126,6 +130,10 @@ function parseAstNode(raw: RawAstNode): FpAstNode {
     name: raw.Name,
     returnType: raw.ReturnType ?? null,
     arguments: Array.isArray(raw.Arguments) ? raw.Arguments.map(parseAstNode) : [],
+    position: raw.Position,
+    length: raw.Length,
+    line: raw.Line,
+    column: raw.Column,
   };
 }
 

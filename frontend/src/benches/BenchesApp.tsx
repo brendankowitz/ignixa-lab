@@ -1,17 +1,21 @@
-import { useState, type CSSProperties } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
+import { useCopyToClipboard } from '../hooks/useCopyToClipboard';
 import { useTheme } from '../hooks/useTheme';
+import { COPY_FEEDBACK_DURATION_MS, buildBenchShareUrl, readBenchShare, type BenchShareState, type FakesShareState, type FhirPathShareState } from '../lib/shareLinks';
 import { Pills, type PillItem } from './components/primitives';
 import { monoFont } from './components/styles';
 import { FhirPathBench } from './fhirpath/FhirPathBench';
 import { FmlBench } from './fml/FmlBench';
 import { SofBench } from './sof/SofBench';
+import { FakesBench } from './fakes/FakesBench';
 
-type BenchId = 'fhirpath' | 'fml' | 'sqlonfhir';
+type BenchId = 'fhirpath' | 'fml' | 'sqlonfhir' | 'fakes';
 
 const BENCH_TABS: PillItem<BenchId>[] = [
   { id: 'fhirpath', label: 'FHIRPath' },
-  { id: 'fml', label: 'FML' },
-  { id: 'sqlonfhir', label: 'SQL on FHIR' },
+  { id: 'fml', label: 'FML', disabled: true, title: 'Not yet implemented' },
+  { id: 'sqlonfhir', label: 'SQL on FHIR', disabled: true, title: 'Not yet implemented' },
+  { id: 'fakes', label: 'Fakes' },
 ];
 
 const shellStyle: CSSProperties = {
@@ -23,6 +27,7 @@ const shellStyle: CSSProperties = {
 
 const topBarStyle: CSSProperties = {
   display: 'flex',
+  flexWrap: 'wrap',
   alignItems: 'center',
   gap: 14,
   padding: '12px 20px',
@@ -35,8 +40,44 @@ const topBarStyle: CSSProperties = {
 
 /** Top-level shell for the Expression Benches page: top bar + bench-switching tabs. No router — tab state is component-local, same convention as the conformance app's `App.tsx`. */
 export function BenchesApp() {
+  const initialLink = useMemo(readBenchShare, []);
   const theme = useTheme();
-  const [bench, setBench] = useState<BenchId>('fhirpath');
+  const [bench, setBench] = useState<BenchId>(initialLink.bench ?? 'fhirpath');
+  const [fakesReturnTo, setFakesReturnTo] = useState<Exclude<BenchId, 'fakes'> | null>(null);
+  const [sentToast, setSentToast] = useState<{ bench: BenchId; label: string } | null>(null);
+  const [fhirpathSeed, setFhirpathSeed] = useState<{ text: string } | null>(null);
+  const [fmlSeed, setFmlSeed] = useState<{ text: string } | null>(null);
+  const [sofSeed, setSofSeed] = useState<{ text: string } | null>(null);
+  const [fhirpathShare, setFhirpathShare] = useState<FhirPathShareState | undefined>(initialLink.state.fhirpath);
+  const [fakesShare, setFakesShare] = useState<FakesShareState | undefined>(initialLink.state.fakes);
+
+  const shareUrl = useMemo(() => {
+    const shareState: BenchShareState = { fhirpath: fhirpathShare, fakes: fakesShare };
+    return buildBenchShareUrl(bench, shareState);
+  }, [bench, fhirpathShare, fakesShare]);
+
+  const { copied, copy: copyShareLink } = useCopyToClipboard(shareUrl, COPY_FEEDBACK_DURATION_MS);
+
+  const openFakesFrom = (fromBench: Exclude<BenchId, 'fakes'>) => {
+    setBench('fakes');
+    setFakesReturnTo(fromBench);
+  };
+
+  const handleSend = (targetBench: 'fhirpath' | 'fml' | 'sqlonfhir', payload: Record<string, unknown> | Record<string, unknown>[], label: string) => {
+    const text = JSON.stringify(payload, null, 2);
+    if (targetBench === 'fhirpath') {
+      setFhirpathSeed({ text });
+    } else if (targetBench === 'fml') {
+      setFmlSeed({ text });
+    } else {
+      setSofSeed({ text });
+    }
+
+    setBench(targetBench);
+    setFakesReturnTo(null);
+    setSentToast({ bench: targetBench, label });
+    setTimeout(() => setSentToast(null), 6000);
+  };
 
   return (
     <div style={{ ...shellStyle, ...(theme.variables as CSSProperties) }}>
@@ -67,6 +108,26 @@ export function BenchesApp() {
 
         <button
           type="button"
+          onClick={copyShareLink}
+          title="Copy share link"
+          style={{
+            width: 32,
+            height: 32,
+            display: 'grid',
+            placeItems: 'center',
+            border: '1px solid var(--border2)',
+            borderRadius: 8,
+            background: 'transparent',
+            color: 'var(--text3)',
+            fontSize: 14,
+            cursor: 'pointer',
+          }}
+        >
+          {copied ? '✓' : '🔗'}
+        </button>
+
+        <button
+          type="button"
           onClick={theme.toggle}
           title="Toggle theme"
           style={{
@@ -87,10 +148,43 @@ export function BenchesApp() {
       </header>
 
       <main>
-        {bench === 'fhirpath' ? <FhirPathBench /> : null}
-        {bench === 'fml' ? <FmlBench /> : null}
-        {bench === 'sqlonfhir' ? <SofBench /> : null}
+        {bench === 'fhirpath' ? <FhirPathBench onOpenFakes={() => openFakesFrom('fhirpath')} fakesSeed={fhirpathSeed} onSeedConsumed={() => setFhirpathSeed(null)} initialState={fhirpathShare} onShareStateChange={setFhirpathShare} /> : null}
+        {bench === 'fml' ? <FmlBench onOpenFakes={() => openFakesFrom('fml')} fakesSeed={fmlSeed} onSeedConsumed={() => setFmlSeed(null)} /> : null}
+        {bench === 'sqlonfhir' ? <SofBench onOpenFakes={() => openFakesFrom('sqlonfhir')} fakesSeed={sofSeed} onSeedConsumed={() => setSofSeed(null)} /> : null}
+        {bench === 'fakes' ? (
+          <FakesBench
+            returnTo={fakesReturnTo}
+            onDismissReturn={() => setFakesReturnTo(null)}
+            onSend={(targetBench, payload, label) => handleSend(targetBench, payload, label)}
+            initialState={fakesShare}
+            onShareStateChange={setFakesShare}
+          />
+        ) : null}
       </main>
+
+      {sentToast ? (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 22,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 40,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '11px 18px',
+            borderRadius: 99,
+            background: 'var(--text)',
+            color: 'var(--bg)',
+            fontSize: 12.5,
+            fontWeight: 600,
+            boxShadow: '0 8px 24px rgba(0,0,0,.22)',
+          }}
+        >
+          <span style={{ color: '#4ade80' }}>✓</span> Received {sentToast.label}
+        </div>
+      ) : null}
     </div>
   );
 }

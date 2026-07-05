@@ -1,7 +1,7 @@
-export type SampleId = 'patient' | 'observation';
+export type SampleId = 'patient' | 'observation' | 'custom';
 
 export interface FhirResourceFixture {
-  id: SampleId;
+  id: 'patient' | 'observation';
   label: string;
   data: Record<string, unknown>;
 }
@@ -71,6 +71,7 @@ export const EXAMPLE_EXPRESSIONS: Record<SampleId, string[]> = {
     'component.count()',
     'effective',
   ],
+  custom: [],
 };
 
 export const DEFAULT_EXPRESSION = EXAMPLE_EXPRESSIONS.patient[0];

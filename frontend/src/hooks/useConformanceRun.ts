@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ApiError, getSuites, runConformance } from '../api/client';
+import { ApiError, getHealth, getSuites, runConformance } from '../api/client';
 import { mergeReports } from '../lib/conformance';
 import type { ConformanceReport, RunRequest, SuiteDescriptor } from '../types/conformance';
 
@@ -24,6 +24,8 @@ export interface ConformanceRunState {
   suitesLoading: boolean;
   /** Error message from loading the suite catalog, if any. */
   suitesError: string | null;
+  /** Commit the bundled testscripts came from, loaded from `GET /api/health`; null until that loads (or if it fails), in which case links fall back to `main`. */
+  testScriptsRevision: string | null;
   /** Current run lifecycle phase. */
   phase: RunPhase;
   /** The report merged so far across completed suites, or null before the first result lands. */
@@ -65,6 +67,7 @@ export function useConformanceRun(): ConformanceRunState {
   const [suites, setSuites] = useState<SuiteDescriptor[]>([]);
   const [suitesLoading, setSuitesLoading] = useState(true);
   const [suitesError, setSuitesError] = useState<string | null>(null);
+  const [testScriptsRevision, setTestScriptsRevision] = useState<string | null>(null);
 
   const [phase, setPhase] = useState<RunPhase>('idle');
   const [report, setReport] = useState<ConformanceReport | null>(null);
@@ -92,6 +95,20 @@ export function useConformanceRun(): ConformanceRunState {
       .finally(() => {
         if (!abort.signal.aborted) {
           setSuitesLoading(false);
+        }
+      });
+    return () => abort.abort();
+  }, []);
+
+  useEffect(() => {
+    const abort = new AbortController();
+    // Best-effort: a failed health check just leaves testScriptsRevision null,
+    // and testScriptGithubUrl falls back to linking against `main`.
+    getHealth(abort.signal)
+      .then((health) => setTestScriptsRevision(health.testScriptsRevision))
+      .catch((error: unknown) => {
+        if (!abort.signal.aborted) {
+          console.error('Failed to load /api/health; testscript links will fall back to main', error);
         }
       });
     return () => abort.abort();
@@ -169,6 +186,7 @@ export function useConformanceRun(): ConformanceRunState {
     suites,
     suitesLoading,
     suitesError,
+    testScriptsRevision,
     phase,
     report,
     runError,
