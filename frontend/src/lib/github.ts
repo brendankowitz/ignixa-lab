@@ -9,10 +9,10 @@
 /** Owner/repo this dashboard is bundled with and reads fixtures from. */
 const GITHUB_REPO = 'brendankowitz/ignixa-lab';
 
-/** Ref used to build fixture links. The running engine doesn't currently
- * expose the commit it was built from, so this isn't a true commit-pinned
- * permalink — links default to the tip of `main` unless a caller passes an
- * explicit `ref` (none currently do). */
+/** Fallback ref when the backend's `testScriptsRevision` (from `GET /api/health`,
+ * stamped by SourceLink into the packed `IgnixaLab.TestScript.Suites` NuGet
+ * package) hasn't loaded yet or the request failed — a moving `main` link
+ * beats no link at all. */
 const GITHUB_DEFAULT_REF = 'main';
 
 /** Suite root the `file` field on a {@link ConformanceResult} is relative to. */

@@ -15,6 +15,14 @@
       <Pack>false</Pack>
       <Visible>false</Visible>
     </None>
+    <!-- Commit the packed testscripts came from (Ignixa.Lab.Suites.csproj's WriteSourceRevisionFile target); not a *.json fixture so the glob above doesn't cover it. -->
+    <None Include="$(MSBuildThisFileDirectory)../testscripts/source-revision.txt">
+      <Link>testscripts/source-revision.txt</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <Pack>false</Pack>
+      <Visible>false</Visible>
+    </None>
   </ItemGroup>
 
 </Project>
