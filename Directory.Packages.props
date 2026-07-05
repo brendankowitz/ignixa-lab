@@ -21,6 +21,9 @@
     <!-- Synthetic FHIR data generator (populations, clinical scenarios, single resources, edge-case fuzzing), powering the Fakes bench -->
     <PackageVersion Include="Ignixa.FhirFakes" Version="0.6.4" />
 
+    <!-- Validates the CapabilityStatement's declared fhirVersion as real semver before trusting it for engine gating -->
+    <PackageVersion Include="NuGet.Versioning" Version="6.14.0" />
+
     <!--
       Canonical TestScript suites (ADR-2607). Interim local package built by
       backend/src/Ignixa.Lab.Suites and packed to the local-feed source; will

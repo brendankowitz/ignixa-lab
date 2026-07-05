@@ -194,6 +194,15 @@ public sealed class FakesFunctions(
         {
             return new BadRequestObjectResult(new { error = ex.Message });
         }
+        catch (Exception ex)
+        {
+            logger.LogError(
+                ex,
+                "Scenario generation failed. fhirVersion={FhirVersion} scenarioId={ScenarioId}",
+                scenarioRequest.FhirVersion,
+                scenarioRequest.ScenarioId);
+            return new ObjectResult(new { error = "Scenario generation failed." }) { StatusCode = (int)HttpStatusCode.InternalServerError };
+        }
 
         if (result is null)
         {

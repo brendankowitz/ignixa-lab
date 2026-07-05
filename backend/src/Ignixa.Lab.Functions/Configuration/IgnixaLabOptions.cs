@@ -15,8 +15,12 @@ public sealed class IgnixaLabOptions
     /// </summary>
     public bool AllowPrivateTargets { get; set; }
 
-    /// <summary>FHIR version supplied to the engine when a request omits one.</summary>
-    public string DefaultFhirVersion { get; set; } = "4.0";
+    /// <summary>
+    /// FHIR version supplied to the engine when a request omits one. Must be
+    /// real semver (e.g. <c>"4.0.1"</c>), never a release label like <c>"R4"</c> —
+    /// callers are expected to send the actual version they mean, not a family name.
+    /// </summary>
+    public string DefaultFhirVersion { get; set; } = "4.0.1";
 
     /// <summary>
     /// Directory containing bundled TestScript suites. Relative paths are

@@ -41,6 +41,26 @@ public sealed class TestScriptRunnerTests
         }
         """;
 
+    /// <summary>A CapabilityStatement declaring <c>fhirVersion</c> as an empty string — present but not usable.</summary>
+    private const string CapabilityStatementWithEmptyFhirVersion = """
+        {
+          "resourceType": "CapabilityStatement",
+          "status": "active",
+          "fhirVersion": "",
+          "rest": [{ "mode": "server", "resource": [{ "type": "Patient", "interaction": [{"code": "read"}] }] }]
+        }
+        """;
+
+    /// <summary>A CapabilityStatement declaring <c>fhirVersion</c> as a non-string JSON value — malformed relative to the spec.</summary>
+    private const string CapabilityStatementWithNonStringFhirVersion = """
+        {
+          "resourceType": "CapabilityStatement",
+          "status": "active",
+          "fhirVersion": 4.0,
+          "rest": [{ "mode": "server", "resource": [{ "type": "Patient", "interaction": [{"code": "read"}] }] }]
+        }
+        """;
+
     private static TestScriptDefinition GatedDefinition(string requiresCapability) => new()
     {
         Metadata = new TestScriptMetadata { Name = "Gated" },
@@ -223,6 +243,52 @@ public sealed class TestScriptRunnerTests
     }
 
     [Fact]
+    public async Task GivenCapabilityStatementHasEmptyFhirVersion_WhenRun_ThenReportFallsBackToRequestFhirVersion()
+    {
+        var provider = new RecordingRequestProvider(new TestResponse { StatusCode = 200 });
+        var runner = new TestScriptRunner(
+            new FakeSuiteCatalog("versioned.json", VersionGatedDefinition("4.0")),
+            new FakeEvaluatorFactory(provider),
+            new CapabilityStatementFetcher(
+                new FixedResponseHttpClientFactory(CapabilityStatementWithEmptyFhirVersion),
+                Options.Create(new IgnixaLabOptions())),
+            Options.Create(new IgnixaLabOptions()),
+            NullLogger<TestScriptRunner>.Instance);
+
+        var outcome = await runner.RunAsync(
+            new RunRequest { TargetUrl = TargetUrl, SuiteIds = ["versioned.json"], FhirVersion = "4.0" },
+            CancellationToken.None);
+
+        outcome.IsValid.Should().BeTrue();
+        outcome.Report!.Results[0].Status.Should().NotBe(ConformanceStatus.Skipped);
+        outcome.Report.FhirVersion.Should().Be("4.0");
+        provider.CallCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task GivenCapabilityStatementHasNonStringFhirVersion_WhenRun_ThenReportFallsBackToRequestFhirVersion()
+    {
+        var provider = new RecordingRequestProvider(new TestResponse { StatusCode = 200 });
+        var runner = new TestScriptRunner(
+            new FakeSuiteCatalog("versioned.json", VersionGatedDefinition("4.0")),
+            new FakeEvaluatorFactory(provider),
+            new CapabilityStatementFetcher(
+                new FixedResponseHttpClientFactory(CapabilityStatementWithNonStringFhirVersion),
+                Options.Create(new IgnixaLabOptions())),
+            Options.Create(new IgnixaLabOptions()),
+            NullLogger<TestScriptRunner>.Instance);
+
+        var outcome = await runner.RunAsync(
+            new RunRequest { TargetUrl = TargetUrl, SuiteIds = ["versioned.json"], FhirVersion = "4.0" },
+            CancellationToken.None);
+
+        outcome.IsValid.Should().BeTrue();
+        outcome.Report!.Results[0].Status.Should().NotBe(ConformanceStatus.Skipped);
+        outcome.Report.FhirVersion.Should().Be("4.0");
+        provider.CallCount.Should().Be(1);
+    }
+
+    [Fact]
     public async Task GivenCapabilityFetchFails_WhenRun_ThenReportFallsBackToDefaultFhirVersion()
     {
         var provider = new RecordingRequestProvider(new TestResponse { StatusCode = 200 });
@@ -243,6 +309,33 @@ public sealed class TestScriptRunnerTests
         outcome.Report!.CapabilityWarning.Should().NotBeNullOrEmpty();
         outcome.Report.Results[0].Status.Should().NotBe(ConformanceStatus.Skipped);
         outcome.Report.FhirVersion.Should().Be("4.0");
+        provider.CallCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task GivenCapabilityStatementDeclaresNonSemverFhirVersion_WhenRun_ThenReportFallsBackToRequestFhirVersion()
+    {
+        var provider = new RecordingRequestProvider(new TestResponse { StatusCode = 200 });
+        var runner = new TestScriptRunner(
+            new FakeSuiteCatalog("versioned.json", VersionGatedDefinition("4.0")),
+            new FakeEvaluatorFactory(provider),
+            new CapabilityStatementFetcher(
+                // A non-conformant server declaring a release label instead of real semver —
+                // ResolveFhirVersion must not trust this verbatim (the report's FhirVersion
+                // contract requires real semver, and the engine's matching can't reason about
+                // "R4"), so it falls back to the request's own (already-semver) FhirVersion.
+                new FixedResponseHttpClientFactory(CapabilityStatementWithFhirVersion("R4")),
+                Options.Create(new IgnixaLabOptions())),
+            Options.Create(new IgnixaLabOptions()),
+            NullLogger<TestScriptRunner>.Instance);
+
+        var outcome = await runner.RunAsync(
+            new RunRequest { TargetUrl = TargetUrl, SuiteIds = ["versioned.json"], FhirVersion = "4.0.1" },
+            CancellationToken.None);
+
+        outcome.IsValid.Should().BeTrue();
+        outcome.Report!.Results[0].Status.Should().NotBe(ConformanceStatus.Skipped);
+        outcome.Report.FhirVersion.Should().Be("4.0.1");
         provider.CallCount.Should().Be(1);
     }
 

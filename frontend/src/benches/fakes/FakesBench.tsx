@@ -11,7 +11,7 @@ import {
 } from '../components/styles';
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 import { useIsNarrowViewport } from '../../hooks/useIsNarrowViewport';
-import { COPY_FEEDBACK_DURATION_MS, type FakesShareState } from '../../lib/shareLinks';
+import { COPY_FEEDBACK_DURATION_MS, type FakesMode, type FakesShareState } from '../../lib/shareLinks';
 import { describeEdgeCase } from './edgeCaseDescriptions';
 import { describeScenario } from './scenarioDescriptions';
 import { generatePopulation, generateResource, generateScenario, generateWorkflow, getFakesMetadata } from './fakesApi';
@@ -24,15 +24,14 @@ import type {
   WorkflowResult,
 } from './fakesTypes';
 
-type FakesMode = 'population' | 'scenario' | 'resource' | 'workflow';
 type TargetBench = 'fhirpath' | 'fml' | 'sqlonfhir';
 type OnSend = (targetBench: TargetBench, payload: Record<string, unknown> | Record<string, unknown>[], label: string) => void;
 
 const MODE_ITEMS: PillItem<FakesMode>[] = [
   { id: 'population', label: 'Population' },
+  { id: 'workflow', label: 'Workflow' },
   { id: 'scenario', label: 'Scenario' },
   { id: 'resource', label: 'Resource' },
-  { id: 'workflow', label: 'Workflow' },
 ];
 
 const DENSITY_ITEMS: PillItem<string>[] = [
@@ -42,6 +41,17 @@ const DENSITY_ITEMS: PillItem<string>[] = [
 
 /** Resource types promoted to inline pills; the rest live behind the "More" picker. Filtered to what the backend actually reports. */
 const COMMON_RESOURCE_TYPES = ['Patient', 'Observation', 'Condition', 'Encounter', 'MedicationRequest', 'Procedure'];
+
+/**
+ * Resource types whose generated coded fields actually vary by Theme. The library
+ * threads Theme through every ValueSet-bound coded field, but only these three have
+ * per-code clinical-domain tags dense enough to produce a visible difference —
+ * confirmed empirically (Cardiology vs. Oncology across 20 seeds): Patient has no
+ * clinical codes at all, and Observation/DiagnosticReport/Immunization/
+ * AllergyIntolerance/Encounter showed zero variation. Showing the Theme selector
+ * for a type it doesn't affect looks like a no-op bug, so it's hidden instead.
+ */
+const THEMEABLE_RESOURCE_TYPES = new Set(['Condition', 'Procedure', 'MedicationRequest']);
 
 type PopulationFormat = 'transaction' | 'ndjson';
 
@@ -1161,7 +1171,7 @@ function ResourcePanel({
     onShareStateChange?.({
       resourceType,
       density,
-      theme: density === 'Maximum' ? theme : undefined,
+      theme: density === 'Maximum' && THEMEABLE_RESOURCE_TYPES.has(resourceType) ? theme : undefined,
       seed,
       randomizeSeed,
       observationState,
@@ -1234,7 +1244,7 @@ function ResourcePanel({
       resourceType,
       seed: activeSeed,
       density,
-      theme: density === 'Maximum' ? theme || undefined : undefined,
+      theme: density === 'Maximum' && THEMEABLE_RESOURCE_TYPES.has(resourceType) ? theme || undefined : undefined,
       firstName: firstName || undefined,
       familyName: familyName || undefined,
       city: city || undefined,
@@ -1354,7 +1364,7 @@ function ResourcePanel({
           <span style={sectionLabelStyle}>Generation density</span>
           <Pills items={DENSITY_ITEMS} activeId={density} onChange={setDensity} />
 
-          {density === 'Maximum' ? (
+          {density === 'Maximum' && THEMEABLE_RESOURCE_TYPES.has(resourceType) ? (
             <>
               <span style={sectionLabelStyle}>Theme · optional, keeps coded fields clinically coherent</span>
               <select value={theme} onChange={(event) => setTheme(event.target.value)} style={monoInputStyle}>

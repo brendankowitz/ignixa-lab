@@ -15,6 +15,7 @@ using Ignixa.TestScript.Validation;
 using Ignixa.Specification.Generated;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using NuGet.Versioning;
 
 namespace Ignixa.Lab.Functions.Execution;
 
@@ -117,12 +118,16 @@ public sealed class TestScriptRunner(
     /// extension and the report's <see cref="ConformanceReport.FhirVersion"/>
     /// field, preferring the target's own declared <c>CapabilityStatement.fhirVersion</c>
     /// (e.g. <c>"4.0.1"</c>) over <paramref name="fallbackFhirVersion"/> (the
-    /// request's release-label selector, or <see cref="IgnixaLabOptions.DefaultFhirVersion"/>).
-    /// Gating against the target's own declared, patch-precise version — rather than
-    /// a UI-selected label — lets the engine's granular <c>fhirVersions</c> matching
+    /// request's <c>FhirVersion</c>, or <see cref="IgnixaLabOptions.DefaultFhirVersion"/> —
+    /// both are expected to already be real semver; there is no release-label
+    /// normalization step here or anywhere upstream of it). Gating against the
+    /// target's own declared, patch-precise version — rather than a UI-selected
+    /// default — lets the engine's granular <c>fhirVersions</c> matching
     /// (major/minor/patch/wildcard specs) work as designed instead of comparing an
-    /// approximate guess. Falls back to <paramref name="fallbackFhirVersion"/> only
-    /// when the CapabilityStatement couldn't be fetched/parsed or omits <c>fhirVersion</c>.
+    /// approximate guess. Falls back to <paramref name="fallbackFhirVersion"/> when
+    /// the CapabilityStatement couldn't be fetched/parsed, omits <c>fhirVersion</c>,
+    /// or declares a value that isn't valid semver (a non-conformant server should
+    /// not poison gating with a value the engine can't reason about).
     /// </summary>
     private static string ResolveFhirVersion(ResourceJsonNode? capabilityStatement, string fallbackFhirVersion)
     {
@@ -130,7 +135,9 @@ public sealed class TestScriptRunner(
             ? declared
             : null;
 
-        return string.IsNullOrWhiteSpace(declaredVersion) ? fallbackFhirVersion : declaredVersion;
+        return string.IsNullOrWhiteSpace(declaredVersion) || !NuGetVersion.TryParse(declaredVersion, out _)
+            ? fallbackFhirVersion
+            : declaredVersion;
     }
 
     /// <summary>

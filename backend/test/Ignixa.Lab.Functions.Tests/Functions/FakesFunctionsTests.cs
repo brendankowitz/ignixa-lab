@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using FluentAssertions;
 using Ignixa.Lab.Functions.Functions;
@@ -352,6 +353,23 @@ public sealed class FakesFunctionsTests
     }
 
     [Fact]
+    public async Task GenerateScenario_AgeOverride_ProducesBirthYearMatchingOverride()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { scenarioId = "DiabeticPatient", parameters = new { age = 30 } });
+
+        var result = await functions.GenerateScenario(request, CancellationToken.None);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        var body = JsonSerializer.Serialize(ok.Value);
+        using var doc = JsonDocument.Parse(body);
+        var patient = doc.RootElement.GetProperty("resources").EnumerateArray()
+            .Single(r => r.GetProperty("resourceType").GetString() == "Patient");
+        var birthYear = DateOnly.Parse(patient.GetProperty("birthDate").GetString()!, CultureInfo.InvariantCulture).Year;
+        birthYear.Should().BeCloseTo(DateTime.UtcNow.Year - 30, 1);
+    }
+
+    [Fact]
     public async Task GenerateScenario_NullOverrideForNonNullableParameter_ReturnsBadRequest()
     {
         var functions = CreateFunctions();
@@ -505,6 +523,28 @@ public sealed class FakesFunctionsTests
     }
 
     [Fact]
+    public async Task GenerateWorkflow_EmptyPackId_ReturnsBadRequest()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { packId = "" });
+
+        var result = await functions.GenerateWorkflow(request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task GenerateWorkflow_UnsupportedFhirVersion_ReturnsBadRequest()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { packId = "DailyAppointmentSchedule", fhirVersion = "r4x" });
+
+        var result = await functions.GenerateWorkflow(request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
     public async Task GenerateWorkflow_ResolvedReferencesTrue_ReturnsBatchBundle()
     {
         var functions = CreateFunctions();
@@ -566,6 +606,31 @@ public sealed class FakesFunctionsTests
     {
         var functions = CreateFunctions();
         var request = BuildJsonPostRequest(new { packId = "DailyAppointmentSchedule", parameters = new { practitionerCount = (int?)null } });
+
+        var result = await functions.GenerateWorkflow(request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task GenerateWorkflow_AppointmentCountOverride_ProducesMatchingResourceCount()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { packId = "DailyAppointmentSchedule", parameters = new { appointmentCount = 3 } });
+
+        var result = await functions.GenerateWorkflow(request, CancellationToken.None);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        var body = JsonSerializer.Serialize(ok.Value);
+        using var doc = JsonDocument.Parse(body);
+        doc.RootElement.GetProperty("resourceCountsByType").GetProperty("Appointment").GetInt32().Should().Be(3);
+    }
+
+    [Fact]
+    public async Task GenerateWorkflow_OversizedAppointmentCountOverride_ReturnsBadRequest()
+    {
+        var functions = CreateFunctions();
+        var request = BuildJsonPostRequest(new { packId = "DailyAppointmentSchedule", parameters = new { appointmentCount = 51 } });
 
         var result = await functions.GenerateWorkflow(request, CancellationToken.None);
 

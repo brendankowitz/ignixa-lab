@@ -18,6 +18,7 @@
     <PackageReference Include="Ignixa.Serialization" />
     <PackageReference Include="Ignixa.Specification" />
     <PackageReference Include="Ignixa.FhirFakes" />
+    <PackageReference Include="NuGet.Versioning" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" />

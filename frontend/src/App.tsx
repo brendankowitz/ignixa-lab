@@ -47,7 +47,6 @@ function App() {
     }
     void run.start({
       targetUrl: config.targetUrl,
-      fhirVersion: config.fhirVersion,
       suiteIds: Array.from(config.selection.selected),
     });
     setActiveTab('runner');
@@ -63,10 +62,9 @@ function App() {
       buildConformanceShareUrl({
         tab: activeTab,
         targetUrl: config.targetUrl || undefined,
-        fhirVersion: config.fhirVersion,
         suiteIds: Array.from(config.selection.selected),
       }),
-    [activeTab, config.targetUrl, config.fhirVersion, config.selection.selected],
+    [activeTab, config.targetUrl, config.selection.selected],
   );
 
   return (
@@ -75,7 +73,7 @@ function App() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         serverHost={config.endpoint}
-        fhirVersion={config.fhirVersion}
+        fhirVersion={run.report?.fhirVersion}
         theme={theme}
         running={running}
         canStart={canStart}
