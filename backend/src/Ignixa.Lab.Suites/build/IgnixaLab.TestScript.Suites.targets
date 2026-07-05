@@ -15,6 +15,22 @@
       <Pack>false</Pack>
       <Visible>false</Visible>
     </None>
+    <!--
+      Commit the packed testscripts came from (Ignixa.Lab.Suites.csproj's
+      WriteSourceRevisionFile target); not a *.json fixture so the glob above
+      doesn't cover it. Guarded by Exists() — unlike that glob, a literal
+      Include with CopyToOutputDirectory set hard-fails the consumer's build
+      (MSB3030) if the file is absent, e.g. a stale cached local-feed package
+      predating this file's introduction. Missing here just means
+      HealthFunction falls back to null, same as an unreadable file at runtime.
+    -->
+    <None Include="$(MSBuildThisFileDirectory)../testscripts/source-revision.txt" Condition="Exists('$(MSBuildThisFileDirectory)../testscripts/source-revision.txt')">
+      <Link>testscripts/source-revision.txt</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <Pack>false</Pack>
+      <Visible>false</Visible>
+    </None>
   </ItemGroup>
 
 </Project>
