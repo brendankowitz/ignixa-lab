@@ -124,7 +124,7 @@ export function FhirPathBench({ onOpenFakes, fakesSeed, onSeedConsumed, initialS
   const [expression, setExpression] = useState(initialState?.expression ?? DEFAULT_EXPRESSION);
   const [context, setContext] = useState(initialState?.context ?? '');
   const [sampleId, setSampleId] = useState<SampleId>(initialState?.sampleId ?? 'patient');
-  const [resourceText, setResourceText] = useState(() => initialState?.resourceText ?? JSON.stringify(SAMPLE_RESOURCES[0].data, null, 2));
+  const [resourceText, setResourceText] = useState(initialState?.resourceText ?? JSON.stringify(SAMPLE_RESOURCES[0].data, null, 2));
   const [variables, setVariables] = useState<FpVariable[]>(initialState?.variables ?? []);
   const [resultTab, setResultTab] = useState<ResultTab>('results');
   const [astInverted, setAstInverted] = useState(false);

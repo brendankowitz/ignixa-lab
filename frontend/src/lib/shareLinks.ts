@@ -84,7 +84,7 @@ export function decodeShareState(value: string | null): unknown {
   }
   try {
     const base64 = value.replaceAll('-', '+').replaceAll('_', '/');
-    const padded = base64.padEnd(value.length + ((4 - (value.length % 4)) % 4), '=');
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
     const binary = atob(padded);
     const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
     return JSON.parse(new TextDecoder().decode(bytes)) as unknown;

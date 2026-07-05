@@ -1152,7 +1152,7 @@ function ResourcePanel({
   );
   const [edgeCaseOn, setEdgeCaseOn] = useState(initialState?.edgeCaseOn ?? false);
   const [includeInvalid, setIncludeInvalid] = useState(initialState?.includeInvalid ?? false);
-  const [selectedCategories, setSelectedCategories] = useState<Record<string, boolean>>(() => initialState?.selectedCategories ?? initialCategorySelection(metadata.edgeCaseFamilies));
+  const [selectedCategories, setSelectedCategories] = useState<Record<string, boolean>>(() => initialState?.selectedCategories ?? initialCategorySelection(metadata.edgeCaseFamilies ?? []));
   const [view, setView] = useState<'resource' | 'manifest'>('resource');
   const [result, setResult] = useState<ResourceResult | null>(null);
   const [error, setError] = useState<string | null>(null);
