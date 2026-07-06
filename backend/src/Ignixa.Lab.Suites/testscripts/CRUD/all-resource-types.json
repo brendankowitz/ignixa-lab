@@ -3791,7 +3791,7 @@
     },
     {
       "name": "Can create and read DeviceRequest",
-      "description": "When the target server declares DeviceRequest create and read interactions, POST /DeviceRequest must create a synthetic DeviceRequest and GET /DeviceRequest/{id} must read it back.",
+      "description": "When the target server declares DeviceRequest create and read interactions, POST /DeviceRequest must create a synthetic DeviceRequest and GET /DeviceRequest/{id} must read it back. warningOnly: known ignixa-fhir FhirFakes generator bug producing spec-invalid content for this type (ignixa-fhir#119).",
       "extension": [
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
@@ -3815,21 +3815,24 @@
           "assert": {
             "description": "DeviceRequest create must return HTTP 201 Created",
             "sourceId": "deviceRequest-create-response",
-            "response": "created"
+            "response": "created",
+            "warningOnly": true
           }
         },
         {
           "assert": {
             "description": "Create response body must be a DeviceRequest",
             "sourceId": "deviceRequest-create-response",
-            "resource": "DeviceRequest"
+            "resource": "DeviceRequest",
+            "warningOnly": true
           }
         },
         {
           "assert": {
             "description": "Server must assign an id",
             "sourceId": "deviceRequest-create-response",
-            "expression": "DeviceRequest.id.exists()"
+            "expression": "DeviceRequest.id.exists()",
+            "warningOnly": true
           }
         },
         {
@@ -3846,14 +3849,16 @@
           "assert": {
             "description": "DeviceRequest read must return HTTP 200 OK",
             "sourceId": "deviceRequest-read-response",
-            "response": "okay"
+            "response": "okay",
+            "warningOnly": true
           }
         },
         {
           "assert": {
             "description": "Read response body must be a DeviceRequest",
             "sourceId": "deviceRequest-read-response",
-            "resource": "DeviceRequest"
+            "resource": "DeviceRequest",
+            "warningOnly": true
           }
         },
         {
@@ -3862,7 +3867,8 @@
             "sourceId": "deviceRequest-read-response",
             "expression": "DeviceRequest.id",
             "value": "${deviceRequestId}",
-            "operator": "equals"
+            "operator": "equals",
+            "warningOnly": true
           }
         }
       ]
@@ -4805,7 +4811,7 @@
     },
     {
       "name": "Can create and read GuidanceResponse",
-      "description": "When the target server declares GuidanceResponse create and read interactions, POST /GuidanceResponse must create a synthetic GuidanceResponse and GET /GuidanceResponse/{id} must read it back.",
+      "description": "When the target server declares GuidanceResponse create and read interactions, POST /GuidanceResponse must create a synthetic GuidanceResponse and GET /GuidanceResponse/{id} must read it back. warningOnly: known ignixa-fhir FhirFakes generator bug producing spec-invalid content for this type (ignixa-fhir#119).",
       "extension": [
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
@@ -4829,21 +4835,24 @@
           "assert": {
             "description": "GuidanceResponse create must return HTTP 201 Created",
             "sourceId": "guidanceResponse-create-response",
-            "response": "created"
+            "response": "created",
+            "warningOnly": true
           }
         },
         {
           "assert": {
             "description": "Create response body must be a GuidanceResponse",
             "sourceId": "guidanceResponse-create-response",
-            "resource": "GuidanceResponse"
+            "resource": "GuidanceResponse",
+            "warningOnly": true
           }
         },
         {
           "assert": {
             "description": "Server must assign an id",
             "sourceId": "guidanceResponse-create-response",
-            "expression": "GuidanceResponse.id.exists()"
+            "expression": "GuidanceResponse.id.exists()",
+            "warningOnly": true
           }
         },
         {
@@ -4860,14 +4869,16 @@
           "assert": {
             "description": "GuidanceResponse read must return HTTP 200 OK",
             "sourceId": "guidanceResponse-read-response",
-            "response": "okay"
+            "response": "okay",
+            "warningOnly": true
           }
         },
         {
           "assert": {
             "description": "Read response body must be a GuidanceResponse",
             "sourceId": "guidanceResponse-read-response",
-            "resource": "GuidanceResponse"
+            "resource": "GuidanceResponse",
+            "warningOnly": true
           }
         },
         {
@@ -4876,7 +4887,8 @@
             "sourceId": "guidanceResponse-read-response",
             "expression": "GuidanceResponse.id",
             "value": "${guidanceResponseId}",
-            "operator": "equals"
+            "operator": "equals",
+            "warningOnly": true
           }
         }
       ]
@@ -6599,7 +6611,7 @@
     },
     {
       "name": "Can create and read PaymentNotice",
-      "description": "When the target server declares PaymentNotice create and read interactions, POST /PaymentNotice must create a synthetic PaymentNotice and GET /PaymentNotice/{id} must read it back.",
+      "description": "When the target server declares PaymentNotice create and read interactions, POST /PaymentNotice must create a synthetic PaymentNotice and GET /PaymentNotice/{id} must read it back. warningOnly: known ignixa-fhir FhirFakes generator bug producing spec-invalid content for this type (ignixa-fhir#119).",
       "extension": [
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
@@ -6623,21 +6635,24 @@
           "assert": {
             "description": "PaymentNotice create must return HTTP 201 Created",
             "sourceId": "paymentNotice-create-response",
-            "response": "created"
+            "response": "created",
+            "warningOnly": true
           }
         },
         {
           "assert": {
             "description": "Create response body must be a PaymentNotice",
             "sourceId": "paymentNotice-create-response",
-            "resource": "PaymentNotice"
+            "resource": "PaymentNotice",
+            "warningOnly": true
           }
         },
         {
           "assert": {
             "description": "Server must assign an id",
             "sourceId": "paymentNotice-create-response",
-            "expression": "PaymentNotice.id.exists()"
+            "expression": "PaymentNotice.id.exists()",
+            "warningOnly": true
           }
         },
         {
@@ -6654,14 +6669,16 @@
           "assert": {
             "description": "PaymentNotice read must return HTTP 200 OK",
             "sourceId": "paymentNotice-read-response",
-            "response": "okay"
+            "response": "okay",
+            "warningOnly": true
           }
         },
         {
           "assert": {
             "description": "Read response body must be a PaymentNotice",
             "sourceId": "paymentNotice-read-response",
-            "resource": "PaymentNotice"
+            "resource": "PaymentNotice",
+            "warningOnly": true
           }
         },
         {
@@ -6670,14 +6687,15 @@
             "sourceId": "paymentNotice-read-response",
             "expression": "PaymentNotice.id",
             "value": "${paymentNoticeId}",
-            "operator": "equals"
+            "operator": "equals",
+            "warningOnly": true
           }
         }
       ]
     },
     {
       "name": "Can create and read PaymentReconciliation",
-      "description": "When the target server declares PaymentReconciliation create and read interactions, POST /PaymentReconciliation must create a synthetic PaymentReconciliation and GET /PaymentReconciliation/{id} must read it back.",
+      "description": "When the target server declares PaymentReconciliation create and read interactions, POST /PaymentReconciliation must create a synthetic PaymentReconciliation and GET /PaymentReconciliation/{id} must read it back. warningOnly: known ignixa-fhir FhirFakes generator bug producing spec-invalid content for this type (ignixa-fhir#119).",
       "extension": [
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
@@ -6701,21 +6719,24 @@
           "assert": {
             "description": "PaymentReconciliation create must return HTTP 201 Created",
             "sourceId": "paymentReconciliation-create-response",
-            "response": "created"
+            "response": "created",
+            "warningOnly": true
           }
         },
         {
           "assert": {
             "description": "Create response body must be a PaymentReconciliation",
             "sourceId": "paymentReconciliation-create-response",
-            "resource": "PaymentReconciliation"
+            "resource": "PaymentReconciliation",
+            "warningOnly": true
           }
         },
         {
           "assert": {
             "description": "Server must assign an id",
             "sourceId": "paymentReconciliation-create-response",
-            "expression": "PaymentReconciliation.id.exists()"
+            "expression": "PaymentReconciliation.id.exists()",
+            "warningOnly": true
           }
         },
         {
@@ -6732,14 +6753,16 @@
           "assert": {
             "description": "PaymentReconciliation read must return HTTP 200 OK",
             "sourceId": "paymentReconciliation-read-response",
-            "response": "okay"
+            "response": "okay",
+            "warningOnly": true
           }
         },
         {
           "assert": {
             "description": "Read response body must be a PaymentReconciliation",
             "sourceId": "paymentReconciliation-read-response",
-            "resource": "PaymentReconciliation"
+            "resource": "PaymentReconciliation",
+            "warningOnly": true
           }
         },
         {
@@ -6748,7 +6771,8 @@
             "sourceId": "paymentReconciliation-read-response",
             "expression": "PaymentReconciliation.id",
             "value": "${paymentReconciliationId}",
-            "operator": "equals"
+            "operator": "equals",
+            "warningOnly": true
           }
         }
       ]

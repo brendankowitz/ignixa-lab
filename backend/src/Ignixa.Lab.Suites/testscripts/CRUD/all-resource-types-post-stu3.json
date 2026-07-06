@@ -861,7 +861,7 @@
     },
     {
       "name": "Can create and read EventDefinition",
-      "description": "When the target server declares EventDefinition create and read interactions, POST /EventDefinition must create a synthetic EventDefinition and GET /EventDefinition/{id} must read it back.",
+      "description": "When the target server declares EventDefinition create and read interactions, POST /EventDefinition must create a synthetic EventDefinition and GET /EventDefinition/{id} must read it back. warningOnly: known ignixa-fhir FhirFakes generator bug producing spec-invalid content for this type (ignixa-fhir#119).",
       "extension": [
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
@@ -885,21 +885,24 @@
           "assert": {
             "description": "EventDefinition create must return HTTP 201 Created",
             "sourceId": "eventDefinition-create-response",
-            "response": "created"
+            "response": "created",
+            "warningOnly": true
           }
         },
         {
           "assert": {
             "description": "Create response body must be a EventDefinition",
             "sourceId": "eventDefinition-create-response",
-            "resource": "EventDefinition"
+            "resource": "EventDefinition",
+            "warningOnly": true
           }
         },
         {
           "assert": {
             "description": "Server must assign an id",
             "sourceId": "eventDefinition-create-response",
-            "expression": "EventDefinition.id.exists()"
+            "expression": "EventDefinition.id.exists()",
+            "warningOnly": true
           }
         },
         {
@@ -916,14 +919,16 @@
           "assert": {
             "description": "EventDefinition read must return HTTP 200 OK",
             "sourceId": "eventDefinition-read-response",
-            "response": "okay"
+            "response": "okay",
+            "warningOnly": true
           }
         },
         {
           "assert": {
             "description": "Read response body must be a EventDefinition",
             "sourceId": "eventDefinition-read-response",
-            "resource": "EventDefinition"
+            "resource": "EventDefinition",
+            "warningOnly": true
           }
         },
         {
@@ -932,7 +937,8 @@
             "sourceId": "eventDefinition-read-response",
             "expression": "EventDefinition.id",
             "value": "${eventDefinitionId}",
-            "operator": "equals"
+            "operator": "equals",
+            "warningOnly": true
           }
         }
       ]
@@ -1017,7 +1023,7 @@
     },
     {
       "name": "Can create and read EvidenceVariable",
-      "description": "When the target server declares EvidenceVariable create and read interactions, POST /EvidenceVariable must create a synthetic EvidenceVariable and GET /EvidenceVariable/{id} must read it back.",
+      "description": "When the target server declares EvidenceVariable create and read interactions, POST /EvidenceVariable must create a synthetic EvidenceVariable and GET /EvidenceVariable/{id} must read it back. warningOnly: known ignixa-fhir FhirFakes generator bug producing spec-invalid content for this type (ignixa-fhir#119).",
       "extension": [
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
@@ -1041,21 +1047,24 @@
           "assert": {
             "description": "EvidenceVariable create must return HTTP 201 Created",
             "sourceId": "evidenceVariable-create-response",
-            "response": "created"
+            "response": "created",
+            "warningOnly": true
           }
         },
         {
           "assert": {
             "description": "Create response body must be a EvidenceVariable",
             "sourceId": "evidenceVariable-create-response",
-            "resource": "EvidenceVariable"
+            "resource": "EvidenceVariable",
+            "warningOnly": true
           }
         },
         {
           "assert": {
             "description": "Server must assign an id",
             "sourceId": "evidenceVariable-create-response",
-            "expression": "EvidenceVariable.id.exists()"
+            "expression": "EvidenceVariable.id.exists()",
+            "warningOnly": true
           }
         },
         {
@@ -1072,14 +1081,16 @@
           "assert": {
             "description": "EvidenceVariable read must return HTTP 200 OK",
             "sourceId": "evidenceVariable-read-response",
-            "response": "okay"
+            "response": "okay",
+            "warningOnly": true
           }
         },
         {
           "assert": {
             "description": "Read response body must be a EvidenceVariable",
             "sourceId": "evidenceVariable-read-response",
-            "resource": "EvidenceVariable"
+            "resource": "EvidenceVariable",
+            "warningOnly": true
           }
         },
         {
@@ -1088,7 +1099,8 @@
             "sourceId": "evidenceVariable-read-response",
             "expression": "EvidenceVariable.id",
             "value": "${evidenceVariableId}",
-            "operator": "equals"
+            "operator": "equals",
+            "warningOnly": true
           }
         }
       ]
