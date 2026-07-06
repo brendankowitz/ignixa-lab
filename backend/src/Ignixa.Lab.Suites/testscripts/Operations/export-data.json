@@ -1,8 +1,14 @@
 {
   "resourceType": "TestScript",
   "name": "Operations/export-data",
-  "description": "System/Patient/Group $export conformance tests: kick-off (202 + Content-Location), request validation (400 for bad resource type/query params/_since/_till/headers/path traversal), status checks, and the cancel lifecycle. Scenarios requiring actual export completion and blob content verification are not covered (from ExportTests, ExportDataTests, ExportDataValidationTests).",
+  "description": "System/Patient/Group $export conformance tests: kick-off (202 + Content-Location), request validation (400 for bad resource type/query params/_since/_till/headers/path traversal), status checks, and the cancel lifecycle. Scenarios requiring actual export completion and blob content verification are not covered (from ExportTests, ExportDataTests, ExportDataValidationTests). Gated on the target advertising the system-level $export operation.",
   "status": "active",
+  "extension": [
+    {
+      "url": "http://ignixa.io/testscript/requiresCapability",
+      "valueString": "rest.operation.where(name='export').exists()"
+    }
+  ],
   "variable": [
     { "name": "systemExportLocation", "sourceId": "system-export-kickoff", "headerField": "Content-Location", "description": "Content-Location returned by the system-level $export kickoff" },
     { "name": "patientExportLocation", "sourceId": "patient-export-kickoff", "headerField": "Content-Location", "description": "Content-Location returned by the Patient/$export kickoff" },
