@@ -53,11 +53,11 @@
     },
     {
       "name": "$purge-history removes prior versions while keeping the current version accessible",
-      "description": "Extended capability (not mandated by base FHIR R4): after updating a resource so it has two versions, POST/DELETE Patient/{id}/$purge-history must remove the prior version(s) while the current version stays fully readable. All assertions are warningOnly since $purge-history is a server extension not every conformant server implements. Gated on the target advertising Patient/$purge-history.",
+      "description": "Extended capability (not mandated by base FHIR R4): after updating a resource so it has two versions, POST/DELETE Patient/{id}/$purge-history must remove the prior version(s) while the current version stays fully readable. All assertions are warningOnly since $purge-history is a server extension not every conformant server implements. Gated on the target advertising Patient/$purge-history, either as a resource-scoped or a system-level operation.",
       "extension": [
         {
           "url": "http://ignixa.io/testscript/requiresCapability",
-          "valueString": "rest.resource.where(type='Patient').operation.where(name='purge-history').exists()"
+          "valueString": "rest.resource.where(type='Patient').operation.where(name='purge-history').exists() or rest.operation.where(name='purge-history').exists()"
         }
       ],
       "action": [

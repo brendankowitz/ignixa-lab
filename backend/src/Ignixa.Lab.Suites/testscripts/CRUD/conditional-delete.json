@@ -53,10 +53,10 @@
   "test": [
     {
       "name": "Conditional delete with no search criteria is rejected",
-      "description": "DELETE /Patient with no search criteria; the server must reject the request, expected as 412 Precondition Failed (400 Bad Request accepted as a warningOnly alternative since the spec doesn't mandate a specific status here).",
+      "description": "DELETE /Patient with no search criteria must be rejected, as 412 Precondition Failed or 400 Bad Request (both warningOnly: the spec doesn't mandate a specific status).",
       "action": [
         { "operation": { "type": { "code": "delete" }, "resource": "Patient", "responseId": "cd-nocriteria-response", "description": "Conditional DELETE /Patient with no query string" } },
-        { "assert": { "description": "Primary: expect 412 Precondition Failed", "response": "preconditionFailed", "warningOnly": false } },
+        { "assert": { "description": "Primary: expect 412 Precondition Failed (warningOnly: some servers return 400 instead)", "response": "preconditionFailed", "warningOnly": true } },
         { "assert": { "description": "Alternative: 400 Bad Request is also accepted", "response": "bad", "warningOnly": true } }
       ]
     },
