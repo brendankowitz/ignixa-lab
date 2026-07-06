@@ -82,28 +82,32 @@ export function BenchesApp() {
   return (
     <div style={{ ...shellStyle, ...(theme.variables as CSSProperties) }}>
       <header style={topBarStyle}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+        <a href="./" aria-label="Ignixa home" style={{ display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none', color: 'inherit' }}>
           <div aria-hidden="true" style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--grad)', flex: 'none' }} />
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontSize: 14.5, fontWeight: 700, letterSpacing: '-.01em' }}>Ignixa Lab</span>
+            <span style={{ fontSize: 14.5, fontWeight: 700, letterSpacing: '-.01em' }}>Ignixa</span>
             <span style={{ fontFamily: monoFont, fontSize: 9, letterSpacing: '.14em', color: 'var(--text3)', textTransform: 'uppercase' }}>
-              Expression benches
+              FHIR toolkit
             </span>
           </div>
-        </div>
-
-        <div style={{ marginLeft: 20 }}>
-          <Pills items={BENCH_TABS} activeId={bench} onChange={setBench} />
-        </div>
-
-        <a href="./" style={{ fontSize: 12, fontWeight: 600, color: 'var(--text3)', textDecoration: 'none', padding: '6px 10px' }}>
-          Conformance ↗
         </a>
+
+        <div className="ix-app-switch">
+          <a href="./conformance.html" className="ix-app-switch__item">
+            <span style={{ fontSize: 9 }}>▶</span>Conformance
+          </a>
+          <span className="ix-app-switch__item ix-app-switch__item--active">
+            <span style={{ fontSize: 11 }}>ƒ</span>Benches
+          </span>
+        </div>
+        <div className="ix-top-divider" />
+
+        <Pills items={BENCH_TABS} activeId={bench} onChange={setBench} />
 
         <div style={{ flex: 1 }} />
 
         <span style={{ fontFamily: monoFont, fontSize: 11, color: 'var(--text3)' }}>
-          {bench === 'fhirpath' ? 'live engine' : 'mock engine · exploration'}
+          {bench === 'fhirpath' || bench === 'fakes' ? 'live engine' : 'mock engine · exploration'}
         </span>
 
         <button

@@ -53,7 +53,7 @@ export function SetupScreen({ config, suites, suitesLoading, suitesError, canSta
     <div className="setup-screen">
       <div className="setup-screen__intro">
         <h1>Configure conformance run</h1>
-        <p>Point Ignixa Lab at a FHIR server, choose suites, and start a run.</p>
+        <p>Point Conformance Testing at a FHIR server, choose suites, and start a run.</p>
       </div>
 
       <section className="setup-panel" aria-label="Target server">
