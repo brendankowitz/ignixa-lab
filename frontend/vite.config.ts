@@ -21,12 +21,14 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
-      // Multi-page app: the conformance runner (index.html) and Expression
-      // Benches (benches.html) are two separate React roots sharing the same
-      // theme tokens, not one router-based SPA — see
+      // Multi-page app: a static landing page (index.html, the site root) plus
+      // two separate React roots — the conformance runner (lab.html) and
+      // Expression Benches (benches.html) — sharing the same theme tokens, not
+      // one router-based SPA. See
       // docs/superpowers/specs/2026-07-02-expression-benches-design.md.
       input: {
-        main: resolve(__dirname, 'index.html'),
+        landing: resolve(__dirname, 'index.html'),
+        lab: resolve(__dirname, 'lab.html'),
         benches: resolve(__dirname, 'benches.html'),
       },
     },
