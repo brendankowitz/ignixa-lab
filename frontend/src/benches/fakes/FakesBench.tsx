@@ -11,24 +11,25 @@ import {
 } from '../components/styles';
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 import { useIsNarrowViewport } from '../../hooks/useIsNarrowViewport';
-import { COPY_FEEDBACK_DURATION_MS, type FakesShareState } from '../../lib/shareLinks';
+import { COPY_FEEDBACK_DURATION_MS, type FakesMode, type FakesShareState } from '../../lib/shareLinks';
 import { describeEdgeCase } from './edgeCaseDescriptions';
 import { describeScenario } from './scenarioDescriptions';
-import { generatePopulation, generateResource, generateScenario, getFakesMetadata } from './fakesApi';
+import { generatePopulation, generateResource, generateScenario, generateWorkflow, getFakesMetadata } from './fakesApi';
 import type {
   EdgeCaseFamilyMetadata,
   FakesMetadata,
   PopulationResult,
   ResourceResult,
   ScenarioResult,
+  WorkflowResult,
 } from './fakesTypes';
 
-type FakesMode = 'population' | 'scenario' | 'resource';
 type TargetBench = 'fhirpath' | 'fml' | 'sqlonfhir';
 type OnSend = (targetBench: TargetBench, payload: Record<string, unknown> | Record<string, unknown>[], label: string) => void;
 
 const MODE_ITEMS: PillItem<FakesMode>[] = [
   { id: 'population', label: 'Population' },
+  { id: 'workflow', label: 'Workflow' },
   { id: 'scenario', label: 'Scenario' },
   { id: 'resource', label: 'Resource' },
 ];
@@ -40,6 +41,17 @@ const DENSITY_ITEMS: PillItem<string>[] = [
 
 /** Resource types promoted to inline pills; the rest live behind the "More" picker. Filtered to what the backend actually reports. */
 const COMMON_RESOURCE_TYPES = ['Patient', 'Observation', 'Condition', 'Encounter', 'MedicationRequest', 'Procedure'];
+
+/**
+ * Resource types whose generated coded fields actually vary by Theme. The library
+ * threads Theme through every ValueSet-bound coded field, but only these three have
+ * per-code clinical-domain tags dense enough to produce a visible difference —
+ * confirmed empirically (Cardiology vs. Oncology across 20 seeds): Patient has no
+ * clinical codes at all, and Observation/DiagnosticReport/Immunization/
+ * AllergyIntolerance/Encounter showed zero variation. Showing the Theme selector
+ * for a type it doesn't affect looks like a no-op bug, so it's hidden instead.
+ */
+const THEMEABLE_RESOURCE_TYPES = new Set(['Condition', 'Procedure', 'MedicationRequest']);
 
 type PopulationFormat = 'transaction' | 'ndjson';
 
@@ -156,6 +168,8 @@ export function FakesBench({ returnTo, onDismissReturn, onSend, initialState, on
   }, []);
 
   useEffect(() => {
+    // Workflow mode has no share-state fields of its own (see WorkflowPanel), but the
+    // mode itself still round-trips through the URL like the other modes.
     onShareStateChange?.({
       mode,
       fhirVersion,
@@ -226,6 +240,7 @@ export function FakesBench({ returnTo, onDismissReturn, onSend, initialState, on
           {mode === 'population' ? <PopulationPanel metadata={metadata} fhirVersion={fhirVersion} stacked={stacked} initialState={initialState?.population} onShareStateChange={setPopulationShare} /> : null}
           {mode === 'scenario' ? <ScenarioPanel metadata={metadata} fhirVersion={fhirVersion} stacked={stacked} onSend={onSend} initialState={initialState?.scenario} onShareStateChange={setScenarioShare} /> : null}
           {mode === 'resource' ? <ResourcePanel metadata={metadata} fhirVersion={fhirVersion} stacked={stacked} onSend={onSend} initialState={initialState?.resource} onShareStateChange={setResourceShare} /> : null}
+          {mode === 'workflow' ? <WorkflowPanel metadata={metadata} fhirVersion={fhirVersion} stacked={stacked} /> : null}
         </>
       )}
     </div>
@@ -603,10 +618,10 @@ function ScenarioPanel({
   }, [onShareStateChange, paramValues, resolvedReferences, scenarioId, tag]);
 
   const scenario = useMemo(() => metadata.scenarios.find((s) => s.id === scenarioId), [metadata.scenarios, scenarioId]);
-  const description = describeScenario(scenarioId);
+  const description = describeScenario(scenarioId, scenario?.category);
 
   const scenarioInfos = useMemo(
-    () => metadata.scenarios.map((s) => ({ id: s.id, ...describeScenario(s.id) })),
+    () => metadata.scenarios.map((s) => ({ id: s.id, ...describeScenario(s.id, s.category) })),
     [metadata.scenarios],
   );
 
@@ -1135,6 +1150,7 @@ function ResourcePanel({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [typeFilter, setTypeFilter] = useState('');
   const [density, setDensity] = useState(initialState?.density ?? 'Minimal');
+  const [theme, setTheme] = useState(initialState?.theme ?? '');
   const [seed, setSeed] = useState(initialState?.seed ?? 42);
   const [randomizeSeed, setRandomizeSeed] = useState(initialState?.randomizeSeed ?? true);
   const [observationState, setObservationState] = useState(initialState?.observationState ?? metadata.observationStates[0] ?? '');
@@ -1155,6 +1171,7 @@ function ResourcePanel({
     onShareStateChange?.({
       resourceType,
       density,
+      theme: density === 'Maximum' && THEMEABLE_RESOURCE_TYPES.has(resourceType) ? theme : undefined,
       seed,
       randomizeSeed,
       observationState,
@@ -1168,6 +1185,7 @@ function ResourcePanel({
   }, [
     city,
     density,
+    theme,
     edgeCaseOn,
     familyName,
     firstName,
@@ -1226,6 +1244,7 @@ function ResourcePanel({
       resourceType,
       seed: activeSeed,
       density,
+      theme: density === 'Maximum' && THEMEABLE_RESOURCE_TYPES.has(resourceType) ? theme || undefined : undefined,
       firstName: firstName || undefined,
       familyName: familyName || undefined,
       city: city || undefined,
@@ -1344,6 +1363,20 @@ function ResourcePanel({
 
           <span style={sectionLabelStyle}>Generation density</span>
           <Pills items={DENSITY_ITEMS} activeId={density} onChange={setDensity} />
+
+          {density === 'Maximum' && THEMEABLE_RESOURCE_TYPES.has(resourceType) ? (
+            <>
+              <span style={sectionLabelStyle}>Theme · optional, keeps coded fields clinically coherent</span>
+              <select value={theme} onChange={(event) => setTheme(event.target.value)} style={monoInputStyle}>
+                <option value="">Random per generation</option>
+                {metadata.clinicalDomains.map((domain) => (
+                  <option key={domain} value={domain}>
+                    {domain}
+                  </option>
+                ))}
+              </select>
+            </>
+          ) : null}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ ...sectionLabelStyle, flex: 1 }}>Seed</span>
@@ -1481,6 +1514,127 @@ function ResourcePanel({
           </>
         ) : null}
       </Card>
+    </div>
+  );
+}
+
+function WorkflowPanel({
+  metadata,
+  fhirVersion,
+  stacked,
+}: {
+  metadata: FakesMetadata;
+  fhirVersion: string;
+  stacked: boolean;
+}) {
+  const [packId, setPackId] = useState(metadata.workflowPacks[0]?.id ?? '');
+  const [paramValues, setParamValues] = useState<Record<string, unknown>>({});
+  const [tag, setTag] = useState('');
+  const [resolvedReferences, setResolvedReferences] = useState(false);
+  const [seed, setSeed] = useState(42);
+  const [randomizeSeed, setRandomizeSeed] = useState(true);
+  const [result, setResult] = useState<WorkflowResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const pack = useMemo(() => metadata.workflowPacks.find((p) => p.id === packId), [metadata.workflowPacks, packId]);
+
+  const selectPack = (id: string) => {
+    setPackId(id);
+    setParamValues({});
+  };
+
+  const generate = () => {
+    const activeSeed = randomizeSeed ? Math.floor(Math.random() * 100000) : seed;
+    if (randomizeSeed) {
+      setSeed(activeSeed);
+    }
+    setIsLoading(true);
+    setError(null);
+    generateWorkflow({ fhirVersion, packId, parameters: paramValues, seed: activeSeed, tag: tag || undefined, resolvedReferences })
+      .then(setResult)
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setIsLoading(false));
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={twoColumnStyle(stacked, 'minmax(300px,32%)')}>
+        <Card style={{ minWidth: 0 }}>
+          <span style={sectionLabelStyle}>Workflow scenario pack</span>
+          <Pills
+            items={metadata.workflowPacks.map((p) => ({ id: p.id, label: p.id }))}
+            activeId={packId}
+            onChange={selectPack}
+          />
+
+          {pack?.parameters.map((param) => (
+            <ScenarioParameterControl
+              key={param.name}
+              param={param}
+              value={paramValues[param.name] ?? param.defaultValue}
+              onChange={(value) => setParamValues((current) => ({ ...current, [param.name]: value }))}
+            />
+          ))}
+
+          <span style={sectionLabelStyle}>Test-isolation tag · optional</span>
+          <input value={tag} onChange={(event) => setTag(event.target.value)} placeholder="e.g. test-run-123" style={monoInputStyle} />
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1 }}>
+              <span style={{ fontSize: 12.5, fontWeight: 600 }}>Resolved references</span>
+              <span style={{ fontSize: 10.5, color: 'var(--text4)' }}>batch bundle instead of transaction</span>
+            </div>
+            <Toggle checked={resolvedReferences} onChange={setResolvedReferences} ariaLabel="Resolved references" />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ ...sectionLabelStyle, flex: 1 }}>Seed</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text3)' }}>
+              Randomize
+              <Toggle checked={randomizeSeed} onChange={setRandomizeSeed} ariaLabel="Randomize seed on every generate" />
+            </span>
+            <input
+              value={String(seed)}
+              onChange={(event) => setSeed(Number(event.target.value) || 0)}
+              disabled={randomizeSeed}
+              style={{ ...monoInputStyle, width: 110, opacity: randomizeSeed ? 0.6 : 1 }}
+            />
+          </div>
+
+          <button type="button" onClick={generate} disabled={isLoading || !packId} style={primaryButtonStyle}>
+            {isLoading ? 'Generating…' : '⚡ Generate workflow'}
+          </button>
+        </Card>
+
+        <Card style={{ minHeight: 360, minWidth: 0 }}>
+          {error ? <ErrorBanner message={error} /> : null}
+          {result ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontFamily: monoFont, fontSize: 10.5, color: 'var(--text3)' }}>{result.resources.length} resources</span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {Object.entries(result.resourceCountsByType).map(([resourceType, count]) => (
+                  <span key={resourceType} style={chipStyle('var(--chip-vio-bg)', 'var(--chip-vio-fg)')}>
+                    {resourceType}: {count}
+                  </span>
+                ))}
+              </div>
+              <HighlightedJsonBlock text={JSON.stringify(result.bundle, null, 2)} style={{ ...resultPreStyle, maxHeight: 460 }} />
+              <button
+                type="button"
+                onClick={() => downloadJson(`workflow-${slug(packId)}.json`, result.bundle)}
+                style={{ fontSize: 12, fontWeight: 600, padding: '6px 13px', borderRadius: 7, border: '1px solid var(--border2)', color: 'var(--accent)', background: 'transparent', cursor: 'pointer', alignSelf: 'flex-start' }}
+              >
+                ⬇ Download bundle
+              </button>
+            </>
+          ) : (
+            <span style={{ fontSize: 12, color: 'var(--text3)' }}>Generate a workflow pack to see its resources here.</span>
+          )}
+        </Card>
+      </div>
     </div>
   );
 }

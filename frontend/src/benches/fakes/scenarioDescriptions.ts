@@ -1,11 +1,11 @@
 /**
  * Curated group + blurb text for predefined clinical scenarios, keyed by the real
- * scenario id `Ignixa.FhirFakes`'s `ScenarioDiscovery` reports (the `Get` prefix is
+ * scenario id `Ignixa.FhirFakes`'s `ScenarioCatalog` reports (the `Get` prefix is
  * stripped by the discovery convention, so ids look like `DiabeticPatient`). Grouping
- * mirrors the source file each scenario lives in. Scenarios with no entry here fall
- * back to a humanized id and a generic group (see `describeScenario`), so the bench
- * keeps working if the library adds scenarios later — same pattern as
- * `edgeCaseDescriptions.ts`.
+ * prefers the library's own `Category` over this curated map; the curated map remains
+ * the source for `blurb` text, and the `Scenario` fallback still applies when neither
+ * the library nor the curated map has a group (see `describeScenario`). This pattern
+ * lets the bench keep working if the library adds scenarios later — same as `edgeCaseDescriptions.ts`.
  */
 interface ScenarioDescription {
   group: string;
@@ -81,11 +81,19 @@ function humanize(scenarioId: string): string {
 /**
  * Returns the display group + blurb for a scenario id, falling back to a humanized
  * name and a generic group when the id is not in the curated map.
+ *
+ * Group resolution is a three-tier priority: the `category` argument (the library's
+ * own `Category`, when reported) wins if present; otherwise the curated map's `group`
+ * is used; otherwise the literal `'Scenario'` fallback applies. `blurb` always comes
+ * from the curated map, with a generic fallback text when the id is unlisted.
  */
-export function describeScenario(scenarioId: string): { group: string; label: string; blurb: string } {
+export function describeScenario(
+  scenarioId: string,
+  category?: string | null,
+): { group: string; label: string; blurb: string } {
   const curated = SCENARIO_DESCRIPTIONS[scenarioId];
   return {
-    group: curated?.group ?? 'Scenario',
+    group: category ?? curated?.group ?? 'Scenario',
     label: humanize(scenarioId),
     blurb: curated?.blurb ?? 'Predefined clinical scenario.',
   };

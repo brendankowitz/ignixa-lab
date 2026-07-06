@@ -1,16 +1,14 @@
 import type { TabId } from '../components/TopBar';
-import type { FhirVersion as ConformanceFhirVersion } from '../hooks/useRunConfig';
 import type { FhirVersion as FhirPathVersion, FpVariable } from '../benches/fhirpath/fhirPathTypes';
 import type { SampleId } from '../benches/fhirpath/sampleResources';
 
 export type BenchId = 'fhirpath' | 'fml' | 'sqlonfhir' | 'fakes';
-export type FakesMode = 'population' | 'scenario' | 'resource';
+export type FakesMode = 'population' | 'scenario' | 'resource' | 'workflow';
 export const COPY_FEEDBACK_DURATION_MS = 1400;
 
 export interface ConformanceShareState {
   tab?: TabId;
   targetUrl?: string;
-  fhirVersion?: ConformanceFhirVersion;
   suiteIds?: string[];
 }
 
@@ -40,6 +38,7 @@ export interface FakesShareState {
   resource?: {
     resourceType?: string;
     density?: string;
+    theme?: string;
     seed?: number;
     randomizeSeed?: boolean;
     observationState?: string;
@@ -57,7 +56,6 @@ export interface BenchShareState {
   fakes?: FakesShareState;
 }
 
-const CONFORMANCE_FHIR_VERSIONS: ConformanceFhirVersion[] = ['R4', 'R4B', 'R5', 'STU3'];
 // Runner/Report show live run/result state that a fresh page load never has,
 // so a deep link can only ever restore the Setup tab. buildConformanceShareUrl
 // still encodes whatever tab the user is on when they copy the link.
@@ -65,7 +63,7 @@ const CONFORMANCE_TABS: TabId[] = ['setup'];
 const BENCHES: BenchId[] = ['fhirpath', 'fml', 'sqlonfhir', 'fakes'];
 const FHIRPATH_VERSIONS: FhirPathVersion[] = ['stu3', 'r4', 'r4b', 'r5', 'r6'];
 const SAMPLE_IDS: SampleId[] = ['patient', 'observation', 'custom'];
-const FAKES_MODES: FakesMode[] = ['population', 'scenario', 'resource'];
+const FAKES_MODES: FakesMode[] = ['population', 'scenario', 'resource', 'workflow'];
 const POPULATION_FORMATS: NonNullable<NonNullable<FakesShareState['population']>['format']>[] = ['transaction', 'ndjson'];
 const DENSITY_VALUES: string[] = ['Minimal', 'Maximum'];
 
@@ -102,15 +100,11 @@ export function readConformanceShareState(): ConformanceShareState {
   const decoded = decodeShareState(params.get('state'));
   const state: ConformanceShareState = isRecord(decoded) ? conformanceStateFromRecord(decoded) : {};
   const tab = params.get('tab');
-  const fhirVersion = params.get('fhirVersion');
   const suiteIds = params.get('suites');
   const targetUrl = params.get('url');
 
   if (CONFORMANCE_TABS.includes(tab as TabId)) {
     state.tab = tab as TabId;
-  }
-  if (CONFORMANCE_FHIR_VERSIONS.includes(fhirVersion as ConformanceFhirVersion)) {
-    state.fhirVersion = fhirVersion as ConformanceFhirVersion;
   }
   if (targetUrl) {
     state.targetUrl = targetUrl;
@@ -130,9 +124,6 @@ export function buildConformanceShareUrl(state: ConformanceShareState): string {
   }
   if (state.targetUrl) {
     url.searchParams.set('url', state.targetUrl);
-  }
-  if (state.fhirVersion) {
-    url.searchParams.set('fhirVersion', state.fhirVersion);
   }
   if (state.suiteIds && state.suiteIds.length > 0) {
     url.searchParams.set('suites', state.suiteIds.join(','));
@@ -163,9 +154,6 @@ function conformanceStateFromRecord(record: Record<string, unknown>): Conformanc
   return {
     tab: CONFORMANCE_TABS.includes(record.tab as TabId) ? (record.tab as TabId) : undefined,
     targetUrl: typeof record.targetUrl === 'string' ? record.targetUrl : undefined,
-    fhirVersion: CONFORMANCE_FHIR_VERSIONS.includes(record.fhirVersion as ConformanceFhirVersion)
-      ? (record.fhirVersion as ConformanceFhirVersion)
-      : undefined,
     suiteIds: Array.isArray(record.suiteIds) ? record.suiteIds.filter((id): id is string => typeof id === 'string') : undefined,
   };
 }
@@ -228,6 +216,7 @@ function resourceStateFromRecord(record: Record<string, unknown>): NonNullable<F
   return {
     resourceType: typeof record.resourceType === 'string' ? record.resourceType : undefined,
     density: DENSITY_VALUES.includes(record.density as string) ? (record.density as string) : undefined,
+    theme: typeof record.theme === 'string' ? record.theme : undefined,
     seed: typeof record.seed === 'number' && Number.isFinite(record.seed) && Number.isInteger(record.seed) ? record.seed : undefined,
     randomizeSeed: typeof record.randomizeSeed === 'boolean' ? record.randomizeSeed : undefined,
     observationState: typeof record.observationState === 'string' ? record.observationState : undefined,

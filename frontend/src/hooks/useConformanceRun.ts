@@ -9,10 +9,14 @@ export type RunPhase = 'idle' | 'running' | 'complete' | 'error';
 /** Per-suite progress within a run, tracked as each `/api/run` call lands. */
 export type SuiteRunStatus = 'queued' | 'running' | 'complete' | 'error';
 
-/** Request to start a run: target server, FHIR version, and the suites to execute. */
+/**
+ * Request to start a run: target server and the suites to execute. There is no
+ * FHIR version field — the version used for gating is detected per-suite from
+ * the target's own `CapabilityStatement.fhirVersion` when the run executes; the
+ * backend only falls back to its own configured default if that detection fails.
+ */
 export interface StartRunRequest {
   targetUrl: string;
-  fhirVersion: string;
   suiteIds: string[];
 }
 
@@ -114,7 +118,7 @@ export function useConformanceRun(): ConformanceRunState {
     return () => abort.abort();
   }, []);
 
-  const start = useCallback(async ({ targetUrl, fhirVersion, suiteIds }: StartRunRequest) => {
+  const start = useCallback(async ({ targetUrl, suiteIds }: StartRunRequest) => {
     const abort = new AbortController();
     controllerRef.current = abort;
 
@@ -136,7 +140,7 @@ export function useConformanceRun(): ConformanceRunState {
       setCurrentSuiteId(suiteId);
       setSuiteStatuses((previous) => new Map(previous).set(suiteId, 'running'));
 
-      const request: RunRequest = { targetUrl, fhirVersion, suiteIds: [suiteId] };
+      const request: RunRequest = { targetUrl, suiteIds: [suiteId] };
       try {
         const suiteReport = await runConformance(request, abort.signal);
         merged = mergeReports(merged, suiteReport);

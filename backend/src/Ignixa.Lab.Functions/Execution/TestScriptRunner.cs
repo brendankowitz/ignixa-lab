@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json.Nodes;
 using Ignixa.Lab.Functions.Conformance;
 using Ignixa.Lab.Functions.Configuration;
 using Ignixa.Lab.Functions.Models;
@@ -14,6 +15,7 @@ using Ignixa.TestScript.Validation;
 using Ignixa.Specification.Generated;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using NuGet.Versioning;
 
 namespace Ignixa.Lab.Functions.Execution;
 
@@ -58,11 +60,13 @@ public sealed class TestScriptRunner(
             return RunOutcome.Invalid($"A run may include at most {_options.MaxSuitesPerRun} suites.");
         }
 
-        var fhirVersion = string.IsNullOrWhiteSpace(request.FhirVersion)
+        var requestedFhirVersion = string.IsNullOrWhiteSpace(request.FhirVersion)
             ? _options.DefaultFhirVersion
             : request.FhirVersion!;
 
         var (capabilityStatement, capabilityWarning) = await FetchCapabilityStatementAsync(target, cancellationToken);
+
+        var fhirVersion = ResolveFhirVersion(capabilityStatement, requestedFhirVersion);
 
         var startedAt = DateTimeOffset.UtcNow;
         var stopwatch = Stopwatch.StartNew();
@@ -96,6 +100,10 @@ public sealed class TestScriptRunner(
         var report = new ConformanceReport(
             Impl: "ignixa-lab",
             Target: target.ToString(),
+            // The target's own declared version (e.g. "4.0.1"), not the raw
+            // request label: this field must stay identical in shape and value
+            // convention to the ignixa-fhir conformance/latest.json artifact,
+            // which is always numeric, never a release label like "R4".
             FhirVersion: fhirVersion,
             StartedAt: startedAt,
             DurationMs: stopwatch.ElapsedMilliseconds,
@@ -103,6 +111,33 @@ public sealed class TestScriptRunner(
             CapabilityWarning: capabilityWarning);
 
         return RunOutcome.Completed(report);
+    }
+
+    /// <summary>
+    /// Resolves the FHIR version used for the engine's <c>fhirVersions</c> gating
+    /// extension and the report's <see cref="ConformanceReport.FhirVersion"/>
+    /// field, preferring the target's own declared <c>CapabilityStatement.fhirVersion</c>
+    /// (e.g. <c>"4.0.1"</c>) over <paramref name="fallbackFhirVersion"/> (the
+    /// request's <c>FhirVersion</c>, or <see cref="IgnixaLabOptions.DefaultFhirVersion"/> —
+    /// both are expected to already be real semver; there is no release-label
+    /// normalization step here or anywhere upstream of it). Gating against the
+    /// target's own declared, patch-precise version — rather than a UI-selected
+    /// default — lets the engine's granular <c>fhirVersions</c> matching
+    /// (major/minor/patch/wildcard specs) work as designed instead of comparing an
+    /// approximate guess. Falls back to <paramref name="fallbackFhirVersion"/> when
+    /// the CapabilityStatement couldn't be fetched/parsed, omits <c>fhirVersion</c>,
+    /// or declares a value that isn't valid semver (a non-conformant server should
+    /// not poison gating with a value the engine can't reason about).
+    /// </summary>
+    private static string ResolveFhirVersion(ResourceJsonNode? capabilityStatement, string fallbackFhirVersion)
+    {
+        var declaredVersion = capabilityStatement?.MutableNode["fhirVersion"] is JsonValue value && value.TryGetValue<string>(out var declared)
+            ? declared
+            : null;
+
+        return string.IsNullOrWhiteSpace(declaredVersion) || !NuGetVersion.TryParse(declaredVersion, out _)
+            ? fallbackFhirVersion
+            : declaredVersion;
     }
 
     /// <summary>

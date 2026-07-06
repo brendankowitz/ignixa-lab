@@ -6,6 +6,10 @@ export interface ScenarioParameterMetadata {
 
 export interface ScenarioMetadata {
   id: string;
+  /** Free-text grouping label from the library's ScenarioAttribute.Category, or null if unannotated. */
+  category: string | null;
+  /** Clinical specialty from the library's ScenarioAttribute.Domain, or null if undeclared. */
+  domain: string | null;
   parameters: ScenarioParameterMetadata[];
 }
 
@@ -31,6 +35,10 @@ export interface FakesMetadata {
   edgeCaseFamilies: EdgeCaseFamilyMetadata[];
   /** City names the backend can sample realistic demographics (including gender) from for a generated Patient. */
   patientCities: string[];
+  /** Clinical specialty names selectable as a generation Theme, excluding "Unspecified". The bench's Resource panel only surfaces this control at Maximum density, but the API itself applies Theme at any density. */
+  clinicalDomains: string[];
+  /** Discoverable workflow scenario packs (e.g. "DailyAppointmentSchedule"), same shape as `scenarios`. */
+  workflowPacks: ScenarioMetadata[];
 }
 
 export interface PopulationSummary {
@@ -50,6 +58,12 @@ export interface ScenarioResult {
   patient: Record<string, unknown> | null;
   resources: Record<string, unknown>[];
   bundle: Record<string, unknown>;
+}
+
+export interface WorkflowResult {
+  resources: Record<string, unknown>[];
+  bundle: Record<string, unknown>;
+  resourceCountsByType: Record<string, number>;
 }
 
 export interface MutationRecord {

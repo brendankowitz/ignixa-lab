@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { FHIR_VERSIONS, type RunConfig } from '../hooks/useRunConfig';
+import type { RunConfig } from '../hooks/useRunConfig';
 import type { SuiteDescriptor } from '../types/conformance';
 
 /** Tri-state of a group's checkbox derived from how many of its suites are selected. */
@@ -22,9 +22,11 @@ export interface SetupScreenProps {
 }
 
 /**
- * Configure-and-launch screen: target endpoint, FHIR version, and the bundled
- * suite checklist (grouped by category), ending in a "Start run" action that
- * kicks off the run and hands off to the Runner screen.
+ * Configure-and-launch screen: target endpoint and the bundled suite checklist
+ * (grouped by category), ending in a "Start run" action that kicks off the run
+ * and hands off to the Runner screen. There is no FHIR version field — the
+ * version used for gating is detected from the target's own CapabilityStatement
+ * once the run executes, not chosen here.
  */
 export function SetupScreen({ config, suites, suitesLoading, suitesError, canStart, onStart }: SetupScreenProps) {
   const categories = useMemo(() => groupByCategory(suites), [suites]);
@@ -73,24 +75,6 @@ export function SetupScreen({ config, suites, suitesLoading, suitesError, canSta
               spellCheck={false}
               autoComplete="off"
             />
-          </div>
-        </div>
-
-        <div className="setup-field">
-          <span className="setup-field__label">FHIR version</span>
-          <div className="segmented" role="radiogroup" aria-label="FHIR version">
-            {FHIR_VERSIONS.map((version) => (
-              <button
-                key={version}
-                type="button"
-                role="radio"
-                aria-checked={config.fhirVersion === version}
-                className={`segmented__item${config.fhirVersion === version ? ' segmented__item--active' : ''}`}
-                onClick={() => config.setFhirVersion(version)}
-              >
-                {version}
-              </button>
-            ))}
           </div>
         </div>
 

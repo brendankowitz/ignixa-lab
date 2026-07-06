@@ -7,8 +7,8 @@
     "// IgnixaLab settings": "----------------------------------------",
     "// IgnixaLab:AllowPrivateTargets": "Set to 'true' to permit runs against loopback/private FHIR servers. Leave false for hosted deployments.",
     "IgnixaLab:AllowPrivateTargets": "true",
-    "// IgnixaLab:DefaultFhirVersion": "FHIR version passed to the TestScript engine when a request does not specify one.",
-    "IgnixaLab:DefaultFhirVersion": "4.0",
+    "// IgnixaLab:DefaultFhirVersion": "FHIR version (real semver, e.g. 4.0.1) passed to the TestScript engine when a request does not specify one.",
+    "IgnixaLab:DefaultFhirVersion": "4.0.1",
     "// IgnixaLab:CorsAllowedOrigins": "Comma-separated list of origins allowed to call the API (used by the SPA).",
     "IgnixaLab:CorsAllowedOrigins": "http://localhost:5173"
   }

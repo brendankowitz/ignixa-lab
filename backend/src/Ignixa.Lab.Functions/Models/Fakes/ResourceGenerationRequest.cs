@@ -6,6 +6,7 @@ public sealed class ResourceGenerationRequest
     public required string ResourceType { get; init; }
     public int Seed { get; init; } = 42;
     public string Density { get; init; } = "Minimal";
+    public string? Theme { get; init; }
     public string? FirstName { get; init; }
     public string? FamilyName { get; init; }
     public string? City { get; init; }

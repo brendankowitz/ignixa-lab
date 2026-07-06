@@ -5,6 +5,9 @@ using System.Text.Json.Nodes;
 using Ignixa.FhirFakes;
 using Ignixa.FhirFakes.EdgeCases;
 using Ignixa.FhirFakes.Population;
+using Ignixa.FhirFakes.Scenarios;
+using Ignixa.FhirFakes.Scenarios.States;
+using Ignixa.FhirFakes.Workflow;
 using Ignixa.Lab.Functions.Models.Fakes;
 using Ignixa.Lab.Functions.Services.Fakes;
 using Ignixa.Lab.Functions.Services.FhirPath;
@@ -19,8 +22,6 @@ namespace Ignixa.Lab.Functions.Functions;
 public sealed class FakesFunctions(
     ILogger<FakesFunctions> logger,
     SchemaProviderFactory schemaProviderFactory,
-    ScenarioDiscovery scenarioDiscovery,
-    ObservationStateDiscovery observationStateDiscovery,
     FakesService fakesService)
 {
     private static readonly string[] FhirVersions = ["stu3", "r4", "r4b", "r5", "r6"];
@@ -30,7 +31,7 @@ public sealed class FakesFunctions(
 
     /// <summary>
     /// Reflects the referenced <c>Ignixa.FhirFakes</c> assembly's own informational
-    /// version (e.g. "0.5.13") instead of a hand-maintained literal, so the bench's
+    /// version (e.g. "0.6.4") instead of a hand-maintained literal, so the bench's
     /// engine badge can't drift out of sync with the package actually in use — same
     /// approach as <see cref="Services.FhirPath.ResultFormatter"/>'s evaluator version.
     /// </summary>
@@ -75,19 +76,21 @@ public sealed class FakesFunctions(
             LibraryVersion = LibraryVersion,
             FhirVersions = FhirVersions,
             PopulationStates = populationGenerator.AvailableStates,
-            Scenarios = scenarioDiscovery.All().Select(ToScenarioMetadata).ToList(),
+            Scenarios = ScenarioCatalog.GetAll().Select(ToScenarioMetadata).ToList(),
             ResourceTypesByVersion = FhirVersions.ToDictionary(
                 version => version,
                 version => (IReadOnlyList<string>)schemaProviderFactory.GetSchemaProvider(version).ResourceTypeNames
                     .OrderBy(name => name, StringComparer.Ordinal)
                     .ToList(),
                 StringComparer.OrdinalIgnoreCase),
-            ObservationStates = observationStateDiscovery.Names(),
+            ObservationStates = ObservationStateCatalog.GetNames(),
             EdgeCaseFamilies = ActiveEdgeCaseFamilies
                 .Select(family => ToEdgeCaseFamilyMetadata(family, catalog))
                 .Where(family => family.Categories.Count > 0)
                 .ToList(),
             PatientCities = populationGenerator.AvailableCities.Select(city => city.Name).ToList(),
+            ClinicalDomains = Enum.GetNames<ClinicalDomain>().Where(name => name != nameof(ClinicalDomain.Unspecified)).ToList(),
+            WorkflowPacks = WorkflowScenarioCatalog.GetAll().Select(ToScenarioMetadata).ToList(),
         };
 
         return new OkObjectResult(response);
@@ -191,10 +194,79 @@ public sealed class FakesFunctions(
         {
             return new BadRequestObjectResult(new { error = ex.Message });
         }
+        catch (Exception ex)
+        {
+            logger.LogError(
+                ex,
+                "Scenario generation failed. fhirVersion={FhirVersion} scenarioId={ScenarioId}",
+                scenarioRequest.FhirVersion,
+                scenarioRequest.ScenarioId);
+            return new ObjectResult(new { error = "Scenario generation failed." }) { StatusCode = (int)HttpStatusCode.InternalServerError };
+        }
 
         if (result is null)
         {
             return new BadRequestObjectResult(new { error = $"Unknown scenarioId '{scenarioRequest.ScenarioId}'." });
+        }
+
+        return new OkObjectResult(result);
+    }
+
+    [Function("FakesWorkflow")]
+    public async Task<IActionResult> GenerateWorkflow(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", "options", Route = "fakes/workflow")] HttpRequest request,
+        CancellationToken cancellationToken)
+    {
+        WorkflowRequest? workflowRequest;
+        try
+        {
+            workflowRequest = await JsonSerializer.DeserializeAsync<WorkflowRequest>(
+                request.Body, RequestJsonOptions, cancellationToken);
+        }
+        catch (JsonException ex)
+        {
+            return new BadRequestObjectResult(new { error = $"Invalid request body: {ex.Message}" });
+        }
+
+        if (workflowRequest is null || string.IsNullOrWhiteSpace(workflowRequest.PackId))
+        {
+            return new BadRequestObjectResult(new { error = "A 'packId' is required." });
+        }
+
+        if (!IsSupportedFhirVersion(workflowRequest.FhirVersion))
+        {
+            return UnsupportedFhirVersion(workflowRequest.FhirVersion);
+        }
+
+        JsonObject? result;
+        try
+        {
+            result = fakesService.GenerateWorkflow(
+                workflowRequest.FhirVersion,
+                workflowRequest.PackId,
+                workflowRequest.Parameters,
+                workflowRequest.Seed,
+                workflowRequest.Tag,
+                workflowRequest.ResolvedReferences);
+        }
+        catch (InvalidScenarioParametersException ex)
+        {
+            return new BadRequestObjectResult(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(
+                ex,
+                "Workflow generation failed. fhirVersion={FhirVersion} packId={PackId} seed={Seed}",
+                workflowRequest.FhirVersion,
+                workflowRequest.PackId,
+                workflowRequest.Seed);
+            return new ObjectResult(new { error = "Workflow generation failed." }) { StatusCode = (int)HttpStatusCode.InternalServerError };
+        }
+
+        if (result is null)
+        {
+            return new BadRequestObjectResult(new { error = $"Unknown packId '{workflowRequest.PackId}'." });
         }
 
         return new OkObjectResult(result);
@@ -240,8 +312,17 @@ public sealed class FakesFunctions(
             });
         }
 
+        if (!string.IsNullOrWhiteSpace(resourceRequest.Theme)
+            && (!Enum.TryParse<ClinicalDomain>(resourceRequest.Theme, ignoreCase: true, out var parsedTheme) || parsedTheme == ClinicalDomain.Unspecified))
+        {
+            return new BadRequestObjectResult(new
+            {
+                error = $"Unknown theme '{resourceRequest.Theme}'. Supported: {string.Join(", ", Enum.GetNames<ClinicalDomain>().Where(name => name != nameof(ClinicalDomain.Unspecified)))}.",
+            });
+        }
+
         if (!string.IsNullOrWhiteSpace(resourceRequest.ObservationState)
-            && !observationStateDiscovery.Names().Contains(resourceRequest.ObservationState, StringComparer.OrdinalIgnoreCase))
+            && !ObservationStateCatalog.GetNames().Contains(resourceRequest.ObservationState, StringComparer.OrdinalIgnoreCase))
         {
             return new BadRequestObjectResult(new { error = $"Unknown observationState '{resourceRequest.ObservationState}'." });
         }
@@ -253,6 +334,7 @@ public sealed class FakesFunctions(
                 resourceRequest.ResourceType,
                 resourceRequest.Seed,
                 resourceRequest.Density,
+                resourceRequest.Theme,
                 resourceRequest.FirstName,
                 resourceRequest.FamilyName,
                 resourceRequest.City,
@@ -281,10 +363,12 @@ public sealed class FakesFunctions(
     private static ScenarioMetadata ToScenarioMetadata(DiscoveredScenario scenario) => new()
     {
         Id = scenario.Id,
+        Category = scenario.Category,
+        Domain = scenario.Domain is null or ClinicalDomain.Unspecified ? null : scenario.Domain.ToString(),
         Parameters = scenario.Parameters.Select(parameter => new ScenarioParameterMetadata
         {
-            Name = parameter.Name!,
-            Type = parameter.ParameterType.Name,
+            Name = parameter.Name,
+            Type = parameter.Type.Name,
             DefaultValue = parameter.HasDefaultValue ? parameter.DefaultValue : null,
         }).ToList(),
     };

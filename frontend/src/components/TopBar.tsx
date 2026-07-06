@@ -17,7 +17,8 @@ export interface TopBarProps {
   onTabChange: (tab: TabId) => void;
   /** Bare target host + path (no protocol), or empty if none configured yet. */
   serverHost: string;
-  fhirVersion: string;
+  /** The FHIR version detected from the most recent run's report, or `undefined` before any run completes — there is no pre-run selection to show. */
+  fhirVersion?: string;
   theme: ThemeState;
   running: boolean;
   /** Whether a run can be started right now (target set, at least one suite selected). */
@@ -75,7 +76,8 @@ export function TopBar({
       <div className="top-bar__spacer" />
 
       <span className="top-bar__readout">
-        {serverHost || 'no target'} · {fhirVersion}
+        {serverHost || 'no target'}
+        {fhirVersion ? ` · ${fhirVersion}` : ''}
       </span>
 
       <button

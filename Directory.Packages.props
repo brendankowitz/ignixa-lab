@@ -8,18 +8,21 @@
   -->
   <ItemGroup>
     <!-- FHIR TestScript execution engine (published from ignixa-fhir); includes the requiresCapability gating extension (ignixa-fhir#292). -->
-    <PackageVersion Include="Ignixa.TestScript" Version="0.5.13-beta" />
+    <PackageVersion Include="Ignixa.TestScript" Version="0.6.4-beta" />
 
     <!-- Generates fixture resources for the canonical suites' fhirfakes markers -->
-    <PackageVersion Include="Ignixa.TestScript.FhirFakes" Version="0.5.13-beta" />
+    <PackageVersion Include="Ignixa.TestScript.FhirFakes" Version="0.6.4-beta" />
 
     <!-- FHIRPath expression evaluation engine, powering the fhirpath-evaluator endpoints -->
-    <PackageVersion Include="Ignixa.FhirPath" Version="0.5.13" />
-    <PackageVersion Include="Ignixa.Serialization" Version="0.5.13" />
-    <PackageVersion Include="Ignixa.Specification" Version="0.5.13" />
+    <PackageVersion Include="Ignixa.FhirPath" Version="0.6.4" />
+    <PackageVersion Include="Ignixa.Serialization" Version="0.6.4" />
+    <PackageVersion Include="Ignixa.Specification" Version="0.6.4" />
 
     <!-- Synthetic FHIR data generator (populations, clinical scenarios, single resources, edge-case fuzzing), powering the Fakes bench -->
-    <PackageVersion Include="Ignixa.FhirFakes" Version="0.5.13" />
+    <PackageVersion Include="Ignixa.FhirFakes" Version="0.6.4" />
+
+    <!-- Validates the CapabilityStatement's declared fhirVersion as real semver before trusting it for engine gating -->
+    <PackageVersion Include="NuGet.Versioning" Version="6.14.0" />
 
     <!--
       Canonical TestScript suites (ADR-2607). Interim local package built by
