@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Operations/import-search",
-  "description": "Search-parameter indexing conformance tests for composite, date, number, and quantity searches, created via standard REST create/update as an $import-independent equivalent of the ImportXSearchTests suites (Part 1 of 2; see import-search-2.json for reference/string/token/uri).",
+  "description": "Search-parameter indexing conformance tests for composite, date, number, and quantity searches, created via standard REST create/update as an $import-independent equivalent of the ImportXSearchTests suites (Part 1 of 2; see import-search-2.json for reference/string/token/uri). Not requiresCapability-gated: this exercises standard resource search, which every FHIR server must support, not a conditionally-supported $-operation.",
   "status": "active",
   "fixture": [
     {
