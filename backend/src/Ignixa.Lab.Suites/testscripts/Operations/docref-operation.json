@@ -1,12 +1,12 @@
 {
   "resourceType": "TestScript",
   "name": "Operations/docref-operation",
-  "description": "DocumentReference $docref conformance tests: single/multi-patient lookup, type filtering, and missing/unsupported/unknown parameter handling (from DocRefOperationTests). $docref is invoked type-level at DocumentReference/$docref?patient=... rather than as a Patient instance operation. Gated on the target advertising DocumentReference/$docref.",
+  "description": "DocumentReference $docref conformance tests: single/multi-patient lookup, type filtering, and missing/unsupported/unknown parameter handling (from DocRefOperationTests). $docref is invoked type-level at DocumentReference/$docref?patient=... rather than as a Patient instance operation. Gated on the target advertising DocumentReference/$docref, checking both the spec-idiomatic resource-scoped declaration and the Microsoft FHIR Server convention of a system-level 'docref' operation (confirmed against a live deployment: the resource-scoped form alone was never satisfied, incorrectly skipping every test here).",
   "status": "active",
   "extension": [
     {
       "url": "http://ignixa.io/testscript/requiresCapability",
-      "valueString": "rest.resource.where(type='DocumentReference').operation.where(name='docref').exists()"
+      "valueString": "rest.resource.where(type='DocumentReference').operation.where(name='docref').exists() or rest.operation.where(name='docref').exists()"
     }
   ],
   "fixture": [
