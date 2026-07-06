@@ -3,6 +3,7 @@ using Ignixa.Lab.Functions.Configuration;
 using Ignixa.Lab.Functions.Conformance;
 using Ignixa.Lab.Functions.Execution;
 using Ignixa.Lab.Functions.Models;
+using Ignixa.Lab.Functions.Services.FhirPath;
 using Ignixa.Lab.Functions.Suites;
 using Ignixa.Serialization.SourceNodes;
 using Ignixa.TestScript.Client;
@@ -135,6 +136,7 @@ public sealed class TestScriptRunnerTests
                 new FixedResponseHttpClientFactory(CapabilityStatementWithoutReindex),
                 Options.Create(new IgnixaLabOptions())),
             Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
             NullLogger<TestScriptRunner>.Instance);
 
         var outcome = await runner.RunAsync(
@@ -159,6 +161,7 @@ public sealed class TestScriptRunnerTests
                 new FixedResponseHttpClientFactory(CapabilityStatementWithoutReindex),
                 Options.Create(new IgnixaLabOptions())),
             Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
             NullLogger<TestScriptRunner>.Instance);
 
         var outcome = await runner.RunAsync(
@@ -181,6 +184,7 @@ public sealed class TestScriptRunnerTests
                 new ThrowingHttpClientFactory(),
                 Options.Create(new IgnixaLabOptions())),
             Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
             NullLogger<TestScriptRunner>.Instance);
 
         var outcome = await runner.RunAsync(
@@ -212,6 +216,7 @@ public sealed class TestScriptRunnerTests
                 new FixedResponseHttpClientFactory(CapabilityStatementWithFhirVersion(declaredCapabilityVersion)),
                 Options.Create(new IgnixaLabOptions())),
             Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
             NullLogger<TestScriptRunner>.Instance);
 
         var outcome = await runner.RunAsync(
@@ -242,6 +247,7 @@ public sealed class TestScriptRunnerTests
                 new FixedResponseHttpClientFactory(CapabilityStatementWithFhirVersion("4.0.1")),
                 Options.Create(new IgnixaLabOptions())),
             Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
             NullLogger<TestScriptRunner>.Instance);
 
         var outcome = await runner.RunAsync(
@@ -265,6 +271,7 @@ public sealed class TestScriptRunnerTests
                 new FixedResponseHttpClientFactory(CapabilityStatementWithoutReindex),
                 Options.Create(new IgnixaLabOptions())),
             Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
             NullLogger<TestScriptRunner>.Instance);
 
         var outcome = await runner.RunAsync(
@@ -288,6 +295,7 @@ public sealed class TestScriptRunnerTests
                 new FixedResponseHttpClientFactory(CapabilityStatementWithEmptyFhirVersion),
                 Options.Create(new IgnixaLabOptions())),
             Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
             NullLogger<TestScriptRunner>.Instance);
 
         var outcome = await runner.RunAsync(
@@ -311,6 +319,7 @@ public sealed class TestScriptRunnerTests
                 new FixedResponseHttpClientFactory(CapabilityStatementWithNonStringFhirVersion),
                 Options.Create(new IgnixaLabOptions())),
             Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
             NullLogger<TestScriptRunner>.Instance);
 
         var outcome = await runner.RunAsync(
@@ -334,6 +343,7 @@ public sealed class TestScriptRunnerTests
                 new ThrowingHttpClientFactory(),
                 Options.Create(new IgnixaLabOptions())),
             Options.Create(new IgnixaLabOptions { DefaultFhirVersion = "4.0" }),
+            new SchemaProviderFactory(),
             NullLogger<TestScriptRunner>.Instance);
 
         var outcome = await runner.RunAsync(
@@ -362,6 +372,7 @@ public sealed class TestScriptRunnerTests
                 new FixedResponseHttpClientFactory(CapabilityStatementWithFhirVersion("R4")),
                 Options.Create(new IgnixaLabOptions())),
             Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
             NullLogger<TestScriptRunner>.Instance);
 
         var outcome = await runner.RunAsync(
@@ -392,6 +403,7 @@ public sealed class TestScriptRunnerTests
                     """),
                 Options.Create(new IgnixaLabOptions())),
             Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
             NullLogger<TestScriptRunner>.Instance);
 
         var outcome = await runner.RunAsync(
@@ -404,6 +416,41 @@ public sealed class TestScriptRunnerTests
         var request = provider.Requests.Should().ContainSingle().Which;
         request.Body.Should().NotBeNull();
         request.Body!.ResourceType.Should().Be("InventoryItem");
+    }
+
+    [Fact]
+    public async Task GivenUnparseableFhirVersion_WhenRun_ThenRunnerFallsBackToR4Schema()
+    {
+        var provider = new RecordingRequestProvider(new TestResponse { StatusCode = 201 });
+        var runner = new TestScriptRunner(
+            new FakeSuiteCatalog("unparseable-version.json", FhirFakesCreateDefinition("InventoryItem")),
+            new FakeEvaluatorFactory(provider),
+            new CapabilityStatementFetcher(
+                // No fhirVersion declared, so ResolveFhirVersion falls back to the
+                // request's FhirVersion below, which is not valid semver.
+                new FixedResponseHttpClientFactory("""
+                    {
+                      "resourceType": "CapabilityStatement",
+                      "status": "active",
+                      "rest": [{ "mode": "server", "resource": [{ "type": "InventoryItem", "interaction": [{"code": "create"}] }] }]
+                    }
+                    """),
+                Options.Create(new IgnixaLabOptions())),
+            Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
+            NullLogger<TestScriptRunner>.Instance);
+
+        var outcome = await runner.RunAsync(
+            new RunRequest { TargetUrl = TargetUrl, SuiteIds = ["unparseable-version.json"], FhirVersion = "not-a-version" },
+            CancellationToken.None);
+
+        outcome.IsValid.Should().BeTrue();
+        // InventoryItem is R5-only, so fixture generation only fails this way
+        // if the unparseable fhirVersion fell back to the R4 schema, not to
+        // some other (or no) schema.
+        var setupStep = outcome.Report!.Results[0].Steps.Should().ContainSingle(step => step.Phase == "setup").Which;
+        setupStep.Status.Should().Be(ConformanceStatus.Error);
+        setupStep.Message.Should().Contain("not valid for FHIR version R4");
     }
 
     private sealed class FakeSuiteCatalog(string id, TestScriptDefinition definition) : ISuiteCatalog
