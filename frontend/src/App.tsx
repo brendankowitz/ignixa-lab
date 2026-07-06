@@ -105,7 +105,12 @@ function App() {
         ) : null}
 
         {activeTab === 'report' ? (
-          <ReportScreen report={run.report} suites={run.suites} onViewFailing={viewFailing} />
+          <ReportScreen
+            report={run.report}
+            suites={run.suites}
+            testScriptsRevision={run.testScriptsRevision}
+            onViewFailing={viewFailing}
+          />
         ) : null}
       </main>
     </div>

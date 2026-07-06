@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ApiError, getCapability } from '../api/client';
 import { countByStatus, formatDuration, groupBySuite, passRate, rollupCounts } from '../lib/conformance';
 import { mergeCoverage, observedCoverage } from '../lib/coverage';
+import { downloadTestReportBundle } from '../lib/testReport';
 import type { CapabilitySummary } from '../types/capability';
 import type { ConformanceReport, SuiteDescriptor } from '../types/conformance';
 import { CoverageMap } from './CoverageMap';
@@ -10,6 +11,8 @@ import { CoverageMap } from './CoverageMap';
 export interface ReportScreenProps {
   report: ConformanceReport | null;
   suites: SuiteDescriptor[];
+  /** Commit the bundled testscripts came from, used to link each downloaded TestReport's `testScript` back to its GitHub source. */
+  testScriptsRevision: string | null;
   onViewFailing: () => void;
 }
 
@@ -20,7 +23,7 @@ export interface ReportScreenProps {
  * `GET /api/capability` (e.g. the target exposes no `/metadata`) still
  * renders observed-only coverage rather than blocking the screen.
  */
-export function ReportScreen({ report, suites, onViewFailing }: ReportScreenProps) {
+export function ReportScreen({ report, suites, testScriptsRevision, onViewFailing }: ReportScreenProps) {
   const suiteById = useMemo(() => new Map(suites.map((suite) => [suite.id, suite])), [suites]);
 
   const [capability, setCapability] = useState<CapabilitySummary | null>(null);
@@ -81,6 +84,13 @@ export function ReportScreen({ report, suites, onViewFailing }: ReportScreenProp
         <span className="report-header__meta">
           {report.target} · {report.fhirVersion} · {formatDuration(report.duration_ms)}
         </span>
+        <button
+          type="button"
+          className="report-header__download"
+          onClick={() => downloadTestReportBundle(report, testScriptsRevision)}
+        >
+          Download TestReport
+        </button>
         <button type="button" className="report-header__view-failing" onClick={onViewFailing}>
           View {tallies.fail} failing →
         </button>
