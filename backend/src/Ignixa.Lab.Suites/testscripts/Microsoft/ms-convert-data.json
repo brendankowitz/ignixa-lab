@@ -1,6 +1,6 @@
 {
   "resourceType": "TestScript",
-  "name": "Operations/ms-convert-data",
+  "name": "Microsoft/ms-convert-data",
   "description": "$convert-data operation conformance tests (HL7v2/CCDA-to-FHIR conversion via Liquid templates), covering request/response shape, validation-failure status codes, and a custom (non-default) template registry reference (from ConvertDataTests and CustomConvertDataTests). $convert-data may be disabled or unconfigured on non-Microsoft-FHIR-Server targets, so all assertions here are warningOnly.",
   "status": "active",
   "extension": [

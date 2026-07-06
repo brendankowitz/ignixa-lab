@@ -42,7 +42,7 @@ src/Ignixa.Lab.Functions/
 
 src/Ignixa.Lab.Suites/
   testscripts/     The 76 canonical TestScript suites (Bundles/CRUD/Foundation/
-                   Operations/Regression/Search/Subscriptions/Validation),
+                   Microsoft/Operations/Regression/Search/Subscriptions/Validation),
                    packed into the IgnixaLab.TestScript.Suites content
                    package (ADR-2607)
 
@@ -149,7 +149,7 @@ Phase 2 shared-store counter, which is not implemented here.
 
 ## Suites
 
-The 76 canonical FHIR TestScript suites (`backend/src/Ignixa.Lab.Suites/testscripts/{Bundles,CRUD,Foundation,Operations,Regression,Search,Subscriptions,Validation}/*.json`)
+The 76 canonical FHIR TestScript suites (`backend/src/Ignixa.Lab.Suites/testscripts/{Bundles,CRUD,Foundation,Microsoft,Operations,Regression,Search,Subscriptions,Validation}/*.json`)
 are packed into a local NuGet content package, `IgnixaLab.TestScript.Suites`, by
 the `Ignixa.Lab.Suites` project and consumed by `Ignixa.Lab.Functions` (and
 its test project) via `PackageReference`. This is an interim step —
@@ -163,14 +163,14 @@ name under `testscripts/` — no code change needed for discovery, see
 `SuiteCatalog`): `Bundles` (batch/transaction), `CRUD` (create/read/vread/
 update/delete/history/patch/conditional operations), `Foundation`
 (metadata/health/CORS/custom headers), `Operations` (FHIR $-operations —
-$export, $everything, $expand, $docref, $member-match, plus Microsoft-specific
-`ms-*` operations like $import/$reindex/$convert-data/$bulk-delete/
-$bulk-update), `Regression` (exception handling, version parity, reference
-resolution), `Search` (search-parameter types and modifiers, with
-Microsoft-specific modifiers/params prefixed `ms-*`), and `Validation`
-(`$validate`). Suites representing genuinely non-standard, Microsoft
-FHIR Server-proprietary operations/modifiers/headers are prefixed `ms-`
-in their filename.
+$export, $everything, $expand, $docref, $member-match), `Regression`
+(exception handling, version parity, reference resolution), `Search`
+(search-parameter types and modifiers), and `Validation` (`$validate`).
+Suites representing genuinely non-standard, Microsoft FHIR Server-proprietary
+operations/modifiers/headers are prefixed `ms-` in their filename and live in
+their own `Microsoft` category — kept separate from the spec-conformance
+categories above so they're easy to select or exclude as a group when
+testing a non-Microsoft server.
 
 Two additions extend coverage beyond the Microsoft FHIR Server baseline,
 sourced from a survey of other open-source FHIR server test suites

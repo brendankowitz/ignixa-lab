@@ -1,6 +1,6 @@
 {
   "resourceType": "TestScript",
-  "name": "Operations/ms-bulk-update",
+  "name": "Microsoft/ms-bulk-update",
   "description": "$bulk-update conformance tests: FHIRPath-Patch async job kick-off (202 + Content-Location) at system and type scope, _isParallel option, and validation-failure scenarios (invalid search parameter, unsupported patch-type combination, unsupported resource types) (from BulkUpdateTests). Job completion is not verified, only kick-off acceptance and a single best-effort status poll (warningOnly).",
   "status": "active",
   "extension": [

@@ -1,6 +1,6 @@
 {
   "resourceType": "TestScript",
-  "name": "Operations/ms-bulk-delete",
+  "name": "Microsoft/ms-bulk-delete",
   "description": "$bulk-delete conformance tests: async job kick-off (202 + Content-Location) at system and type scope, kick-off validation for hardDelete/purgeHistory/excludedResourceTypes/_include/_revinclude/_remove-references, and invalid-search-parameter rejection (from BulkDeleteTests). Job completion is not verified, only kick-off acceptance and a single best-effort status poll (warningOnly).",
   "status": "active",
   "extension": [

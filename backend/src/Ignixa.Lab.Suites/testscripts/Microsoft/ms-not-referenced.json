@@ -1,6 +1,6 @@
 {
   "resourceType": "TestScript",
-  "name": "Search/ms-not-referenced",
+  "name": "Microsoft/ms-not-referenced",
   "description": "Tests the _not-referenced=[SourceType]:[searchParam] search modifier, which returns only resources that are NOT the target of any matching reference, including wildcard source/param segments and malformed values (from NotReferencedSearchTests.cs).",
   "status": "active",
   "fixture": [

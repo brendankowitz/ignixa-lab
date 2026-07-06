@@ -1,6 +1,6 @@
 {
   "resourceType": "TestScript",
-  "name": "Operations/ms-import-basic",
+  "name": "Microsoft/ms-import-basic",
   "description": "$import bulk-data-load operation conformance tests (from ImportTests.cs / ImportBasicSearchTests.cs): kickoff request validation (400 for malformed headers, body, or input URLs) and job-status polling for an unknown job id. Real end-to-end import needs real blob storage and async job completion this suite can't provide, so only synchronous request validation is covered, and two tests are best-effort/warningOnly since reaching 202 requires a storage account matching the target server's configuration.",
   "status": "active",
   "extension": [

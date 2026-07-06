@@ -1,6 +1,6 @@
 {
   "resourceType": "TestScript",
-  "name": "Operations/ms-reindex",
+  "name": "Microsoft/ms-reindex",
   "description": "$reindex operation conformance tests: async job kickoff, job listing, job-status polling, and synchronous per-resource reindex (from ReindexTests). $reindex is a Microsoft-specific operation, commonly disabled or absent on other servers, so status assertions are warningOnly.",
   "status": "active",
   "extension": [

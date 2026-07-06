@@ -1,6 +1,6 @@
 {
   "resourceType": "TestScript",
-  "name": "Operations/ms-import-history-soft-delete",
+  "name": "Microsoft/ms-import-history-soft-delete",
   "description": "$import version/history conflict-resolution conformance tests (from ImportHistorySoftDeleteTests.cs): client-assigned meta.versionId/meta.lastUpdated and soft-delete interleaving during ndjson ingestion, exclusive to the $import pipeline and only observable after a completed real import. All 5 source tests are skipped for that reason; this suite only checks that the mode/allowNegativeVersions request shape itself is accepted (best-effort).",
   "status": "active",
   "extension": [

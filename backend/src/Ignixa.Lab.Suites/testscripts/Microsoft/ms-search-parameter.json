@@ -1,6 +1,6 @@
 {
   "resourceType": "TestScript",
-  "name": "Search/ms-search-parameter",
+  "name": "Microsoft/ms-search-parameter",
   "description": "Custom MS/Azure Health Data Services _expiryDate search parameter conformance (from MsSearchParameterTests); all assertions are warningOnly since this parameter is proprietary and not part of the base FHIR R4 spec.",
   "status": "active",
   "fixture": [

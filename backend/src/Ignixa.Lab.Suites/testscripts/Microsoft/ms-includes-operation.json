@@ -1,6 +1,6 @@
 {
   "resourceType": "TestScript",
-  "name": "Search/ms-includes-operation",
+  "name": "Microsoft/ms-includes-operation",
   "description": "Tests _include/_revinclude/_include:iterate combined with the Microsoft FHIR Server's _includesCount paging control for included resources; truncation/continuation assertions are warningOnly since this suite does not follow multi-page 'related' links (from IncludesOperationTests.cs).",
   "status": "active",
   "fixture": [

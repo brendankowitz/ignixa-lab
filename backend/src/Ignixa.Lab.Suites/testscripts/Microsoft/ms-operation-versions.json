@@ -1,6 +1,6 @@
 {
   "resourceType": "TestScript",
-  "name": "Regression/ms-operation-versions",
+  "name": "Microsoft/ms-operation-versions",
   "description": "Content-negotiation conformance for the Microsoft-proprietary '$versions' operation (from OperationVersionsTests.cs): valid Accept headers return 200 with a matching Content-Type, a missing Accept defaults to JSON, and an invalid Accept returns 406. All assertions are warningOnly since '$versions' isn't part of core FHIR and may 404 if unimplemented.",
   "status": "active",
   "extension": [

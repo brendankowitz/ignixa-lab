@@ -1,6 +1,6 @@
 {
   "resourceType": "TestScript",
-  "name": "Foundation/ms-custom-headers",
+  "name": "Microsoft/ms-custom-headers",
   "description": "Custom response header conformance tests (from CustomHeadersTests): the X-Request-Id to X-Correlation-Id correlation contract, and the CosmosDB-specific continuation-token-size request header. The CosmosDB-specific assertions are warningOnly since non-CosmosDB datastores are expected to ignore that header.",
   "status": "active",
   "test": [
