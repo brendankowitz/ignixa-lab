@@ -1,8 +1,14 @@
 {
   "resourceType": "TestScript",
   "name": "Operations/member-match",
-  "description": "$member-match operation conformance tests (from MemberMatchTests): request/response shape for MemberPatient/OldCoverage Parameters, and a self-seeded Patient+Coverage match. Match outcomes depend on data already present on the target server, so most assertions here are warningOnly.",
+  "description": "$member-match operation conformance tests (from MemberMatchTests): request/response shape for MemberPatient/OldCoverage Parameters, and a self-seeded Patient+Coverage match. Match outcomes depend on data already present on the target server, so most assertions here are warningOnly. Gated on the target advertising Patient/$member-match.",
   "status": "active",
+  "extension": [
+    {
+      "url": "http://ignixa.io/testscript/requiresCapability",
+      "valueString": "rest.resource.where(type='Patient').operation.where(name='member-match').exists()"
+    }
+  ],
   "fixture": [
     {
       "id": "member-match-non-parameters-body",
