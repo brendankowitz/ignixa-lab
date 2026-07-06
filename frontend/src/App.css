@@ -728,8 +728,16 @@
   color: var(--pass-dot);
 }
 
+.suite-tree__icon--partial {
+  color: var(--warn);
+}
+
 .suite-tree__icon--fail {
   color: var(--fail-dot);
+}
+
+.suite-tree__icon--skip {
+  color: var(--skip);
 }
 
 .suite-tree__spinner {
