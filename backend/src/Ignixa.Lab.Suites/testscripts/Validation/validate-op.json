@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Validation/validate-op",
-  "description": "$validate operation conformance tests ported from fhir262 validation/$validation-op. Covers type-level and system-level $validate with valid and invalid Patient resources, Parameters-wrapped and direct bodies, and an empty Parameters edge case. Assertions inspect the returned OperationOutcome for error/fatal issues rather than HTTP status, because servers differ on whether invalid input yields 200+OperationOutcome or 422. Type-level tests are gated on the target advertising Patient/$validate via either the spec-idiomatic resource-scoped declaration or the Microsoft FHIR Server convention of a single system-level 'validate' operation covering both type- and system-level variants (confirmed against a live deployment: the resource-scoped form alone was never satisfied, incorrectly skipping the type-level tests while the system-level tests ran normally).",
+  "description": "$validate operation conformance tests ported from fhir262 validation/$validation-op. Covers type-level and system-level $validate with valid and invalid Patient resources, Parameters-wrapped and direct bodies, and an empty Parameters edge case. Assertions inspect the returned OperationOutcome for error/fatal issues rather than HTTP status, because servers differ on whether invalid input yields 200+OperationOutcome or 422. Type-level tests are gated on the target advertising Patient/$validate, either as a resource-scoped or a system-level operation.",
   "status": "active",
   "fixture": [
     {

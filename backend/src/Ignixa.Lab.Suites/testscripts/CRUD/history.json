@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "CRUD/history",
-  "description": "History (GET /_history, /{type}/_history, /{type}/{id}/_history) conformance tests: non-empty system/type/instance Bundles, correct default and explicit sort order, well-formed entry.response.status, and _summary=count/_since/_before/_sort parameter handling (from HistoryTests). The second version needed by the multi-entry/sort-order tests is produced via a FHIRPath Patch (add Patient.active=true) rather than a byte-identical read-then-PUT round-trip: verified against a live Microsoft FHIR Server deployment, a no-op PUT does not bump the version (starving these assertions of the entry they depend on), and PUT additionally requires the body's id to match the URL id, which a static fixture can't supply for a server-assigned id. PATCH avoids both problems: it always changes content and targets purely by URL.",
+  "description": "History (GET /_history, /{type}/_history, /{type}/{id}/_history) conformance tests: non-empty system/type/instance Bundles, correct default and explicit sort order, well-formed entry.response.status, and _summary=count/_since/_before/_sort parameter handling (from HistoryTests). The second version needed by the multi-entry/sort-order tests is produced via a FHIRPath Patch rather than a PUT, to guarantee an actual content change and avoid requiring the body id to match the URL.",
   "status": "active",
   "fixture": [
     {
@@ -79,7 +79,7 @@
       "name": "instance history reflects create then update, newest first by default",
       "description": "After updating the Patient created in setup, GET /Patient/{id}/_history must return at least two entries with the newest version first (default order).",
       "action": [
-        { "operation": { "type": { "code": "patch" }, "url": "Patient/${histAId}", "contentType": "application/fhir+json", "sourceId": "patch-add-active", "responseId": "hista-update-response", "description": "FHIRPath Patch the Patient (add Patient.active=true) to produce a second version. A patch guarantees an actual content change (unlike a byte-identical read-then-write round-trip, which is not guaranteed to bump the version on servers that optimize no-op updates) without needing to know the server-assigned id ahead of time in a static PUT body." } },
+        { "operation": { "type": { "code": "patch" }, "url": "Patient/${histAId}", "contentType": "application/fhir+json", "sourceId": "patch-add-active", "responseId": "hista-update-response", "description": "FHIRPath Patch the Patient (add Patient.active=true) to produce a second version." } },
         { "assert": { "description": "Patch must return a 2xx success status", "response": "okay" } },
         { "operation": { "type": { "code": "history" }, "url": "Patient/${histAId}/_history", "responseId": "hista-history-response", "description": "GET instance-level history for the Patient" } },
         { "assert": { "description": "Must return HTTP 200", "response": "okay" } },
@@ -114,7 +114,7 @@
       "action": [
         { "operation": { "type": { "code": "create" }, "resource": "Patient", "sourceId": "patient-hist-status", "responseId": "histstatus-create-response", "description": "Create the dedicated Patient for the response.status test" } },
         { "assert": { "description": "Create must return HTTP 201", "response": "created" } },
-        { "operation": { "type": { "code": "patch" }, "url": "Patient/${histStatusId}", "contentType": "application/fhir+json", "sourceId": "patch-add-active", "responseId": "histstatus-update-response", "description": "FHIRPath Patch the Patient (add Patient.active=true) to produce a second version. A patch guarantees an actual content change (unlike a byte-identical read-then-write round-trip, which is not guaranteed to bump the version on servers that optimize no-op updates) without needing to know the server-assigned id ahead of time in a static PUT body." } },
+        { "operation": { "type": { "code": "patch" }, "url": "Patient/${histStatusId}", "contentType": "application/fhir+json", "sourceId": "patch-add-active", "responseId": "histstatus-update-response", "description": "FHIRPath Patch the Patient (add Patient.active=true) to produce a second version." } },
         { "assert": { "description": "Patch must return a 2xx success status", "response": "okay" } },
         { "operation": { "type": { "code": "delete" }, "url": "Patient/${histStatusId}", "responseId": "histstatus-delete-response", "description": "Delete the Patient to produce a third history entry" } },
         { "assert": { "description": "Delete must return a 2xx success status", "response": "okay" } },

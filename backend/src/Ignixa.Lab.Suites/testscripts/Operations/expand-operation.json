@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Operations/expand-operation",
-  "description": "ValueSet $expand conformance tests: type-level and instance-level expansion, the Parameters-wrapped POST variant, and missing/unknown-parameter and unknown-ValueSet error paths (from ExpandOperationTests). Fixtures reuse two real HL7 code systems under new, collision-safe canonical ValueSet urls. Gated on the target advertising ValueSet/$expand, checking both the spec-idiomatic resource-scoped declaration and the Microsoft FHIR Server convention of a system-level 'valueset-expand' operation (confirmed against a live deployment: the resource-scoped 'expand' form alone was never satisfied, incorrectly skipping every test here).",
+  "description": "ValueSet $expand conformance tests: type-level and instance-level expansion, the Parameters-wrapped POST variant, and missing/unknown-parameter and unknown-ValueSet error paths (from ExpandOperationTests). Fixtures reuse two real HL7 code systems under new, collision-safe canonical ValueSet urls. Gated on the target advertising ValueSet/$expand, either as a resource-scoped 'expand' operation or a system-level 'valueset-expand' operation (the Microsoft FHIR Server convention).",
   "status": "active",
   "extension": [
     {

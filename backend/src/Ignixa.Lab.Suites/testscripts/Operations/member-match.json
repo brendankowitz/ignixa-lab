@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Operations/member-match",
-  "description": "$member-match operation conformance tests (from MemberMatchTests): request/response shape for MemberPatient/OldCoverage Parameters, and a self-seeded Patient+Coverage match. Match outcomes depend on data already present on the target server, so most assertions here are warningOnly. Gated on the target advertising Patient/$member-match, checking both the spec-idiomatic resource-scoped declaration and the Microsoft FHIR Server convention of a system-level 'member-match' operation (confirmed against a live deployment: the resource-scoped form alone was never satisfied, incorrectly skipping every test here).",
+  "description": "$member-match operation conformance tests (from MemberMatchTests): request/response shape for MemberPatient/OldCoverage Parameters, and a self-seeded Patient+Coverage match. Match outcomes depend on data already present on the target server, so most assertions here are warningOnly. Gated on the target advertising Patient/$member-match, either as a resource-scoped or a system-level operation.",
   "status": "active",
   "extension": [
     {
