@@ -1,0 +1,59 @@
+{
+  "resourceType": "TestScript",
+  "name": "Foundation/health",
+  "description": "Health check endpoint (/health/check) conformance tests: a healthy server returns HTTP 200 with a JSON health report (from HealthTests). Body-content checks on the non-FHIR report aren't expressible with this engine, so the 'contains description' check is approximated via Content-Type.",
+  "status": "active",
+  "test": [
+    {
+      "name": "health/check returns 200 OK",
+      "description": "GET /health/check must return HTTP 200 when the FHIR server has started successfully.",
+      "action": [
+        {
+          "operation": {
+            "type": { "code": "read" },
+            "method": "GET",
+            "url": "health/check",
+            "responseId": "health-response",
+            "description": "Request the health check endpoint"
+          }
+        },
+        {
+          "assert": {
+            "description": "Health check must return HTTP 200",
+            "sourceId": "health-response",
+            "response": "okay"
+          }
+        }
+      ]
+    },
+    {
+      "name": "health/check returns a JSON body (approximates the 'contains description' check)",
+      "description": "Approximates the source test's body-text check: asserts the health check returns HTTP 200 with a JSON Content-Type, since raw body-text assertions aren't supported by this engine.",
+      "action": [
+        {
+          "operation": {
+            "type": { "code": "read" },
+            "method": "GET",
+            "url": "health/check",
+            "responseId": "health-response-2",
+            "description": "Request the health check endpoint again for an independent content-type check"
+          }
+        },
+        {
+          "assert": {
+            "description": "Health check must return HTTP 200",
+            "sourceId": "health-response-2",
+            "response": "okay"
+          }
+        },
+        {
+          "assert": {
+            "description": "Health check response must be JSON (approximation for the unassertable 'description' substring check)",
+            "sourceId": "health-response-2",
+            "contentType": "application/json"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,115 @@
+{
+  "resourceType": "TestScript",
+  "name": "Regression/observation-resolve-reference",
+  "description": "Conditional (search-URL) reference resolution in Observation.subject.reference (from ObservationResolveReferenceTests.cs): resolves to 201 when exactly one matching Patient exists, and fails with 400 when no match exists.",
+  "status": "active",
+  "fixture": [
+    {
+      "id": "patient-resolve-target",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Patient",
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/regression-resolve", "value": "REGR-RESOLVE-PAT-1" }],
+        "name": [{ "family": "Resolve", "given": ["Target"] }]
+      }
+    },
+    {
+      "id": "observation-resolve-existing",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Observation",
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/regression-resolve", "value": "REGR-RESOLVE-OBS-OK-1" }],
+        "status": "final",
+        "code": {
+          "coding": [{ "system": "http://loinc.org", "code": "8310-5", "display": "Body temperature" }]
+        },
+        "subject": { "reference": "Patient?identifier=http://ignixa.io/testscript/suite/regression-resolve|REGR-RESOLVE-PAT-1" },
+        "valueQuantity": { "value": 37.0, "unit": "Cel", "system": "http://unitsofmeasure.org", "code": "Cel" }
+      }
+    },
+    {
+      "id": "observation-resolve-missing",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Observation",
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/regression-resolve", "value": "REGR-RESOLVE-OBS-MISSING-1" }],
+        "status": "final",
+        "code": {
+          "coding": [{ "system": "http://loinc.org", "code": "8310-5", "display": "Body temperature" }]
+        },
+        "subject": { "reference": "Patient?identifier=http://ignixa.io/testscript/suite/regression-resolve|REGR-RESOLVE-PAT-DOES-NOT-EXIST" },
+        "valueQuantity": { "value": 37.0, "unit": "Cel", "system": "http://unitsofmeasure.org", "code": "Cel" }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "name": "resolvedObsId",
+      "sourceId": "create-existing-obs-response",
+      "path": "id",
+      "description": "The server-assigned id of the Observation created via a resolvable conditional reference"
+    }
+  ],
+  "setup": {
+    "action": [
+      {
+        "operation": {
+          "type": { "code": "create" },
+          "resource": "Patient",
+          "sourceId": "patient-resolve-target",
+          "responseId": "create-patient-response",
+          "description": "Create the Patient that the conditional reference below must resolve to via identifier search"
+        }
+      }
+    ]
+  },
+  "test": [
+    {
+      "name": "Conditional (search-URL) reference resolves to exactly one existing resource",
+      "description": "POST an Observation whose subject.reference is a conditional search URL matching exactly one Patient; the server must resolve it and return 201 Created.",
+      "action": [
+        {
+          "operation": {
+            "type": { "code": "create" },
+            "resource": "Observation",
+            "sourceId": "observation-resolve-existing",
+            "responseId": "create-existing-obs-response",
+            "description": "POST Observation with subject.reference = conditional search URL that resolves to the setup Patient"
+          }
+        },
+        { "assert": { "description": "Server must return 201 Created", "response": "created" } },
+        { "assert": { "description": "Response body must be an Observation", "resource": "Observation" } },
+        { "assert": { "description": "Server must have assigned an id", "expression": "Observation.id.exists()" } }
+      ]
+    },
+    {
+      "name": "Conditional (search-URL) reference to a non-existent resource is rejected",
+      "description": "POST an Observation whose subject.reference is a conditional search URL matching no Patient; the server must reject it with 400 Bad Request (zero matches is an error, per FHIR conditional reference resolution). The issue-code check is warningOnly since the exact IssueType used varies by server.",
+      "action": [
+        {
+          "operation": {
+            "type": { "code": "create" },
+            "resource": "Observation",
+            "sourceId": "observation-resolve-missing",
+            "responseId": "create-missing-obs-response",
+            "description": "POST Observation with subject.reference = conditional search URL that resolves to zero matches"
+          }
+        },
+        { "assert": { "description": "Server must return 400 Bad Request", "response": "bad" } },
+        { "assert": { "description": "Response body must be an OperationOutcome", "resource": "OperationOutcome" } },
+        { "assert": { "description": "OperationOutcome must contain an error-severity issue", "expression": "OperationOutcome.issue.where(severity = 'error').exists()" } },
+        { "assert": { "description": "Issue code should be 'invalid' (warningOnly: exact code varies by server)", "expression": "OperationOutcome.issue.where(code = 'invalid').exists()", "warningOnly": true } }
+      ]
+    }
+  ],
+  "teardown": {
+    "action": [
+      { "operation": { "type": { "code": "delete" }, "url": "Observation/${resolvedObsId}", "description": "Teardown: delete the Observation created via the resolvable conditional reference" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Observation?identifier=http://ignixa.io/testscript/suite/regression-resolve|REGR-RESOLVE-OBS-MISSING-1", "description": "Teardown: defensive conditional delete in case a non-conformant server created the 'missing reference' Observation anyway" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient?identifier=http://ignixa.io/testscript/suite/regression-resolve|REGR-RESOLVE-PAT-1", "description": "Teardown: conditional delete the setup Patient" } }
+    ]
+  }
+}

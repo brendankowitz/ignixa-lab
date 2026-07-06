@@ -1,0 +1,127 @@
+{
+  "resourceType": "TestScript",
+  "name": "Subscriptions/basic",
+  "description": "Basic Subscription (R4/R4B classic rest-hook, criteria-based) conformance tests: create, read, search by _id, update, delete lifecycle. This deliberately only exercises what a black-box HTTP TestScript run can assert without inbound-callback infrastructure — persistence and round-trip of criteria/channel/status fields, not actual notification delivery. Full async delivery, handshake, heartbeat, and R5 topic-based Subscription scenarios are out of scope; see the Subscriptions ADR referenced from backend/README.md.",
+  "status": "active",
+  "extension": [
+    {
+      "url": "http://ignixa.io/testscript/requiresCapability",
+      "valueString": "rest.resource.where(type='Subscription').exists()"
+    }
+  ],
+  "fixture": [
+    {
+      "id": "subscription-initial",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Subscription",
+        "id": "ignixa-sub-basic",
+        "meta": { "tag": [{ "system": "http://ignixa.io/testscript/suite/test", "code": "ignixa-subscriptions" }] },
+        "status": "requested",
+        "reason": "ignixa-lab TestScript conformance check (no real delivery expected)",
+        "criteria": "Patient?name=ignixa-subscriptions-basic-marker",
+        "channel": {
+          "type": "rest-hook",
+          "endpoint": "https://example.invalid/ignixa-testscript-subscriptions-noop",
+          "payload": "application/fhir+json"
+        }
+      }
+    },
+    {
+      "id": "subscription-updated",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Subscription",
+        "id": "ignixa-sub-basic",
+        "meta": { "tag": [{ "system": "http://ignixa.io/testscript/suite/test", "code": "ignixa-subscriptions" }] },
+        "status": "off",
+        "reason": "ignixa-lab TestScript conformance check (no real delivery expected)",
+        "criteria": "Patient?name=ignixa-subscriptions-basic-marker-updated",
+        "channel": {
+          "type": "rest-hook",
+          "endpoint": "https://example.invalid/ignixa-testscript-subscriptions-noop-updated",
+          "payload": "application/fhir+json"
+        }
+      }
+    }
+  ],
+  "setup": {
+    "action": [
+      { "operation": { "type": { "code": "update" }, "url": "Subscription/ignixa-sub-basic", "sourceId": "subscription-initial", "description": "PUT Subscription/ignixa-sub-basic (criteria=Patient?name=ignixa-subscriptions-basic-marker, channel=rest-hook)" } }
+    ]
+  },
+  "test": [
+    {
+      "name": "read returns the created Subscription with criteria and channel intact",
+      "description": "GET Subscription/{id} must return the Subscription with the criteria, channel type, and channel endpoint that were set at creation.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3" }],
+      "action": [
+        { "operation": { "type": { "code": "read" }, "url": "Subscription/ignixa-sub-basic", "responseId": "read-initial", "description": "GET Subscription/ignixa-sub-basic" } },
+        { "assert": { "description": "Must return HTTP 200", "response": "okay" } },
+        { "assert": { "description": "Response must be a Subscription", "resource": "Subscription" } },
+        { "assert": { "description": "criteria must round-trip unchanged", "expression": "Subscription.criteria", "value": "Patient?name=ignixa-subscriptions-basic-marker", "operator": "equals" } },
+        { "assert": { "description": "channel.type must be rest-hook", "expression": "Subscription.channel.type", "value": "rest-hook", "operator": "equals" } },
+        { "assert": { "description": "channel.endpoint must round-trip unchanged", "expression": "Subscription.channel.endpoint", "value": "https://example.invalid/ignixa-testscript-subscriptions-noop", "operator": "equals" } },
+        { "assert": { "description": "status must be a non-empty code (warningOnly: some servers immediately attempt a handshake and flip status away from 'requested')", "expression": "Subscription.status.exists()", "warningOnly": true } }
+      ]
+    },
+    {
+      "name": "search by _id locates the created Subscription",
+      "description": "GET Subscription?_id={id} must return a Bundle containing the created Subscription.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3" }],
+      "action": [
+        { "operation": { "type": { "code": "search" }, "resource": "Subscription", "params": "?_id=ignixa-sub-basic", "responseId": "search-by-id", "description": "GET /Subscription?_id=ignixa-sub-basic" } },
+        { "assert": { "description": "Must return HTTP 200", "response": "okay" } },
+        { "assert": { "description": "Response must be a Bundle", "resource": "Bundle" } },
+        { "assert": { "description": "Bundle must include the created Subscription", "expression": "entry.where(resource.id = 'ignixa-sub-basic').exists()" } }
+      ]
+    },
+    {
+      "name": "update replaces criteria, channel endpoint, and status",
+      "description": "PUT Subscription/{id} with a fully-specified replacement body must be accepted and change the stored criteria/channel/status.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3" }],
+      "action": [
+        { "operation": { "type": { "code": "update" }, "url": "Subscription/ignixa-sub-basic", "sourceId": "subscription-updated", "responseId": "update-response", "description": "PUT Subscription/ignixa-sub-basic (criteria=...-updated, channel endpoint=...-updated, status=off)" } },
+        { "assert": { "description": "Update must return a success status (2xx)", "response": "okay" } }
+      ]
+    },
+    {
+      "name": "read after update reflects the change",
+      "description": "GET after the PUT must return the updated criteria and channel endpoint. status=off is warningOnly since some servers manage subscription status server-side and may not honor a client-supplied status value.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3" }],
+      "action": [
+        { "operation": { "type": { "code": "read" }, "url": "Subscription/ignixa-sub-basic", "responseId": "read-after-update", "description": "GET Subscription/ignixa-sub-basic after update" } },
+        { "assert": { "description": "Must return HTTP 200", "response": "okay" } },
+        { "assert": { "description": "criteria must reflect the update", "expression": "Subscription.criteria", "value": "Patient?name=ignixa-subscriptions-basic-marker-updated", "operator": "equals" } },
+        { "assert": { "description": "channel.endpoint must reflect the update", "expression": "Subscription.channel.endpoint", "value": "https://example.invalid/ignixa-testscript-subscriptions-noop-updated", "operator": "equals" } },
+        { "assert": { "description": "status should reflect the update to 'off' (warningOnly: status may be server-managed)", "expression": "Subscription.status", "value": "off", "operator": "equals", "warningOnly": true } }
+      ]
+    },
+    {
+      "name": "delete removes the subscription",
+      "description": "DELETE Subscription/{id} must return a 2xx success status.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3" }],
+      "action": [
+        { "operation": { "type": { "code": "delete" }, "url": "Subscription/ignixa-sub-basic", "responseId": "delete-response", "description": "DELETE Subscription/ignixa-sub-basic" } },
+        { "assert": { "description": "Delete must return a 2xx success status", "response": "okay" } }
+      ]
+    },
+    {
+      "name": "read after delete returns 410 or 404",
+      "description": "GET after DELETE must return 410 (Gone), with 404 (Not Found) accepted as a warningOnly alternative.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3" }],
+      "action": [
+        { "operation": { "type": { "code": "read" }, "url": "Subscription/ignixa-sub-basic", "responseId": "after-delete-read", "description": "Attempt to read the deleted Subscription" } },
+        { "assert": { "description": "Primary: expect 410 Gone", "response": "gone" } },
+        { "assert": { "description": "Alternative: 404 Not Found is also accepted (warningOnly)", "response": "notFound", "warningOnly": true } }
+      ]
+    }
+  ],
+  "teardown": {
+    "action": [
+      { "operation": { "type": { "code": "delete" }, "url": "Subscription/ignixa-sub-basic", "description": "Teardown: attempt to clean up the Subscription (may already be deleted by the delete test — that is expected)" } }
+    ]
+  }
+}
