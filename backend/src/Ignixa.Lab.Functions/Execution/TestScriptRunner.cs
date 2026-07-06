@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json.Nodes;
+using Ignixa.Abstractions;
 using Ignixa.Lab.Functions.Conformance;
 using Ignixa.Lab.Functions.Configuration;
 using Ignixa.Lab.Functions.Models;
@@ -83,10 +84,11 @@ public sealed class TestScriptRunner(
             new InlineFixtureProvider(),
         ]);
 
+        var schemaProvider = SelectSchemaProvider(fhirVersion);
         var evaluator = new TestScriptEvaluator(
             scope.Provider,
             fixtureProvider,
-            new R4CoreSchemaProvider(),
+            schemaProvider,
             new NoOpValidator());
 
         foreach (var job in jobs)
@@ -138,6 +140,24 @@ public sealed class TestScriptRunner(
         return string.IsNullOrWhiteSpace(declaredVersion) || !NuGetVersion.TryParse(declaredVersion, out _)
             ? fallbackFhirVersion
             : declaredVersion;
+    }
+
+    private static IFhirSchemaProvider SelectSchemaProvider(string fhirVersion)
+    {
+        if (!NuGetVersion.TryParse(fhirVersion, out var version))
+        {
+            return new R4CoreSchemaProvider();
+        }
+
+        return version.Major switch
+        {
+            3 => new STU3CoreSchemaProvider(),
+            4 when version.Minor >= 3 => new R4BCoreSchemaProvider(),
+            4 => new R4CoreSchemaProvider(),
+            5 => new R5CoreSchemaProvider(),
+            6 => new R6CoreSchemaProvider(),
+            _ => new R4CoreSchemaProvider(),
+        };
     }
 
     /// <summary>

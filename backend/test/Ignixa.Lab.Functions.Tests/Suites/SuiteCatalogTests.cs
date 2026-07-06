@@ -160,7 +160,7 @@ public sealed class SuiteCatalogTests : IDisposable
     {
         var suites = CreateBundledCatalog().GetSuites();
 
-        suites.Should().HaveCount(78);
+        suites.Should().HaveCount(79);
     }
 
     [Fact]
@@ -179,7 +179,9 @@ public sealed class SuiteCatalogTests : IDisposable
 
         suites.Select(s => s.Id).Should().Contain(new[]
         {
+            "CRUD/all-resource-types.json",
             "Search/chaining.json",
+            "Microsoft/ms-not-expression.json",
             "Bundles/transaction.json",
             "Validation/validate-op.json",
         });

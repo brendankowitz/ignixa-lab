@@ -4,6 +4,7 @@ using Ignixa.Lab.Functions.Conformance;
 using Ignixa.Lab.Functions.Execution;
 using Ignixa.Lab.Functions.Models;
 using Ignixa.Lab.Functions.Suites;
+using Ignixa.Serialization.SourceNodes;
 using Ignixa.TestScript.Client;
 using Ignixa.TestScript.Expressions;
 using Ignixa.TestScript.Model;
@@ -87,6 +88,40 @@ public sealed class TestScriptRunnerTests
                 Actions = [new OperationExpression { Type = "read", Resource = "Patient", Params = "/1" }]
             }
         ]
+    };
+
+    private static TestScriptDefinition FhirFakesCreateDefinition(string resourceType, params string[] fhirVersions) => new()
+    {
+        Metadata = new TestScriptMetadata { Name = "FhirFakesCreate" },
+        Fixtures =
+        [
+            new FixtureDefinition
+            {
+                Id = "resource-fixture",
+                Autocreate = false,
+                Autodelete = false,
+                Resource = ResourceJsonNode.Parse($$"""
+                    {
+                      "extension": [
+                        {
+                          "url": "http://ignixa.io/testscript/fhirfakes",
+                          "valueCode": "{{resourceType}}"
+                        }
+                      ]
+                    }
+                    """),
+            },
+        ],
+        Tests =
+        [
+            new TestPhaseDefinition
+            {
+                Name = $"Create{resourceType}",
+                FhirVersions = fhirVersions,
+                RequiresCapability = $"rest.resource.where(type='{resourceType}').interaction.where(code='create').exists()",
+                Actions = [new OperationExpression { Type = "create", Resource = resourceType, SourceId = "resource-fixture" }],
+            },
+        ],
     };
 
     [Fact]
@@ -339,6 +374,38 @@ public sealed class TestScriptRunnerTests
         provider.CallCount.Should().Be(1);
     }
 
+    [Fact]
+    public async Task GivenR5OnlyFhirFakesFixture_WhenTargetDeclaresR5_ThenRunnerUsesR5Schema()
+    {
+        var provider = new RecordingRequestProvider(new TestResponse { StatusCode = 201 });
+        var runner = new TestScriptRunner(
+            new FakeSuiteCatalog("r5-only.json", FhirFakesCreateDefinition("InventoryItem", "5.0")),
+            new FakeEvaluatorFactory(provider),
+            new CapabilityStatementFetcher(
+                new FixedResponseHttpClientFactory("""
+                    {
+                      "resourceType": "CapabilityStatement",
+                      "status": "active",
+                      "fhirVersion": "5.0.0",
+                      "rest": [{ "mode": "server", "resource": [{ "type": "InventoryItem", "interaction": [{"code": "create"}] }] }]
+                    }
+                    """),
+                Options.Create(new IgnixaLabOptions())),
+            Options.Create(new IgnixaLabOptions()),
+            NullLogger<TestScriptRunner>.Instance);
+
+        var outcome = await runner.RunAsync(
+            new RunRequest { TargetUrl = TargetUrl, SuiteIds = ["r5-only.json"] },
+            CancellationToken.None);
+
+        outcome.IsValid.Should().BeTrue();
+        outcome.Report!.Results[0].Status.Should().NotBe(ConformanceStatus.Error);
+        provider.CallCount.Should().Be(1);
+        var request = provider.Requests.Should().ContainSingle().Which;
+        request.Body.Should().NotBeNull();
+        request.Body!.ResourceType.Should().Be("InventoryItem");
+    }
+
     private sealed class FakeSuiteCatalog(string id, TestScriptDefinition definition) : ISuiteCatalog
     {
         public IReadOnlyList<SuiteDescriptor> GetSuites() => [];
@@ -366,11 +433,14 @@ public sealed class TestScriptRunnerTests
 
     private sealed class RecordingRequestProvider(TestResponse response) : ITestRequestProvider
     {
+        public List<TestRequest> Requests { get; } = [];
+
         public int CallCount { get; private set; }
 
         public Task<TestResponse> ExecuteAsync(TestRequest request, CancellationToken cancellationToken)
         {
             CallCount++;
+            Requests.Add(request);
             return Task.FromResult(response);
         }
     }
