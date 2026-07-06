@@ -160,7 +160,7 @@ public sealed class SuiteCatalogTests : IDisposable
     {
         var suites = CreateBundledCatalog().GetSuites();
 
-        suites.Should().HaveCount(79);
+        suites.Should().HaveCount(87);
     }
 
     [Fact]
