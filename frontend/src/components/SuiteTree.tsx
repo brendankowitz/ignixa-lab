@@ -102,7 +102,8 @@ function rowOutcome(status: SuiteRunStatus, rolled: RolledUpCounts | null): RowT
 }
 
 function rowGlyph(status: SuiteRunStatus, rolled: RolledUpCounts | null): string {
-  switch (rowOutcome(status, rolled)) {
+  const outcome = rowOutcome(status, rolled);
+  switch (outcome) {
     case 'neutral':
       return '·';
     case 'skip':
@@ -111,8 +112,12 @@ function rowGlyph(status: SuiteRunStatus, rolled: RolledUpCounts | null): string
       return '◐';
     case 'fail':
       return '✕';
-    default:
+    case 'pass':
       return '✓';
+    default:
+      // Exhaustiveness guard: a compile error here means a new RowTone was added
+      // without teaching this switch its glyph, instead of silently rendering '✓'.
+      return ((_: never) => '✓')(outcome);
   }
 }
 

@@ -29,6 +29,7 @@ export function ReportScreen({ report, suites, testScriptsRevision, onViewFailin
   const [capability, setCapability] = useState<CapabilitySummary | null>(null);
   const [capabilityError, setCapabilityError] = useState<string | null>(null);
   const [capabilityLoading, setCapabilityLoading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!report) {
@@ -42,7 +43,7 @@ export function ReportScreen({ report, suites, testScriptsRevision, onViewFailin
       .then((summary) => setCapability(summary))
       .catch((error: unknown) => {
         if (!abort.signal.aborted) {
-          setCapabilityError(describeError(error));
+          setCapabilityError(describeError(error, 'Could not load declared capabilities.'));
         }
       })
       .finally(() => {
@@ -67,6 +68,15 @@ export function ReportScreen({ report, suites, testScriptsRevision, onViewFailin
   const suiteGroups = groupBySuite(report);
   const coverageRows = mergeCoverage(capability, observedCoverage(report));
 
+  const handleDownloadTestReport = () => {
+    try {
+      setDownloadError(null);
+      downloadTestReportBundle(report, testScriptsRevision);
+    } catch (error) {
+      setDownloadError(describeError(error, 'Could not build the TestReport download.'));
+    }
+  };
+
   return (
     <div className="report-screen">
       <div className="report-header">
@@ -84,17 +94,15 @@ export function ReportScreen({ report, suites, testScriptsRevision, onViewFailin
         <span className="report-header__meta">
           {report.target} · {report.fhirVersion} · {formatDuration(report.duration_ms)}
         </span>
-        <button
-          type="button"
-          className="report-header__download"
-          onClick={() => downloadTestReportBundle(report, testScriptsRevision)}
-        >
+        <button type="button" className="report-header__download" onClick={handleDownloadTestReport}>
           Download TestReport
         </button>
         <button type="button" className="report-header__view-failing" onClick={onViewFailing}>
           View {tallies.fail} failing →
         </button>
       </div>
+
+      {downloadError ? <p className="report-panel__status report-panel__status--error">{downloadError}</p> : null}
 
       <section className="report-panel" aria-label="Suites">
         <span className="report-panel__title">Suites</span>
@@ -140,12 +148,12 @@ export function ReportScreen({ report, suites, testScriptsRevision, onViewFailin
   );
 }
 
-function describeError(error: unknown): string {
+function describeError(error: unknown, fallback: string): string {
   if (error instanceof ApiError) {
     return error.message;
   }
   if (error instanceof Error) {
     return error.message;
   }
-  return 'Could not load declared capabilities.';
+  return fallback;
 }

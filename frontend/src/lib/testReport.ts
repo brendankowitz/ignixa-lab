@@ -20,19 +20,20 @@ interface TestReportActionDetail {
   message?: string;
 }
 
-interface TestReportAction {
-  operation?: TestReportActionDetail;
-  assert?: TestReportActionDetail;
-}
+/** Exactly one of `operation`/`assert` — FHIR requires a setup/test/teardown action to contain one or the other, never both or neither. */
+type TestReportAction =
+  | { operation: TestReportActionDetail; assert?: never }
+  | { operation?: never; assert: TestReportActionDetail };
 
 interface TestReportTest {
   name: string;
   action: TestReportAction[];
 }
 
+/** `uri` is 1..1 (required) per the FHIR R4 TestReport.participant definition, not optional. */
 interface TestReportParticipant {
   type: 'test-engine' | 'client' | 'server';
-  uri?: string;
+  uri: string;
   display?: string;
 }
 
@@ -115,7 +116,7 @@ export function buildTestReportBundle(report: ConformanceReport, testScriptsRevi
       issued: report.startedAt,
       participant: [
         { type: 'server', uri: report.target },
-        { type: 'test-engine', display: report.impl },
+        { type: 'test-engine', uri: `urn:ignixa-lab:test-engine:${encodeURIComponent(report.impl)}`, display: report.impl },
       ],
       ...(setupActions.length > 0 ? { setup: { action: setupActions } } : {}),
       test: tests,
@@ -144,6 +145,9 @@ export function downloadTestReportBundle(report: ConformanceReport, testScriptsR
     anchor.download = `conformance-testreport-${report.startedAt.replace(/[^0-9a-z]+/gi, '-')}.json`;
     anchor.click();
   } finally {
-    URL.revokeObjectURL(url);
+    // Deferred rather than revoked immediately: some browsers process the download
+    // asynchronously, and revoking the blob URL before that completes can silently
+    // cancel it with no error visible to this code or the user.
+    setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 }
