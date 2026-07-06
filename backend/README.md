@@ -41,8 +41,10 @@ src/Ignixa.Lab.Functions/
   Program.cs       Host + DI wiring
 
 src/Ignixa.Lab.Suites/
-  testscripts/     The 12 canonical TestScript suites, packed into the
-                   IgnixaLab.TestScript.Suites content package (ADR-2607)
+  testscripts/     The 76 canonical TestScript suites (Bundles/CRUD/Foundation/
+                   Microsoft/Operations/Regression/Search/Subscriptions/Validation),
+                   packed into the IgnixaLab.TestScript.Suites content
+                   package (ADR-2607)
 
 test/Ignixa.Lab.Functions.Tests/
   Execution/       TargetUrlValidatorTests, ConformanceReportMapperTests,
@@ -147,13 +149,58 @@ Phase 2 shared-store counter, which is not implemented here.
 
 ## Suites
 
-The 12 canonical FHIR TestScript suites (`backend/src/Ignixa.Lab.Suites/testscripts/{Bundles,CRUD,Search,Validation}/*.json`)
+The 76 canonical FHIR TestScript suites (`backend/src/Ignixa.Lab.Suites/testscripts/{Bundles,CRUD,Foundation,Microsoft,Operations,Regression,Search,Subscriptions,Validation}/*.json`)
 are packed into a local NuGet content package, `IgnixaLab.TestScript.Suites`, by
 the `Ignixa.Lab.Suites` project and consumed by `Ignixa.Lab.Functions` (and
 its test project) via `PackageReference`. This is an interim step —
 see [ADR-2607](../docs/features/testscript-suite-sourcing/adr-2607-suite-sourcing.md)
 — for the upstream `ignixa-fhir` suites artifact; the `PackageReference`
 will be repointed there once it ships, and the local feed retired.
+
+Most suites map to the e2e test coverage of the Microsoft FHIR Server
+(`microsoft/fhir-server`), organized by category (the immediate subfolder
+name under `testscripts/` — no code change needed for discovery, see
+`SuiteCatalog`): `Bundles` (batch/transaction), `CRUD` (create/read/vread/
+update/delete/history/patch/conditional operations), `Foundation`
+(metadata/health/CORS/custom headers), `Operations` (FHIR $-operations —
+$export, $everything, $expand, $docref, $member-match), `Regression`
+(exception handling, version parity, reference resolution), `Search`
+(search-parameter types and modifiers), and `Validation` (`$validate`).
+Suites representing genuinely non-standard, Microsoft FHIR Server-proprietary
+operations/modifiers/headers are prefixed `ms-` in their filename and live in
+their own `Microsoft` category — kept separate from the spec-conformance
+categories above so they're easy to select or exclude as a group when
+testing a non-Microsoft server.
+
+Two additions extend coverage beyond the Microsoft FHIR Server baseline,
+sourced from a survey of other open-source FHIR server test suites
+(fhir-candle, HAPI FHIR, LinuxForHealth FHIR, Health Samurai, Helios):
+`Operations/lookup-operation.json`, `Operations/validate-code-operation.json`,
+`Operations/subsumes-operation.json`, and `Operations/translate-operation.json`
+cover the HL7-spec terminology operations (`$lookup`, `$validate-code`,
+`$subsumes`, ConceptMap `$translate`) modeled on HAPI FHIR's terminology test
+coverage — none of these are Microsoft-proprietary, so none are `ms`-prefixed.
+The new `Subscriptions` category (`Subscriptions/basic.json`) covers basic
+classic (R4/R4B, criteria-based) Subscription create/read/search/update/delete
+round-tripping, inspired by fhir-candle's and LinuxForHealth's Subscriptions
+coverage. Both additions are gated with `requiresCapability` (see
+[Capability-aware test gating](#capability-aware-test-gating) below) since
+neither terminology operations nor the Subscription resource itself are
+universally implemented. Full async notification delivery and R5's
+topic-based Subscription model are deliberately **not** covered here — see
+[ADR-2609](../docs/features/subscriptions-test-coverage/adr-2609-subscriptions-test-coverage.md).
+
+**Deliberately not covered** — these areas of the upstream e2e suite need
+infrastructure a black-box HTTP TestScript run can't provide, so no suites
+were authored for them: `Rest/Audit/*` (requires inspecting a custom trace
+logger), `Rest/Metric/*` (requires a custom in-proc metric handler),
+`BasicAuthTests`/`TokenIntrospectionTests` (need multiple OAuth identities —
+`RunRequest` has no per-request auth support), `Microsoft.Health.Fhir.
+Shared.Tests.Smart` (SMART-on-FHIR OAuth proxy infrastructure),
+`Microsoft.Health.Fhir.Shared.Tests.Crucible` (integration with the external
+Crucible tool), `CreateAllFhirResourcesTests` (enumerates every resource
+type per FHIR version — too large/low-signal for a curated suite), and
+`*.Tests.E2E.CLI` (tooling only, no tests).
 
 Because restore needs the package to already exist, it must be packed before
 every restore/build/test:

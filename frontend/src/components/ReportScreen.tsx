@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ApiError, getCapability } from '../api/client';
 import { countByStatus, formatDuration, groupBySuite, passRate, rollupCounts } from '../lib/conformance';
 import { mergeCoverage, observedCoverage } from '../lib/coverage';
+import { downloadTestReportBundle } from '../lib/testReport';
 import type { CapabilitySummary } from '../types/capability';
 import type { ConformanceReport, SuiteDescriptor } from '../types/conformance';
 import { CoverageMap } from './CoverageMap';
@@ -10,6 +11,8 @@ import { CoverageMap } from './CoverageMap';
 export interface ReportScreenProps {
   report: ConformanceReport | null;
   suites: SuiteDescriptor[];
+  /** Commit the bundled testscripts came from, used to link each downloaded TestReport's `testScript` back to its GitHub source. */
+  testScriptsRevision: string | null;
   onViewFailing: () => void;
 }
 
@@ -20,12 +23,13 @@ export interface ReportScreenProps {
  * `GET /api/capability` (e.g. the target exposes no `/metadata`) still
  * renders observed-only coverage rather than blocking the screen.
  */
-export function ReportScreen({ report, suites, onViewFailing }: ReportScreenProps) {
+export function ReportScreen({ report, suites, testScriptsRevision, onViewFailing }: ReportScreenProps) {
   const suiteById = useMemo(() => new Map(suites.map((suite) => [suite.id, suite])), [suites]);
 
   const [capability, setCapability] = useState<CapabilitySummary | null>(null);
   const [capabilityError, setCapabilityError] = useState<string | null>(null);
   const [capabilityLoading, setCapabilityLoading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!report) {
@@ -39,7 +43,7 @@ export function ReportScreen({ report, suites, onViewFailing }: ReportScreenProp
       .then((summary) => setCapability(summary))
       .catch((error: unknown) => {
         if (!abort.signal.aborted) {
-          setCapabilityError(describeError(error));
+          setCapabilityError(describeError(error, 'Could not load declared capabilities.'));
         }
       })
       .finally(() => {
@@ -64,6 +68,15 @@ export function ReportScreen({ report, suites, onViewFailing }: ReportScreenProp
   const suiteGroups = groupBySuite(report);
   const coverageRows = mergeCoverage(capability, observedCoverage(report));
 
+  const handleDownloadTestReport = () => {
+    try {
+      setDownloadError(null);
+      downloadTestReportBundle(report, testScriptsRevision);
+    } catch (error) {
+      setDownloadError(describeError(error, 'Could not build the TestReport download.'));
+    }
+  };
+
   return (
     <div className="report-screen">
       <div className="report-header">
@@ -81,10 +94,15 @@ export function ReportScreen({ report, suites, onViewFailing }: ReportScreenProp
         <span className="report-header__meta">
           {report.target} · {report.fhirVersion} · {formatDuration(report.duration_ms)}
         </span>
+        <button type="button" className="report-header__download" onClick={handleDownloadTestReport}>
+          Download TestReport
+        </button>
         <button type="button" className="report-header__view-failing" onClick={onViewFailing}>
           View {tallies.fail} failing →
         </button>
       </div>
+
+      {downloadError ? <p className="report-panel__status report-panel__status--error">{downloadError}</p> : null}
 
       <section className="report-panel" aria-label="Suites">
         <span className="report-panel__title">Suites</span>
@@ -130,12 +148,12 @@ export function ReportScreen({ report, suites, onViewFailing }: ReportScreenProp
   );
 }
 
-function describeError(error: unknown): string {
+function describeError(error: unknown, fallback: string): string {
   if (error instanceof ApiError) {
     return error.message;
   }
   if (error instanceof Error) {
     return error.message;
   }
-  return 'Could not load declared capabilities.';
+  return fallback;
 }

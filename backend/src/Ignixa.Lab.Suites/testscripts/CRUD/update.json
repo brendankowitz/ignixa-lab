@@ -1,0 +1,246 @@
+{
+  "resourceType": "TestScript",
+  "name": "CRUD/update",
+  "description": "Instance update (PUT) conformance tests: version bump on content change vs. no bump on no-op updates, malformed Content-Type/If-Match rejection, client-supplied-id upsert-create, URL/body id-mismatch and missing-id rejection, and conditional-reference resolution via identifier (from UpdateTests).",
+  "status": "active",
+  "fixture": [
+    {
+      "id": "patient-v1",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Patient",
+        "id": "ignixa-update-content",
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/test", "value": "UPDATE-CONTENT-1" }],
+        "name": [{ "family": "UpdateContent", "given": ["VersionA"] }],
+        "gender": "male",
+        "text": { "status": "generated", "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">Version A</div>" }
+      }
+    },
+    {
+      "id": "patient-v2",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Patient",
+        "id": "ignixa-update-content",
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/test", "value": "UPDATE-CONTENT-1" }],
+        "name": [{ "family": "UpdateContent", "given": ["VersionB"] }],
+        "gender": "female",
+        "text": { "status": "generated", "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">Version B</div>" }
+      }
+    },
+    {
+      "id": "patient-mismatch-source",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Patient",
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/test", "value": "UPDATE-MISMATCH-1" }],
+        "name": [{ "family": "UpdateMismatch", "given": ["Case"] }]
+      }
+    },
+    {
+      "id": "patient-new-upsert",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Patient",
+        "id": "ignixa-update-newpat",
+        "meta": { "versionId": "9999", "lastUpdated": "2000-01-01T00:00:00Z" },
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/test", "value": "UPDATE-NEWPAT-1" }],
+        "name": [{ "family": "UpdateNewpat", "given": ["Upsert"] }]
+      }
+    },
+    {
+      "id": "patient-noid",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Patient",
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/test", "value": "UPDATE-NOID-1" }],
+        "name": [{ "family": "UpdateNoid", "given": ["Missing"] }]
+      }
+    },
+    {
+      "id": "practitioner-gp",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "ignixa-update-prac1",
+        "identifier": [{ "system": "http://hl7.org/fhir/sid/us-npi", "value": "ignixa-update-npi-1" }],
+        "name": [{ "family": "UpdatePractitioner", "given": ["Referenced"] }]
+      }
+    },
+    {
+      "id": "patient-with-gp",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Patient",
+        "id": "ignixa-update-patgp1",
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/test", "value": "UPDATE-GP-1" }],
+        "name": [{ "family": "UpdateGp", "given": ["Referencing"] }],
+        "generalPractitioner": [{ "reference": "Practitioner?identifier=http://hl7.org/fhir/sid/us-npi|ignixa-update-npi-1" }]
+      }
+    }
+  ],
+  "variable": [
+    { "name": "createdVersionId", "sourceId": "setup-create-response", "path": "meta.versionId", "description": "versionId assigned to ignixa-update-content when it was first PUT in setup" },
+    { "name": "versionAfterContentChange", "sourceId": "content-update-response", "path": "meta.versionId", "description": "versionId assigned after the content-changing update in the first test; used to prove no-op updates keep this same version and as the correct If-Match precondition later" },
+    { "name": "mismatchPatientId", "sourceId": "mismatch-create-response", "path": "id", "description": "server-assigned id of the Patient created in setup for the URL/body id mismatch test" },
+    { "name": "invalidETag", "defaultValue": "\"invalidVersion\"", "description": "A malformed If-Match value. Parametrized by the http://ignixa.io/testscript/parametrize engine extension — engines that do not support the extension execute the test once using this defaultValue." }
+  ],
+  "setup": {
+    "action": [
+      { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-update-content", "sourceId": "patient-v1", "responseId": "setup-create-response", "description": "PUT Patient/ignixa-update-content (Version A) to establish the resource for the content-change/no-op/etag tests" } },
+      { "operation": { "type": { "code": "create" }, "resource": "Patient", "sourceId": "patient-mismatch-source", "responseId": "mismatch-create-response", "description": "POST a Patient with a server-assigned id, used later to demonstrate a URL/body id mismatch" } },
+      { "operation": { "type": { "code": "update" }, "url": "Practitioner/ignixa-update-prac1", "sourceId": "practitioner-gp", "responseId": "setup-prac-response", "description": "PUT Practitioner/ignixa-update-prac1, referenced later via a conditional (identifier) reference" } }
+    ]
+  },
+  "test": [
+    {
+      "name": "update with changed content assigns a new version and preserves the id",
+      "description": "PUT Patient/ignixa-update-content with different content (Version B) must return 200 OK, keep the same id, and assign a new meta.versionId different from the one assigned at setup.",
+      "action": [
+        { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-update-content", "sourceId": "patient-v2", "responseId": "content-update-response", "description": "PUT Patient/ignixa-update-content with Version B content" } },
+        { "assert": { "description": "Update must return HTTP 200 OK", "response": "okay" } },
+        { "assert": { "description": "Response body must be a Patient", "resource": "Patient" } },
+        { "assert": { "description": "id must be unchanged", "expression": "Patient.id", "value": "ignixa-update-content", "operator": "equals" } },
+        { "assert": { "description": "meta.versionId must differ from the version assigned at setup", "expression": "Patient.meta.versionId", "value": "${createdVersionId}", "operator": "notEquals" } },
+        { "assert": { "description": "ETag header must be present", "headerField": "ETag", "operator": "notEmpty" } }
+      ]
+    },
+    {
+      "name": "repeating an identical update does not create a new version",
+      "description": "PUT Patient/ignixa-update-content again with the exact same content (Version B) must return 200 OK and must NOT bump meta.versionId, since there is no actual data change.",
+      "action": [
+        { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-update-content", "sourceId": "patient-v2", "responseId": "noop-update-response", "description": "PUT Patient/ignixa-update-content again with the identical Version B content" } },
+        { "assert": { "description": "Update must return HTTP 200 OK", "response": "okay" } },
+        { "assert": { "description": "meta.versionId must be unchanged (no data change means no new version)", "expression": "Patient.meta.versionId", "value": "${versionAfterContentChange}", "operator": "equals" } }
+      ]
+    },
+    {
+      "name": "update with a malformed Content-Type header is rejected",
+      "description": "PUT Patient/ignixa-update-content with an unparseable Content-Type ('Jibberish') must return 400 Bad Request rather than attempting to parse the body.",
+      "action": [
+        { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-update-content", "sourceId": "patient-v2", "contentType": "Jibberish", "responseId": "bad-contenttype-response", "description": "PUT Patient/ignixa-update-content with Content-Type: Jibberish" } },
+        { "assert": { "description": "Server must return 400 Bad Request", "response": "bad" } }
+      ]
+    },
+    {
+      "name": "update with a client-supplied id for a non-existent resource performs an upsert-create",
+      "description": "PUT Patient/ignixa-update-newpat, which does not yet exist, must return 201 Created, assign the client-supplied id, and override the client-supplied meta.versionId ('9999') and lastUpdated with server-assigned values (FHIR R4 upsert-create semantics).",
+      "action": [
+        { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-update-newpat", "sourceId": "patient-new-upsert", "responseId": "upsert-response", "description": "PUT Patient/ignixa-update-newpat with client-supplied meta.versionId=9999" } },
+        { "assert": { "description": "Server must return 201 Created", "response": "created" } },
+        { "assert": { "description": "Response body must be a Patient", "resource": "Patient" } },
+        { "assert": { "description": "id must match the client-supplied id", "expression": "Patient.id", "value": "ignixa-update-newpat", "operator": "equals" } },
+        { "assert": { "description": "Server must have assigned a meta.versionId", "expression": "Patient.meta.versionId.exists()" } },
+        { "assert": { "description": "Server must override the client-supplied meta.versionId of '9999'", "expression": "Patient.meta.versionId", "value": "9999", "operator": "notEquals" } },
+        { "assert": { "description": "ETag header must be present", "headerField": "ETag", "operator": "notEmpty" } },
+        { "assert": { "description": "Location header must be present", "headerField": "Location", "operator": "notEmpty" } },
+        { "assert": { "description": "Last-Modified header must be present", "headerField": "Last-Modified", "operator": "notEmpty" } }
+      ]
+    },
+    {
+      "name": "update with a body containing no id returns 400",
+      "description": "PUT Patient/ignixa-update-noid-target with a body that has no 'id' element at all must return 400 Bad Request (FHIR R4 requires the resource id to match the URL id).",
+      "action": [
+        { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-update-noid-target", "sourceId": "patient-noid", "responseId": "noid-response", "description": "PUT Patient/ignixa-update-noid-target with a body lacking 'id'" } },
+        { "assert": { "description": "Server must return 400 Bad Request", "response": "bad" } }
+      ]
+    },
+    {
+      "name": "update to a URL id that disagrees with the body id returns 400",
+      "description": "Read back the Patient created in setup, then PUT that body (which has its own id) to a different URL id. The server must reject this with 400 Bad Request because the logical id in the URL and the body disagree (FHIR R4 §2.1.0.6).",
+      "action": [
+        { "operation": { "type": { "code": "read" }, "url": "Patient/${mismatchPatientId}", "responseId": "mismatch-read-response", "description": "Read back the Patient created in setup to use its body (with its own id) as the update payload" } },
+        { "assert": { "description": "Read must return HTTP 200", "response": "okay" } },
+        { "operation": { "type": { "code": "update" }, "url": "Patient/${mismatchPatientId}-notthesame", "sourceId": "mismatch-read-response", "responseId": "mismatch-update-response", "description": "PUT the read-back body (id=${mismatchPatientId}) to a deliberately different URL id" } },
+        { "assert": { "description": "Server must return 400 Bad Request when URL id and body id disagree", "response": "bad" } }
+      ]
+    },
+    {
+      "name": "update with a correct If-Match version precondition succeeds",
+      "description": "PUT Patient/ignixa-update-content with an If-Match header matching the resource's current meta.versionId must succeed with 200 OK.",
+      "action": [
+        {
+          "operation": {
+            "type": { "code": "update" },
+            "url": "Patient/ignixa-update-content",
+            "sourceId": "patient-v2",
+            "responseId": "etag-ok-response",
+            "description": "PUT Patient/ignixa-update-content with If-Match matching the current versionId",
+            "requestHeader": [{ "field": "If-Match", "value": "W/\"${versionAfterContentChange}\"" }]
+          }
+        },
+        { "assert": { "description": "Update must return HTTP 200 OK", "response": "okay" } }
+      ]
+    },
+    {
+      "name": "update with a malformed If-Match header value returns 400",
+      "description": "PUT Patient/ignixa-update-content with an If-Match value that is not a well-formed weak ETag (a bare quoted string, a negative number, or zero) must return 400 Bad Request.",
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/parametrize",
+          "extension": [
+            { "url": "variable", "valueString": "invalidETag" },
+            { "url": "values", "valueString": "\"invalidVersion\",\"-1\",\"0\"" }
+          ]
+        }
+      ],
+      "action": [
+        {
+          "operation": {
+            "type": { "code": "update" },
+            "url": "Patient/ignixa-update-content",
+            "sourceId": "patient-v2",
+            "responseId": "invalid-etag-response",
+            "description": "PUT Patient/ignixa-update-content with a malformed If-Match value",
+            "requestHeader": [{ "field": "If-Match", "value": "${invalidETag}" }]
+          }
+        },
+        { "assert": { "description": "Server must return 400 Bad Request", "response": "bad" } }
+      ]
+    },
+    {
+      "name": "update with a well-formed but stale If-Match version returns 412 Precondition Failed",
+      "description": "PUT Patient/ignixa-update-content with an If-Match version number that is well-formed but never assigned to the resource must return 412 Precondition Failed.",
+      "action": [
+        {
+          "operation": {
+            "type": { "code": "update" },
+            "url": "Patient/ignixa-update-content",
+            "sourceId": "patient-v2",
+            "responseId": "stale-etag-response",
+            "description": "PUT Patient/ignixa-update-content with If-Match: W/\"999999\" (never the current version)",
+            "requestHeader": [{ "field": "If-Match", "value": "W/\"999999\"" }]
+          }
+        },
+        { "assert": { "description": "Server must return 412 Precondition Failed", "response": "preconditionFailed" } }
+      ]
+    },
+    {
+      "name": "conditional reference by identifier on generalPractitioner resolves correctly",
+      "description": "PUT a Patient whose generalPractitioner reference is a conditional (identifier-based) search reference to the Practitioner created in setup. The server must resolve it to the concrete Practitioner/ignixa-update-prac1 reference.",
+      "action": [
+        { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-update-patgp1", "sourceId": "patient-with-gp", "responseId": "gp-response", "description": "PUT Patient/ignixa-update-patgp1 with a conditional generalPractitioner reference" } },
+        { "assert": { "description": "Must return a 2xx success status", "response": "okay" } },
+        { "assert": { "description": "Response body must be a Patient", "resource": "Patient" } },
+        { "assert": { "description": "generalPractitioner reference must resolve to the concrete Practitioner reference", "expression": "Patient.generalPractitioner.reference", "value": "Practitioner/ignixa-update-prac1", "operator": "equals" } }
+      ]
+    }
+  ],
+  "teardown": {
+    "action": [
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/ignixa-update-content", "description": "Teardown: delete the content-change/etag test Patient" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/ignixa-update-newpat", "description": "Teardown: delete the upsert-create Patient" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/${mismatchPatientId}", "description": "Teardown: delete the mismatch-test Patient" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/ignixa-update-patgp1", "description": "Teardown: delete the generalPractitioner-reference Patient" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Practitioner/ignixa-update-prac1", "description": "Teardown: delete the referenced Practitioner" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/ignixa-update-noid-target", "description": "Teardown: defensively attempt to delete the no-id-body target in case a lenient server created it (expected to already be absent)" } }
+    ]
+  }
+}

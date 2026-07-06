@@ -75,6 +75,16 @@ export function SetupScreen({ config, suites, suitesLoading, suitesError, canSta
               spellCheck={false}
               autoComplete="off"
             />
+            <button
+              type="button"
+              className="endpoint-input__run"
+              disabled={!canStart}
+              title="Start run"
+              aria-label="Start run"
+              onClick={onStart}
+            >
+              ▶
+            </button>
           </div>
         </div>
 

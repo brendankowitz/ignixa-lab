@@ -87,16 +87,42 @@ export function SuiteTree({
   );
 }
 
-function rowGlyph(status: SuiteRunStatus, rolled: RolledUpCounts | null): string {
-  if (status === 'queued') return '·';
-  if (status === 'error' || (rolled && rolled.fail > 0)) return '✕';
-  return '✓';
+type RowTone = 'neutral' | 'pass' | 'partial' | 'fail' | 'skip';
+
+/** Classifies a suite's outcome for the tree icon/tone, distinguishing an
+ * all-skipped suite (nothing ran) and a partial suite (some passed, some
+ * failed) from a clean pass or a total failure. */
+function rowOutcome(status: SuiteRunStatus, rolled: RolledUpCounts | null): RowTone {
+  if (status === 'queued') return 'neutral';
+  if (status === 'error' || !rolled) return 'fail';
+  if (rolled.pass === 0 && rolled.fail === 0 && rolled.skipped > 0) return 'skip';
+  if (rolled.pass > 0 && rolled.fail > 0) return 'partial';
+  if (rolled.fail > 0) return 'fail';
+  return 'pass';
 }
 
-function rowTone(status: SuiteRunStatus, rolled: RolledUpCounts | null): 'neutral' | 'pass' | 'fail' {
-  if (status === 'queued') return 'neutral';
-  if (status === 'error' || (rolled && rolled.fail > 0)) return 'fail';
-  return 'pass';
+function rowGlyph(status: SuiteRunStatus, rolled: RolledUpCounts | null): string {
+  const outcome = rowOutcome(status, rolled);
+  switch (outcome) {
+    case 'neutral':
+      return '·';
+    case 'skip':
+      return '○';
+    case 'partial':
+      return '◐';
+    case 'fail':
+      return '✕';
+    case 'pass':
+      return '✓';
+    default:
+      // Exhaustiveness guard: a compile error here means a new RowTone was added
+      // without teaching this switch its glyph, instead of silently rendering '✓'.
+      return ((_: never) => '✓')(outcome);
+  }
+}
+
+function rowTone(status: SuiteRunStatus, rolled: RolledUpCounts | null): RowTone {
+  return rowOutcome(status, rolled);
 }
 
 function rowCountLabel(status: SuiteRunStatus, rolled: RolledUpCounts | null): string {
