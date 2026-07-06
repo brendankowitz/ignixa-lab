@@ -1,8 +1,14 @@
 {
   "resourceType": "TestScript",
   "name": "Operations/everything-operation",
-  "description": "Patient $everything conformance tests: full compartment fetch, cross-patient isolation, _type/_since filtering, and unsupported-parameter handling (from EverythingOperationTests). Condition substitutes for Encounter as a version-stable compartment member; Device/DeviceAssociation compartment membership is not covered since its shape varies by FHIR version.",
+  "description": "Patient $everything conformance tests: full compartment fetch, cross-patient isolation, _type/_since filtering, and unsupported-parameter handling (from EverythingOperationTests). Condition substitutes for Encounter as a version-stable compartment member; Device/DeviceAssociation compartment membership is not covered since its shape varies by FHIR version. Gated on the target advertising Patient/$everything.",
   "status": "active",
+  "extension": [
+    {
+      "url": "http://ignixa.io/testscript/requiresCapability",
+      "valueString": "rest.resource.where(type='Patient').operation.where(name='everything').exists()"
+    }
+  ],
   "fixture": [
     {
       "id": "org",
