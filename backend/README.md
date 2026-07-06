@@ -41,7 +41,7 @@ src/Ignixa.Lab.Functions/
   Program.cs       Host + DI wiring
 
 src/Ignixa.Lab.Suites/
-  testscripts/     The 76 canonical TestScript suites (Bundles/CRUD/Foundation/
+  testscripts/     The 78 canonical TestScript suites (Bundles/CRUD/Foundation/
                    Microsoft/Operations/Regression/Search/Subscriptions/Validation),
                    packed into the IgnixaLab.TestScript.Suites content
                    package (ADR-2607)
@@ -149,7 +149,7 @@ Phase 2 shared-store counter, which is not implemented here.
 
 ## Suites
 
-The 76 canonical FHIR TestScript suites (`backend/src/Ignixa.Lab.Suites/testscripts/{Bundles,CRUD,Foundation,Microsoft,Operations,Regression,Search,Subscriptions,Validation}/*.json`)
+The 78 canonical FHIR TestScript suites (`backend/src/Ignixa.Lab.Suites/testscripts/{Bundles,CRUD,Foundation,Microsoft,Operations,Regression,Search,Subscriptions,Validation}/*.json`)
 are packed into a local NuGet content package, `IgnixaLab.TestScript.Suites`, by
 the `Ignixa.Lab.Suites` project and consumed by `Ignixa.Lab.Functions` (and
 its test project) via `PackageReference`. This is an interim step —
