@@ -64,3 +64,49 @@ pre {
     opacity: 0.35;
   }
 }
+
+/*
+ * Shared "app switcher" (tier 1 of the top bar's two-tier nav: which app —
+ * Conformance or Benches — vs. the app-local tabs in tier 2) plus the
+ * divider between the two tiers. Lives here rather than in App.css because
+ * it must render identically for both the CSS-class-based conformance app
+ * and the inline-style benches app. Per the Ignixa Expression Benches
+ * design (claude.ai Design project 8903721c-aa03-4d16-8e8d-6ccad7d9b096).
+ */
+.ix-app-switch {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+}
+
+.ix-app-switch__item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text3);
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+a.ix-app-switch__item:hover {
+  background: var(--inset);
+  color: var(--text2);
+}
+
+.ix-app-switch__item--active {
+  font-weight: 600;
+  background: var(--chip-vio-bg);
+  color: var(--accent);
+}
+
+.ix-top-divider {
+  width: 1px;
+  height: 22px;
+  background: var(--border2);
+}

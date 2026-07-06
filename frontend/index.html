@@ -46,6 +46,27 @@
       .ix-nav-link:hover {
         color: #e7e4ec;
       }
+      .ix-switch {
+        display: flex;
+        gap: 3px;
+        padding: 3px;
+        border: 1px solid rgba(231, 228, 236, 0.14);
+        border-radius: 10px;
+      }
+      .ix-switch-item {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 6px 12px;
+        border-radius: 7px;
+        font-size: 12.5px;
+        font-weight: 500;
+        color: #c9c3d4;
+      }
+      .ix-switch-item:hover {
+        background: #241f2d;
+        color: #e7e4ec;
+      }
       .ix-cta {
         padding: 8px 15px;
         border-radius: 8px;
@@ -101,9 +122,7 @@
       style="display:flex;align-items:center;gap:14px;padding:15px 26px;border-bottom:1px solid rgba(231,228,236,.08);background:#1a1620"
     >
       <a href="./" style="display:flex;align-items:center;gap:14px" aria-label="Ignixa home">
-        <div style="width:34px;height:34px;border-radius:8px;overflow:hidden;background:#241f2d;flex:none;display:flex;align-items:center;justify-content:center">
-          <img src="/ignixa-logo.png" alt="Ignixa" style="width:100%;height:100%;object-fit:contain" />
-        </div>
+        <div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(90deg,#a855f7,#d6336c);flex:none" aria-hidden="true"></div>
         <div style="display:flex;flex-direction:column">
           <span style="font-size:14.5px;font-weight:700;letter-spacing:-.01em">Ignixa</span>
           <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.16em;color:#8b8494;text-transform:uppercase"
@@ -111,9 +130,12 @@
           >
         </div>
       </a>
+      <div class="ix-switch">
+        <a class="ix-switch-item" href="./conformance.html"><span style="font-size:9px">▶</span>Conformance</a>
+        <a class="ix-switch-item" href="./lab.html"><span style="font-size:11px">ƒ</span>Benches</a>
+      </div>
       <div style="flex:1"></div>
       <a class="ix-nav-link" href="https://github.com/brendankowitz/ignixa-lab">GitHub</a>
-      <a class="ix-cta" href="./conformance.html">Open Conformance</a>
     </div>
 
     <!-- hero -->

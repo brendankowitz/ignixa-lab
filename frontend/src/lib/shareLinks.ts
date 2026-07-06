@@ -208,7 +208,7 @@ function fakesStateFromRecord(record: Record<string, unknown>): FakesShareState 
 function populationStateFromRecord(record: Record<string, unknown>): NonNullable<FakesShareState['population']> {
   return {
     source: typeof record.source === 'string' ? record.source : undefined,
-    count: typeof record.count === 'number' && Number.isInteger(record.count) && record.count >= 1 && record.count <= 100 ? record.count : undefined,
+    count: typeof record.count === 'number' && Number.isInteger(record.count) && record.count >= 1 && record.count <= 10 ? record.count : undefined,
     format: POPULATION_FORMATS.includes(record.format as NonNullable<NonNullable<FakesShareState['population']>['format']>)
       ? (record.format as NonNullable<NonNullable<FakesShareState['population']>['format']>)
       : undefined,

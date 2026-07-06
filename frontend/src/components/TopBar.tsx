@@ -50,10 +50,20 @@ export function TopBar({
       <a href="./" className="top-bar__brand" aria-label="Ignixa home">
         <div className="top-bar__logo" aria-hidden="true" />
         <div className="top-bar__brand-text">
-          <span className="top-bar__title">Conformance Testing</span>
-          <span className="top-bar__subtitle">FHIR TestScript</span>
+          <span className="top-bar__title">Ignixa</span>
+          <span className="top-bar__subtitle">FHIR toolkit</span>
         </div>
       </a>
+
+      <div className="ix-app-switch">
+        <span className="ix-app-switch__item ix-app-switch__item--active">
+          <span style={{ fontSize: 9 }}>▶</span>Conformance
+        </span>
+        <a href="./lab.html" className="ix-app-switch__item">
+          <span style={{ fontSize: 11 }}>ƒ</span>Benches
+        </a>
+      </div>
+      <div className="ix-top-divider" />
 
       <nav className="top-bar__nav" aria-label="Screens">
         {TABS.map((tab) => (
@@ -67,10 +77,6 @@ export function TopBar({
           </button>
         ))}
       </nav>
-
-      <a href="./lab.html" className="top-bar__nav-item top-bar__nav-item--plain">
-        Expression Benches ↗
-      </a>
 
       <div className="top-bar__spacer" />
 

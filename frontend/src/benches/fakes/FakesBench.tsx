@@ -462,12 +462,12 @@ function PopulationPanel({
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
           <span style={{ ...sectionLabelStyle, flex: 1 }}>Patient count</span>
           <span style={{ fontFamily: monoFont, fontSize: 19, fontWeight: 600, color: 'var(--accent)', lineHeight: 1 }}>{count}</span>
-          <span style={{ fontSize: 11, color: 'var(--text4)' }}>/ 100 max</span>
+          <span style={{ fontSize: 11, color: 'var(--text4)' }}>/ 10 max</span>
         </div>
         <input
           type="range"
           min={1}
-          max={100}
+          max={10}
           value={count}
           onChange={(event) => setCount(Number(event.target.value))}
           style={{ width: '100%', accentColor: 'var(--accent)' }}
