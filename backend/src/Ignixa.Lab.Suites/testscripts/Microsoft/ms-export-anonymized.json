@@ -1,8 +1,14 @@
 {
   "resourceType": "TestScript",
-  "name": "Operations/export-anonymized",
-  "description": "Anonymized $export conformance tests: kick-off with valid anonymization params (202 + Content-Location) at system/Patient/Group scope, and synchronous 400s for missing/conflicting anonymization params. Scenarios requiring job completion and redacted-blob content verification are not covered (from AnonymizedExportTests, AnonymizedExportUsingAcrTests).",
+  "name": "Microsoft/ms-export-anonymized",
+  "description": "Anonymized $export conformance tests: kick-off with valid anonymization params (202 + Content-Location) at system/Patient/Group scope, and synchronous 400s for missing/conflicting anonymization params. Scenarios requiring job completion and redacted-blob content verification are not covered (from AnonymizedExportTests, AnonymizedExportUsingAcrTests). The _anonymizationConfig* params are an Azure Health Data Services extension of $export, not base HL7 Bulk Data — hence the Microsoft category. Gated on the target advertising the system-level $export operation.",
   "status": "active",
+  "extension": [
+    {
+      "url": "http://ignixa.io/testscript/requiresCapability",
+      "valueString": "rest.operation.where(name='export').exists()"
+    }
+  ],
   "variable": [
     { "name": "systemAnonExportLocation", "sourceId": "system-anon-export-kickoff", "headerField": "Content-Location", "description": "Content-Location returned by the system-level anonymized export kickoff" },
     { "name": "patientAnonExportLocation", "sourceId": "patient-anon-export-kickoff", "headerField": "Content-Location", "description": "Content-Location returned by the Patient/$export anonymized export kickoff" },
