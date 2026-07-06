@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Microsoft/ms-convert-data",
-  "description": "$convert-data operation conformance tests (HL7v2/CCDA-to-FHIR conversion via Liquid templates), covering request/response shape, validation-failure status codes, and a custom (non-default) template registry reference (from ConvertDataTests and CustomConvertDataTests). $convert-data may be disabled or unconfigured on non-Microsoft-FHIR-Server targets, so all assertions here are warningOnly.",
+  "description": "$convert-data operation conformance tests (HL7v2/CCDA/JSON-to-FHIR-Bundle and FHIR STU3-to-R4 conversion via Liquid templates), covering all four default input data types (hl7v2, Ccda, Json, Fhir), request/response shape, validation-failure status codes, and a custom (non-default) template registry reference (from ConvertDataTests and CustomConvertDataTests). $convert-data may be disabled or unconfigured on non-Microsoft-FHIR-Server targets, so all assertions here are warningOnly.",
   "status": "active",
   "extension": [
     {
@@ -41,6 +41,34 @@
           { "name": "inputDataType", "valueString": "Ccda" },
           { "name": "templateCollectionReference", "valueString": "microsofthealth/ccdatemplates:default" },
           { "name": "rootTemplate", "valueString": "CCD" }
+        ]
+      }
+    },
+    {
+      "id": "convert-json-valid",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Parameters",
+        "parameter": [
+          { "name": "inputData", "valueString": "{\"PatientId\": 12434, \"MRN\": \"M0R1N2\",\"FirstName\": \"Jerry\", \"LastName\": \"Smith\", \"Phone Number\": [\"1234-5678\", \"1234-5679\"], \"Gender\": \"M\", \"DOB\": \"20010110\", \"TimeOfDeath\": \"2023-07-28T01:59:23.388-05:00\"}" },
+          { "name": "inputDataType", "valueString": "Json" },
+          { "name": "templateCollectionReference", "valueString": "microsofthealth/jsontemplates:default" },
+          { "name": "rootTemplate", "valueString": "ExamplePatient" }
+        ]
+      }
+    },
+    {
+      "id": "convert-fhir-valid",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Parameters",
+        "parameter": [
+          { "name": "inputData", "valueString": "{\"resourceType\": \"Patient\", \"id\": 12434, \"animal\": {\"species\": {\"coding\": [ {\"system\": \"http://hl7.org/fhir/animal-species\", \"code\": \"canislf\", \"display\": \"Dog\"}]}}}" },
+          { "name": "inputDataType", "valueString": "Fhir" },
+          { "name": "templateCollectionReference", "valueString": "microsofthealth/stu3tor4templates:default" },
+          { "name": "rootTemplate", "valueString": "Patient" }
         ]
       }
     },
@@ -130,6 +158,48 @@
       }
     },
     {
+      "id": "convert-malformed-ccda-input",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Parameters",
+        "parameter": [
+          { "name": "inputData", "valueString": "Abc" },
+          { "name": "inputDataType", "valueString": "Ccda" },
+          { "name": "templateCollectionReference", "valueString": "microsofthealth/ccdatemplates:default" },
+          { "name": "rootTemplate", "valueString": "CCD" }
+        ]
+      }
+    },
+    {
+      "id": "convert-malformed-json-input",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Parameters",
+        "parameter": [
+          { "name": "inputData", "valueString": "abc" },
+          { "name": "inputDataType", "valueString": "Json" },
+          { "name": "templateCollectionReference", "valueString": "microsofthealth/jsontemplates:default" },
+          { "name": "rootTemplate", "valueString": "ExamplePatient" }
+        ]
+      }
+    },
+    {
+      "id": "convert-malformed-fhir-input",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Parameters",
+        "parameter": [
+          { "name": "inputData", "valueString": "abc" },
+          { "name": "inputDataType", "valueString": "Fhir" },
+          { "name": "templateCollectionReference", "valueString": "microsofthealth/stu3tor4templates:default" },
+          { "name": "rootTemplate", "valueString": "Patient" }
+        ]
+      }
+    },
+    {
       "id": "convert-custom-template-not-found",
       "autocreate": false,
       "autodelete": false,
@@ -169,6 +239,24 @@
         { "operation": { "type": { "code": "$convert-data" }, "sourceId": "convert-ccda-valid", "responseId": "convert-ccda-response", "description": "POST $convert-data with a valid CCDA document" } },
         { "assert": { "description": "Conversion should return 200 OK (warningOnly)", "response": "okay", "warningOnly": true } },
         { "assert": { "description": "Response body should be a Bundle (warningOnly)", "resource": "Bundle", "warningOnly": true } }
+      ]
+    },
+    {
+      "name": "$convert-data converts a valid JSON message to a FHIR Patient (default templates)",
+      "description": "POST $convert-data with a valid JSON message and the default JSON templates must return 200 with a converted Patient resource. Unlike HL7v2/CCDA (which convert to a Bundle), the Json and Fhir input types convert directly to a single resource. warningOnly: requires $convert-data enabled with default JSON templates configured.",
+      "action": [
+        { "operation": { "type": { "code": "$convert-data" }, "sourceId": "convert-json-valid", "responseId": "convert-json-response", "description": "POST $convert-data with a valid JSON message" } },
+        { "assert": { "description": "Conversion should return 200 OK (warningOnly: requires $convert-data enabled + default JSON templates configured)", "response": "okay", "warningOnly": true } },
+        { "assert": { "description": "Response body should be a Patient resource, not a Bundle (warningOnly)", "resource": "Patient", "warningOnly": true } }
+      ]
+    },
+    {
+      "name": "$convert-data converts a valid FHIR STU3 Patient to a FHIR R4 Patient (default templates)",
+      "description": "POST $convert-data with a valid FHIR STU3 Patient and the default STU3-to-R4 templates must return 200 with a converted R4 Patient resource. warningOnly: requires $convert-data enabled with default STU3-to-R4 templates configured.",
+      "action": [
+        { "operation": { "type": { "code": "$convert-data" }, "sourceId": "convert-fhir-valid", "responseId": "convert-fhir-response", "description": "POST $convert-data with a valid FHIR STU3 Patient" } },
+        { "assert": { "description": "Conversion should return 200 OK (warningOnly: requires $convert-data enabled + default STU3-to-R4 templates configured)", "response": "okay", "warningOnly": true } },
+        { "assert": { "description": "Response body should be an R4 Patient resource, not a Bundle (warningOnly)", "resource": "Patient", "warningOnly": true } }
       ]
     },
     {
@@ -217,6 +305,30 @@
       "action": [
         { "operation": { "type": { "code": "$convert-data" }, "sourceId": "convert-malformed-hl7v2-input", "responseId": "convert-malformed-response", "description": "POST $convert-data with unparseable HL7v2 input" } },
         { "assert": { "description": "Server should reject the malformed HL7v2 input with 400 Bad Request (warningOnly)", "response": "bad" } }
+      ]
+    },
+    {
+      "name": "$convert-data rejects malformed CCDA input data with 400 Bad Request",
+      "description": "POST $convert-data with unparseable CCDA input data must return 400 Bad Request. warningOnly: requires $convert-data enabled with default CCDA templates configured.",
+      "action": [
+        { "operation": { "type": { "code": "$convert-data" }, "sourceId": "convert-malformed-ccda-input", "responseId": "convert-malformed-ccda-response", "description": "POST $convert-data with unparseable CCDA input" } },
+        { "assert": { "description": "Server should reject the malformed CCDA input with 400 Bad Request (warningOnly)", "response": "bad" } }
+      ]
+    },
+    {
+      "name": "$convert-data rejects malformed JSON input data with 400 Bad Request",
+      "description": "POST $convert-data with unparseable JSON input data must return 400 Bad Request. warningOnly: requires $convert-data enabled with default JSON templates configured.",
+      "action": [
+        { "operation": { "type": { "code": "$convert-data" }, "sourceId": "convert-malformed-json-input", "responseId": "convert-malformed-json-response", "description": "POST $convert-data with unparseable JSON input" } },
+        { "assert": { "description": "Server should reject the malformed JSON input with 400 Bad Request (warningOnly)", "response": "bad" } }
+      ]
+    },
+    {
+      "name": "$convert-data rejects malformed FHIR input data with 400 Bad Request",
+      "description": "POST $convert-data with unparseable FHIR (STU3) input data must return 400 Bad Request. warningOnly: requires $convert-data enabled with default STU3-to-R4 templates configured.",
+      "action": [
+        { "operation": { "type": { "code": "$convert-data" }, "sourceId": "convert-malformed-fhir-input", "responseId": "convert-malformed-fhir-response", "description": "POST $convert-data with unparseable FHIR input" } },
+        { "assert": { "description": "Server should reject the malformed FHIR input with 400 Bad Request (warningOnly)", "response": "bad" } }
       ]
     },
     {
