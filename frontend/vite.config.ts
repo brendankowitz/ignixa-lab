@@ -22,14 +22,14 @@ export default defineConfig({
   build: {
     rollupOptions: {
       // Multi-page app: a static landing page (index.html, the site root) plus
-      // two separate React roots — the conformance runner (lab.html) and
-      // Expression Benches (benches.html) — sharing the same theme tokens, not
-      // one router-based SPA. See
+      // two separate React roots — Conformance Testing (conformance.html) and
+      // Ignixa Lab / Expression Benches (lab.html) — sharing the same theme
+      // tokens, not one router-based SPA. See
       // docs/superpowers/specs/2026-07-02-expression-benches-design.md.
       input: {
         landing: resolve(__dirname, 'index.html'),
-        lab: resolve(__dirname, 'lab.html'),
-        benches: resolve(__dirname, 'benches.html'),
+        conformance: resolve(__dirname, 'conformance.html'),
+        benches: resolve(__dirname, 'lab.html'),
       },
     },
   },

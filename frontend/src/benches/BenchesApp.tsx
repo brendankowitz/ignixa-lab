@@ -82,7 +82,7 @@ export function BenchesApp() {
   return (
     <div style={{ ...shellStyle, ...(theme.variables as CSSProperties) }}>
       <header style={topBarStyle}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+        <a href="./" aria-label="Ignixa home" style={{ display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none', color: 'inherit' }}>
           <div aria-hidden="true" style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--grad)', flex: 'none' }} />
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <span style={{ fontSize: 14.5, fontWeight: 700, letterSpacing: '-.01em' }}>Ignixa Lab</span>
@@ -90,13 +90,13 @@ export function BenchesApp() {
               Expression benches
             </span>
           </div>
-        </div>
+        </a>
 
         <div style={{ marginLeft: 20 }}>
           <Pills items={BENCH_TABS} activeId={bench} onChange={setBench} />
         </div>
 
-        <a href="./" style={{ fontSize: 12, fontWeight: 600, color: 'var(--text3)', textDecoration: 'none', padding: '6px 10px' }}>
+        <a href="./conformance.html" style={{ fontSize: 12, fontWeight: 600, color: 'var(--text3)', textDecoration: 'none', padding: '6px 10px' }}>
           Conformance ↗
         </a>
 

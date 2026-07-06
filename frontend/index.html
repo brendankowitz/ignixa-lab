@@ -7,7 +7,7 @@
     <title>Ignixa · Open source FHIR toolkit</title>
     <meta
       name="description"
-      content="An open toolkit over one FHIR engine: evaluate FHIRPath, FML, and SQL-on-FHIR expressions live against sample resources, and run conformance suites against real servers."
+      content="An open toolkit over one FHIR engine: evaluate FHIRPath, FML, and SQL-on-FHIR expressions, generate synthetic FHIR test data — from single resources to full clinical scenarios and workflows — and run conformance suites against real servers."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -100,19 +100,20 @@
     <div
       style="display:flex;align-items:center;gap:14px;padding:15px 26px;border-bottom:1px solid rgba(231,228,236,.08);background:#1a1620"
     >
-      <div style="width:30px;height:30px;border-radius:8px;overflow:hidden;background:#241f2d;flex:none">
-        <img src="/ignixa-logo.png" alt="Ignixa" style="width:52px;height:52px;margin:-6px 0 0 -11px;object-fit:cover" />
-      </div>
-      <div style="display:flex;flex-direction:column">
-        <span style="font-size:14.5px;font-weight:700;letter-spacing:-.01em">Ignixa</span>
-        <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.16em;color:#8b8494;text-transform:uppercase"
-          >FHIR Conformance</span
-        >
-      </div>
+      <a href="./" style="display:flex;align-items:center;gap:14px" aria-label="Ignixa home">
+        <div style="width:34px;height:34px;border-radius:8px;overflow:hidden;background:#241f2d;flex:none;display:flex;align-items:center;justify-content:center">
+          <img src="/ignixa-logo.png" alt="Ignixa" style="width:100%;height:100%;object-fit:contain" />
+        </div>
+        <div style="display:flex;flex-direction:column">
+          <span style="font-size:14.5px;font-weight:700;letter-spacing:-.01em">Ignixa</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.16em;color:#8b8494;text-transform:uppercase"
+            >FHIR Toolkit</span
+          >
+        </div>
+      </a>
       <div style="flex:1"></div>
-      <a class="ix-nav-link" href="https://github.com/brendankowitz/ignixa-lab/tree/main/docs">Docs</a>
       <a class="ix-nav-link" href="https://github.com/brendankowitz/ignixa-lab">GitHub</a>
-      <a class="ix-cta" href="./lab.html">Open the Lab</a>
+      <a class="ix-cta" href="./conformance.html">Open Conformance</a>
     </div>
 
     <!-- hero -->
@@ -126,12 +127,13 @@
           Ignixa FHIR&nbsp;toolkit.
         </h1>
         <p style="margin:0;font-size:16.5px;line-height:1.6;color:#c9c3d4;max-width:460px">
-          An open toolkit over one FHIR engine: evaluate FHIRPath, FML, and SQL-on-FHIR expressions live against sample
-          resources, and run conformance suites against real servers.
+          An open toolkit over one FHIR engine: evaluate FHIRPath, FML, and SQL-on-FHIR expressions, generate synthetic
+          test data — from single resources to full clinical scenarios and workflows — and run conformance suites
+          against real servers.
         </p>
         <div style="display:flex;align-items:center;gap:14px;margin-top:6px">
-          <a class="ix-cta ix-cta--large" href="./lab.html">Start a conformance run →</a>
-          <a class="ix-cta-secondary" href="./benches.html">Try the benches</a>
+          <a class="ix-cta ix-cta--large" href="./conformance.html">Start a conformance run →</a>
+          <a class="ix-cta-secondary" href="./lab.html">Try the benches</a>
         </div>
       </div>
 
@@ -215,14 +217,14 @@
       >
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:14px 56px 60px">
-      <a href="./lab.html">
+      <a href="./conformance.html">
         <div class="ix-tool-card">
           <div style="display:flex;align-items:center;gap:11px">
             <div style="width:38px;height:38px;border-radius:10px;background:rgba(124,58,237,.16);display:grid;place-items:center;font-size:18px">
               ▶
             </div>
             <div style="display:flex;flex-direction:column">
-              <span style="font-size:16px;font-weight:700">Ignixa Lab</span>
+              <span style="font-size:16px;font-weight:700">Conformance Testing</span>
               <span
                 style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#8b8494"
                 >Conformance runner</span
@@ -236,7 +238,7 @@
           <span style="margin-top:auto;font-size:13px;font-weight:600;color:#a78bfa">Configure a run →</span>
         </div>
       </a>
-      <a href="./benches.html">
+      <a href="./lab.html">
         <div class="ix-tool-card">
           <div style="display:flex;align-items:center;gap:11px">
             <div style="width:38px;height:38px;border-radius:10px;background:rgba(20,184,166,.16);display:grid;place-items:center;font-size:18px">
@@ -246,13 +248,14 @@
               <span style="font-size:16px;font-weight:700">Expression Benches</span>
               <span
                 style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#8b8494"
-                >FHIRPath · FML · SQL-on-FHIR</span
+                >FHIRPath · FML · SQL-on-FHIR · Fakes</span
               >
             </div>
           </div>
           <p style="margin:0;font-size:13.5px;line-height:1.6;color:#c9c3d4">
-            An interactive playground for the engine. Write an expression, watch it parse into an AST, and evaluate it
-            live against sample resources — no run required.
+            An interactive playground for the engine. Write an expression, watch it parse into an AST, evaluate it live
+            against sample resources, and generate synthetic test data — populations, clinical scenarios, and
+            workflow packs — with the Fakes bench.
           </p>
           <span style="margin-top:auto;font-size:13px;font-weight:600;color:#5eead4">Open the benches →</span>
         </div>

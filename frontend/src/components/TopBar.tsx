@@ -47,13 +47,13 @@ export function TopBar({
 
   return (
     <header className="top-bar">
-      <div className="top-bar__brand">
+      <a href="./" className="top-bar__brand" aria-label="Ignixa home">
         <div className="top-bar__logo" aria-hidden="true" />
         <div className="top-bar__brand-text">
-          <span className="top-bar__title">Ignixa Lab</span>
-          <span className="top-bar__subtitle">Conformance</span>
+          <span className="top-bar__title">Conformance Testing</span>
+          <span className="top-bar__subtitle">FHIR TestScript</span>
         </div>
-      </div>
+      </a>
 
       <nav className="top-bar__nav" aria-label="Screens">
         {TABS.map((tab) => (
@@ -68,7 +68,7 @@ export function TopBar({
         ))}
       </nav>
 
-      <a href="benches.html" className="top-bar__nav-item top-bar__nav-item--plain">
+      <a href="./lab.html" className="top-bar__nav-item top-bar__nav-item--plain">
         Expression Benches ↗
       </a>
 
