@@ -250,6 +250,24 @@
   color: var(--text);
 }
 
+.endpoint-input__run {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  padding: 0 14px;
+  border-left: 1px solid var(--border2);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 12px;
+}
+
+.endpoint-input__run:disabled {
+  background: var(--inset);
+  color: var(--text3);
+  cursor: not-allowed;
+}
+
 .suite-picker__header {
   display: flex;
   align-items: center;
