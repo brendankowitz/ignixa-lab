@@ -89,6 +89,7 @@ function App() {
             suites={run.suites}
             suitesLoading={run.suitesLoading}
             suitesError={run.suitesError}
+            testScriptsRevision={run.testScriptsRevision}
             canStart={canStart}
             onStart={startRun}
           />

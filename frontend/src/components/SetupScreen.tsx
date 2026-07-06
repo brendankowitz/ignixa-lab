@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { RunConfig } from '../hooks/useRunConfig';
+import { testScriptGithubUrl } from '../lib/github';
 import type { SuiteDescriptor } from '../types/conformance';
 
 /** Tri-state of a group's checkbox derived from how many of its suites are selected. */
@@ -17,6 +18,8 @@ export interface SetupScreenProps {
   suites: SuiteDescriptor[];
   suitesLoading: boolean;
   suitesError: string | null;
+  /** Commit to link testscript fixtures against; null falls back to `main` (see `testScriptGithubUrl`). */
+  testScriptsRevision: string | null;
   canStart: boolean;
   onStart: () => void;
 }
@@ -28,7 +31,15 @@ export interface SetupScreenProps {
  * version used for gating is detected from the target's own CapabilityStatement
  * once the run executes, not chosen here.
  */
-export function SetupScreen({ config, suites, suitesLoading, suitesError, canStart, onStart }: SetupScreenProps) {
+export function SetupScreen({
+  config,
+  suites,
+  suitesLoading,
+  suitesError,
+  testScriptsRevision,
+  canStart,
+  onStart,
+}: SetupScreenProps) {
   const categories = useMemo(() => groupByCategory(suites), [suites]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const selected = config.selection.selected;
@@ -172,6 +183,15 @@ export function SetupScreen({ config, suites, suitesLoading, suitesError, canSta
                             {shortName(suite)}
                           </button>
                           <span className="suite-row__summary">{suite.description}</span>
+                          <a
+                            className="suite-row__fixture-link"
+                            href={testScriptGithubUrl(suite.file, testScriptsRevision ?? undefined)}
+                            target="_blank"
+                            rel="noreferrer"
+                            title={`View ${suite.file} on GitHub`}
+                          >
+                            Fixture ↗
+                          </a>
                           <span className="suite-row__count">
                             {suite.testCount} {suite.testCount === 1 ? 'test' : 'tests'}
                           </span>
