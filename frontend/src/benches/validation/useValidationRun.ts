@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { errorMessage } from '../shared/errorMessage';
+import { getErrorMessage } from '../shared/errorMessage';
 import { validateResource } from './validationApi';
 import type { ValidationDepth, ValidationResponse } from './validationTypes';
 
@@ -34,7 +34,7 @@ export function useValidationRun(input: UseValidationRunInput): ValidationRunSta
     try {
       resource = JSON.parse(input.resourceText);
     } catch (error) {
-      setState({ result: null, error: `Invalid JSON: ${errorMessage(error)}`, isLoading: false });
+      setState({ result: null, error: `Invalid JSON: ${getErrorMessage(error)}`, isLoading: false });
       return () => controller.abort();
     }
 
@@ -53,7 +53,7 @@ export function useValidationRun(input: UseValidationRunInput): ValidationRunSta
         .then((result) => setState({ result, error: null, isLoading: false }))
         .catch((error) => {
           if (!controller.signal.aborted) {
-            setState({ result: null, error: errorMessage(error), isLoading: false });
+            setState({ result: null, error: getErrorMessage(error), isLoading: false });
           }
         });
     }, 350);
