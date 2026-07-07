@@ -1,18 +1,20 @@
 import { useMemo, useState, type CSSProperties } from 'react';
 import { useCopyToClipboard } from '../hooks/useCopyToClipboard';
 import { useTheme } from '../hooks/useTheme';
-import { COPY_FEEDBACK_DURATION_MS, buildBenchShareUrl, readBenchShare, type BenchShareState, type FakesShareState, type FhirPathShareState } from '../lib/shareLinks';
+import { COPY_FEEDBACK_DURATION_MS, buildBenchShareUrl, readBenchShare, type BenchShareState, type FakesShareState, type FhirPathShareState, type ValidationShareState } from '../lib/shareLinks';
 import { Pills, type PillItem } from './components/primitives';
 import { monoFont } from './components/styles';
 import { FhirPathBench } from './fhirpath/FhirPathBench';
 import { FmlBench } from './fml/FmlBench';
 import { SofBench } from './sof/SofBench';
 import { FakesBench } from './fakes/FakesBench';
+import { ValidationBench } from './validation/ValidationBench';
 
-type BenchId = 'fhirpath' | 'fml' | 'sqlonfhir' | 'fakes';
+type BenchId = 'fhirpath' | 'validation' | 'fml' | 'sqlonfhir' | 'fakes';
 
 const BENCH_TABS: PillItem<BenchId>[] = [
   { id: 'fhirpath', label: 'FHIRPath' },
+  { id: 'validation', label: 'Validation' },
   { id: 'fml', label: 'FML', disabled: true, title: 'Not yet implemented' },
   { id: 'sqlonfhir', label: 'SQL on FHIR', disabled: true, title: 'Not yet implemented' },
   { id: 'fakes', label: 'Fakes' },
@@ -46,15 +48,17 @@ export function BenchesApp() {
   const [fakesReturnTo, setFakesReturnTo] = useState<Exclude<BenchId, 'fakes'> | null>(null);
   const [sentToast, setSentToast] = useState<{ bench: BenchId; label: string } | null>(null);
   const [fhirpathSeed, setFhirpathSeed] = useState<{ text: string } | null>(null);
+  const [validationSeed, setValidationSeed] = useState<{ text: string } | null>(null);
   const [fmlSeed, setFmlSeed] = useState<{ text: string } | null>(null);
   const [sofSeed, setSofSeed] = useState<{ text: string } | null>(null);
   const [fhirpathShare, setFhirpathShare] = useState<FhirPathShareState | undefined>(initialLink.state.fhirpath);
+  const [validationShare, setValidationShare] = useState<ValidationShareState | undefined>(initialLink.state.validation);
   const [fakesShare, setFakesShare] = useState<FakesShareState | undefined>(initialLink.state.fakes);
 
   const shareUrl = useMemo(() => {
-    const shareState: BenchShareState = { fhirpath: fhirpathShare, fakes: fakesShare };
+    const shareState: BenchShareState = { fhirpath: fhirpathShare, validation: validationShare, fakes: fakesShare };
     return buildBenchShareUrl(bench, shareState);
-  }, [bench, fhirpathShare, fakesShare]);
+  }, [bench, fhirpathShare, validationShare, fakesShare]);
 
   const { copied, copy: copyShareLink } = useCopyToClipboard(shareUrl, COPY_FEEDBACK_DURATION_MS);
 
@@ -63,10 +67,12 @@ export function BenchesApp() {
     setFakesReturnTo(fromBench);
   };
 
-  const handleSend = (targetBench: 'fhirpath' | 'fml' | 'sqlonfhir', payload: Record<string, unknown> | Record<string, unknown>[], label: string) => {
+  const handleSend = (targetBench: 'fhirpath' | 'validation' | 'fml' | 'sqlonfhir', payload: Record<string, unknown> | Record<string, unknown>[], label: string) => {
     const text = JSON.stringify(payload, null, 2);
     if (targetBench === 'fhirpath') {
       setFhirpathSeed({ text });
+    } else if (targetBench === 'validation') {
+      setValidationSeed({ text });
     } else if (targetBench === 'fml') {
       setFmlSeed({ text });
     } else {
@@ -107,7 +113,7 @@ export function BenchesApp() {
         <div style={{ flex: 1 }} />
 
         <span style={{ fontFamily: monoFont, fontSize: 11, color: 'var(--text3)' }}>
-          {bench === 'fhirpath' || bench === 'fakes' ? 'live engine' : 'mock engine · exploration'}
+          {bench === 'fhirpath' || bench === 'validation' || bench === 'fakes' ? 'live engine' : 'mock engine · exploration'}
         </span>
 
         <button
@@ -153,6 +159,7 @@ export function BenchesApp() {
 
       <main>
         {bench === 'fhirpath' ? <FhirPathBench onOpenFakes={() => openFakesFrom('fhirpath')} fakesSeed={fhirpathSeed} onSeedConsumed={() => setFhirpathSeed(null)} initialState={fhirpathShare} onShareStateChange={setFhirpathShare} /> : null}
+        {bench === 'validation' ? <ValidationBench onOpenFakes={() => openFakesFrom('validation')} fakesSeed={validationSeed} onSeedConsumed={() => setValidationSeed(null)} initialState={validationShare} onShareStateChange={setValidationShare} /> : null}
         {bench === 'fml' ? <FmlBench onOpenFakes={() => openFakesFrom('fml')} fakesSeed={fmlSeed} onSeedConsumed={() => setFmlSeed(null)} /> : null}
         {bench === 'sqlonfhir' ? <SofBench onOpenFakes={() => openFakesFrom('sqlonfhir')} fakesSeed={sofSeed} onSeedConsumed={() => setSofSeed(null)} /> : null}
         {bench === 'fakes' ? (

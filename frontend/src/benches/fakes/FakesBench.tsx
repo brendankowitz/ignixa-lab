@@ -24,7 +24,7 @@ import type {
   WorkflowResult,
 } from './fakesTypes';
 
-type TargetBench = 'fhirpath' | 'fml' | 'sqlonfhir';
+type TargetBench = 'fhirpath' | 'validation' | 'fml' | 'sqlonfhir';
 type OnSend = (targetBench: TargetBench, payload: Record<string, unknown> | Record<string, unknown>[], label: string) => void;
 
 const MODE_ITEMS: PillItem<FakesMode>[] = [
@@ -57,6 +57,7 @@ type PopulationFormat = 'transaction' | 'ndjson';
 
 const BENCH_LABELS: Record<TargetBench, string> = {
   fhirpath: 'FHIRPath',
+  validation: 'Validation',
   fml: 'FML',
   sqlonfhir: 'SQL on FHIR',
 };
@@ -1759,6 +1760,9 @@ function SendBar({ onSend }: { onSend: (bench: TargetBench) => void }) {
       <span style={{ fontSize: 10.5, color: 'var(--text4)', textTransform: 'uppercase', letterSpacing: '.1em' }}>Send to</span>
       <button type="button" onClick={() => onSend('fhirpath')} style={{ ...monoInputStyle, cursor: 'pointer' }}>
         FHIRPath
+      </button>
+      <button type="button" onClick={() => onSend('validation')} style={{ ...monoInputStyle, cursor: 'pointer' }}>
+        Validation
       </button>
       <button type="button" onClick={() => onSend('fml')} style={{ ...monoInputStyle, cursor: 'pointer' }}>
         FML
