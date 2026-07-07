@@ -40,6 +40,16 @@ const controlGroupStyle: CSSProperties = {
   maxWidth: '100%',
 };
 
+const validationSpinnerStyle: CSSProperties = {
+  width: 10,
+  height: 10,
+  borderRadius: '50%',
+  border: '2px solid var(--border2)',
+  borderTopColor: 'var(--accent)',
+  animation: 'ixspin .75s linear infinite',
+  flex: 'none',
+};
+
 function severityColors(severity: ValidationSeverity): { bg: string; fg: string } {
   switch (severity) {
     case 'fatal':
@@ -66,6 +76,55 @@ function IssueRow({ issue }: { issue: ValidationIssue }) {
         <div style={{ fontFamily: monoFont, fontSize: 11, color: 'var(--text3)', lineHeight: 1.45 }}>{issue.details}</div>
       ) : null}
     </div>
+  );
+}
+
+function ValidationStatusChip({ run }: { run: ReturnType<typeof useValidationRun> }) {
+  if (run.isLoading) {
+    return (
+      <span style={chipStyle('var(--inset)', 'var(--text3)')} title="Validation request in progress">
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <span style={validationSpinnerStyle} />
+          Validating
+        </span>
+      </span>
+    );
+  }
+
+  if (run.error) {
+    return (
+      <span style={chipStyle('var(--fail-bg)', 'var(--fail)')} title={run.error}>
+        ✕ Error
+      </span>
+    );
+  }
+
+  if (!run.result) {
+    return null;
+  }
+
+  const hasError = run.result.summary.fatal > 0 || run.result.summary.error > 0;
+  if (hasError) {
+    return (
+      <span style={chipStyle('var(--fail-bg)', 'var(--fail)')} title="Validation completed with errors">
+        ✕ Invalid
+      </span>
+    );
+  }
+
+  const hasWarnings = run.result.summary.warning > 0 || run.result.summary.information > 0;
+  if (hasWarnings) {
+    return (
+      <span style={chipStyle('var(--chip-amb-bg)', 'var(--chip-amb-fg)')} title="Validation completed with warnings or informational issues">
+        ⚠ Warnings
+      </span>
+    );
+  }
+
+  return (
+    <span style={chipStyle('var(--pass-bg)', 'var(--pass)')} title="Validation completed with no issues">
+      ✓ Valid
+    </span>
   );
 }
 
@@ -162,6 +221,7 @@ export function ValidationBench({ onOpenFakes, fakesSeed, onSeedConsumed, initia
         <Card style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span style={{ ...sectionLabelStyle, flex: 1 }}>Resource JSON</span>
+            <ValidationStatusChip run={run} />
             {VALIDATION_SAMPLES.map((sample) => (
               <button
                 key={sample.id}
