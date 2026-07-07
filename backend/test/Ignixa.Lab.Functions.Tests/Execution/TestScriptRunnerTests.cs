@@ -3,7 +3,9 @@ using Ignixa.Lab.Functions.Configuration;
 using Ignixa.Lab.Functions.Conformance;
 using Ignixa.Lab.Functions.Execution;
 using Ignixa.Lab.Functions.Models;
+using Ignixa.Lab.Functions.Services.FhirPath;
 using Ignixa.Lab.Functions.Suites;
+using Ignixa.Serialization.SourceNodes;
 using Ignixa.TestScript.Client;
 using Ignixa.TestScript.Expressions;
 using Ignixa.TestScript.Model;
@@ -89,6 +91,40 @@ public sealed class TestScriptRunnerTests
         ]
     };
 
+    private static TestScriptDefinition FhirFakesCreateDefinition(string resourceType, params string[] fhirVersions) => new()
+    {
+        Metadata = new TestScriptMetadata { Name = "FhirFakesCreate" },
+        Fixtures =
+        [
+            new FixtureDefinition
+            {
+                Id = "resource-fixture",
+                Autocreate = false,
+                Autodelete = false,
+                Resource = ResourceJsonNode.Parse($$"""
+                    {
+                      "extension": [
+                        {
+                          "url": "http://ignixa.io/testscript/fhirfakes",
+                          "valueCode": "{{resourceType}}"
+                        }
+                      ]
+                    }
+                    """),
+            },
+        ],
+        Tests =
+        [
+            new TestPhaseDefinition
+            {
+                Name = $"Create{resourceType}",
+                FhirVersions = fhirVersions,
+                RequiresCapability = $"rest.resource.where(type='{resourceType}').interaction.where(code='create').exists()",
+                Actions = [new OperationExpression { Type = "create", Resource = resourceType, SourceId = "resource-fixture" }],
+            },
+        ],
+    };
+
     [Fact]
     public async Task GivenSuiteRequiringUndeclaredCapability_WhenRun_ThenTestIsSkippedAndNoRequestIsSent()
     {
@@ -100,6 +136,7 @@ public sealed class TestScriptRunnerTests
                 new FixedResponseHttpClientFactory(CapabilityStatementWithoutReindex),
                 Options.Create(new IgnixaLabOptions())),
             Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
             NullLogger<TestScriptRunner>.Instance);
 
         var outcome = await runner.RunAsync(
@@ -124,6 +161,7 @@ public sealed class TestScriptRunnerTests
                 new FixedResponseHttpClientFactory(CapabilityStatementWithoutReindex),
                 Options.Create(new IgnixaLabOptions())),
             Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
             NullLogger<TestScriptRunner>.Instance);
 
         var outcome = await runner.RunAsync(
@@ -146,6 +184,7 @@ public sealed class TestScriptRunnerTests
                 new ThrowingHttpClientFactory(),
                 Options.Create(new IgnixaLabOptions())),
             Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
             NullLogger<TestScriptRunner>.Instance);
 
         var outcome = await runner.RunAsync(
@@ -177,6 +216,7 @@ public sealed class TestScriptRunnerTests
                 new FixedResponseHttpClientFactory(CapabilityStatementWithFhirVersion(declaredCapabilityVersion)),
                 Options.Create(new IgnixaLabOptions())),
             Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
             NullLogger<TestScriptRunner>.Instance);
 
         var outcome = await runner.RunAsync(
@@ -207,6 +247,7 @@ public sealed class TestScriptRunnerTests
                 new FixedResponseHttpClientFactory(CapabilityStatementWithFhirVersion("4.0.1")),
                 Options.Create(new IgnixaLabOptions())),
             Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
             NullLogger<TestScriptRunner>.Instance);
 
         var outcome = await runner.RunAsync(
@@ -230,6 +271,7 @@ public sealed class TestScriptRunnerTests
                 new FixedResponseHttpClientFactory(CapabilityStatementWithoutReindex),
                 Options.Create(new IgnixaLabOptions())),
             Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
             NullLogger<TestScriptRunner>.Instance);
 
         var outcome = await runner.RunAsync(
@@ -253,6 +295,7 @@ public sealed class TestScriptRunnerTests
                 new FixedResponseHttpClientFactory(CapabilityStatementWithEmptyFhirVersion),
                 Options.Create(new IgnixaLabOptions())),
             Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
             NullLogger<TestScriptRunner>.Instance);
 
         var outcome = await runner.RunAsync(
@@ -276,6 +319,7 @@ public sealed class TestScriptRunnerTests
                 new FixedResponseHttpClientFactory(CapabilityStatementWithNonStringFhirVersion),
                 Options.Create(new IgnixaLabOptions())),
             Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
             NullLogger<TestScriptRunner>.Instance);
 
         var outcome = await runner.RunAsync(
@@ -299,6 +343,7 @@ public sealed class TestScriptRunnerTests
                 new ThrowingHttpClientFactory(),
                 Options.Create(new IgnixaLabOptions())),
             Options.Create(new IgnixaLabOptions { DefaultFhirVersion = "4.0" }),
+            new SchemaProviderFactory(),
             NullLogger<TestScriptRunner>.Instance);
 
         var outcome = await runner.RunAsync(
@@ -327,6 +372,7 @@ public sealed class TestScriptRunnerTests
                 new FixedResponseHttpClientFactory(CapabilityStatementWithFhirVersion("R4")),
                 Options.Create(new IgnixaLabOptions())),
             Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
             NullLogger<TestScriptRunner>.Instance);
 
         var outcome = await runner.RunAsync(
@@ -337,6 +383,74 @@ public sealed class TestScriptRunnerTests
         outcome.Report!.Results[0].Status.Should().NotBe(ConformanceStatus.Skipped);
         outcome.Report.FhirVersion.Should().Be("4.0.1");
         provider.CallCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task GivenR5OnlyFhirFakesFixture_WhenTargetDeclaresR5_ThenRunnerUsesR5Schema()
+    {
+        var provider = new RecordingRequestProvider(new TestResponse { StatusCode = 201 });
+        var runner = new TestScriptRunner(
+            new FakeSuiteCatalog("r5-only.json", FhirFakesCreateDefinition("InventoryItem", "5.0")),
+            new FakeEvaluatorFactory(provider),
+            new CapabilityStatementFetcher(
+                new FixedResponseHttpClientFactory("""
+                    {
+                      "resourceType": "CapabilityStatement",
+                      "status": "active",
+                      "fhirVersion": "5.0.0",
+                      "rest": [{ "mode": "server", "resource": [{ "type": "InventoryItem", "interaction": [{"code": "create"}] }] }]
+                    }
+                    """),
+                Options.Create(new IgnixaLabOptions())),
+            Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
+            NullLogger<TestScriptRunner>.Instance);
+
+        var outcome = await runner.RunAsync(
+            new RunRequest { TargetUrl = TargetUrl, SuiteIds = ["r5-only.json"] },
+            CancellationToken.None);
+
+        outcome.IsValid.Should().BeTrue();
+        outcome.Report!.Results[0].Status.Should().NotBe(ConformanceStatus.Error);
+        provider.CallCount.Should().Be(1);
+        var request = provider.Requests.Should().ContainSingle().Which;
+        request.Body.Should().NotBeNull();
+        request.Body!.ResourceType.Should().Be("InventoryItem");
+    }
+
+    [Fact]
+    public async Task GivenUnparseableFhirVersion_WhenRun_ThenRunnerFallsBackToR4Schema()
+    {
+        var provider = new RecordingRequestProvider(new TestResponse { StatusCode = 201 });
+        var runner = new TestScriptRunner(
+            new FakeSuiteCatalog("unparseable-version.json", FhirFakesCreateDefinition("InventoryItem")),
+            new FakeEvaluatorFactory(provider),
+            new CapabilityStatementFetcher(
+                // No fhirVersion declared, so ResolveFhirVersion falls back to the
+                // request's FhirVersion below, which is not valid semver.
+                new FixedResponseHttpClientFactory("""
+                    {
+                      "resourceType": "CapabilityStatement",
+                      "status": "active",
+                      "rest": [{ "mode": "server", "resource": [{ "type": "InventoryItem", "interaction": [{"code": "create"}] }] }]
+                    }
+                    """),
+                Options.Create(new IgnixaLabOptions())),
+            Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
+            NullLogger<TestScriptRunner>.Instance);
+
+        var outcome = await runner.RunAsync(
+            new RunRequest { TargetUrl = TargetUrl, SuiteIds = ["unparseable-version.json"], FhirVersion = "not-a-version" },
+            CancellationToken.None);
+
+        outcome.IsValid.Should().BeTrue();
+        // InventoryItem is R5-only, so fixture generation only fails this way
+        // if the unparseable fhirVersion fell back to the R4 schema, not to
+        // some other (or no) schema.
+        var setupStep = outcome.Report!.Results[0].Steps.Should().ContainSingle(step => step.Phase == "setup").Which;
+        setupStep.Status.Should().Be(ConformanceStatus.Error);
+        setupStep.Message.Should().Contain("not valid for FHIR version R4");
     }
 
     private sealed class FakeSuiteCatalog(string id, TestScriptDefinition definition) : ISuiteCatalog
@@ -366,11 +480,14 @@ public sealed class TestScriptRunnerTests
 
     private sealed class RecordingRequestProvider(TestResponse response) : ITestRequestProvider
     {
+        public List<TestRequest> Requests { get; } = [];
+
         public int CallCount { get; private set; }
 
         public Task<TestResponse> ExecuteAsync(TestRequest request, CancellationToken cancellationToken)
         {
             CallCount++;
+            Requests.Add(request);
             return Task.FromResult(response);
         }
     }

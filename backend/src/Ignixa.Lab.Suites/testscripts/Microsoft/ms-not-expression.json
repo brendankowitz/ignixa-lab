@@ -1,6 +1,6 @@
 {
   "resourceType": "TestScript",
-  "name": "Search/not-expression",
+  "name": "Microsoft/ms-not-expression",
   "description": ":not modifier conformance on boolean and reference-scoped fields: verifies :not correctly negates a boolean value in both directions and composes with :missing and an _id OR-list (from NotExpressionTests).",
   "status": "active",
   "fixture": [
@@ -11,7 +11,7 @@
       "resource": {
         "resourceType": "Practitioner",
         "id": "ignixa-not-prac1",
-        "identifier": [{ "system": "http://ignixa.io/testscript/suite/not-expr", "value": "not-expr-practitioner" }]
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/ms-not-expr", "value": "ms-not-expr-practitioner" }]
       }
     },
     {
@@ -21,7 +21,7 @@
       "resource": {
         "resourceType": "Location",
         "id": "ignixa-not-loc1",
-        "identifier": [{ "system": "http://ignixa.io/testscript/suite/not-expr", "value": "not-expr-location" }],
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/ms-not-expr", "value": "ms-not-expr-location" }],
         "name": "Not-Expression Test Location"
       }
     },
@@ -32,7 +32,7 @@
       "resource": {
         "resourceType": "PractitionerRole",
         "id": "ignixa-not-pr-active",
-        "identifier": [{ "system": "http://ignixa.io/testscript/suite/not-expr", "value": "not-expr-pr-active" }],
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/ms-not-expr", "value": "ms-not-expr-pr-active" }],
         "active": true,
         "practitioner": { "reference": "Practitioner/ignixa-not-prac1" },
         "location": [{ "reference": "Location/ignixa-not-loc1" }]
@@ -45,7 +45,7 @@
       "resource": {
         "resourceType": "PractitionerRole",
         "id": "ignixa-not-pr-inactive",
-        "identifier": [{ "system": "http://ignixa.io/testscript/suite/not-expr", "value": "not-expr-pr-inactive" }],
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/ms-not-expr", "value": "ms-not-expr-pr-inactive" }],
         "active": false,
         "practitioner": { "reference": "Practitioner/ignixa-not-prac1" },
         "location": [{ "reference": "Location/ignixa-not-loc1" }]
@@ -58,7 +58,7 @@
       "resource": {
         "resourceType": "PractitionerRole",
         "id": "ignixa-not-pr-noloc",
-        "identifier": [{ "system": "http://ignixa.io/testscript/suite/not-expr", "value": "not-expr-pr-noloc" }],
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/ms-not-expr", "value": "ms-not-expr-pr-noloc" }],
         "active": true,
         "practitioner": { "reference": "Practitioner/ignixa-not-prac1" }
       }

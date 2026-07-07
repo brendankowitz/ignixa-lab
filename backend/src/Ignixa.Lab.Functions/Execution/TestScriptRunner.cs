@@ -1,8 +1,10 @@
 using System.Diagnostics;
 using System.Text.Json.Nodes;
+using Ignixa.Abstractions;
 using Ignixa.Lab.Functions.Conformance;
 using Ignixa.Lab.Functions.Configuration;
 using Ignixa.Lab.Functions.Models;
+using Ignixa.Lab.Functions.Services.FhirPath;
 using Ignixa.Lab.Functions.Suites;
 using Ignixa.Serialization.SourceNodes;
 using Ignixa.TestScript.Evaluation;
@@ -12,7 +14,6 @@ using Ignixa.TestScript.Model;
 using Ignixa.TestScript.Parsing;
 using Ignixa.TestScript.Reporting;
 using Ignixa.TestScript.Validation;
-using Ignixa.Specification.Generated;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NuGet.Versioning;
@@ -28,6 +29,7 @@ public sealed class TestScriptRunner(
     IEvaluatorFactory evaluatorFactory,
     CapabilityStatementFetcher capabilityFetcher,
     IOptions<IgnixaLabOptions> options,
+    SchemaProviderFactory schemaProviderFactory,
     ILogger<TestScriptRunner> logger)
 {
     private readonly IgnixaLabOptions _options = options.Value;
@@ -83,10 +85,11 @@ public sealed class TestScriptRunner(
             new InlineFixtureProvider(),
         ]);
 
+        var schemaProvider = SelectSchemaProvider(fhirVersion);
         var evaluator = new TestScriptEvaluator(
             scope.Provider,
             fixtureProvider,
-            new R4CoreSchemaProvider(),
+            schemaProvider,
             new NoOpValidator());
 
         foreach (var job in jobs)
@@ -138,6 +141,42 @@ public sealed class TestScriptRunner(
         return string.IsNullOrWhiteSpace(declaredVersion) || !NuGetVersion.TryParse(declaredVersion, out _)
             ? fallbackFhirVersion
             : declaredVersion;
+    }
+
+    /// <summary>
+    /// Maps <paramref name="fhirVersion"/> (real semver, e.g. <c>"4.3.0"</c>) to the
+    /// version label <see cref="SchemaProviderFactory.GetSchemaProvider"/> expects,
+    /// reusing its already-cached <see cref="IFhirSchemaProvider"/> instances instead
+    /// of constructing a fresh one per run. Falls back to R4 (logged) when
+    /// <paramref name="fhirVersion"/> isn't valid semver or its major version isn't a
+    /// recognized FHIR release, so a malformed or unexpected target version doesn't
+    /// silently validate against the wrong schema with no trace of why.
+    /// </summary>
+    private IFhirSchemaProvider SelectSchemaProvider(string fhirVersion)
+    {
+        if (!NuGetVersion.TryParse(fhirVersion, out var version))
+        {
+            logger.LogWarning("FHIR version '{FhirVersion}' is not valid semver; falling back to R4 schema.", fhirVersion);
+            return schemaProviderFactory.GetSchemaProvider("R4");
+        }
+
+        var label = version.Major switch
+        {
+            3 => "STU3",
+            4 when version.Minor >= 3 => "R4B",
+            4 => "R4",
+            5 => "R5",
+            6 => "R6",
+            _ => null,
+        };
+
+        if (label is null)
+        {
+            logger.LogWarning("FHIR major version {Major} ({FhirVersion}) is not a recognized FHIR release; falling back to R4 schema.", version.Major, fhirVersion);
+            label = "R4";
+        }
+
+        return schemaProviderFactory.GetSchemaProvider(label);
     }
 
     /// <summary>
