@@ -16,9 +16,9 @@ type BenchId = 'fhirpath' | 'validation' | 'fml' | 'sqlonfhir' | 'fakes';
 const BENCH_TABS: PillItem<BenchId>[] = [
   { id: 'fhirpath', label: 'FHIRPath' },
   { id: 'validation', label: 'Validation' },
-  { id: 'fml', label: 'FML', disabled: true, title: 'Not yet implemented' },
-  { id: 'sqlonfhir', label: 'SQL on FHIR', disabled: true, title: 'Not yet implemented' },
   { id: 'fakes', label: 'Fakes' },
+  { id: 'sqlonfhir', label: 'SQL on FHIR', disabled: true, title: 'Not yet implemented' },
+  { id: 'fml', label: 'FML', disabled: true, title: 'Not yet implemented' },
 ];
 
 const shellStyle: CSSProperties = {

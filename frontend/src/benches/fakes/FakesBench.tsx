@@ -64,6 +64,13 @@ const BENCH_LABELS: Record<TargetBench, string> = {
   sqlonfhir: 'SQL on FHIR',
 };
 
+const SEND_TARGET_ITEMS: { id: TargetBench; label: string }[] = [
+  { id: 'fhirpath', label: 'FHIRPath' },
+  { id: 'validation', label: 'Validation' },
+  { id: 'sqlonfhir', label: 'SQL on FHIR' },
+  { id: 'fml', label: 'FML' },
+];
+
 const deliveryBarStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
@@ -1758,21 +1765,46 @@ function EdgeCaseFamilyCard({
 }
 
 function SendBar({ onSend }: { onSend: (bench: TargetBench) => void }) {
+  const [targetBench, setTargetBench] = useState<TargetBench>('fhirpath');
+
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ fontSize: 10.5, color: 'var(--text4)', textTransform: 'uppercase', letterSpacing: '.1em' }}>Send to</span>
-      <button type="button" onClick={() => onSend('fhirpath')} style={{ ...monoInputStyle, cursor: 'pointer' }}>
-        FHIRPath
+    <div style={{ display: 'inline-flex', alignItems: 'stretch', minWidth: 0 }}>
+      <button
+        type="button"
+        onClick={() => onSend(targetBench)}
+        style={{
+          ...monoInputStyle,
+          cursor: 'pointer',
+          borderTopRightRadius: 0,
+          borderBottomRightRadius: 0,
+          borderRight: 'none',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        Send
       </button>
-      <button type="button" onClick={() => onSend('validation')} style={{ ...monoInputStyle, cursor: 'pointer' }}>
-        Validation
-      </button>
-      <button type="button" onClick={() => onSend('fml')} style={{ ...monoInputStyle, cursor: 'pointer' }}>
-        FML
-      </button>
-      <button type="button" onClick={() => onSend('sqlonfhir')} style={{ ...monoInputStyle, cursor: 'pointer' }}>
-        SQL on FHIR
-      </button>
+      <select
+        value={targetBench}
+        onChange={(event) => {
+          const next = SEND_TARGET_ITEMS.find((item) => item.id === event.target.value);
+          if (next) setTargetBench(next.id);
+        }}
+        aria-label="Send generated data to"
+        style={{
+          ...monoInputStyle,
+          cursor: 'pointer',
+          borderTopLeftRadius: 0,
+          borderBottomLeftRadius: 0,
+          minWidth: 122,
+          maxWidth: '100%',
+        }}
+      >
+        {SEND_TARGET_ITEMS.map((item) => (
+          <option key={item.id} value={item.id}>
+            {item.label}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
