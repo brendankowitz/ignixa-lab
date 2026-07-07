@@ -10,6 +10,7 @@ public sealed class EndpointClassifierTests
     [InlineData("Suites", EndpointClass.Suites)]
     [InlineData("Capability", EndpointClass.Capability)]
     [InlineData("Run", EndpointClass.Run)]
+    [InlineData("ResourceValidation", EndpointClass.Validation)]
     [InlineData("FhirPathMetadata", EndpointClass.Capability)]
     [InlineData("FhirPathStu3", EndpointClass.Capability)]
     [InlineData("FhirPathR4", EndpointClass.Capability)]

@@ -3,6 +3,8 @@ import { Card, ErrorBanner, Pills, Toggle, type PillItem } from '../components/p
 import { HighlightedJsonBlock } from '../components/HighlightedJsonBlock';
 import {
   chipStyle,
+  benchHeaderStyle,
+  benchPageStyle,
   engineBadgeStyle,
   monoFont,
   monoInputStyle,
@@ -119,6 +121,7 @@ export interface FakesBenchProps {
 
 export function FakesBench({ returnTo, onDismissReturn, onSend, initialState, onShareStateChange }: FakesBenchProps) {
   const stacked = useIsNarrowViewport(720);
+  const compact = useIsNarrowViewport(560);
   const [mode, setMode] = useState<FakesMode>(initialState?.mode ?? 'resource');
   const [metadata, setMetadata] = useState<FakesMetadata | null>(null);
   const [metadataError, setMetadataError] = useState<string | null>(null);
@@ -186,8 +189,8 @@ export function FakesBench({ returnTo, onDismissReturn, onSend, initialState, on
   );
 
   return (
-    <div style={{ maxWidth: 1380, margin: '0 auto', padding: '22px 24px 60px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+    <div style={benchPageStyle(1380, compact)}>
+      <div style={benchHeaderStyle(compact)}>
         <h1 style={{ margin: 0, fontSize: 21, fontWeight: 700, letterSpacing: '-.02em' }}>Fakes</h1>
         <span style={{ fontSize: 12.5, color: 'var(--text3)' }}>
           Generate realistic synthetic FHIR data — populations, clinical scenarios, and edge-case fuzzing.

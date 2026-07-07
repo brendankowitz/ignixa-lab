@@ -21,6 +21,9 @@ public sealed class RateLimitingOptions
     /// <summary>Sliding-window per-IP limit for <c>GET /api/capability</c>, per minute.</summary>
     public int CapabilityPerMinutePerIp { get; set; } = 12;
 
+    /// <summary>Sliding-window per-IP limit for interactive <c>POST /api/validate</c>, per minute.</summary>
+    public int ValidationPerMinutePerIp { get; set; } = 30;
+
     /// <summary>Sliding-window per-IP limit for <c>POST /api/run</c>, per minute.</summary>
     public int RunPerMinutePerIp { get; set; } = 4;
 

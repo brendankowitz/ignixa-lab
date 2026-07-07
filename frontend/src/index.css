@@ -110,3 +110,21 @@ a.ix-app-switch__item:hover {
   height: 22px;
   background: var(--border2);
 }
+
+@media (max-width: 680px) {
+  .ix-app-switch {
+    order: 3;
+    flex: 1 1 100%;
+    overflow-x: auto;
+  }
+
+  .ix-app-switch__item {
+    flex: 1 0 auto;
+    justify-content: center;
+    padding: 6px 10px;
+  }
+
+  .ix-top-divider {
+    display: none;
+  }
+}

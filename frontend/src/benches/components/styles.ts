@@ -19,6 +19,7 @@ export const cardStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: 10,
+  minWidth: 0,
 };
 
 export const monoTextareaStyle: CSSProperties = {
@@ -36,6 +37,7 @@ export const monoTextareaStyle: CSSProperties = {
 };
 
 export const monoInputStyle: CSSProperties = {
+  minWidth: 0,
   border: '1px solid var(--border2)',
   borderRadius: 8,
   padding: '9px 12px',
@@ -63,11 +65,12 @@ export const pillGroupStyle: CSSProperties = {
   background: 'var(--inset)',
   borderRadius: 8,
   padding: 3,
+  maxWidth: '100%',
 };
 
 export function pillItemStyle(active: boolean): CSSProperties {
   return {
-    padding: '6px 14px',
+    padding: '6px 12px',
     borderRadius: 6,
     fontSize: 12.5,
     cursor: 'pointer',
@@ -75,6 +78,28 @@ export function pillItemStyle(active: boolean): CSSProperties {
     color: active ? 'var(--text)' : 'var(--text3)',
     fontWeight: active ? 600 : 500,
     boxShadow: active ? '0 1px 3px var(--border2)' : 'none',
+  };
+}
+
+export function benchPageStyle(maxWidth: number, compact: boolean): CSSProperties {
+  return {
+    width: '100%',
+    maxWidth,
+    margin: '0 auto',
+    padding: compact ? '14px 12px 44px' : '22px 24px 60px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: compact ? 12 : 14,
+    minWidth: 0,
+  };
+}
+
+export function benchHeaderStyle(compact: boolean): CSSProperties {
+  return {
+    display: 'flex',
+    alignItems: compact ? 'flex-start' : 'baseline',
+    gap: compact ? 8 : 12,
+    flexWrap: 'wrap',
   };
 }
 

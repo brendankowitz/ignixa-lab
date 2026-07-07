@@ -27,6 +27,7 @@ public static class EndpointClassifier
             "Health" => EndpointClass.Exempt,
             "Suites" => EndpointClass.Suites,
             "Capability" => EndpointClass.Capability,
+            "ResourceValidation" => EndpointClass.Validation,
             "Run" => EndpointClass.Run,
             // FHIRPath evaluation is a single unit of work per call (like
             // Capability), not a fan-out run — classify at the same tier.

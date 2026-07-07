@@ -1,5 +1,6 @@
 import { useMemo, useState, type CSSProperties } from 'react';
 import { useCopyToClipboard } from '../hooks/useCopyToClipboard';
+import { useIsNarrowViewport } from '../hooks/useIsNarrowViewport';
 import { useTheme } from '../hooks/useTheme';
 import { COPY_FEEDBACK_DURATION_MS, buildBenchShareUrl, readBenchShare, type BenchShareState, type FakesShareState, type FhirPathShareState, type ValidationShareState } from '../lib/shareLinks';
 import { Pills, type PillItem } from './components/primitives';
@@ -27,23 +28,26 @@ const shellStyle: CSSProperties = {
   fontFamily: "'IBM Plex Sans', system-ui, sans-serif",
 };
 
-const topBarStyle: CSSProperties = {
+function topBarStyle(compact: boolean): CSSProperties {
+  return {
   display: 'flex',
   flexWrap: 'wrap',
   alignItems: 'center',
-  gap: 14,
-  padding: '12px 20px',
+    gap: compact ? 8 : 14,
+    padding: compact ? '10px 12px' : '12px 20px',
   background: 'var(--panel)',
   borderBottom: '1px solid var(--border)',
   position: 'sticky',
   top: 0,
   zIndex: 20,
-};
+  };
+}
 
 /** Top-level shell for the Expression Benches page: top bar + bench-switching tabs. No router — tab state is component-local, same convention as the conformance app's `App.tsx`. */
 export function BenchesApp() {
   const initialLink = useMemo(readBenchShare, []);
   const theme = useTheme();
+  const compactHeader = useIsNarrowViewport(680);
   const [bench, setBench] = useState<BenchId>(initialLink.bench ?? 'fhirpath');
   const [fakesReturnTo, setFakesReturnTo] = useState<Exclude<BenchId, 'fakes'> | null>(null);
   const [sentToast, setSentToast] = useState<{ bench: BenchId; label: string } | null>(null);
@@ -87,7 +91,7 @@ export function BenchesApp() {
 
   return (
     <div style={{ ...shellStyle, ...(theme.variables as CSSProperties) }}>
-      <header style={topBarStyle}>
+      <header style={topBarStyle(compactHeader)}>
         <a href="./" aria-label="Ignixa home" style={{ display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none', color: 'inherit' }}>
           <div aria-hidden="true" style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--grad)', flex: 'none' }} />
           <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -110,9 +114,9 @@ export function BenchesApp() {
 
         <Pills items={BENCH_TABS} activeId={bench} onChange={setBench} />
 
-        <div style={{ flex: 1 }} />
+        <div style={{ flex: compactHeader ? '0 0 0' : 1, display: compactHeader ? 'none' : 'block' }} />
 
-        <span style={{ fontFamily: monoFont, fontSize: 11, color: 'var(--text3)' }}>
+        <span style={{ fontFamily: monoFont, fontSize: 11, color: 'var(--text3)', display: compactHeader ? 'none' : 'inline' }}>
           {bench === 'fhirpath' || bench === 'validation' || bench === 'fakes' ? 'live engine' : 'mock engine · exploration'}
         </span>
 

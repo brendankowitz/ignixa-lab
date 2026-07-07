@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { Card, ErrorBanner } from '../components/primitives';
-import { engineBadgeStyle, monoFont, monoTextareaStyle, primaryButtonStyle, sectionLabelStyle } from '../components/styles';
+import { benchHeaderStyle, benchPageStyle, engineBadgeStyle, monoFont, monoTextareaStyle, primaryButtonStyle, sectionLabelStyle } from '../components/styles';
 import { useIsNarrowViewport } from '../../hooks/useIsNarrowViewport';
 import { runSof } from './sofEngine';
 import { DEFAULT_RESOURCES_TEXT, DEFAULT_VIEW_DEFINITION_TEXT } from './sofFixtures';
@@ -13,6 +13,7 @@ export interface SofBenchProps {
 
 export function SofBench({ onOpenFakes, fakesSeed, onSeedConsumed }: SofBenchProps) {
   const stacked = useIsNarrowViewport(720);
+  const compact = useIsNarrowViewport(560);
   const twoColumnStyle: CSSProperties = {
     display: 'grid',
     gridTemplateColumns: stacked ? '1fr' : 'minmax(380px,44%) 1fr',
@@ -36,8 +37,8 @@ export function SofBench({ onOpenFakes, fakesSeed, onSeedConsumed }: SofBenchPro
   const gridColumns = result.columns.length ? `repeat(${result.columns.length}, minmax(110px, 1fr))` : '1fr';
 
   return (
-    <div style={{ maxWidth: 1380, margin: '0 auto', padding: '22px 24px 60px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+    <div style={benchPageStyle(1380, compact)}>
+      <div style={benchHeaderStyle(compact)}>
         <h1 style={{ margin: 0, fontSize: 21, fontWeight: 700, letterSpacing: '-.02em' }}>SQL on FHIR</h1>
         <span style={{ fontSize: 12.5, color: 'var(--text3)' }}>Run a ViewDefinition over resources and inspect the flattened table.</span>
         <div style={{ flex: 1 }} />
@@ -59,7 +60,7 @@ export function SofBench({ onOpenFakes, fakesSeed, onSeedConsumed }: SofBenchPro
             />
           </Card>
           <Card>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <span style={{ ...sectionLabelStyle, flex: 1 }}>Resources · JSON array</span>
               {onOpenFakes ? (
                 <button
@@ -91,7 +92,7 @@ export function SofBench({ onOpenFakes, fakesSeed, onSeedConsumed }: SofBenchPro
         </div>
 
         <Card style={{ minHeight: 400, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <span style={{ ...sectionLabelStyle, flex: 1 }}>Result table</span>
             <span style={{ fontFamily: monoFont, fontSize: 10.5, color: 'var(--text3)' }}>{result.meta}</span>
           </div>

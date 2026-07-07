@@ -106,6 +106,43 @@ public sealed class ValidationFunctionsTests
     }
 
     [Fact]
+    public async Task ValidateResource_NullFhirVersion_DefaultsToR4()
+    {
+        var functions = CreateFunctions();
+        var request = BuildPostRequest("""
+            {
+              "fhirVersion": null,
+              "depth": "minimal",
+              "resource": { "resourceType": "Patient" }
+            }
+            """);
+
+        var result = await functions.ValidateResource(request, CancellationToken.None);
+
+        var response = result.Should().BeOfType<OkObjectResult>().Subject.Value
+            .Should().BeOfType<ResourceValidationResponse>().Subject;
+        response.FhirVersion.Should().Be("r4");
+    }
+
+    [Fact]
+    public async Task ValidateResource_NullPackages_IsTreatedAsEmpty()
+    {
+        var functions = CreateFunctions();
+        var request = BuildPostRequest("""
+            {
+              "fhirVersion": "r4",
+              "depth": "minimal",
+              "packages": null,
+              "resource": { "resourceType": "Patient" }
+            }
+            """);
+
+        var result = await functions.ValidateResource(request, CancellationToken.None);
+
+        result.Should().BeOfType<OkObjectResult>();
+    }
+
+    [Fact]
     public async Task ValidateResource_EmptyPackageSpec_IsIgnored()
     {
         var functions = CreateFunctions();
@@ -132,6 +169,31 @@ public sealed class ValidationFunctionsTests
               "fhirVersion": "r4",
               "depth": "minimal",
               "packages": ["hl7.fhir.us.core"],
+              "resource": { "resourceType": "Patient" }
+            }
+            """);
+
+        var result = await functions.ValidateResource(request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task ValidateResource_TooManyPackageSpecs_ReturnsBadRequestWithoutHttpCall()
+    {
+        var functions = CreateFunctions();
+        var request = BuildPostRequest("""
+            {
+              "fhirVersion": "r4",
+              "depth": "minimal",
+              "packages": [
+                "example.one@1.0.0",
+                "example.two@1.0.0",
+                "example.three@1.0.0",
+                "example.four@1.0.0",
+                "example.five@1.0.0",
+                "example.six@1.0.0"
+              ],
               "resource": { "resourceType": "Patient" }
             }
             """);

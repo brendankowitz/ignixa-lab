@@ -20,6 +20,7 @@ public sealed class ResourceValidationService(
     IHttpClientFactory httpClientFactory,
     ILoggerFactory loggerFactory)
 {
+    private const int MaxPackageSpecs = 5;
     private const string PackageCacheDirectoryName = "ignixa-lab-validator-package-cache";
     private static readonly string EngineVersion = GetEngineVersion();
 
@@ -46,8 +47,17 @@ public sealed class ResourceValidationService(
                 $"Unknown depth '{request.Depth}'. Use minimal, spec, full, or compatibility.");
         }
 
-        var schemaProvider = schemaProviderFactory.GetSchemaProvider(NormalizeFhirVersion(request.FhirVersion));
-        var packageSpecs = request.Packages.Where(spec => !string.IsNullOrWhiteSpace(spec)).ToArray();
+        var requestedFhirVersion = string.IsNullOrWhiteSpace(request.FhirVersion) ? "r4" : request.FhirVersion;
+        var schemaProvider = schemaProviderFactory.GetSchemaProvider(NormalizeFhirVersion(requestedFhirVersion));
+        var packageSpecs = (request.Packages ?? [])
+            .Where(spec => !string.IsNullOrWhiteSpace(spec))
+            .ToArray();
+        if (packageSpecs.Length > MaxPackageSpecs)
+        {
+            throw new UnsupportedValidationOptionException(
+                $"Too many packages. At most {MaxPackageSpecs} package specs can be layered per validation request.");
+        }
+
         var setup = await BuildSetupAsync(schemaProvider, packageSpecs, cancellationToken);
         var element = sourceNode.ToElement(setup.EffectiveSchema);
         var schema = setup.Resolver.ResolveForElement(element);
@@ -63,7 +73,7 @@ public sealed class ResourceValidationService(
             TerminologyService = setup.TerminologyService,
         };
         var result = schema.Validate(element, settings, new ValidationState());
-        return ToResponse(request.FhirVersion, EngineVersion, resourceType, depth, result);
+        return ToResponse(requestedFhirVersion, EngineVersion, resourceType, depth, result);
     }
 
     private async Task<ValidationSetup> BuildSetupAsync(

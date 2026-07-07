@@ -4,7 +4,7 @@ import type { ValidationShareState } from '../../lib/shareLinks';
 import { HighlightedTextarea } from '../components/HighlightedTextarea';
 import { highlightJson } from '../components/jsonHighlight';
 import { Card, ErrorBanner, Pills, Toggle, type PillItem } from '../components/primitives';
-import { chipStyle, engineBadgeStyle, monoFont, monoInputStyle, sectionLabelStyle } from '../components/styles';
+import { benchHeaderStyle, benchPageStyle, chipStyle, engineBadgeStyle, monoFont, monoInputStyle, sectionLabelStyle } from '../components/styles';
 import { DEFAULT_VALIDATION_RESOURCE, VALIDATION_SAMPLES, type ValidationSampleId } from './sampleResources';
 import { parsePackageText, useValidationRun } from './useValidationRun';
 import type { ValidationDepth, ValidationIssue, ValidationSeverity } from './validationTypes';
@@ -31,6 +31,14 @@ const FILTER_ITEMS: PillItem<'all' | ValidationSeverity>[] = [
   { id: 'warning', label: 'Warnings' },
   { id: 'information', label: 'Info' },
 ];
+
+const controlGroupStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  flexWrap: 'nowrap',
+  maxWidth: '100%',
+};
 
 function severityColors(severity: ValidationSeverity): { bg: string; fg: string } {
   switch (severity) {
@@ -71,6 +79,7 @@ export interface ValidationBenchProps {
 
 export function ValidationBench({ onOpenFakes, fakesSeed, onSeedConsumed, initialState, onShareStateChange }: ValidationBenchProps) {
   const stacked = useIsNarrowViewport(840);
+  const compact = useIsNarrowViewport(560);
   const twoColumnStyle: CSSProperties = {
     display: 'grid',
     gridTemplateColumns: stacked ? '1fr' : 'minmax(360px,44%) 1fr',
@@ -106,8 +115,8 @@ export function ValidationBench({ onOpenFakes, fakesSeed, onSeedConsumed, initia
   const filteredIssues = filter === 'all' ? issues : issues.filter((issue) => issue.severity === filter);
 
   return (
-    <div style={{ maxWidth: 1280, margin: '0 auto', padding: '22px 24px 60px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+    <div style={benchPageStyle(1280, compact)}>
+      <div style={benchHeaderStyle(compact)}>
         <h1 style={{ margin: 0, fontSize: 21, fontWeight: 700, letterSpacing: '-.02em' }}>Resource validation</h1>
         <span style={{ fontSize: 12.5, color: 'var(--text3)' }}>
           Validate a resource with Ignixa.Validation — depth, terminology, and IG package layering.
@@ -118,11 +127,15 @@ export function ValidationBench({ onOpenFakes, fakesSeed, onSeedConsumed, initia
 
       <Card>
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
-          <span style={sectionLabelStyle}>FHIR version</span>
-          <Pills items={VERSION_ITEMS} activeId={fhirVersion} onChange={setFhirVersion} />
-          <span style={{ ...sectionLabelStyle, marginLeft: 8 }}>Depth</span>
-          <Pills items={DEPTH_ITEMS} activeId={depth} onChange={setDepth} />
-          <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text3)' }}>
+          <div style={controlGroupStyle}>
+            <span style={sectionLabelStyle}>FHIR version</span>
+            <Pills items={VERSION_ITEMS} activeId={fhirVersion} onChange={setFhirVersion} />
+          </div>
+          <div style={controlGroupStyle}>
+            <span style={sectionLabelStyle}>Depth</span>
+            <Pills items={DEPTH_ITEMS} activeId={depth} onChange={setDepth} />
+          </div>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text3)', flex: '0 0 auto' }}>
             Skip terminology
             <Toggle checked={skipTerminology} onChange={setSkipTerminology} ariaLabel="Skip terminology validation" />
           </span>
@@ -130,7 +143,7 @@ export function ValidationBench({ onOpenFakes, fakesSeed, onSeedConsumed, initia
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <span style={sectionLabelStyle}>
-            IG packages <span style={{ textTransform: 'none', letterSpacing: 0, color: 'var(--text4)' }}>· optional id@version, comma or newline separated</span>
+            IG packages <span style={{ textTransform: 'none', letterSpacing: 0, color: 'var(--text4)' }}>· optional id@version, comma or newline separated, up to 5</span>
           </span>
           <input
             value={packageText}
@@ -192,7 +205,13 @@ export function ValidationBench({ onOpenFakes, fakesSeed, onSeedConsumed, initia
               </button>
             ) : null}
           </div>
-          <HighlightedTextarea value={resourceText} onChange={setResourceText} lines={resourceHighlight} style={{ minHeight: 560, fontSize: 11.5 }} />
+          <HighlightedTextarea
+            value={resourceText}
+            onChange={setResourceText}
+            lines={resourceHighlight}
+            style={{ height: 220, fontSize: 11.5 }}
+            autoGrowMaxHeight={560}
+          />
         </Card>
 
         <Card style={{ minHeight: 440, minWidth: 0 }}>
