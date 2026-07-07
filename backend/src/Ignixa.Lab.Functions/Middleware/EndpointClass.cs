@@ -14,6 +14,9 @@ public enum EndpointClass
     /// <summary>Single outbound metadata call (<c>GET /api/capability</c>).</summary>
     Capability,
 
+    /// <summary>Interactive resource validation (<c>POST /api/validate</c>).</summary>
+    Validation,
+
     /// <summary>Expensive fan-out run (<c>POST /api/run</c>) — the primary abuse vector.</summary>
     Run,
 }

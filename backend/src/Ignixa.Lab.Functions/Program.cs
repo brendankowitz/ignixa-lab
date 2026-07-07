@@ -1,6 +1,7 @@
 using Ignixa.Lab.Functions.Configuration;
 using Ignixa.Lab.Functions.Execution;
 using Ignixa.Lab.Functions.Middleware;
+using Ignixa.Lab.Functions.Services.Validation;
 using Ignixa.Lab.Functions.Services.FhirPath;
 using Ignixa.Lab.Functions.Suites;
 using Microsoft.Azure.Functions.Worker;
@@ -40,6 +41,7 @@ builder.Services.AddSingleton<ExpressionEvaluator>();
 builder.Services.AddSingleton<ResultFormatter>();
 builder.Services.AddSingleton<FhirPathService>();
 builder.Services.AddSingleton<Ignixa.Lab.Functions.Services.Fakes.FakesService>();
+builder.Services.AddSingleton<ResourceValidationService>();
 
 builder.Services
     .AddApplicationInsightsTelemetryWorkerService()

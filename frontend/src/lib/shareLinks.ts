@@ -1,8 +1,10 @@
 import type { TabId } from '../components/TopBar';
 import type { FhirVersion as FhirPathVersion, FpVariable } from '../benches/fhirpath/fhirPathTypes';
 import type { SampleId } from '../benches/fhirpath/sampleResources';
+import type { ValidationDepth } from '../benches/validation/validationTypes';
+import type { ValidationSampleId } from '../benches/validation/sampleResources';
 
-export type BenchId = 'fhirpath' | 'fml' | 'sqlonfhir' | 'fakes';
+export type BenchId = 'fhirpath' | 'validation' | 'fml' | 'sqlonfhir' | 'fakes';
 export type FakesMode = 'population' | 'scenario' | 'resource' | 'workflow';
 export const COPY_FEEDBACK_DURATION_MS = 1400;
 
@@ -19,6 +21,15 @@ export interface FhirPathShareState {
   sampleId?: SampleId;
   resourceText?: string;
   variables?: FpVariable[];
+}
+
+export interface ValidationShareState {
+  fhirVersion?: string;
+  depth?: ValidationDepth;
+  skipTerminology?: boolean;
+  packageText?: string;
+  sampleId?: ValidationSampleId;
+  resourceText?: string;
 }
 
 export interface FakesShareState {
@@ -53,6 +64,7 @@ export interface FakesShareState {
 
 export interface BenchShareState {
   fhirpath?: FhirPathShareState;
+  validation?: ValidationShareState;
   fakes?: FakesShareState;
 }
 
@@ -60,9 +72,11 @@ export interface BenchShareState {
 // so a deep link can only ever restore the Setup tab. buildConformanceShareUrl
 // still encodes whatever tab the user is on when they copy the link.
 const CONFORMANCE_TABS: TabId[] = ['setup'];
-const BENCHES: BenchId[] = ['fhirpath', 'fml', 'sqlonfhir', 'fakes'];
+const BENCHES: BenchId[] = ['fhirpath', 'validation', 'fml', 'sqlonfhir', 'fakes'];
 const FHIRPATH_VERSIONS: FhirPathVersion[] = ['stu3', 'r4', 'r4b', 'r5', 'r6'];
 const SAMPLE_IDS: SampleId[] = ['patient', 'observation', 'custom'];
+const VALIDATION_DEPTHS: ValidationDepth[] = ['minimal', 'spec', 'full', 'compatibility'];
+const VALIDATION_SAMPLE_IDS: ValidationSampleId[] = ['patient-valid', 'patient-invalid', 'bundle-invalid', 'custom'];
 const FAKES_MODES: FakesMode[] = ['population', 'scenario', 'resource', 'workflow'];
 const POPULATION_FORMATS: NonNullable<NonNullable<FakesShareState['population']>['format']>[] = ['transaction', 'ndjson'];
 const DENSITY_VALUES: string[] = ['Minimal', 'Maximum'];
@@ -161,6 +175,7 @@ function conformanceStateFromRecord(record: Record<string, unknown>): Conformanc
 function benchStateFromRecord(record: Record<string, unknown>): BenchShareState {
   return {
     fhirpath: isRecord(record.fhirpath) ? fhirPathStateFromRecord(record.fhirpath) : undefined,
+    validation: isRecord(record.validation) ? validationStateFromRecord(record.validation) : undefined,
     fakes: isRecord(record.fakes) ? fakesStateFromRecord(record.fakes) : undefined,
   };
 }
@@ -180,6 +195,17 @@ function fhirPathStateFromRecord(record: Record<string, unknown>): FhirPathShare
             value: typeof variable.value === 'string' ? variable.value : '',
           }))
       : undefined,
+  };
+}
+
+function validationStateFromRecord(record: Record<string, unknown>): ValidationShareState {
+  return {
+    fhirVersion: typeof record.fhirVersion === 'string' ? record.fhirVersion : undefined,
+    depth: VALIDATION_DEPTHS.includes(record.depth as ValidationDepth) ? (record.depth as ValidationDepth) : undefined,
+    skipTerminology: typeof record.skipTerminology === 'boolean' ? record.skipTerminology : undefined,
+    packageText: typeof record.packageText === 'string' ? record.packageText : undefined,
+    sampleId: VALIDATION_SAMPLE_IDS.includes(record.sampleId as ValidationSampleId) ? (record.sampleId as ValidationSampleId) : undefined,
+    resourceText: typeof record.resourceText === 'string' ? record.resourceText : undefined,
   };
 }
 

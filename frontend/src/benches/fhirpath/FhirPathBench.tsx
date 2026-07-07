@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Card, ErrorBanner, Pills, Toggle, type PillItem } from '../components/primitives';
 import { HighlightedTextarea } from '../components/HighlightedTextarea';
-import { engineBadgeStyle, monoInputStyle, monoFont, sectionLabelStyle, chipStyle } from '../components/styles';
+import { benchHeaderStyle, benchPageStyle, engineBadgeStyle, monoInputStyle, monoFont, sectionLabelStyle, chipStyle } from '../components/styles';
 import { useIsNarrowViewport } from '../../hooks/useIsNarrowViewport';
 import { highlightFhirPathExpression } from './fhirPathHighlight';
 import { highlightJson } from '../components/jsonHighlight';
@@ -113,6 +113,7 @@ export interface FhirPathBenchProps {
 
 export function FhirPathBench({ onOpenFakes, fakesSeed, onSeedConsumed, initialState, onShareStateChange }: FhirPathBenchProps) {
   const stacked = useIsNarrowViewport(720);
+  const compact = useIsNarrowViewport(560);
   const twoColumnStyle: CSSProperties = {
     display: 'grid',
     gridTemplateColumns: stacked ? '1fr' : 'minmax(340px,42%) 1fr',
@@ -168,8 +169,8 @@ export function FhirPathBench({ onOpenFakes, fakesSeed, onSeedConsumed, initialS
   );
 
   return (
-    <div style={{ maxWidth: 1280, margin: '0 auto', padding: '22px 24px 60px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+    <div style={benchPageStyle(1280, compact)}>
+      <div style={benchHeaderStyle(compact)}>
         <h1 style={{ margin: 0, fontSize: 21, fontWeight: 700, letterSpacing: '-.02em' }}>FHIRPath</h1>
         <span style={{ fontSize: 12.5, color: 'var(--text3)' }}>
           Evaluate expressions against a resource — results, trace, and parse tree.
@@ -191,8 +192,8 @@ export function FhirPathBench({ onOpenFakes, fakesSeed, onSeedConsumed, initialS
           />
         </div>
 
-        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 260 }}>
+        <div style={{ display: 'flex', gap: compact ? 10 : 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: '1 1 240px', minWidth: 0 }}>
             <span style={sectionLabelStyle}>
               Context expression <span style={{ textTransform: 'none', letterSpacing: 0, color: 'var(--text4)' }}>· optional, evaluates per item</span>
             </span>
@@ -204,7 +205,7 @@ export function FhirPathBench({ onOpenFakes, fakesSeed, onSeedConsumed, initialS
               style={monoInputStyle}
             />
           </div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', paddingBottom: 2 }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', paddingBottom: 2, minWidth: 0 }}>
             <span style={{ fontSize: 11, color: 'var(--text4)' }}>Examples</span>
             {EXAMPLE_EXPRESSIONS[sampleId].map((example) => (
               <button
@@ -250,21 +251,21 @@ export function FhirPathBench({ onOpenFakes, fakesSeed, onSeedConsumed, initialS
             </button>
           </div>
           {variables.map((variable, index) => (
-            <div key={index} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div key={index} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: compact ? 'wrap' : 'nowrap' }}>
               <span style={{ fontFamily: monoFont, fontSize: 12, color: 'var(--text3)' }}>%</span>
               <input
                 value={variable.name}
                 onChange={(event) => updateVariable(index, { name: event.target.value })}
                 placeholder="name"
                 spellCheck={false}
-                style={{ ...monoInputStyle, width: 140 }}
+                style={{ ...monoInputStyle, flex: compact ? '1 1 120px' : '0 0 140px' }}
               />
               <input
                 value={variable.value}
                 onChange={(event) => updateVariable(index, { value: event.target.value })}
                 placeholder="value (JSON or string)"
                 spellCheck={false}
-                style={{ ...monoInputStyle, flex: 1 }}
+                style={{ ...monoInputStyle, flex: '1 1 180px' }}
               />
               <button
                 type="button"
@@ -298,7 +299,7 @@ export function FhirPathBench({ onOpenFakes, fakesSeed, onSeedConsumed, initialS
 
       <div style={twoColumnStyle}>
         <Card style={{ minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <span style={{ ...sectionLabelStyle, flex: 1 }}>Test resource</span>
             {SAMPLE_RESOURCES.map((sample) => (
               <button
@@ -352,7 +353,7 @@ export function FhirPathBench({ onOpenFakes, fakesSeed, onSeedConsumed, initialS
         </Card>
 
         <Card style={{ minHeight: 400, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <Pills items={RESULT_TAB_ITEMS} activeId={resultTab} onChange={setResultTab} />
             <div style={{ flex: 1 }} />
             {resultTab === 'ast' ? (

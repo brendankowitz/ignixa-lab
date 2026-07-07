@@ -21,6 +21,7 @@ public sealed class RateLimitPolicy : IDisposable
     private readonly bool _enabled;
     private readonly PartitionedRateLimiter<string> _suitesLimiter;
     private readonly PartitionedRateLimiter<string> _capabilityLimiter;
+    private readonly PartitionedRateLimiter<string> _validationLimiter;
     private readonly PartitionedRateLimiter<string> _runPerMinuteLimiter;
     private readonly PartitionedRateLimiter<string> _runPerHourLimiter;
 
@@ -41,6 +42,7 @@ public sealed class RateLimitPolicy : IDisposable
 
         _suitesLimiter = CreateSlidingWindowLimiter(config.SuitesPerMinutePerIp, OneMinute);
         _capabilityLimiter = CreateSlidingWindowLimiter(config.CapabilityPerMinutePerIp, OneMinute);
+        _validationLimiter = CreateSlidingWindowLimiter(config.ValidationPerMinutePerIp, OneMinute);
         _runPerMinuteLimiter = CreateSlidingWindowLimiter(config.RunPerMinutePerIp, OneMinute);
         _runPerHourLimiter = CreateSlidingWindowLimiter(config.RunPerHourPerIp, OneHour);
 
@@ -74,6 +76,7 @@ public sealed class RateLimitPolicy : IDisposable
         {
             EndpointClass.Suites => AcquirePerIp(_suitesLimiter, ipKey, OneMinute),
             EndpointClass.Capability => AcquirePerIp(_capabilityLimiter, ipKey, OneMinute),
+            EndpointClass.Validation => AcquirePerIp(_validationLimiter, ipKey, OneMinute),
             _ => AcquireRun(ipKey),
         };
     }
@@ -168,6 +171,7 @@ public sealed class RateLimitPolicy : IDisposable
     {
         _suitesLimiter.Dispose();
         _capabilityLimiter.Dispose();
+        _validationLimiter.Dispose();
         _runPerMinuteLimiter.Dispose();
         _runPerHourLimiter.Dispose();
         _runGlobalHourlyLimiter.Dispose();

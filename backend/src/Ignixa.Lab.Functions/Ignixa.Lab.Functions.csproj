@@ -17,6 +17,8 @@
     <PackageReference Include="Ignixa.FhirPath" />
     <PackageReference Include="Ignixa.Serialization" />
     <PackageReference Include="Ignixa.Specification" />
+    <PackageReference Include="Ignixa.Validation" />
+    <PackageReference Include="Ignixa.PackageManagement" />
     <PackageReference Include="Ignixa.FhirFakes" />
     <PackageReference Include="NuGet.Versioning" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker" />

@@ -3,6 +3,8 @@ import { Card, ErrorBanner, Pills, Toggle, type PillItem } from '../components/p
 import { HighlightedJsonBlock } from '../components/HighlightedJsonBlock';
 import {
   chipStyle,
+  benchHeaderStyle,
+  benchPageStyle,
   engineBadgeStyle,
   monoFont,
   monoInputStyle,
@@ -24,7 +26,7 @@ import type {
   WorkflowResult,
 } from './fakesTypes';
 
-type TargetBench = 'fhirpath' | 'fml' | 'sqlonfhir';
+type TargetBench = 'fhirpath' | 'validation' | 'fml' | 'sqlonfhir';
 type OnSend = (targetBench: TargetBench, payload: Record<string, unknown> | Record<string, unknown>[], label: string) => void;
 
 const MODE_ITEMS: PillItem<FakesMode>[] = [
@@ -57,9 +59,17 @@ type PopulationFormat = 'transaction' | 'ndjson';
 
 const BENCH_LABELS: Record<TargetBench, string> = {
   fhirpath: 'FHIRPath',
+  validation: 'Validation',
   fml: 'FML',
   sqlonfhir: 'SQL on FHIR',
 };
+
+const SEND_TARGET_ITEMS: { id: TargetBench; label: string }[] = [
+  { id: 'fhirpath', label: 'FHIRPath' },
+  { id: 'validation', label: 'Validation' },
+  { id: 'sqlonfhir', label: 'SQL on FHIR' },
+  { id: 'fml', label: 'FML' },
+];
 
 const deliveryBarStyle: CSSProperties = {
   display: 'flex',
@@ -118,6 +128,7 @@ export interface FakesBenchProps {
 
 export function FakesBench({ returnTo, onDismissReturn, onSend, initialState, onShareStateChange }: FakesBenchProps) {
   const stacked = useIsNarrowViewport(720);
+  const compact = useIsNarrowViewport(560);
   const [mode, setMode] = useState<FakesMode>(initialState?.mode ?? 'resource');
   const [metadata, setMetadata] = useState<FakesMetadata | null>(null);
   const [metadataError, setMetadataError] = useState<string | null>(null);
@@ -185,8 +196,8 @@ export function FakesBench({ returnTo, onDismissReturn, onSend, initialState, on
   );
 
   return (
-    <div style={{ maxWidth: 1380, margin: '0 auto', padding: '22px 24px 60px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+    <div style={benchPageStyle(1380, compact)}>
+      <div style={benchHeaderStyle(compact)}>
         <h1 style={{ margin: 0, fontSize: 21, fontWeight: 700, letterSpacing: '-.02em' }}>Fakes</h1>
         <span style={{ fontSize: 12.5, color: 'var(--text3)' }}>
           Generate realistic synthetic FHIR data — populations, clinical scenarios, and edge-case fuzzing.
@@ -1754,18 +1765,46 @@ function EdgeCaseFamilyCard({
 }
 
 function SendBar({ onSend }: { onSend: (bench: TargetBench) => void }) {
+  const [targetBench, setTargetBench] = useState<TargetBench>('fhirpath');
+
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ fontSize: 10.5, color: 'var(--text4)', textTransform: 'uppercase', letterSpacing: '.1em' }}>Send to</span>
-      <button type="button" onClick={() => onSend('fhirpath')} style={{ ...monoInputStyle, cursor: 'pointer' }}>
-        FHIRPath
+    <div style={{ display: 'inline-flex', alignItems: 'stretch', minWidth: 0 }}>
+      <button
+        type="button"
+        onClick={() => onSend(targetBench)}
+        style={{
+          ...monoInputStyle,
+          cursor: 'pointer',
+          borderTopRightRadius: 0,
+          borderBottomRightRadius: 0,
+          borderRight: 'none',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        Send
       </button>
-      <button type="button" onClick={() => onSend('fml')} style={{ ...monoInputStyle, cursor: 'pointer' }}>
-        FML
-      </button>
-      <button type="button" onClick={() => onSend('sqlonfhir')} style={{ ...monoInputStyle, cursor: 'pointer' }}>
-        SQL on FHIR
-      </button>
+      <select
+        value={targetBench}
+        onChange={(event) => {
+          const next = SEND_TARGET_ITEMS.find((item) => item.id === event.target.value);
+          if (next) setTargetBench(next.id);
+        }}
+        aria-label="Send generated data to"
+        style={{
+          ...monoInputStyle,
+          cursor: 'pointer',
+          borderTopLeftRadius: 0,
+          borderBottomLeftRadius: 0,
+          minWidth: 122,
+          maxWidth: '100%',
+        }}
+      >
+        {SEND_TARGET_ITEMS.map((item) => (
+          <option key={item.id} value={item.id}>
+            {item.label}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }

@@ -17,6 +17,8 @@
     <PackageVersion Include="Ignixa.FhirPath" Version="0.6.4" />
     <PackageVersion Include="Ignixa.Serialization" Version="0.6.4" />
     <PackageVersion Include="Ignixa.Specification" Version="0.6.4" />
+    <PackageVersion Include="Ignixa.Validation" Version="0.6.4" />
+    <PackageVersion Include="Ignixa.PackageManagement" Version="0.6.4" />
 
     <!-- Synthetic FHIR data generator (populations, clinical scenarios, single resources, edge-case fuzzing), powering the Fakes bench -->
     <PackageVersion Include="Ignixa.FhirFakes" Version="0.6.4" />

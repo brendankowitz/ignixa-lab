@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { HighlightedTextarea } from '../components/HighlightedTextarea';
 import { Card, ErrorBanner, Pills, type PillItem } from '../components/primitives';
-import { engineBadgeStyle, monoFont, monoTextareaStyle, primaryButtonStyle, sectionLabelStyle } from '../components/styles';
+import { benchHeaderStyle, benchPageStyle, engineBadgeStyle, monoFont, monoTextareaStyle, primaryButtonStyle, sectionLabelStyle } from '../components/styles';
 import { useIsNarrowViewport } from '../../hooks/useIsNarrowViewport';
 import { diffLines } from './diffLines';
 import { runFml } from './fmlEngine';
@@ -24,6 +24,7 @@ export interface FmlBenchProps {
 
 export function FmlBench({ onOpenFakes, fakesSeed, onSeedConsumed }: FmlBenchProps) {
   const stacked = useIsNarrowViewport(720);
+  const compact = useIsNarrowViewport(560);
   const twoColumnStyle: CSSProperties = {
     display: 'grid',
     gridTemplateColumns: stacked ? '1fr' : 'minmax(420px,52%) 1fr',
@@ -52,8 +53,8 @@ export function FmlBench({ onOpenFakes, fakesSeed, onSeedConsumed }: FmlBenchPro
   const runMap = () => setResult(runFml(mapText, sourceText));
 
   return (
-    <div style={{ maxWidth: 1380, margin: '0 auto', padding: '22px 24px 60px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+    <div style={benchPageStyle(1380, compact)}>
+      <div style={benchHeaderStyle(compact)}>
         <h1 style={{ margin: 0, fontSize: 21, fontWeight: 700, letterSpacing: '-.02em' }}>FHIR Mapping Language</h1>
         <span style={{ fontSize: 12.5, color: 'var(--text3)' }}>Author a StructureMap in FML and debug it rule by rule.</span>
         <div style={{ flex: 1 }} />
@@ -65,7 +66,7 @@ export function FmlBench({ onOpenFakes, fakesSeed, onSeedConsumed }: FmlBenchPro
 
       <div style={twoColumnStyle}>
         <Card style={{ minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <span style={{ ...sectionLabelStyle, flex: 1 }}>Map source · .fml</span>
             <span style={{ fontFamily: monoFont, fontSize: 10.5, color: 'var(--text3)' }}>{result.mapName}</span>
           </div>
@@ -74,7 +75,7 @@ export function FmlBench({ onOpenFakes, fakesSeed, onSeedConsumed }: FmlBenchPro
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
           <Card>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <span style={{ ...sectionLabelStyle, flex: 1 }}>Source resource</span>
               {onOpenFakes ? (
                 <button
@@ -105,7 +106,7 @@ export function FmlBench({ onOpenFakes, fakesSeed, onSeedConsumed }: FmlBenchPro
           </Card>
 
           <Card>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <Pills items={TAB_ITEMS} activeId={tab} onChange={setTab} />
               <div style={{ flex: 1 }} />
               <span style={{ fontFamily: monoFont, fontSize: 10.5, color: 'var(--text3)' }}>
