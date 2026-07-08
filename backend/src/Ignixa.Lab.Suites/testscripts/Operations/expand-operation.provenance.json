@@ -48,7 +48,7 @@
         },
         {
           "url": "http://ignixa.io/fhir/StructureDefinition/provenance-distillation-notes",
-          "valueString": "Used the FHIR operation definitions as the normative source for terminology-operation behavior."
+          "valueString": "Used the FHIR operation definitions as the normative source for ValueSet expansion behavior."
         },
         {
           "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-version",
@@ -74,6 +74,31 @@
         {
           "url": "http://ignixa.io/fhir/StructureDefinition/provenance-distillation-notes",
           "valueString": "Used as comparative open-source coverage while distilling black-box TestScript terminology scenarios."
+        },
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-version",
+          "valueString": "repository source reviewed during Ignixa Lab suite distillation"
+        }
+      ]
+    },
+    {
+      "role": "source",
+      "what": {
+        "reference": "https://github.com/microsoft/fhir-server",
+        "display": "Microsoft FHIR Server ExpandOperationTests coverage"
+      },
+      "extension": [
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-relationship",
+          "valueCode": "distilled-from"
+        },
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-license",
+          "valueString": "MIT"
+        },
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-distillation-notes",
+          "valueString": "Converted Microsoft FHIR Server ValueSet $expand e2e behavior into black-box FHIR TestScript assertions, while preserving FHIR terminology-service context."
         },
         {
           "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-version",

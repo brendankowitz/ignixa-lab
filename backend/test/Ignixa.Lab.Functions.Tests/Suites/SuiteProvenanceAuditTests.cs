@@ -262,7 +262,36 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
 
         references.Should().Contain("https://hl7.org/fhir/R4/terminology-service.html");
         references.Should().Contain("https://github.com/hapifhir/hapi-fhir");
-        references.Should().NotContain("https://github.com/microsoft/fhir-server");
+        references.Should().Contain("https://github.com/microsoft/fhir-server");
+    }
+
+    [Theory]
+    [InlineData("Foundation", "health.json")]
+    [InlineData("Foundation", "cors.json")]
+    [InlineData("Regression", "exception-handling.json")]
+    [InlineData("Regression", "capability-statement-version.json")]
+    [InlineData("Regression", "observation-resolve-reference.json")]
+    public async Task NewProvenanceSidecars_MapsMicrosoftDerivedFoundationAndRegressionSuitesToMicrosoftSource(
+        string category,
+        string fileName)
+    {
+        WriteScript(Path.Combine(category, fileName));
+
+        var result = await RunGeneratorAsync(_root);
+
+        result.ExitCode.Should().Be(0, result.CombinedOutput);
+        var sidecarName = Path.ChangeExtension(fileName, ".provenance.json");
+        using var document = JsonDocument.Parse(
+            await File.ReadAllTextAsync(Path.Combine(_root, category, sidecarName)));
+
+        var references = document.RootElement
+            .GetProperty("entity")
+            .EnumerateArray()
+            .Select(entity => entity.GetProperty("what").GetProperty("reference").GetString())
+            .ToArray();
+
+        references.Should().Contain("https://github.com/microsoft/fhir-server");
+        references.Should().NotContain("https://github.com/brendankowitz/ignixa-lab");
     }
 
     private void WriteScript(string relativePath)

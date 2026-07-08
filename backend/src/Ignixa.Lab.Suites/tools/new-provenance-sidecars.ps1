@@ -39,6 +39,32 @@ $sourceProfiles = @{
             Notes = 'Used as comparative open-source coverage while distilling black-box TestScript terminology scenarios.'
         }
     )
+    OperationsExpand = @(
+        @{
+            Reference = 'https://hl7.org/fhir/R4/terminology-service.html'
+            Display = 'FHIR R4 terminology service operations'
+            Relationship = 'spec-reference'
+            License = 'FHIR specification license'
+            Version = 'FHIR R4'
+            Notes = 'Used the FHIR operation definitions as the normative source for ValueSet expansion behavior.'
+        },
+        @{
+            Reference = 'https://github.com/hapifhir/hapi-fhir'
+            Display = 'HAPI FHIR terminology test coverage'
+            Relationship = 'inspired-by'
+            License = 'Apache-2.0'
+            Version = 'repository source reviewed during Ignixa Lab suite distillation'
+            Notes = 'Used as comparative open-source coverage while distilling black-box TestScript terminology scenarios.'
+        },
+        @{
+            Reference = 'https://github.com/microsoft/fhir-server'
+            Display = 'Microsoft FHIR Server ExpandOperationTests coverage'
+            Relationship = 'distilled-from'
+            License = 'MIT'
+            Version = 'repository source reviewed during Ignixa Lab suite distillation'
+            Notes = 'Converted Microsoft FHIR Server ValueSet $expand e2e behavior into black-box FHIR TestScript assertions, while preserving FHIR terminology-service context.'
+        }
+    )
     Subscriptions = @(
         @{
             Reference = 'https://hl7.org/fhir/R4/subscription.html'
@@ -123,8 +149,11 @@ function Get-SourceProfileName {
         return 'Subscriptions'
     }
 
+    if ($RelativePath -eq 'Operations/expand-operation.json') {
+        return 'OperationsExpand'
+    }
+
     if ($RelativePath -in @(
-        'Operations/expand-operation.json',
         'Operations/lookup-operation.json',
         'Operations/validate-code-operation.json',
         'Operations/subsumes-operation.json',
@@ -141,16 +170,11 @@ function Get-SourceProfileName {
         return 'Bundles'
     }
 
-    if ($RelativePath.StartsWith('Regression/', [StringComparison]::Ordinal) -or
-        $RelativePath -eq 'Foundation/health.json' -or
-        $RelativePath -eq 'Foundation/cors.json') {
-        return 'Ignixa'
-    }
-
     if ($RelativePath.StartsWith('CRUD/', [StringComparison]::Ordinal) -or
         $RelativePath.StartsWith('Search/', [StringComparison]::Ordinal) -or
         $RelativePath.StartsWith('Foundation/', [StringComparison]::Ordinal) -or
         $RelativePath.StartsWith('Operations/', [StringComparison]::Ordinal) -or
+        $RelativePath.StartsWith('Regression/', [StringComparison]::Ordinal) -or
         $RelativePath.StartsWith('Validation/', [StringComparison]::Ordinal)) {
         return 'Microsoft'
     }

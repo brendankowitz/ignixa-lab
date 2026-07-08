@@ -34,46 +34,21 @@
     {
       "role": "source",
       "what": {
-        "reference": "https://github.com/brendankowitz/ignixa-lab",
-        "display": "Ignixa Lab bundled TestScript suite"
+        "reference": "https://github.com/microsoft/fhir-server",
+        "display": "Microsoft FHIR Server test coverage"
       },
       "extension": [
         {
           "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-relationship",
-          "valueCode": "direct-port"
+          "valueCode": "distilled-from"
         },
         {
           "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-license",
-          "valueString": "repository license"
+          "valueString": "MIT"
         },
         {
           "url": "http://ignixa.io/fhir/StructureDefinition/provenance-distillation-notes",
-          "valueString": "Authored or curated directly in Ignixa Lab as a canonical bundled TestScript."
-        },
-        {
-          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-version",
-          "valueString": "current repository revision"
-        }
-      ]
-    },
-    {
-      "role": "source",
-      "what": {
-        "reference": "https://github.com/brendankowitz/ignixa-fhir",
-        "display": "ignixa-fhir TestScript engine and conformance coverage"
-      },
-      "extension": [
-        {
-          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-relationship",
-          "valueCode": "inspired-by"
-        },
-        {
-          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-license",
-          "valueString": "repository license"
-        },
-        {
-          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-distillation-notes",
-          "valueString": "Aligned with ignixa-fhir TestScript execution behavior and conformance dashboard expectations."
+          "valueString": "Converted Microsoft FHIR Server behavior into black-box FHIR TestScript assertions and kept Microsoft-specific operations in the Microsoft category."
         },
         {
           "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-version",
