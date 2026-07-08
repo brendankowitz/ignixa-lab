@@ -58,6 +58,7 @@ test/Ignixa.Lab.Functions.Tests/
 ## Test
 
 ```bash
+./backend/pack-suites.ps1
 dotnet test Ignixa.Lab.sln
 ```
 
