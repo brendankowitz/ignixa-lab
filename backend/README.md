@@ -41,7 +41,7 @@ src/Ignixa.Lab.Functions/
   Program.cs       Host + DI wiring
 
 src/Ignixa.Lab.Suites/
-  testscripts/     The 78 canonical TestScript suites (Bundles/CRUD/Foundation/
+  testscripts/     The 87 canonical TestScript suites (Bundles/CRUD/Foundation/
                    Microsoft/Operations/Regression/Search/Subscriptions/Validation),
                    packed into the IgnixaLab.TestScript.Suites content
                    package (ADR-2607)
@@ -149,10 +149,12 @@ Phase 2 shared-store counter, which is not implemented here.
 
 ## Suites
 
-The 78 canonical FHIR TestScript suites (`backend/src/Ignixa.Lab.Suites/testscripts/{Bundles,CRUD,Foundation,Microsoft,Operations,Regression,Search,Subscriptions,Validation}/*.json`)
+The 87 canonical FHIR TestScript suites (`backend/src/Ignixa.Lab.Suites/testscripts/{Bundles,CRUD,Foundation,Microsoft,Operations,Regression,Search,Subscriptions,Validation}/*.json`)
 are packed into a local NuGet content package, `IgnixaLab.TestScript.Suites`, by
 the `Ignixa.Lab.Suites` project and consumed by `Ignixa.Lab.Functions` (and
-its test project) via `PackageReference`. This is an interim step —
+its test project) via `PackageReference`.
+
+This is an interim step —
 see [ADR-2607](../docs/features/testscript-suite-sourcing/adr-2607-suite-sourcing.md)
 — for the upstream `ignixa-fhir` suites artifact; the `PackageReference`
 will be repointed there once it ships, and the local feed retired.
@@ -218,6 +220,13 @@ consumer with the `PackageReference` — it copies the packaged JSONs to the
 consumer's output under `testscripts/`, preserving the category subfolders
 that `SuiteCatalog` reads. Bumping the suites means editing the JSON under
 `Ignixa.Lab.Suites/testscripts/` and re-running `pack-suites.ps1`.
+
+Each distilled TestScript should have a sibling FHIR R4 Provenance sidecar named
+`<suite>.provenance.json`. Sidecars are packaged with the suites but ignored by
+`SuiteCatalog`; they record the source repositories, specifications, or APIs
+used while distilling the executable TestScript. `pack-suites.ps1` runs the
+warning-only provenance audit so missing or invalid sidecars show up in CI logs
+without failing the build.
 
 ## Deploy
 

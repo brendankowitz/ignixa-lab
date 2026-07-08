@@ -60,12 +60,18 @@ To target a remote backend from a standalone build, set `VITE_API_BASE_URL`
 ## Adding a TestScript suite
 
 1. Drop a FHIR TestScript JSON file under
-   `backend/src/Ignixa.Lab.Functions/Suites/testscripts/<category>/`.
+   `backend/src/Ignixa.Lab.Suites/testscripts/<category>/`.
    The `<category>` folder name becomes the suite's category.
-2. The file is bundled next to the worker automatically (see the `csproj`
-   `None Include="Suites\testscripts\**\*.json"` item) and picked up by
-   `SuiteCatalog` on the next run — no code change required.
-3. It appears in `GET /api/suites` and becomes selectable in the SPA.
-
-The bundled starter suites cover four categories: `capability`, `crud`,
-`search`, and `validation`.
+2. Add or update the sibling FHIR R4 Provenance sidecar named
+   `<suite>.provenance.json`. The sidecar targets the TestScript's path relative
+   to `testscripts/` and lists the repositories, specifications, APIs, or prior
+   tests used while distilling the suite.
+3. Run `pwsh -NoLogo -NoProfile -NonInteractive -File backend/src/Ignixa.Lab.Suites/tools/verify-provenance.ps1`
+   to check the sidecar. The audit is warning-only, but new warnings should be
+   resolved before review.
+4. Run `./backend/pack-suites.ps1` before restore/build/test so the
+   `IgnixaLab.TestScript.Suites` package in `artifacts/local-feed` includes the
+   new TestScript and its provenance sidecar.
+5. The TestScript appears in `GET /api/suites` and becomes selectable in the SPA;
+   the provenance sidecar is packaged for auditability but is not exposed through
+   runtime APIs yet.

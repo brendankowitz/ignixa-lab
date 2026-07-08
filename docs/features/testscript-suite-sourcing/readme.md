@@ -20,3 +20,13 @@ fallback. Suites deploy with the **backend only** — the static frontend never
 executes them.
 
 See [ADR-2607: TestScript suite sourcing](./adr-2607-suite-sourcing.md).
+
+## Provenance sidecars
+
+Bundled TestScripts carry per-file FHIR R4 Provenance sidecars named
+`<suite>.provenance.json` beside the executable TestScript. The sidecars are
+packaged with `IgnixaLab.TestScript.Suites`, ignored by `SuiteCatalog`, and used
+for auditability rather than runtime behavior. They complement the package-level
+`source-revision.txt`: the revision identifies the ignixa-lab commit that was
+packed, while each Provenance resource records the upstream source entities that
+influenced the distilled TestScript.
