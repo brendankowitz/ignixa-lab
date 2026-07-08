@@ -1,0 +1,337 @@
+using System.Diagnostics;
+using System.Text.Json;
+using FluentAssertions;
+
+namespace Ignixa.Lab.Functions.Tests.Suites;
+
+public sealed class SuiteProvenanceAuditTests : IDisposable
+{
+    private readonly string _root;
+
+    public SuiteProvenanceAuditTests()
+    {
+        _root = Path.Combine(Path.GetTempPath(), "ignixa-lab-provenance-tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(_root);
+    }
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_root))
+        {
+            Directory.Delete(_root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task VerifyProvenance_WarnsButSucceedsWhenSidecarIsMissing()
+    {
+        WriteScript(Path.Combine("CRUD", "basic.json"));
+
+        var result = await RunAuditAsync();
+
+        result.ExitCode.Should().Be(0);
+        result.CombinedOutput.Should().Contain("WARNING");
+        result.CombinedOutput.Should().Contain("Missing provenance sidecar: CRUD/basic.provenance.json");
+    }
+
+    [Fact]
+    public async Task VerifyProvenance_WarnsButSucceedsWhenTargetDoesNotMatchScript()
+    {
+        WriteScript(Path.Combine("CRUD", "basic.json"));
+        WriteProvenance(Path.Combine("CRUD", "basic.provenance.json"), "Search/basic.json");
+
+        var result = await RunAuditAsync();
+
+        result.ExitCode.Should().Be(0);
+        result.CombinedOutput.Should().Contain("WARNING");
+        result.CombinedOutput.Should().Contain("Target mismatch in CRUD/basic.provenance.json: expected CRUD/basic.json, found Search/basic.json");
+    }
+
+    [Fact]
+    public async Task VerifyProvenance_WarnsButSucceedsWhenSidecarJsonIsInvalid()
+    {
+        WriteScript(Path.Combine("CRUD", "basic.json"));
+        WriteSidecar(Path.Combine("CRUD", "basic.provenance.json"), "{ this is not valid json");
+
+        var result = await RunAuditAsync();
+
+        result.ExitCode.Should().Be(0);
+        result.CombinedOutput.Should().Contain("WARNING");
+        result.CombinedOutput.Should().Contain("Invalid JSON in CRUD/basic.provenance.json");
+    }
+
+    [Fact]
+    public async Task VerifyProvenance_WarnsButSucceedsWhenResourceTypeIsWrong()
+    {
+        WriteScript(Path.Combine("CRUD", "basic.json"));
+        WriteSidecar(Path.Combine("CRUD", "basic.provenance.json"), """
+        {
+          "resourceType": "Patient",
+          "target": [{ "identifier": { "value": "CRUD/basic.json" } }],
+          "agent": [{ "who": { "display": "Ignixa Lab maintainers" } }],
+          "entity": [{ "role": "source" }]
+        }
+        """);
+
+        var result = await RunAuditAsync();
+
+        result.ExitCode.Should().Be(0);
+        result.CombinedOutput.Should().Contain("WARNING");
+        result.CombinedOutput.Should().Contain("Invalid provenance resourceType in CRUD/basic.provenance.json");
+    }
+
+    [Fact]
+    public async Task VerifyProvenance_WarnsButSucceedsWhenTargetIsMissing()
+    {
+        WriteScript(Path.Combine("CRUD", "basic.json"));
+        WriteSidecar(Path.Combine("CRUD", "basic.provenance.json"), """
+        {
+          "resourceType": "Provenance",
+          "agent": [{ "who": { "display": "Ignixa Lab maintainers" } }],
+          "entity": [{ "role": "source" }]
+        }
+        """);
+
+        var result = await RunAuditAsync();
+
+        result.ExitCode.Should().Be(0);
+        result.CombinedOutput.Should().Contain("WARNING");
+        result.CombinedOutput.Should().Contain("Missing target in CRUD/basic.provenance.json");
+    }
+
+    [Fact]
+    public async Task VerifyProvenance_WarnsButSucceedsWhenAgentIsMissing()
+    {
+        WriteScript(Path.Combine("CRUD", "basic.json"));
+        WriteSidecar(Path.Combine("CRUD", "basic.provenance.json"), """
+        {
+          "resourceType": "Provenance",
+          "target": [{ "identifier": { "value": "CRUD/basic.json" } }],
+          "entity": [{ "role": "source" }]
+        }
+        """);
+
+        var result = await RunAuditAsync();
+
+        result.ExitCode.Should().Be(0);
+        result.CombinedOutput.Should().Contain("WARNING");
+        result.CombinedOutput.Should().Contain("Missing agent in CRUD/basic.provenance.json");
+    }
+
+    [Fact]
+    public async Task VerifyProvenance_WarnsButSucceedsWhenEntityIsMissing()
+    {
+        WriteScript(Path.Combine("CRUD", "basic.json"));
+        WriteSidecar(Path.Combine("CRUD", "basic.provenance.json"), """
+        {
+          "resourceType": "Provenance",
+          "target": [{ "identifier": { "value": "CRUD/basic.json" } }],
+          "agent": [{ "who": { "display": "Ignixa Lab maintainers" } }]
+        }
+        """);
+
+        var result = await RunAuditAsync();
+
+        result.ExitCode.Should().Be(0);
+        result.CombinedOutput.Should().Contain("WARNING");
+        result.CombinedOutput.Should().Contain("Missing entity in CRUD/basic.provenance.json");
+    }
+
+    [Fact]
+    public async Task VerifyProvenance_SucceedsWithoutWarningsWhenSidecarIsValid()
+    {
+        WriteScript(Path.Combine("CRUD", "basic.json"));
+        WriteProvenance(Path.Combine("CRUD", "basic.provenance.json"), "CRUD/basic.json");
+
+        var result = await RunAuditAsync();
+
+        result.ExitCode.Should().Be(0);
+        result.CombinedOutput.Should().Contain("Provenance audit scanned 1 TestScript file and found 0 warning(s).");
+        result.CombinedOutput.Should().NotContain("WARNING");
+    }
+
+    [Fact]
+    public async Task NewTestScriptProvenance_CreatesExpectedFhirProvenanceShape()
+    {
+        var module = FindRepoRootTool("TestScriptProvenance.psm1");
+        using var process = new Process();
+        process.StartInfo = new ProcessStartInfo
+        {
+            FileName = "pwsh",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+        process.StartInfo.ArgumentList.Add("-NoLogo");
+        process.StartInfo.ArgumentList.Add("-NoProfile");
+        process.StartInfo.ArgumentList.Add("-NonInteractive");
+        process.StartInfo.ArgumentList.Add("-Command");
+        process.StartInfo.ArgumentList.Add($$"""
+        Import-Module '{{module}}' -Force
+        $source = @{
+          Relationship = 'distilled-from'
+          License = 'MIT'
+          Notes = 'Focused distillation'
+          Version = 'v1.2.3'
+          Reference = 'https://example.test/source'
+          Display = 'Example source'
+        }
+        New-TestScriptProvenance -RelativePath 'CRUD/basic.json' -Sources @($source) | ConvertTo-Json -Depth 20
+        """);
+
+        process.Start();
+        var stdoutTask = process.StandardOutput.ReadToEndAsync();
+        var stderrTask = process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync();
+        var stdout = await stdoutTask;
+        var stderr = await stderrTask;
+
+        process.ExitCode.Should().Be(0, stderr);
+        using var document = JsonDocument.Parse(stdout);
+        var provenance = document.RootElement;
+
+        provenance.GetProperty("resourceType").GetString().Should().Be("Provenance");
+        provenance.GetProperty("recorded").GetString().Should().Be("2026-07-07T00:00:00Z");
+        provenance.GetProperty("target")[0].GetProperty("identifier").GetProperty("system").GetString()
+            .Should().Be("urn:ignixa-lab:testscripts:path");
+        provenance.GetProperty("target")[0].GetProperty("identifier").GetProperty("value").GetString()
+            .Should().Be("CRUD/basic.json");
+        provenance.GetProperty("activity").GetProperty("coding")[0].GetProperty("system").GetString()
+            .Should().Be("http://ignixa.io/fhir/provenance-activity");
+        provenance.GetProperty("activity").GetProperty("coding")[0].GetProperty("code").GetString()
+            .Should().Be("distill-testscript");
+        provenance.GetProperty("agent")[0].GetProperty("who").GetProperty("display").GetString()
+            .Should().Be("Ignixa Lab maintainers");
+
+        var extensions = provenance.GetProperty("entity")[0].GetProperty("extension");
+        extensions.EnumerateArray().Should().Contain(extension =>
+            extension.GetProperty("url").GetString() == "http://ignixa.io/fhir/StructureDefinition/provenance-source-relationship" &&
+            extension.GetProperty("valueCode").GetString() == "distilled-from");
+        extensions.EnumerateArray().Should().Contain(extension =>
+            extension.GetProperty("url").GetString() == "http://ignixa.io/fhir/StructureDefinition/provenance-source-license" &&
+            extension.GetProperty("valueString").GetString() == "MIT");
+        extensions.EnumerateArray().Should().Contain(extension =>
+            extension.GetProperty("url").GetString() == "http://ignixa.io/fhir/StructureDefinition/provenance-distillation-notes" &&
+            extension.GetProperty("valueString").GetString() == "Focused distillation");
+        extensions.EnumerateArray().Should().Contain(extension =>
+            extension.GetProperty("url").GetString() == "http://ignixa.io/fhir/StructureDefinition/provenance-source-version" &&
+            extension.GetProperty("valueString").GetString() == "v1.2.3");
+    }
+
+    private void WriteScript(string relativePath)
+    {
+        var full = Path.Combine(_root, relativePath);
+        Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+        File.WriteAllText(full, """
+        {
+          "resourceType": "TestScript",
+          "name": "CRUD/basic",
+          "status": "active",
+          "test": [
+            {
+              "name": "smoke",
+              "action": [
+                { "assert": { "description": "smoke", "warningOnly": true } }
+              ]
+            }
+          ]
+        }
+        """);
+    }
+
+    private void WriteSidecar(string relativePath, string content)
+    {
+        var full = Path.Combine(_root, relativePath);
+        Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+        File.WriteAllText(full, content);
+    }
+
+    private void WriteProvenance(string relativePath, string target)
+    {
+        var full = Path.Combine(_root, relativePath);
+        Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+        File.WriteAllText(full, $$"""
+        {
+          "resourceType": "Provenance",
+          "target": [
+            {
+              "identifier": {
+                "system": "urn:ignixa-lab:testscripts:path",
+                "value": "{{target}}"
+              },
+              "display": "{{target}}"
+            }
+          ],
+          "recorded": "2026-07-07T00:00:00Z",
+          "agent": [
+            {
+              "who": {
+                "display": "Ignixa Lab maintainers"
+              }
+            }
+          ],
+          "entity": [
+            {
+              "role": "source",
+              "what": {
+                "reference": "https://github.com/brendankowitz/ignixa-lab",
+                "display": "Ignixa Lab"
+              }
+            }
+          ]
+        }
+        """);
+    }
+
+    private async Task<AuditResult> RunAuditAsync()
+    {
+        var script = FindRepoRootTool("verify-provenance.ps1");
+        using var process = new Process();
+        process.StartInfo = new ProcessStartInfo
+        {
+            FileName = "pwsh",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+        process.StartInfo.ArgumentList.Add("-NoLogo");
+        process.StartInfo.ArgumentList.Add("-NoProfile");
+        process.StartInfo.ArgumentList.Add("-NonInteractive");
+        process.StartInfo.ArgumentList.Add("-File");
+        process.StartInfo.ArgumentList.Add(script);
+        process.StartInfo.ArgumentList.Add("-SuitesDirectory");
+        process.StartInfo.ArgumentList.Add(_root);
+
+        process.Start();
+        var stdoutTask = process.StandardOutput.ReadToEndAsync();
+        var stderrTask = process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync();
+        var stdout = await stdoutTask;
+        var stderr = await stderrTask;
+
+        return new AuditResult(process.ExitCode, stdout + stderr);
+    }
+
+    private static string FindRepoRootTool(string fileName)
+    {
+        var current = new DirectoryInfo(AppContext.BaseDirectory);
+        while (current is not null)
+        {
+            var candidate = Path.Combine(
+                current.FullName,
+                "backend",
+                "src",
+                "Ignixa.Lab.Suites",
+                "tools",
+                fileName);
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            current = current.Parent;
+        }
+
+        throw new FileNotFoundException($"Could not find {fileName} from the test output directory.");
+    }
+
+    private sealed record AuditResult(int ExitCode, string CombinedOutput);
+}
