@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'backend/**'
+      - 'GitVersion.yml'
       - 'Directory.Build.props'
       - 'Directory.Packages.props'
       - 'global.json'
@@ -14,6 +15,7 @@ on:
   pull_request:
     paths:
       - 'backend/**'
+      - 'GitVersion.yml'
       - 'Directory.Build.props'
       - 'Directory.Packages.props'
       - 'global.json'
@@ -29,6 +31,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
@@ -47,3 +51,37 @@ jobs:
 
       - name: Test
         run: dotnet test Ignixa.Lab.sln -c Release --no-build --verbosity normal
+
+      - name: Pack suites package artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          output_dir="artifacts/nuget-packages"
+          dotnet pack backend/src/Ignixa.Lab.Suites/Ignixa.Lab.Suites.csproj \
+            -c Release \
+            -o "$output_dir" \
+            /p:UseGitVersion=true \
+            /nodeReuse:false
+
+          package="$(find "$output_dir" -maxdepth 1 -name 'IgnixaLab.TestScript.Suites.*.nupkg' | sort | head -n 1)"
+          if [ -z "$package" ]; then
+            echo "::error::No IgnixaLab.TestScript.Suites package was produced"
+            exit 1
+          fi
+
+          filename="$(basename "$package")"
+          version="${filename#IgnixaLab.TestScript.Suites.}"
+          version="${version%.nupkg}"
+          echo "$version" > "$output_dir/version.txt"
+          echo "${{ github.sha }}" > "$output_dir/commit-sha.txt"
+          echo "Packed $filename from ${{ github.sha }}"
+
+      - name: Upload suites package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages-conformance
+          path: |
+            artifacts/nuget-packages/*.nupkg
+            artifacts/nuget-packages/version.txt
+            artifacts/nuget-packages/commit-sha.txt
+          retention-days: 30
