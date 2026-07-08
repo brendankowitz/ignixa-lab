@@ -1,0 +1,66 @@
+name: Publish
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  publish-nuget:
+    name: Publish conformance package to NuGet
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Download latest backend package artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          run_id="$(gh run list \
+            --workflow backend.yml \
+            --branch main \
+            --status success \
+            --limit 1 \
+            --json databaseId \
+            --jq '.[0].databaseId')"
+
+          if [ -z "$run_id" ] || [ "$run_id" = "null" ]; then
+            echo "::error::No successful Backend workflow run found on main"
+            exit 1
+          fi
+
+          gh run download "$run_id" \
+            --name nuget-packages-conformance \
+            --dir ./nuget-packages
+
+          package_count="$(find ./nuget-packages -maxdepth 1 -name '*.nupkg' | wc -l)"
+          if [ "$package_count" -ne 1 ]; then
+            echo "::error::Expected exactly one .nupkg artifact, found $package_count"
+            find ./nuget-packages -maxdepth 1 -type f -print
+            exit 1
+          fi
+
+          echo "Package version: $(cat ./nuget-packages/version.txt)"
+          echo "Package commit: $(cat ./nuget-packages/commit-sha.txt)"
+
+      - name: Push package to NuGet.org
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${NUGET_API_KEY}" ]; then
+            echo "::error::NUGET_API_KEY secret is required"
+            exit 1
+          fi
+
+          dotnet nuget push ./nuget-packages/*.nupkg \
+            --api-key "$NUGET_API_KEY" \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
