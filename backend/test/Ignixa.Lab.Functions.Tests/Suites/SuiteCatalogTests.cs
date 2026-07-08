@@ -245,4 +245,26 @@ public sealed class SuiteCatalogTests : IDisposable
             "Validation/validate-op.json",
         });
     }
+
+    [Fact]
+    public void GetSuites_BundledCanonicalSuites_IgnorePackagedProvenanceSidecars()
+    {
+        var suites = CreateBundledCatalog().GetSuites();
+
+        suites.Select(s => s.Id).Should().NotContain(id =>
+            id.EndsWith(".provenance.json", StringComparison.OrdinalIgnoreCase));
+        suites.Should().HaveCount(87);
+    }
+
+    [Fact]
+    public void GetSuites_BundledCanonicalSuites_CopyProvenanceSidecars()
+    {
+        var sidecar = Path.Combine(
+            AppContext.BaseDirectory,
+            "testscripts",
+            "Microsoft",
+            "ms-convert-data.provenance.json");
+
+        File.Exists(sidecar).Should().BeTrue();
+    }
 }
