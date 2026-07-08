@@ -157,6 +157,11 @@ see [ADR-2607](../docs/features/testscript-suite-sourcing/adr-2607-suite-sourcin
 — for the upstream `ignixa-fhir` suites artifact; the `PackageReference`
 will be repointed there once it ships, and the local feed retired.
 
+The same project also produces the public NuGet package artifact in Backend CI.
+Local development still uses `0.1.0-local` from `artifacts/local-feed`; release
+artifacts opt into GitVersion and are uploaded as the
+`nuget-packages-conformance` workflow artifact.
+
 Most suites map to the e2e test coverage of the Microsoft FHIR Server
 (`microsoft/fhir-server`), organized by category (the immediate subfolder
 name under `testscripts/` — no code change needed for discovery, see
@@ -218,6 +223,17 @@ consumer with the `PackageReference` — it copies the packaged JSONs to the
 consumer's output under `testscripts/`, preserving the category subfolders
 that `SuiteCatalog` reads. Bumping the suites means editing the JSON under
 `Ignixa.Lab.Suites/testscripts/` and re-running `pack-suites.ps1`.
+
+## Publish suite package
+
+The manual `.github/workflows/publish.yml` workflow promotes the latest
+successful Backend workflow artifact from `main` to nuget.org. It requires the
+repository secret `NUGET_API_KEY`; duplicate package versions are skipped by
+NuGet.
+
+Versioning comes from `GitVersion.yml`, matching the `ignixa-fhir` `release/`
+tag convention. The publish workflow does not rebuild the package, so the
+pushed artifact is the package that passed backend CI.
 
 ## Deploy
 
