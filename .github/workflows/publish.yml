@@ -47,8 +47,12 @@ jobs:
             exit 1
           fi
 
-          echo "Package version: $(cat ./nuget-packages/version.txt)"
-          echo "Package commit: $(cat ./nuget-packages/commit-sha.txt)"
+          test -s ./nuget-packages/version.txt
+          test -s ./nuget-packages/commit-sha.txt
+          version="$(cat ./nuget-packages/version.txt)"
+          commit_sha="$(cat ./nuget-packages/commit-sha.txt)"
+          echo "Package version: $version"
+          echo "Package commit: $commit_sha"
 
       - name: Push package to NuGet.org
         env:
