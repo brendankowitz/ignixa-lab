@@ -335,15 +335,22 @@ async function expectCount(locator, label, minimum = 1) {
 
 async function assertReducedMotionStopsAutoRotation(page) {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.reload({ waitUntil: 'networkidle' });
-  await expectVisible(page.locator('.ix-hero-demo'), 'Landing reduced-motion demo');
-  const initialDemo = await page.locator('.ix-hero-demo').getAttribute('data-active-demo');
-  await page.waitForTimeout(5200);
-  const laterDemo = await page.locator('.ix-hero-demo').getAttribute('data-active-demo');
-  if (initialDemo !== laterDemo) {
-    throw new Error(`Landing demo rotated despite reduced motion: ${initialDemo} -> ${laterDemo}`);
+  try {
+    await page.reload({ waitUntil: 'networkidle' });
+    const demo = page.locator('.ix-hero-demo');
+    await expectVisible(demo, 'Landing reduced-motion demo');
+    const initialDemo = await demo.getAttribute('data-active-demo');
+    if (!initialDemo) {
+      throw new Error('Landing reduced-motion demo is missing data-active-demo');
+    }
+    await page.waitForTimeout(5200);
+    const laterDemo = await demo.getAttribute('data-active-demo');
+    if (initialDemo !== laterDemo) {
+      throw new Error(`Landing demo rotated despite reduced motion: ${initialDemo} -> ${laterDemo}`);
+    }
+  } finally {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
   }
-  await page.emulateMedia({ reducedMotion: 'no-preference' });
 }
 
 async function mockConformanceApi(page) {
