@@ -1,0 +1,110 @@
+{
+  "activity": {
+    "coding": [
+      {
+        "code": "distill-testscript",
+        "system": "http://ignixa.io/fhir/provenance-activity",
+        "display": "Distill TestScript"
+      }
+    ]
+  },
+  "target": [
+    {
+      "identifier": {
+        "system": "urn:ignixa-lab:testscripts:path",
+        "value": "Subscriptions/basic.json"
+      },
+      "display": "Subscriptions/basic.json"
+    }
+  ],
+  "entity": [
+    {
+      "role": "source",
+      "extension": [
+        {
+          "valueCode": "spec-reference",
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-relationship"
+        },
+        {
+          "valueString": "FHIR specification license",
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-license"
+        },
+        {
+          "valueString": "Used the FHIR Subscription definition for basic create/read/search/update/delete expectations.",
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-distillation-notes"
+        },
+        {
+          "valueString": "FHIR R4",
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-version"
+        }
+      ],
+      "what": {
+        "display": "FHIR R4 Subscription resource",
+        "reference": "https://hl7.org/fhir/R4/subscription.html"
+      }
+    },
+    {
+      "role": "source",
+      "extension": [
+        {
+          "valueCode": "inspired-by",
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-relationship"
+        },
+        {
+          "valueString": "source-declared open-source license",
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-license"
+        },
+        {
+          "valueString": "Used as comparative open-source coverage for Subscription round-tripping.",
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-distillation-notes"
+        },
+        {
+          "valueString": "repository source reviewed during Ignixa Lab suite distillation",
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-version"
+        }
+      ],
+      "what": {
+        "display": "fhir-candle Subscription coverage",
+        "reference": "https://github.com/medplum/fhir-candle"
+      }
+    },
+    {
+      "role": "source",
+      "extension": [
+        {
+          "valueCode": "inspired-by",
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-relationship"
+        },
+        {
+          "valueString": "Apache-2.0",
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-license"
+        },
+        {
+          "valueString": "Used as comparative open-source coverage for Subscription resource behavior.",
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-distillation-notes"
+        },
+        {
+          "valueString": "repository source reviewed during Ignixa Lab suite distillation",
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-version"
+        }
+      ],
+      "what": {
+        "display": "LinuxForHealth FHIR Subscription coverage",
+        "reference": "https://github.com/LinuxForHealth/FHIR"
+      }
+    }
+  ],
+  "recorded": "2026-07-07T00:00:00Z",
+  "agent": [
+    {
+      "who": {
+        "identifier": {
+          "system": "https://github.com/brendankowitz/ignixa-lab",
+          "value": "maintainers"
+        },
+        "display": "Ignixa Lab maintainers"
+      }
+    }
+  ],
+  "resourceType": "Provenance"
+}
