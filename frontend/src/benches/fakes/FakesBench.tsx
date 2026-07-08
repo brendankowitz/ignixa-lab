@@ -80,9 +80,10 @@ const deliveryBarStyle: CSSProperties = {
   border: '1px solid var(--border)',
   borderRadius: 12,
   padding: '9px 12px',
+  minWidth: 0,
 };
 
-const barDividerStyle: CSSProperties = { width: 1, height: 22, background: 'var(--border2)', flex: 'none' };
+const barDividerStyle: CSSProperties = { width: 1, height: 22, background: 'var(--border2)', flex: '0 0 auto' };
 
 const downloadButtonStyle: CSSProperties = {
   display: 'inline-flex',
