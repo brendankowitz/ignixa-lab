@@ -1,8 +1,10 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
+import { stripVTControlCharacters } from 'node:util';
 import { chromium } from 'playwright';
 
 const rootUrl = 'http://127.0.0.1:4173/ignixa-lab/';
+const previewReadyPattern = /Local:\s+http:\/\/127\.0\.0\.1:4173\/ignixa-lab\//;
 const viewports = [
   { width: 1280, height: 900, label: 'desktop' },
   { width: 840, height: 900, label: 'medium' },
@@ -36,18 +38,30 @@ const routes = [
   },
 ];
 
-const server = spawn('npm', ['run', 'preview', '--', '--host', '127.0.0.1', '--port', '4173', '--strictPort'], {
-  shell: true,
+const previewArgs = ['run', 'preview', '--', '--host', '127.0.0.1', '--port', '4173', '--strictPort'];
+const npmCommand = process.platform === 'win32' ? (process.env.ComSpec ?? 'cmd.exe') : 'npm';
+const npmArgs = process.platform === 'win32' ? ['/d', '/s', '/c', `npm.cmd ${previewArgs.join(' ')}`] : previewArgs;
+const server = spawn(npmCommand, npmArgs, {
   stdio: ['ignore', 'pipe', 'pipe'],
   detached: process.platform !== 'win32',
 });
 
 let serverOutput = '';
+let serverExitCode = null;
+let serverExitSignal = null;
+let serverStartError = null;
 server.stdout.on('data', (chunk) => {
   serverOutput += chunk.toString();
 });
 server.stderr.on('data', (chunk) => {
   serverOutput += chunk.toString();
+});
+server.on('exit', (code, signal) => {
+  serverExitCode = code;
+  serverExitSignal = signal;
+});
+server.on('error', (error) => {
+  serverStartError = error;
 });
 
 try {
@@ -107,20 +121,30 @@ Stop-Tree ${server.pid}
 async function waitForPreview() {
   const deadline = Date.now() + 30_000;
   while (Date.now() < deadline) {
-    if (server.exitCode !== null) {
+    if (serverStartError !== null) {
+      throw new Error(`Failed to start Vite preview.\n${serverStartError.stack ?? serverStartError.message}`);
+    }
+    if (server.exitCode !== null || serverExitCode !== null || serverExitSignal !== null) {
       throw new Error(`Vite preview exited early.\n${serverOutput}`);
     }
-    try {
-      const response = await fetch(`${rootUrl}conformance.html`);
-      if (response.ok) {
-        return;
+    if (hasPreviewReadyOutput()) {
+      try {
+        const response = await fetch(`${rootUrl}conformance.html`);
+        if (response.ok) {
+          return;
+        }
+      } catch {
+        // Preview reported ready, but the port is not accepting requests yet.
       }
-    } catch {
-      // Preview is still starting.
     }
     await delay(250);
   }
   throw new Error(`Timed out waiting for Vite preview.\n${serverOutput}`);
+}
+
+function hasPreviewReadyOutput() {
+  const plainOutput = stripVTControlCharacters(serverOutput);
+  return previewReadyPattern.test(plainOutput);
 }
 
 async function assertNoHorizontalOverflow(page, label) {
