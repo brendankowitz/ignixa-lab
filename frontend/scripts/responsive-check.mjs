@@ -22,7 +22,13 @@ const routes = [
       await page.getByRole('button', { name: 'Validation demo' }).click();
       await expectVisible(page.getByText('validation · Patient'), 'Landing validation demo title');
       await assertNoHorizontalOverflow(page, 'Landing selected Validation demo');
-      await assertReducedMotionStopsAutoRotation(page);
+      await assertLandingDemoFormatting(page);
+      await assertLandingDemoTransition(page);
+      await assertLandingCursorBlinks(page);
+      if (page.viewportSize()?.width === 1280) {
+        await assertLandingAutoRotationTiming(page);
+        await assertReducedMotionStopsAutoRotation(page);
+      }
     },
   },
   {
@@ -333,6 +339,67 @@ async function expectCount(locator, label, minimum = 1) {
   }
 }
 
+async function assertLandingDemoFormatting(page) {
+  await page.getByRole('button', { name: 'Fakes demo' }).click();
+  const codeText = await page.locator('.ix-demo-code').innerText();
+  if (codeText.includes('\\n')) {
+    throw new Error(`Landing demo code shows escaped newline text: ${codeText}`);
+  }
+  if (!codeText.includes('\n')) {
+    throw new Error(`Landing demo code did not render a real line break: ${codeText}`);
+  }
+}
+
+async function assertLandingDemoTransition(page) {
+  await page.getByRole('button', { name: 'Validation demo' }).click();
+  const hasTransitionClass = await page
+    .locator('.ix-hero-demo')
+    .evaluate((element) => element.classList.contains('ix-hero-demo--transitioning'));
+  if (!hasTransitionClass) {
+    throw new Error('Landing demo did not apply transition class after manual selection.');
+  }
+}
+
+async function assertLandingCursorBlinks(page) {
+  const cursorAnimation = await page.locator('.ix-demo-cursor').evaluate((element) => {
+    const style = window.getComputedStyle(element);
+    return {
+      name: style.animationName,
+      duration: style.animationDuration,
+      iterationCount: style.animationIterationCount,
+      timingFunction: style.animationTimingFunction,
+    };
+  });
+  if (
+    cursorAnimation.name !== 'ixblink' ||
+    cursorAnimation.duration !== '1.1s' ||
+    cursorAnimation.iterationCount !== 'infinite' ||
+    !cursorAnimation.timingFunction.startsWith('steps(1')
+  ) {
+    throw new Error(`Landing demo cursor blink animation is incorrect: ${JSON.stringify(cursorAnimation)}`);
+  }
+}
+
+async function assertLandingAutoRotationTiming(page) {
+  await page.reload({ waitUntil: 'networkidle' });
+  const demo = page.locator('.ix-hero-demo');
+  await expectVisible(demo, 'Landing auto-rotation demo');
+  const initialDemo = await demo.getAttribute('data-active-demo');
+  if (!initialDemo) {
+    throw new Error('Landing auto-rotation demo is missing data-active-demo');
+  }
+  await page.waitForTimeout(4500);
+  const earlyDemo = await demo.getAttribute('data-active-demo');
+  if (earlyDemo !== initialDemo) {
+    throw new Error(`Landing demo rotated before 10s: ${initialDemo} -> ${earlyDemo}`);
+  }
+  await page.waitForFunction(
+    (initial) => document.querySelector('.ix-hero-demo')?.getAttribute('data-active-demo') !== initial,
+    initialDemo,
+    { timeout: 7000 },
+  );
+}
+
 async function assertReducedMotionStopsAutoRotation(page) {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   try {
@@ -343,7 +410,7 @@ async function assertReducedMotionStopsAutoRotation(page) {
     if (!initialDemo) {
       throw new Error('Landing reduced-motion demo is missing data-active-demo');
     }
-    await page.waitForTimeout(5200);
+    await page.waitForTimeout(10_500);
     const laterDemo = await demo.getAttribute('data-active-demo');
     if (initialDemo !== laterDemo) {
       throw new Error(`Landing demo rotated despite reduced motion: ${initialDemo} -> ${laterDemo}`);
