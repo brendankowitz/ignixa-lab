@@ -50,34 +50,34 @@ function Get-ProvenanceSidecarPath {
 function New-ProvenanceEntity {
     param(
         [Parameter(Mandatory = $true)]
-        [hashtable] $Source
+        [System.Collections.IDictionary] $Source
     )
 
     $extensions = @(
-        @{
+        [ordered] @{
             url = $script:RelationshipExtensionUrl
             valueCode = $Source.Relationship
         },
-        @{
+        [ordered] @{
             url = $script:LicenseExtensionUrl
             valueString = $Source.License
         },
-        @{
+        [ordered] @{
             url = $script:NotesExtensionUrl
             valueString = $Source.Notes
         }
     )
 
-    if ($Source.ContainsKey('Version') -and -not [string]::IsNullOrWhiteSpace([string] $Source.Version)) {
-        $extensions += @{
+    if ($Source.Contains('Version') -and -not [string]::IsNullOrWhiteSpace([string] $Source.Version)) {
+        $extensions += [ordered] @{
             url = $script:VersionExtensionUrl
             valueString = $Source.Version
         }
     }
 
-    @{
+    [ordered] @{
         role = 'source'
-        what = @{
+        what = [ordered] @{
             reference = $Source.Reference
             display = $Source.Display
         }
@@ -91,16 +91,16 @@ function New-TestScriptProvenance {
         [string] $RelativePath,
 
         [Parameter(Mandatory = $true)]
-        [hashtable[]] $Sources,
+        [System.Collections.IDictionary[]] $Sources,
 
         [string] $Recorded = '2026-07-07T00:00:00Z'
     )
 
-    @{
+    [ordered] @{
         resourceType = 'Provenance'
         target = @(
-            @{
-                identifier = @{
+            [ordered] @{
+                identifier = [ordered] @{
                     system = $script:PathSystem
                     value = $RelativePath
                 }
@@ -108,9 +108,9 @@ function New-TestScriptProvenance {
             }
         )
         recorded = $Recorded
-        activity = @{
+        activity = [ordered] @{
             coding = @(
-                @{
+                [ordered] @{
                     system = $script:ActivitySystem
                     code = 'distill-testscript'
                     display = 'Distill TestScript'
@@ -118,9 +118,9 @@ function New-TestScriptProvenance {
             )
         }
         agent = @(
-            @{
-                who = @{
-                    identifier = @{
+            [ordered] @{
+                who = [ordered] @{
+                    identifier = [ordered] @{
                         system = 'https://github.com/brendankowitz/ignixa-lab'
                         value = 'maintainers'
                     }

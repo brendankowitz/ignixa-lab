@@ -124,6 +124,7 @@ function Get-SourceProfileName {
     }
 
     if ($RelativePath -in @(
+        'Operations/expand-operation.json',
         'Operations/lookup-operation.json',
         'Operations/validate-code-operation.json',
         'Operations/subsumes-operation.json',

@@ -1,13 +1,5 @@
 {
-  "activity": {
-    "coding": [
-      {
-        "code": "distill-testscript",
-        "system": "http://ignixa.io/fhir/provenance-activity",
-        "display": "Distill TestScript"
-      }
-    ]
-  },
+  "resourceType": "Provenance",
   "target": [
     {
       "identifier": {
@@ -17,59 +9,16 @@
       "display": "Regression/capability-statement-version.json"
     }
   ],
-  "entity": [
-    {
-      "role": "source",
-      "extension": [
-        {
-          "valueCode": "direct-port",
-          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-relationship"
-        },
-        {
-          "valueString": "repository license",
-          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-license"
-        },
-        {
-          "valueString": "Authored or curated directly in Ignixa Lab as a canonical bundled TestScript.",
-          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-distillation-notes"
-        },
-        {
-          "valueString": "current repository revision",
-          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-version"
-        }
-      ],
-      "what": {
-        "display": "Ignixa Lab bundled TestScript suite",
-        "reference": "https://github.com/brendankowitz/ignixa-lab"
-      }
-    },
-    {
-      "role": "source",
-      "extension": [
-        {
-          "valueCode": "inspired-by",
-          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-relationship"
-        },
-        {
-          "valueString": "repository license",
-          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-license"
-        },
-        {
-          "valueString": "Aligned with ignixa-fhir TestScript execution behavior and conformance dashboard expectations.",
-          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-distillation-notes"
-        },
-        {
-          "valueString": "repository source reviewed during Ignixa Lab suite distillation",
-          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-version"
-        }
-      ],
-      "what": {
-        "display": "ignixa-fhir TestScript engine and conformance coverage",
-        "reference": "https://github.com/brendankowitz/ignixa-fhir"
-      }
-    }
-  ],
   "recorded": "2026-07-07T00:00:00Z",
+  "activity": {
+    "coding": [
+      {
+        "system": "http://ignixa.io/fhir/provenance-activity",
+        "code": "distill-testscript",
+        "display": "Distill TestScript"
+      }
+    ]
+  },
   "agent": [
     {
       "who": {
@@ -81,5 +30,56 @@
       }
     }
   ],
-  "resourceType": "Provenance"
+  "entity": [
+    {
+      "role": "source",
+      "what": {
+        "reference": "https://github.com/brendankowitz/ignixa-lab",
+        "display": "Ignixa Lab bundled TestScript suite"
+      },
+      "extension": [
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-relationship",
+          "valueCode": "direct-port"
+        },
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-license",
+          "valueString": "repository license"
+        },
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-distillation-notes",
+          "valueString": "Authored or curated directly in Ignixa Lab as a canonical bundled TestScript."
+        },
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-version",
+          "valueString": "current repository revision"
+        }
+      ]
+    },
+    {
+      "role": "source",
+      "what": {
+        "reference": "https://github.com/brendankowitz/ignixa-fhir",
+        "display": "ignixa-fhir TestScript engine and conformance coverage"
+      },
+      "extension": [
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-relationship",
+          "valueCode": "inspired-by"
+        },
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-license",
+          "valueString": "repository license"
+        },
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-distillation-notes",
+          "valueString": "Aligned with ignixa-fhir TestScript execution behavior and conformance dashboard expectations."
+        },
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-version",
+          "valueString": "repository source reviewed during Ignixa Lab suite distillation"
+        }
+      ]
+    }
+  ]
 }

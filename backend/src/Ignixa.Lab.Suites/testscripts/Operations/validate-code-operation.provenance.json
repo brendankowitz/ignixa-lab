@@ -1,13 +1,5 @@
 {
-  "activity": {
-    "coding": [
-      {
-        "code": "distill-testscript",
-        "system": "http://ignixa.io/fhir/provenance-activity",
-        "display": "Distill TestScript"
-      }
-    ]
-  },
+  "resourceType": "Provenance",
   "target": [
     {
       "identifier": {
@@ -17,59 +9,16 @@
       "display": "Operations/validate-code-operation.json"
     }
   ],
-  "entity": [
-    {
-      "role": "source",
-      "extension": [
-        {
-          "valueCode": "spec-reference",
-          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-relationship"
-        },
-        {
-          "valueString": "FHIR specification license",
-          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-license"
-        },
-        {
-          "valueString": "Used the FHIR operation definitions as the normative source for terminology-operation behavior.",
-          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-distillation-notes"
-        },
-        {
-          "valueString": "FHIR R4",
-          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-version"
-        }
-      ],
-      "what": {
-        "display": "FHIR R4 terminology service operations",
-        "reference": "https://hl7.org/fhir/R4/terminology-service.html"
-      }
-    },
-    {
-      "role": "source",
-      "extension": [
-        {
-          "valueCode": "inspired-by",
-          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-relationship"
-        },
-        {
-          "valueString": "Apache-2.0",
-          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-license"
-        },
-        {
-          "valueString": "Used as comparative open-source coverage while distilling black-box TestScript terminology scenarios.",
-          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-distillation-notes"
-        },
-        {
-          "valueString": "repository source reviewed during Ignixa Lab suite distillation",
-          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-version"
-        }
-      ],
-      "what": {
-        "display": "HAPI FHIR terminology test coverage",
-        "reference": "https://github.com/hapifhir/hapi-fhir"
-      }
-    }
-  ],
   "recorded": "2026-07-07T00:00:00Z",
+  "activity": {
+    "coding": [
+      {
+        "system": "http://ignixa.io/fhir/provenance-activity",
+        "code": "distill-testscript",
+        "display": "Distill TestScript"
+      }
+    ]
+  },
   "agent": [
     {
       "who": {
@@ -81,5 +30,56 @@
       }
     }
   ],
-  "resourceType": "Provenance"
+  "entity": [
+    {
+      "role": "source",
+      "what": {
+        "reference": "https://hl7.org/fhir/R4/terminology-service.html",
+        "display": "FHIR R4 terminology service operations"
+      },
+      "extension": [
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-relationship",
+          "valueCode": "spec-reference"
+        },
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-license",
+          "valueString": "FHIR specification license"
+        },
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-distillation-notes",
+          "valueString": "Used the FHIR operation definitions as the normative source for terminology-operation behavior."
+        },
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-version",
+          "valueString": "FHIR R4"
+        }
+      ]
+    },
+    {
+      "role": "source",
+      "what": {
+        "reference": "https://github.com/hapifhir/hapi-fhir",
+        "display": "HAPI FHIR terminology test coverage"
+      },
+      "extension": [
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-relationship",
+          "valueCode": "inspired-by"
+        },
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-license",
+          "valueString": "Apache-2.0"
+        },
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-distillation-notes",
+          "valueString": "Used as comparative open-source coverage while distilling black-box TestScript terminology scenarios."
+        },
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-version",
+          "valueString": "repository source reviewed during Ignixa Lab suite distillation"
+        }
+      ]
+    }
+  ]
 }

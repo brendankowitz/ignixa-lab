@@ -10,7 +10,11 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
 
     public SuiteProvenanceAuditTests()
     {
-        _root = Path.Combine(Path.GetTempPath(), "ignixa-lab-provenance-tests", Guid.NewGuid().ToString("N"));
+        _root = Path.Combine(
+            FindRepoRootDirectory(),
+            "TestResults",
+            "ignixa-lab-provenance-tests",
+            Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_root);
     }
 
@@ -217,9 +221,58 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
             extension.GetProperty("valueString").GetString() == "v1.2.3");
     }
 
+    [Fact]
+    public async Task NewProvenanceSidecars_GeneratesDeterministicOutputAcrossProcesses()
+    {
+        var firstRoot = Path.Combine(_root, "first");
+        var secondRoot = Path.Combine(_root, "second");
+        WriteScript(firstRoot, Path.Combine("CRUD", "basic.json"));
+        WriteScript(secondRoot, Path.Combine("CRUD", "basic.json"));
+
+        var firstResult = await RunGeneratorAsync(firstRoot);
+        var secondResult = await RunGeneratorAsync(secondRoot);
+
+        firstResult.ExitCode.Should().Be(0, firstResult.CombinedOutput);
+        secondResult.ExitCode.Should().Be(0, secondResult.CombinedOutput);
+        firstResult.CombinedOutput.Should().Contain("Generated 1 provenance sidecar(s); skipped 0 existing sidecar(s).");
+        secondResult.CombinedOutput.Should().Contain("Generated 1 provenance sidecar(s); skipped 0 existing sidecar(s).");
+
+        var firstSidecar = await File.ReadAllBytesAsync(Path.Combine(firstRoot, "CRUD", "basic.provenance.json"));
+        var secondSidecar = await File.ReadAllBytesAsync(Path.Combine(secondRoot, "CRUD", "basic.provenance.json"));
+
+        firstSidecar.Should().Equal(secondSidecar);
+    }
+
+    [Fact]
+    public async Task NewProvenanceSidecars_MapsExpandOperationToTerminologySources()
+    {
+        WriteScript(Path.Combine("Operations", "expand-operation.json"));
+
+        var result = await RunGeneratorAsync(_root);
+
+        result.ExitCode.Should().Be(0, result.CombinedOutput);
+        using var document = JsonDocument.Parse(
+            await File.ReadAllTextAsync(Path.Combine(_root, "Operations", "expand-operation.provenance.json")));
+
+        var references = document.RootElement
+            .GetProperty("entity")
+            .EnumerateArray()
+            .Select(entity => entity.GetProperty("what").GetProperty("reference").GetString())
+            .ToArray();
+
+        references.Should().Contain("https://hl7.org/fhir/R4/terminology-service.html");
+        references.Should().Contain("https://github.com/hapifhir/hapi-fhir");
+        references.Should().NotContain("https://github.com/microsoft/fhir-server");
+    }
+
     private void WriteScript(string relativePath)
     {
-        var full = Path.Combine(_root, relativePath);
+        WriteScript(_root, relativePath);
+    }
+
+    private static void WriteScript(string root, string relativePath)
+    {
+        var full = Path.Combine(root, relativePath);
         Directory.CreateDirectory(Path.GetDirectoryName(full)!);
         File.WriteAllText(full, """
         {
@@ -310,27 +363,61 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         return new AuditResult(process.ExitCode, stdout + stderr);
     }
 
+    private static async Task<AuditResult> RunGeneratorAsync(string suitesDirectory)
+    {
+        var script = FindRepoRootTool("new-provenance-sidecars.ps1");
+        using var process = new Process();
+        process.StartInfo = new ProcessStartInfo
+        {
+            FileName = "pwsh",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+        process.StartInfo.ArgumentList.Add("-NoLogo");
+        process.StartInfo.ArgumentList.Add("-NoProfile");
+        process.StartInfo.ArgumentList.Add("-NonInteractive");
+        process.StartInfo.ArgumentList.Add("-File");
+        process.StartInfo.ArgumentList.Add(script);
+        process.StartInfo.ArgumentList.Add("-SuitesDirectory");
+        process.StartInfo.ArgumentList.Add(suitesDirectory);
+        process.StartInfo.ArgumentList.Add("-Force");
+
+        process.Start();
+        var stdoutTask = process.StandardOutput.ReadToEndAsync();
+        var stderrTask = process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync();
+        var stdout = await stdoutTask;
+        var stderr = await stderrTask;
+
+        return new AuditResult(process.ExitCode, stdout + stderr);
+    }
+
     private static string FindRepoRootTool(string fileName)
+    {
+        return Path.Combine(
+            FindRepoRootDirectory(),
+            "backend",
+            "src",
+            "Ignixa.Lab.Suites",
+            "tools",
+            fileName);
+    }
+
+    private static string FindRepoRootDirectory()
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);
         while (current is not null)
         {
-            var candidate = Path.Combine(
-                current.FullName,
-                "backend",
-                "src",
-                "Ignixa.Lab.Suites",
-                "tools",
-                fileName);
-            if (File.Exists(candidate))
+            var candidate = Path.Combine(current.FullName, "backend", "src", "Ignixa.Lab.Suites", "tools");
+            if (Directory.Exists(candidate))
             {
-                return candidate;
+                return current.FullName;
             }
 
             current = current.Parent;
         }
 
-        throw new FileNotFoundException($"Could not find {fileName} from the test output directory.");
+        throw new DirectoryNotFoundException("Could not find the repository root from the test output directory.");
     }
 
     private sealed record AuditResult(int ExitCode, string CombinedOutput);
