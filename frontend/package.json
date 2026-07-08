@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "responsive:check": "playwright install chromium && node scripts/responsive-check.mjs"
+    "responsive:check": "npm run build && playwright install chromium && node scripts/responsive-check.mjs"
   },
   "dependencies": {
     "react": "^19.2.7",
