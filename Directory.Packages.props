@@ -27,9 +27,9 @@
     <PackageVersion Include="NuGet.Versioning" Version="6.14.0" />
 
     <!--
-      Canonical TestScript suites (ADR-2607). Interim local package built by
-      backend/src/Ignixa.Lab.Suites and packed to the local-feed source; will
-      be repointed at the upstream ignixa-fhir suites artifact once published.
+      Canonical TestScript suites (ADR-2607). 0.1.0-local remains the local
+      restore package version from backend/src/Ignixa.Lab.Suites, while CI will
+      produce GitVersioned release artifacts for nuget.org once enabled.
     -->
     <PackageVersion Include="IgnixaLab.TestScript.Suites" Version="0.1.0-local" />
 
@@ -42,6 +42,8 @@
     <PackageVersion Include="Microsoft.ApplicationInsights.WorkerService" Version="2.23.0" />
 
     <!-- Stamps the git commit into IgnixaLab.TestScript.Suites' packed output, so the Functions app can link back to the exact commit testscripts fixtures came from -->
+    <!-- GitVersion for release package semantic versioning -->
+    <PackageVersion Include="GitVersion.MsBuild" Version="6.5.1" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
 
     <!-- Testing -->

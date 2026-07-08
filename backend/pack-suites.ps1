@@ -22,7 +22,10 @@ $outputDir = Join-Path $repoRoot 'artifacts/local-feed'
 # so it must exist before the pack command below triggers its own restore.
 New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 
-dotnet pack $project -c Release -o $outputDir /nodeReuse:false
+dotnet pack $project -c Release -o $outputDir /nodeReuse:false `
+    /p:UseGitVersion=false `
+    /p:Version=0.1.0-local `
+    /p:PackageVersion=0.1.0-local
 
 # MSBuild's node-reuse server can cache glob/directory-enumeration results
 # across the dotnet CLI invocations that follow (restore/build/test in the
