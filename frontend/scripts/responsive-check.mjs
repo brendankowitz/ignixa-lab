@@ -406,6 +406,7 @@ async function assertReducedMotionStopsAutoRotation(page) {
     await page.reload({ waitUntil: 'networkidle' });
     const demo = page.locator('.ix-hero-demo');
     await expectVisible(demo, 'Landing reduced-motion demo');
+    await assertLandingCursorBlinks(page);
     const initialDemo = await demo.getAttribute('data-active-demo');
     if (!initialDemo) {
       throw new Error('Landing reduced-motion demo is missing data-active-demo');
