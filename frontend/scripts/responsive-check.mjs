@@ -36,9 +36,10 @@ const routes = [
   },
 ];
 
-const server = spawn('npm', ['run', 'preview', '--', '--host', '127.0.0.1'], {
+const server = spawn('npm', ['run', 'preview', '--', '--host', '127.0.0.1', '--port', '4173', '--strictPort'], {
   shell: true,
   stdio: ['ignore', 'pipe', 'pipe'],
+  detached: process.platform !== 'win32',
 });
 
 let serverOutput = '';
@@ -74,23 +75,33 @@ try {
 }
 
 function stopServer() {
-  if (server.exitCode !== null) {
+  if (server.exitCode !== null || server.pid === undefined) {
     return;
   }
   if (process.platform === 'win32') {
-    const script = `
+    stopWindowsProcessTree();
+    return;
+  }
+  try {
+    process.kill(-server.pid, 'SIGTERM');
+  } catch (error) {
+    if (error.code !== 'ESRCH') {
+      server.kill('SIGTERM');
+    }
+  }
+}
+
+function stopWindowsProcessTree() {
+  const script = `
 function Stop-Tree([int]$Id) {
   Get-CimInstance Win32_Process -Filter "ParentProcessId=$Id" | ForEach-Object { Stop-Tree $_.ProcessId }
   Stop-Process -Id $Id -Force -ErrorAction SilentlyContinue
 }
 Stop-Tree ${server.pid}
 `;
-    spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
-      stdio: 'ignore',
-    });
-    return;
-  }
-  server.kill();
+  spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
+    stdio: 'ignore',
+  });
 }
 
 async function waitForPreview() {
@@ -128,7 +139,9 @@ async function assertNoHorizontalOverflow(page, label) {
 }
 
 async function expectVisible(locator, label) {
-  if (!(await locator.isVisible())) {
+  try {
+    await locator.waitFor({ state: 'visible' });
+  } catch {
     throw new Error(`${label} is not visible`);
   }
 }
