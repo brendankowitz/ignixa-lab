@@ -36,7 +36,8 @@ const controlGroupStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   gap: 8,
-  flexWrap: 'nowrap',
+  flexWrap: 'wrap',
+  minWidth: 0,
   maxWidth: '100%',
 };
 
@@ -194,7 +195,7 @@ export function ValidationBench({ onOpenFakes, fakesSeed, onSeedConsumed, initia
             <span style={sectionLabelStyle}>Depth</span>
             <Pills items={DEPTH_ITEMS} activeId={depth} onChange={setDepth} />
           </div>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text3)', flex: '0 0 auto' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text3)', flex: '1 1 180px', minWidth: 0 }}>
             Skip terminology
             <Toggle checked={skipTerminology} onChange={setSkipTerminology} ariaLabel="Skip terminology validation" />
           </span>

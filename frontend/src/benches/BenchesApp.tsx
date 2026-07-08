@@ -30,16 +30,17 @@ const shellStyle: CSSProperties = {
 
 function topBarStyle(compact: boolean): CSSProperties {
   return {
-  display: 'flex',
-  flexWrap: 'wrap',
-  alignItems: 'center',
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
     gap: compact ? 8 : 14,
     padding: compact ? '10px 12px' : '12px 20px',
-  background: 'var(--panel)',
-  borderBottom: '1px solid var(--border)',
-  position: 'sticky',
-  top: 0,
-  zIndex: 20,
+    background: 'var(--panel)',
+    borderBottom: '1px solid var(--border)',
+    position: 'sticky',
+    top: 0,
+    zIndex: 20,
+    minWidth: 0,
   };
 }
 
@@ -112,7 +113,9 @@ export function BenchesApp() {
         </div>
         <div className="ix-top-divider" />
 
-        <Pills items={BENCH_TABS} activeId={bench} onChange={setBench} />
+        <div style={{ order: compactHeader ? 4 : 0, flex: compactHeader ? '1 1 100%' : '0 1 auto', minWidth: 0 }}>
+          <Pills items={BENCH_TABS} activeId={bench} onChange={setBench} />
+        </div>
 
         <div style={{ flex: compactHeader ? '0 0 0' : 1, display: compactHeader ? 'none' : 'block' }} />
 
@@ -135,6 +138,7 @@ export function BenchesApp() {
             color: 'var(--text3)',
             fontSize: 14,
             cursor: 'pointer',
+            flex: 'none',
           }}
         >
           {copied ? '✓' : '🔗'}
@@ -155,6 +159,7 @@ export function BenchesApp() {
             color: 'var(--text3)',
             fontSize: 14,
             cursor: 'pointer',
+            flex: 'none',
           }}
         >
           {theme.icon}

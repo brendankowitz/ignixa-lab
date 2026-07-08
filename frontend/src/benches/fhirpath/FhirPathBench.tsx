@@ -59,7 +59,17 @@ function astChipColors(expressionType: string): { bg: string; fg: string } {
   }
 }
 
-function AstRows({ node, depth, onNodeClick }: { node: FpAstNode; depth: number; onNodeClick: (node: FpAstNode) => void }) {
+function AstRows({
+  node,
+  depth,
+  compact,
+  onNodeClick,
+}: {
+  node: FpAstNode;
+  depth: number;
+  compact: boolean;
+  onNodeClick: (node: FpAstNode) => void;
+}) {
   const colors = astChipColors(node.expressionType);
   const hasSpan = node.position != null && node.length != null;
   return (
@@ -79,7 +89,7 @@ function AstRows({ node, depth, onNodeClick }: { node: FpAstNode; depth: number;
         }
         title={hasSpan ? 'Select this part of the expression' : undefined}
         style={{
-          padding: `3px 0 3px ${depth * 18 + 2}px`,
+          padding: `3px 0 3px ${depth * (compact ? 10 : 18) + 2}px`,
           display: 'flex',
           gap: 8,
           alignItems: 'baseline',
@@ -97,7 +107,7 @@ function AstRows({ node, depth, onNodeClick }: { node: FpAstNode; depth: number;
         </span>
       </div>
       {node.arguments.map((child, index) => (
-        <AstRows key={index} node={child} depth={depth + 1} onNodeClick={onNodeClick} />
+        <AstRows key={index} node={child} depth={depth + 1} compact={compact} onNodeClick={onNodeClick} />
       ))}
     </>
   );
@@ -291,7 +301,7 @@ export function FhirPathBench({ onOpenFakes, fakesSeed, onSeedConsumed, initialS
           ))}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0 }}>
           <span style={sectionLabelStyle}>FHIR version</span>
           <Pills items={VERSION_ITEMS} activeId={version} onChange={setVersion} />
         </div>
@@ -435,8 +445,10 @@ export function FhirPathBench({ onOpenFakes, fakesSeed, onSeedConsumed, initialS
           {result.error === null && resultTab === 'ast' && result.ast && typeof result.ast === 'object' ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '4px 2px' }}>
               {astInverted
-                ? invertedAstRoots.map((node, index) => <AstRows key={index} node={node} depth={0} onNodeClick={handleAstNodeClick} />)
-                : <AstRows node={result.ast} depth={0} onNodeClick={handleAstNodeClick} />}
+                ? invertedAstRoots.map((node, index) => (
+                    <AstRows key={index} node={node} depth={0} compact={compact} onNodeClick={handleAstNodeClick} />
+                  ))
+                : <AstRows node={result.ast} depth={0} compact={compact} onNodeClick={handleAstNodeClick} />}
             </div>
           ) : null}
           {result.error === null && resultTab === 'ast' && result.ast === 'parse-failed' ? (

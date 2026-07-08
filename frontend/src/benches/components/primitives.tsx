@@ -76,7 +76,7 @@ export interface PillsProps<T extends string> {
 /** Segmented pill tab group, used for the bench switcher and for tab/selector groups within individual benches (e.g. FHIR version, result tabs) — not every bench uses it. */
 export function Pills<T extends string>({ items, activeId, onChange }: PillsProps<T>) {
   return (
-    <div style={pillGroupStyle} role="tablist">
+    <div style={{ ...pillGroupStyle, minWidth: 0 }} role="tablist">
       {items.map((item) => (
         <span
           key={item.id}

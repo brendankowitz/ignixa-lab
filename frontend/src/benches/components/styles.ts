@@ -66,10 +66,12 @@ export const pillGroupStyle: CSSProperties = {
   borderRadius: 8,
   padding: 3,
   maxWidth: '100%',
+  minWidth: 0,
 };
 
 export function pillItemStyle(active: boolean): CSSProperties {
   return {
+    minWidth: 0,
     padding: '6px 12px',
     borderRadius: 6,
     fontSize: 12.5,
@@ -78,6 +80,7 @@ export function pillItemStyle(active: boolean): CSSProperties {
     color: active ? 'var(--text)' : 'var(--text3)',
     fontWeight: active ? 600 : 500,
     boxShadow: active ? '0 1px 3px var(--border2)' : 'none',
+    whiteSpace: 'nowrap',
   };
 }
 
@@ -100,6 +103,7 @@ export function benchHeaderStyle(compact: boolean): CSSProperties {
     alignItems: compact ? 'flex-start' : 'baseline',
     gap: compact ? 8 : 12,
     flexWrap: 'wrap',
+    minWidth: 0,
   };
 }
 
