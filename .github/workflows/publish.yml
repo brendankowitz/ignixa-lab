@@ -21,6 +21,7 @@ jobs:
       - name: Download latest backend package artifact
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           run_id="$(gh run list \
