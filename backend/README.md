@@ -241,7 +241,7 @@ pushed artifact is the package that passed backend CI.
 `.github/workflows/backend-deploy.yml` builds and publishes the Functions app
 and deploys it to the `ignixa-lab` Azure Function App (Flex Consumption,
 `Ingixa` resource group) via `Azure/functions-action@v1` on every push to
-`main` touching `backend/**` (plus manual dispatch). It authenticates via
+`main` (plus manual dispatch). It authenticates via
 OIDC (`azure/login@v2`), not a stored publish profile — Flex Consumption
 treats RBAC as the primary deploy path, and publish-profile auth would
 require enabling SCM basic-auth publishing credentials on the app just to
