@@ -14,6 +14,18 @@ const viewports = [
 
 const routes = [
   {
+    path: '',
+    label: 'Landing',
+    checks: async (page) => {
+      await expectVisible(page.locator('.ix-hero-demo'), 'Landing rotating demo');
+      await expectCount(page.locator('.ix-demo-tab'), 'Landing demo feature controls', 6);
+      await page.getByRole('button', { name: 'Validation demo' }).click();
+      await expectVisible(page.getByText('validation · Patient'), 'Landing validation demo title');
+      await assertNoHorizontalOverflow(page, 'Landing selected Validation demo');
+      await assertReducedMotionStopsAutoRotation(page);
+    },
+  },
+  {
     path: 'conformance.html',
     label: 'Conformance',
     checks: async (page) => {
@@ -319,6 +331,19 @@ async function expectCount(locator, label, minimum = 1) {
     const bodyText = await page.locator('body').innerText().catch(() => '');
     throw new Error(`${label} count ${count} is below ${minimum}\n\nPage text:\n${bodyText.slice(0, 1200)}`);
   }
+}
+
+async function assertReducedMotionStopsAutoRotation(page) {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.reload({ waitUntil: 'networkidle' });
+  await expectVisible(page.locator('.ix-hero-demo'), 'Landing reduced-motion demo');
+  const initialDemo = await page.locator('.ix-hero-demo').getAttribute('data-active-demo');
+  await page.waitForTimeout(5200);
+  const laterDemo = await page.locator('.ix-hero-demo').getAttribute('data-active-demo');
+  if (initialDemo !== laterDemo) {
+    throw new Error(`Landing demo rotated despite reduced motion: ${initialDemo} -> ${laterDemo}`);
+  }
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
 }
 
 async function mockConformanceApi(page) {
