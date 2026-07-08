@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Ignixa.Lab.Functions.Configuration;
 using Ignixa.Lab.Functions.Suites;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -47,6 +48,46 @@ public sealed class SuiteCatalogTests : IDisposable
               "action": [
                 { "operation": { "type": { "code": "read" }, "resource": "Patient", "url": "Patient/1" } }
               ]
+            }
+          ]
+        }
+        """;
+        File.WriteAllText(full, json);
+    }
+
+    private void WriteProvenanceSidecar(string relativeScriptPath)
+    {
+        var relativeSidecarPath = Path.ChangeExtension(relativeScriptPath, ".provenance.json");
+        var full = Path.Combine(_root, relativeSidecarPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+        var target = relativeScriptPath.Replace(Path.DirectorySeparatorChar, '/');
+        var json = $$"""
+        {
+          "resourceType": "Provenance",
+          "target": [
+            {
+              "identifier": {
+                "system": "urn:ignixa-lab:testscripts:path",
+                "value": "{{target}}"
+              },
+              "display": "{{target}}"
+            }
+          ],
+          "recorded": "2026-07-07T00:00:00Z",
+          "agent": [
+            {
+              "who": {
+                "display": "Ignixa Lab maintainers"
+              }
+            }
+          ],
+          "entity": [
+            {
+              "role": "source",
+              "what": {
+                "reference": "https://github.com/brendankowitz/ignixa-lab",
+                "display": "Ignixa Lab"
+              }
             }
           ]
         }
@@ -113,6 +154,24 @@ public sealed class SuiteCatalogTests : IDisposable
         var suites = CreateCatalog().GetSuites();
 
         suites.Should().ContainSingle().Which.Name.Should().Be("Patient CRUD");
+    }
+
+    [Fact]
+    public void GetSuites_IgnoresProvenanceSidecarsWithoutWarnings()
+    {
+        WriteScript(Path.Combine("crud", "patient.json"), "Patient CRUD");
+        WriteProvenanceSidecar(Path.Combine("crud", "patient.json"));
+        var logger = new SuiteCatalogTestLogger<SuiteCatalog>();
+        var catalog = new SuiteCatalog(
+            Options.Create(new IgnixaLabOptions { SuitesDirectory = _root }),
+            logger);
+
+        var suites = catalog.GetSuites();
+
+        suites.Should().ContainSingle().Which.Id.Should().Be("crud/patient.json");
+        logger.Entries.Should().NotContain(entry =>
+            entry.Level >= LogLevel.Warning &&
+            entry.Message.Contains("patient.provenance.json", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
