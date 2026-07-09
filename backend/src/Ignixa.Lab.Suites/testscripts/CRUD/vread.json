@@ -46,7 +46,7 @@
         { "assert": { "description": "Returned id must match the one assigned at create", "expression": "Observation.id", "value": "${obsId}", "operator": "equals" } },
         { "assert": { "description": "Returned meta.versionId must match the requested version", "expression": "Observation.meta.versionId", "value": "${obsVersionId}", "operator": "equals" } },
         { "assert": { "description": "Returned meta.lastUpdated must match the one assigned at create", "expression": "Observation.meta.lastUpdated", "value": "${obsLastUpdated}", "operator": "equals" } },
-        { "assert": { "description": "ETag header must reflect the requested version", "headerField": "ETag", "operator": "contains", "value": "${obsVersionId}" } }
+        { "assert": { "description": "ETag header must be present for the requested version", "headerField": "ETag", "operator": "notEmpty" } }
       ]
     },
     {

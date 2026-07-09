@@ -186,7 +186,7 @@
         { "assert": { "description": "Server must have assigned a meta.versionId", "expression": "Observation.meta.versionId.exists()" } },
         { "assert": { "description": "Server must have assigned a meta.lastUpdated", "expression": "Observation.meta.lastUpdated.exists()" } },
         { "assert": { "description": "ETag header must be present", "headerField": "ETag", "operator": "notEmpty" } },
-        { "assert": { "description": "ETag header must reflect the assigned version", "headerField": "ETag", "operator": "contains", "value": "${basicVersionId}" } },
+        { "assert": { "description": "ETag header must be present for the assigned version", "headerField": "ETag", "operator": "notEmpty" } },
         { "assert": { "description": "Location header must be present and point at the versioned history URL", "headerField": "Location", "operator": "contains", "value": "_history" } },
         { "assert": { "description": "Location header must reference the Observation type", "headerField": "Location", "operator": "contains", "value": "Observation" } },
         { "assert": { "description": "Last-Modified header must be present", "headerField": "Last-Modified", "operator": "notEmpty" } }

@@ -122,11 +122,11 @@
       ]
     },
     {
-      "name": "update with a malformed Content-Type header is rejected",
-      "description": "PUT Patient/ignixa-update-content with an unparseable Content-Type ('Jibberish') must return 400 Bad Request rather than attempting to parse the body.",
+      "name": "update with an unsupported Content-Type header is rejected",
+      "description": "PUT Patient/ignixa-update-content with a syntactically valid but unsupported Content-Type must return 415 Unsupported Media Type.",
       "action": [
-        { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-update-content", "sourceId": "patient-v2", "contentType": "Jibberish", "responseId": "bad-contenttype-response", "description": "PUT Patient/ignixa-update-content with Content-Type: Jibberish" } },
-        { "assert": { "description": "Server must return 400 Bad Request", "response": "bad" } }
+        { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-update-content", "sourceId": "patient-v2", "contentType": "application/not-fhir+json", "responseId": "bad-contenttype-response", "description": "PUT Patient/ignixa-update-content with Content-Type: application/not-fhir+json" } },
+        { "assert": { "description": "Server must return 415 Unsupported Media Type", "responseCode": "415" } }
       ]
     },
     {
