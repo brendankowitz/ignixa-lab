@@ -34,25 +34,50 @@
     {
       "role": "source",
       "what": {
-        "reference": "https://github.com/microsoft/fhir-server",
-        "display": "Microsoft FHIR Server test coverage"
+        "reference": "https://github.com/brendankowitz/ignixa-lab",
+        "display": "Ignixa Lab all resource type TestScripts"
       },
       "extension": [
         {
           "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-relationship",
-          "valueCode": "distilled-from"
+          "valueCode": "authored-in"
         },
         {
           "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-license",
-          "valueString": "MIT"
+          "valueString": "repository license"
         },
         {
           "url": "http://ignixa.io/fhir/StructureDefinition/provenance-distillation-notes",
-          "valueString": "Converted Microsoft FHIR Server behavior into black-box FHIR TestScript assertions and kept Microsoft-specific operations in the Microsoft category."
+          "valueString": "Authored in Ignixa Lab to exercise create/read coverage across every concrete resource type using generated fhirfakes fixtures and CapabilityStatement gates."
         },
         {
           "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-version",
-          "valueString": "repository source reviewed during Ignixa Lab suite distillation"
+          "valueString": "current repository revision"
+        }
+      ]
+    },
+    {
+      "role": "source",
+      "what": {
+        "reference": "https://hl7.org/fhir/R4/resourcelist.html",
+        "display": "FHIR R4 resource list"
+      },
+      "extension": [
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-relationship",
+          "valueCode": "spec-reference"
+        },
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-license",
+          "valueString": "FHIR specification license"
+        },
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-distillation-notes",
+          "valueString": "Used as normative resource taxonomy context for the generated all-resource-type suites."
+        },
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-version",
+          "valueString": "FHIR R4"
         }
       ]
     }

@@ -34,8 +34,8 @@
     {
       "role": "source",
       "what": {
-        "reference": "https://github.com/microsoft/fhir-server",
-        "display": "Microsoft FHIR Server test coverage"
+        "reference": "https://github.com/fhir-fi/fhir262",
+        "display": "fhir262 HTTP conformance tests"
       },
       "extension": [
         {
@@ -44,15 +44,40 @@
         },
         {
           "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-license",
-          "valueString": "MIT"
+          "valueString": "source-declared open-source license"
         },
         {
           "url": "http://ignixa.io/fhir/StructureDefinition/provenance-distillation-notes",
-          "valueString": "Converted Microsoft FHIR Server behavior into black-box FHIR TestScript assertions and kept Microsoft-specific operations in the Microsoft category."
+          "valueString": "Ported fhir262 client-supplied id behavior into black-box FHIR TestScript assertions."
         },
         {
           "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-version",
           "valueString": "repository source reviewed during Ignixa Lab suite distillation"
+        }
+      ]
+    },
+    {
+      "role": "source",
+      "what": {
+        "reference": "https://hl7.org/fhir/R4/http.html",
+        "display": "FHIR R4 RESTful API"
+      },
+      "extension": [
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-relationship",
+          "valueCode": "spec-reference"
+        },
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-license",
+          "valueString": "FHIR specification license"
+        },
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-distillation-notes",
+          "valueString": "Used as normative REST interaction context for fhir262-derived HTTP assertions."
+        },
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-version",
+          "valueString": "FHIR R4"
         }
       ]
     }

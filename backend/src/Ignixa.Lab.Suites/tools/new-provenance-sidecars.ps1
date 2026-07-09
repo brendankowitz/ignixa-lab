@@ -127,6 +127,78 @@ $sourceProfiles = @{
             Notes = 'Aligned with ignixa-fhir TestScript execution behavior and conformance dashboard expectations.'
         }
     )
+    IgnixaAllResourceTypes = @(
+        @{
+            Reference = 'https://github.com/brendankowitz/ignixa-lab'
+            Display = 'Ignixa Lab all resource type TestScripts'
+            Relationship = 'authored-in'
+            License = 'repository license'
+            Version = 'current repository revision'
+            Notes = 'Authored in Ignixa Lab to exercise create/read coverage across every concrete resource type using generated fhirfakes fixtures and CapabilityStatement gates.'
+        },
+        @{
+            Reference = 'https://hl7.org/fhir/R4/resourcelist.html'
+            Display = 'FHIR R4 resource list'
+            Relationship = 'spec-reference'
+            License = 'FHIR specification license'
+            Version = 'FHIR R4'
+            Notes = 'Used as normative resource taxonomy context for the generated all-resource-type suites.'
+        }
+    )
+    Fhir262Validation = @(
+        @{
+            Reference = 'https://github.com/fhir-fi/fhir262'
+            Display = 'fhir262 validation tests'
+            Relationship = 'distilled-from'
+            License = 'source-declared open-source license'
+            Version = 'repository source reviewed during Ignixa Lab suite distillation'
+            Notes = 'Ported fhir262 validation/$validation-op coverage into black-box FHIR TestScript assertions for $validate behavior.'
+        },
+        @{
+            Reference = 'https://hl7.org/fhir/R4/resource-operation-validate.html'
+            Display = 'FHIR R4 $validate operation'
+            Relationship = 'spec-reference'
+            License = 'FHIR specification license'
+            Version = 'FHIR R4'
+            Notes = 'Used as normative operation context for validation assertions.'
+        }
+    )
+    Fhir262Search = @(
+        @{
+            Reference = 'https://github.com/fhir-fi/fhir262'
+            Display = 'fhir262 search tests'
+            Relationship = 'distilled-from'
+            License = 'source-declared open-source license'
+            Version = 'repository source reviewed during Ignixa Lab suite distillation'
+            Notes = 'Ported fhir262 search modifier, sort, and paging coverage into black-box FHIR TestScript assertions.'
+        },
+        @{
+            Reference = 'https://hl7.org/fhir/R4/search.html'
+            Display = 'FHIR R4 search'
+            Relationship = 'spec-reference'
+            License = 'FHIR specification license'
+            Version = 'FHIR R4'
+            Notes = 'Used as normative search semantics context for fhir262-derived search assertions.'
+        }
+    )
+    Fhir262Http = @(
+        @{
+            Reference = 'https://github.com/fhir-fi/fhir262'
+            Display = 'fhir262 HTTP conformance tests'
+            Relationship = 'distilled-from'
+            License = 'source-declared open-source license'
+            Version = 'repository source reviewed during Ignixa Lab suite distillation'
+            Notes = 'Ported fhir262 client-supplied id behavior into black-box FHIR TestScript assertions.'
+        },
+        @{
+            Reference = 'https://hl7.org/fhir/R4/http.html'
+            Display = 'FHIR R4 RESTful API'
+            Relationship = 'spec-reference'
+            License = 'FHIR specification license'
+            Version = 'FHIR R4'
+            Notes = 'Used as normative REST interaction context for fhir262-derived HTTP assertions.'
+        }
+    )
     FhirSpec = @(
         @{
             Reference = 'https://hl7.org/fhir/R4/'
@@ -151,6 +223,31 @@ function Get-SourceProfileName {
 
     if ($RelativePath -eq 'Operations/expand-operation.json') {
         return 'OperationsExpand'
+    }
+
+    if ($RelativePath.StartsWith('CRUD/all-resource-types', [StringComparison]::Ordinal)) {
+        return 'IgnixaAllResourceTypes'
+    }
+
+    if ($RelativePath -eq 'Validation/validate-op.json') {
+        return 'Fhir262Validation'
+    }
+
+    if ($RelativePath -eq 'CRUD/client-id-handling.json') {
+        return 'Fhir262Http'
+    }
+
+    if ($RelativePath -in @(
+        'Search/array-joins.json',
+        'Search/basic.json',
+        'Search/chaining.json',
+        'Search/intervals.json',
+        'Search/joins.json',
+        'Search/pagination.json',
+        'Search/sort.json',
+        'Search/string-modifiers.json'
+    )) {
+        return 'Fhir262Search'
     }
 
     if ($RelativePath -in @(
