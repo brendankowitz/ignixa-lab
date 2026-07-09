@@ -3,6 +3,7 @@ using Ignixa.Lab.Functions.Configuration;
 using Ignixa.Lab.Functions.Suites;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using System.Text.Json.Nodes;
 
 namespace Ignixa.Lab.Functions.Tests.Suites;
 
@@ -185,5 +186,123 @@ public sealed class SuiteCatalogTests : IDisposable
             "Bundles/transaction.json",
             "Validation/validate-op.json",
         });
+    }
+
+    [Fact]
+    public void BundledCanonicalSuites_DoNotUseVariablePlaceholdersInHeaderExpectedValues()
+    {
+        var violations = new List<string>();
+
+        foreach (var (relativePath, json) in ReadBundledSuiteJson())
+        {
+            var root = JsonNode.Parse(json);
+            VisitObjects(root, obj =>
+            {
+                if (!obj.TryGetPropertyValue("headerField", out _))
+                {
+                    return;
+                }
+
+                if (obj.TryGetPropertyValue("value", out var valueNode)
+                    && valueNode?.GetValueKind() == System.Text.Json.JsonValueKind.String
+                    && valueNode.GetValue<string>().Contains("${", StringComparison.Ordinal))
+                {
+                    var description = obj.TryGetPropertyValue("description", out var descriptionNode)
+                        ? descriptionNode?.GetValue<string>()
+                        : "(no description)";
+                    violations.Add($"{relativePath}: header assertion '{description}' uses unsupported variable interpolation in value '{valueNode.GetValue<string>()}'.");
+                }
+            });
+        }
+
+        violations.Should().BeEmpty(
+            "bundled suites must not use unsupported variable interpolation in header expected values. Violations:{0}{1}",
+            Environment.NewLine,
+            string.Join(Environment.NewLine, violations));
+    }
+
+    [Fact]
+    public void BundledCanonicalSuites_DoNotUseSyntacticallyInvalidContentTypes()
+    {
+        var violations = ReadBundledSuiteJson()
+            .Where(suite => suite.Json.Contains("\"contentType\": \"Jibberish\"", StringComparison.Ordinal))
+            .Select(suite => suite.RelativePath)
+            .ToArray();
+
+        violations.Should().BeEmpty(
+            "unsupported media-type tests must use a syntactically valid media type so the request reaches the target server. Violations:{0}{1}",
+            Environment.NewLine,
+            string.Join(Environment.NewLine, violations));
+    }
+
+    [Fact]
+    public void BundledCanonicalSuites_DoNotAssertBundleEntryStatusWithExactReasonlessCode()
+    {
+        var violations = new List<string>();
+
+        foreach (var (relativePath, json) in ReadBundledSuiteJson())
+        {
+            var root = JsonNode.Parse(json);
+            VisitObjects(root, obj =>
+            {
+                var expression = obj.TryGetPropertyValue("expression", out var expressionNode)
+                    ? GetStringValue(expressionNode)
+                    : null;
+                var value = obj.TryGetPropertyValue("value", out var valueNode)
+                    ? GetStringValue(valueNode)
+                    : null;
+                var op = obj.TryGetPropertyValue("operator", out var operatorNode)
+                    ? GetStringValue(operatorNode)
+                    : null;
+
+                if (expression is not null
+                    && expression.EndsWith("response.status", StringComparison.Ordinal)
+                    && value is not null
+                    && value.All(char.IsDigit)
+                    && string.Equals(op, "equals", StringComparison.OrdinalIgnoreCase))
+                {
+                    violations.Add($"{relativePath}: use startsWith('{value}') for Bundle.entry.response.status because FHIR permits a reason phrase.");
+                }
+            });
+        }
+
+        violations.Should().BeEmpty(
+            "Bundle.entry.response.status assertions must allow FHIR reason phrases. Violations:{0}{1}",
+            Environment.NewLine,
+            string.Join(Environment.NewLine, violations));
+    }
+
+    private static string? GetStringValue(JsonNode? node) =>
+        node?.GetValueKind() == System.Text.Json.JsonValueKind.String
+            ? node.GetValue<string>()
+            : null;
+
+    private static IEnumerable<(string RelativePath, string Json)> ReadBundledSuiteJson()
+    {
+        var root = Path.Combine(AppContext.BaseDirectory, "testscripts");
+        foreach (var file in Directory.EnumerateFiles(root, "*.json", SearchOption.AllDirectories))
+        {
+            yield return (Path.GetRelativePath(root, file).Replace(Path.DirectorySeparatorChar, '/'), File.ReadAllText(file));
+        }
+    }
+
+    private static void VisitObjects(JsonNode? node, Action<JsonObject> visit)
+    {
+        switch (node)
+        {
+            case JsonObject obj:
+                visit(obj);
+                foreach (var child in obj.Select(property => property.Value))
+                {
+                    VisitObjects(child, visit);
+                }
+                break;
+            case JsonArray array:
+                foreach (var child in array)
+                {
+                    VisitObjects(child, visit);
+                }
+                break;
+        }
     }
 }
