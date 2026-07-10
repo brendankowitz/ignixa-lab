@@ -74,7 +74,7 @@ To target a remote backend from a standalone build, set `VITE_API_BASE_URL`
    to regenerate the sibling FHIR R4 Provenance sidecar named
    `<suite>.provenance.json`. The sidecar targets the TestScript's path relative
    to `testscripts/` and lists the repositories, specifications, APIs, or prior
-   tests used while distilling the suite.
+   tests used while authoring or distilling the suite.
 4. Commit the generated `.provenance.json` file alongside the TestScript. These
    sidecars are committed artifacts, not hand-authored inputs.
 5. Use `author-testscript` for locally created coverage and
