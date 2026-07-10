@@ -111,6 +111,7 @@
       "autodelete": false,
       "resource": {
         "resourceType": "Patient",
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/cond-update", "value": "CU-MULTI" }],
         "name": [{ "family": "CondUpdate", "given": ["MultiUpdated"] }]
       }
     }
@@ -126,9 +127,13 @@
   "setup": {
     "action": [
       { "operation": { "type": { "code": "create" }, "resource": "Patient", "sourceId": "patient-seed-onematch-body", "responseId": "seed-onematch-response", "description": "Unconditionally create the Patient that later conditional-update attempts should match exactly once (CU-ONEMATCH)" } },
+      { "assert": { "description": "Setup create for CU-ONEMATCH Patient must return 201 Created", "sourceId": "seed-onematch-response", "response": "created" } },
       { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-cond-upd-correctid", "sourceId": "patient-seed-correctid-body", "responseId": "seed-correctid-response", "description": "PUT a client-id Patient (CU-CORRECTID) so later tests can deterministically match or mismatch its id in a conditional update body" } },
+      { "assert": { "description": "Setup PUT Patient/ignixa-cond-upd-correctid (CU-CORRECTID) must succeed", "sourceId": "seed-correctid-response", "response": "okay" } },
       { "operation": { "type": { "code": "create" }, "resource": "Patient", "sourceId": "patient-seed-multi-a-body", "responseId": "seed-multi-a-response", "description": "Unconditionally create the first of two Patients sharing identifier CU-MULTI" } },
-      { "operation": { "type": { "code": "create" }, "resource": "Patient", "sourceId": "patient-seed-multi-b-body", "responseId": "seed-multi-b-response", "description": "Unconditionally create the second of two Patients sharing identifier CU-MULTI" } }
+      { "assert": { "description": "Setup create for first CU-MULTI Patient must return 201 Created", "sourceId": "seed-multi-a-response", "response": "created" } },
+      { "operation": { "type": { "code": "create" }, "resource": "Patient", "sourceId": "patient-seed-multi-b-body", "responseId": "seed-multi-b-response", "description": "Unconditionally create the second of two Patients sharing identifier CU-MULTI" } },
+      { "assert": { "description": "Setup create for second CU-MULTI Patient must return 201 Created", "sourceId": "seed-multi-b-response", "response": "created" } }
     ]
   },
   "test": [
