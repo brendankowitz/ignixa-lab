@@ -6,6 +6,7 @@ $script:RelationshipExtensionUrl = 'http://ignixa.io/fhir/StructureDefinition/pr
 $script:LicenseExtensionUrl = 'http://ignixa.io/fhir/StructureDefinition/provenance-source-license'
 $script:VersionExtensionUrl = 'http://ignixa.io/fhir/StructureDefinition/provenance-source-version'
 $script:NotesExtensionUrl = 'http://ignixa.io/fhir/StructureDefinition/provenance-distillation-notes'
+$script:ProvenanceSidecarSuffix = '.provenance.json'
 $script:AllowedActivities = @('author-testscript', 'distill-testscript')
 $script:AllowedRelationships = @(
     'authored-in',
@@ -46,6 +47,32 @@ function Get-TestScriptFile {
         Sort-Object FullName
 }
 
+function Get-ProvenanceSidecarFile {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $SuitesDirectory,
+
+        [string[]] $ExcludedPaths = @()
+    )
+
+    if (-not (Test-Path -LiteralPath $SuitesDirectory -PathType Container)) {
+        return @()
+    }
+
+    $excludedFullPaths = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($excludedPath in $ExcludedPaths) {
+        if (-not [string]::IsNullOrWhiteSpace($excludedPath)) {
+            [void] $excludedFullPaths.Add([System.IO.Path]::GetFullPath($excludedPath))
+        }
+    }
+
+    Get-ChildItem -LiteralPath $SuitesDirectory -Recurse -File -Filter "*$($script:ProvenanceSidecarSuffix)" |
+        Where-Object {
+            -not $excludedFullPaths.Contains([System.IO.Path]::GetFullPath($_.FullName))
+        } |
+        Sort-Object FullName
+}
+
 function ConvertTo-SuiteRelativePath {
     param(
         [Parameter(Mandatory = $true)]
@@ -68,7 +95,24 @@ function Get-ProvenanceSidecarPath {
 
     $directory = Split-Path -Parent $TestScriptPath
     $baseName = [System.IO.Path]::GetFileNameWithoutExtension($TestScriptPath)
-    Join-Path $directory "$baseName.provenance.json"
+    Join-Path $directory "$baseName$($script:ProvenanceSidecarSuffix)"
+}
+
+function Get-TestScriptPathFromProvenanceSidecar {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $ProvenanceSidecarPath
+    )
+
+    $directory = Split-Path -Parent $ProvenanceSidecarPath
+    $fileName = [System.IO.Path]::GetFileName($ProvenanceSidecarPath)
+
+    if (-not $fileName.EndsWith($script:ProvenanceSidecarSuffix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Provenance sidecar path must end with $($script:ProvenanceSidecarSuffix): $ProvenanceSidecarPath"
+    }
+
+    $baseName = $fileName.Substring(0, $fileName.Length - $script:ProvenanceSidecarSuffix.Length)
+    Join-Path $directory "$baseName.json"
 }
 
 function New-ProvenanceEntity {
@@ -829,7 +873,16 @@ function Invoke-TestScriptProvenanceAudit {
     $warnings = New-Object System.Collections.Generic.List[string]
     $resolvedManifestPath = [System.IO.Path]::GetFullPath($ManifestPath)
     $scripts = @(Get-TestScriptFile -SuitesDirectory $SuitesDirectory -ExcludedPaths @($resolvedManifestPath))
+    $sidecars = @(Get-ProvenanceSidecarFile -SuitesDirectory $SuitesDirectory -ExcludedPaths @($resolvedManifestPath))
     $validation = $null
+
+    foreach ($sidecarFile in $sidecars) {
+        $expectedScriptPath = Get-TestScriptPathFromProvenanceSidecar -ProvenanceSidecarPath $sidecarFile.FullName
+        if (-not (Test-Path -LiteralPath $expectedScriptPath -PathType Leaf)) {
+            $relativeSidecarPath = ConvertTo-SuiteRelativePath -SuitesDirectory $SuitesDirectory -Path $sidecarFile.FullName
+            $errors.Add("Orphaned provenance sidecar with no TestScript: $relativeSidecarPath")
+        }
+    }
 
     try {
         $manifest = Read-TestScriptProvenanceManifest -ManifestPath $resolvedManifestPath

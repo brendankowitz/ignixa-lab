@@ -55,6 +55,46 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         result.CombinedOutput.Should().Contain("ERROR: Missing provenance sidecar: CRUD/basic.provenance.json");
     }
 
+    [Fact]
+    public async Task VerifyProvenance_DefaultModeReportsOrphanedSidecarAndSucceeds()
+    {
+        WriteProvenance(Path.Combine("CRUD", "orphan.provenance.json"), "CRUD/orphan.json");
+        var manifest = WriteManifest(CreateEmptyManifest());
+
+        var result = await RunAuditAsync(manifest);
+
+        result.ExitCode.Should().Be(0);
+        result.CombinedOutput.Should().Contain("ERROR: Orphaned provenance sidecar with no TestScript: CRUD/orphan.provenance.json");
+        result.CombinedOutput.Should().Contain("Provenance audit scanned 0 TestScript files and found 1 error(s) and 0 warning(s).");
+    }
+
+    [Fact]
+    public async Task VerifyProvenance_StrictModeFailsWhenProvenanceSidecarIsOrphaned()
+    {
+        WriteProvenance(Path.Combine("CRUD", "orphan.provenance.json"), "CRUD/orphan.json");
+        var manifest = WriteManifest(CreateEmptyManifest());
+
+        var result = await RunAuditAsync(manifest, strict: true);
+
+        result.ExitCode.Should().Be(1);
+        result.CombinedOutput.Should().Contain("ERROR: Orphaned provenance sidecar with no TestScript: CRUD/orphan.provenance.json");
+        result.CombinedOutput.Should().Contain("Provenance audit scanned 0 TestScript files and found 1 error(s) and 0 warning(s).");
+    }
+
+    [Fact]
+    public async Task VerifyProvenance_DefaultModeReportsManifestFailureAndOrphanedSidecar()
+    {
+        WriteProvenance(Path.Combine("CRUD", "orphan.provenance.json"), "CRUD/orphan.json");
+        var manifestPath = Path.Combine(_root, "manifests", "missing-manifest.json");
+
+        var result = await RunAuditAsync(manifestPath);
+
+        result.ExitCode.Should().Be(0);
+        result.CombinedOutput.Should().Contain($"ERROR: Provenance manifest not found: {manifestPath}");
+        result.CombinedOutput.Should().Contain("ERROR: Orphaned provenance sidecar with no TestScript: CRUD/orphan.provenance.json");
+        result.CombinedOutput.Should().Contain("Provenance audit scanned 0 TestScript files and found 2 error(s) and 0 warning(s).");
+    }
+
     [Theory]
     [InlineData("missing")]
     [InlineData("malformed")]
@@ -1537,6 +1577,18 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
                         recorded = "2026-07-10T12:34:56Z"
                     }
                 }
+            },
+            ManifestJsonOptions);
+    }
+
+    private static string CreateEmptyManifest()
+    {
+        return JsonSerializer.Serialize(
+            new
+            {
+                schemaVersion = 1,
+                profiles = new Dictionary<string, object?>(),
+                suites = new Dictionary<string, object?>()
             },
             ManifestJsonOptions);
     }

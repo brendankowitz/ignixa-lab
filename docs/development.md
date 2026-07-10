@@ -77,6 +77,8 @@ To target a remote backend from a standalone build, set `VITE_API_BASE_URL`
    tests used while authoring or distilling the suite.
 4. Commit the generated `.provenance.json` file alongside the TestScript. These
    sidecars are committed artifacts, not hand-authored inputs.
+   If you delete or rename a TestScript, delete its old sidecar and update or
+   remove the matching manifest entry before regenerating provenance.
 5. Use `author-testscript` for locally created coverage and
    `distill-testscript` when external test behavior is transformed.
 6. Capture the most precise stable upstream commit, tag, or release; the best
@@ -92,8 +94,8 @@ To target a remote backend from a standalone build, set `VITE_API_BASE_URL`
    ```
 
    `verify-provenance.ps1 -Strict` only exits non-zero for blocking structural,
-   classification, or stale-sidecar errors. Source precision and license
-   advisories remain warnings.
+   classification, stale-sidecar, or orphan-sidecar errors. Source precision
+   and license advisories remain warnings.
 8. The TestScript appears in `GET /api/suites` and becomes selectable in the SPA;
    provenance sidecars stay excluded from executable suite discovery and runtime
    APIs.

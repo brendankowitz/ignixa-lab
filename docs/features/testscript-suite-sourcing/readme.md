@@ -36,6 +36,8 @@ runtime APIs.
 
 Each bundled TestScript that is new or materially changed must add or update
 its exact manifest entry in that file before provenance is regenerated.
+Deleting or renaming a bundled TestScript must also delete its old committed
+sidecar and update or remove the matching manifest entry.
 
 Use `author-testscript` for locally created coverage and `distill-testscript`
 when external test behavior is transformed. Capture the most precise stable
@@ -44,8 +46,8 @@ an SPDX license identifier when known. Never replace an unknown historical
 revision with the upstream repository's current HEAD.
 
 `pack-suites.ps1` runs `verify-provenance.ps1 -Strict` before packaging. That
-blocks structural, classification, and stale-sidecar errors; source precision
-and license advisories remain warnings.
+blocks structural, classification, stale-sidecar, and orphan-sidecar errors;
+source precision and license advisories remain warnings.
 
 Maintainer sequence:
 
