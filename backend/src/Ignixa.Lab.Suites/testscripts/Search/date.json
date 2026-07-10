@@ -211,7 +211,7 @@
     },
     {
       "name": "Invalid date search value returns 400",
-      "description": "A syntactically invalid birthdate value must be rejected with HTTP 400.",
+      "description": "Informational SHOULD-level check: R4 says a server SHOULD reject a syntactically invalid birthdate search value, so HTTP 400 is not a base-conformance SHALL.",
       "extension": [
         { "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" },
         {
@@ -224,12 +224,12 @@
       ],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?birthdate=${invalidDate}", "description": "GET /Patient?birthdate=${invalidDate}" } },
-        { "assert": { "description": "Server must return 400 Bad Request for a syntactically invalid date", "response": "bad" } }
+        { "assert": { "description": "Informational SHOULD-level check: server should return 400 Bad Request for a syntactically invalid date", "response": "bad", "warningOnly": true } }
       ]
     },
     {
       "name": "Out-of-range date value returns 400",
-      "description": "A calendar-invalid date (Feb 30) or a dateTime with excessive fractional-second digits must be rejected with HTTP 400.",
+      "description": "Informational SHOULD-level check: R4 says a server SHOULD reject a calendar-invalid or malformed date search value, so HTTP 400 is not a base-conformance SHALL.",
       "extension": [
         { "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" },
         {
@@ -242,7 +242,7 @@
       ],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?birthdate=${outOfRangeDate}", "description": "GET /Patient?birthdate=${outOfRangeDate}" } },
-        { "assert": { "description": "Server must return 400 Bad Request for an out-of-range/malformed date", "response": "bad" } }
+        { "assert": { "description": "Informational SHOULD-level check: server should return 400 Bad Request for an out-of-range/malformed date", "response": "bad", "warningOnly": true } }
       ]
     },
     {

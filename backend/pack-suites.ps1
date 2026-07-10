@@ -16,11 +16,31 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $project = Join-Path $repoRoot 'backend/src/Ignixa.Lab.Suites/Ignixa.Lab.Suites.csproj'
 $outputDir = Join-Path $repoRoot 'artifacts/local-feed'
+$repoPackageCache = Join-Path $repoRoot 'artifacts/nuget-packages/ignixalab.testscript.suites/0.1.0-local'
 
 # nuget.config references this folder unconditionally as a package source;
 # NuGet fails restore with NU1301 if a local source doesn't exist on disk yet,
 # so it must exist before the pack command below triggers its own restore.
 New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
+
+# The fixed local development version otherwise allows restore to reuse stale
+# suite content. Invalidate only this repository's configured package cache.
+if (Test-Path $repoPackageCache) {
+    Remove-Item -Recurse -Force -Path $repoPackageCache
+}
+if (Test-Path $repoPackageCache) {
+    throw "Failed to invalidate repo-local suite package cache: $repoPackageCache"
+}
+
+$consumerAssets = @(
+    (Join-Path $repoRoot 'backend/src/Ignixa.Lab.Functions/obj/project.assets.json'),
+    (Join-Path $repoRoot 'backend/test/Ignixa.Lab.Functions.Tests/obj/project.assets.json')
+)
+foreach ($assetsFile in $consumerAssets) {
+    if (Test-Path $assetsFile) {
+        Remove-Item -Force -Path $assetsFile
+    }
+}
 
 dotnet pack $project -c Release -o $outputDir /nodeReuse:false
 

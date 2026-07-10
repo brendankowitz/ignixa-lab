@@ -308,13 +308,13 @@
     },
     {
       "name": "Invalid target resource type on _include returns a Bad Request",
-      "description": "Patient?_id=pat1&_include=Patient:organization:NotAResourceType (invalid target type) must return HTTP 400 with an OperationOutcome error.",
+      "description": "Informational handling check: without Prefer: handling=strict, base FHIR does not universally require rejection of an invalid _include target resource type.",
       "requiresCapability": "rest.resource.where(type='Patient').searchInclude.where($this='Patient:organization' or $this='*').exists()",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?_id=ignixa-inc-pat1&_include=Patient:organization:NotAResourceType", "responseId": "inc-invalid-target", "description": "GET /Patient?_id=ignixa-inc-pat1&_include=Patient:organization:NotAResourceType" } },
-        { "assert": { "description": "Search must return HTTP 400 Bad Request", "response": "bad" } },
-        { "assert": { "description": "Response must be an OperationOutcome error", "expression": "OperationOutcome.issue.where(severity = 'error' or severity = 'fatal').exists()" } }
+        { "assert": { "description": "Informational invalid-_include handling check: search should return HTTP 400 Bad Request", "response": "bad", "warningOnly": true } },
+        { "assert": { "description": "Informational invalid-_include handling check: response should be an OperationOutcome error", "expression": "OperationOutcome.issue.where(severity = 'error' or severity = 'fatal').exists()", "warningOnly": true } }
       ]
     },
     {

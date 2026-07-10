@@ -6,26 +6,40 @@ public enum StatusAlternativePolicy
 {
     SubscriptionDeleteReadback,
     DeletedResourceReadback,
+    ResponseStatusSet,
 }
+
+public sealed record StatusAlternativeRule(
+    StatusAlternativePolicy Policy,
+    string? Method = null,
+    IReadOnlyList<int>? AllowedStatusCodes = null);
 
 public sealed class StatusAlternativeEnforcementPlan
 {
     public const string ExtensionUrl = "http://ignixa.io/testscript/statusAlternativePolicy";
     public static StatusAlternativeEnforcementPlan Empty { get; } =
-        new(new Dictionary<string, StatusAlternativePolicy>());
+        new(new Dictionary<string, StatusAlternativeRule>());
 
-    private readonly IReadOnlyDictionary<string, StatusAlternativePolicy> _policies;
+    private readonly IReadOnlyDictionary<string, StatusAlternativeRule> _rules;
 
     internal StatusAlternativeEnforcementPlan(IReadOnlyDictionary<string, StatusAlternativePolicy> policies)
+        : this(policies.ToDictionary(
+            entry => entry.Key,
+            entry => new StatusAlternativeRule(entry.Value),
+            StringComparer.Ordinal))
     {
-        _policies = policies;
+    }
+
+    internal StatusAlternativeEnforcementPlan(IReadOnlyDictionary<string, StatusAlternativeRule> rules)
+    {
+        _rules = rules;
     }
 
     public static StatusAlternativeEnforcementPlan Parse(string content)
     {
         var root = JsonNode.Parse(content)?.AsObject()
             ?? throw new InvalidDataException("TestScript content must be a JSON object.");
-        var policies = new Dictionary<string, StatusAlternativePolicy>(StringComparer.Ordinal);
+        var rules = new Dictionary<string, StatusAlternativeRule>(StringComparer.Ordinal);
 
         foreach (var test in root["test"]?.AsArray() ?? [])
         {
@@ -50,37 +64,106 @@ public sealed class StatusAlternativeEnforcementPlan
                 throw new InvalidDataException($"Test '{testName}' must declare exactly one {ExtensionUrl} marker.");
             }
 
-            var markerValue = markers[0]?["valueCode"]?.GetValue<string>();
-            if (string.IsNullOrWhiteSpace(markerValue))
+            var marker = markers[0]!;
+            var markerValue = marker["valueCode"]?.GetValue<string>();
+            rules[testName] = markerValue switch
             {
-                throw new InvalidDataException($"Test '{testName}' must give its {ExtensionUrl} marker a valueCode.");
-            }
-
-            policies[testName] = markerValue switch
-            {
-                "subscription-delete-readback-v1" => StatusAlternativePolicy.SubscriptionDeleteReadback,
-                "deleted-resource-readback-v1" => StatusAlternativePolicy.DeletedResourceReadback,
+                "subscription-delete-readback-v1" => new(StatusAlternativePolicy.SubscriptionDeleteReadback),
+                "deleted-resource-readback-v1" => new(StatusAlternativePolicy.DeletedResourceReadback),
+                null => ParseCompositeRule(testName, marker),
                 _ => throw new InvalidDataException(
                     $"Test '{testName}' declares unsupported status-alternative policy '{markerValue}'."),
             };
         }
 
-        return new StatusAlternativeEnforcementPlan(policies);
+        return new StatusAlternativeEnforcementPlan(rules);
     }
 
     internal bool TryGetPolicy(string resultId, out StatusAlternativePolicy policy)
     {
-        foreach (var entry in _policies)
+        if (TryGetRule(resultId, out var rule))
         {
-            if (string.Equals(resultId, entry.Key, StringComparison.Ordinal)
-                || resultId.EndsWith($" > {entry.Key}", StringComparison.Ordinal))
-            {
-                policy = entry.Value;
-                return true;
-            }
+            policy = rule.Policy;
+            return true;
         }
 
         policy = default;
         return false;
     }
+
+    internal bool TryGetRule(string resultId, out StatusAlternativeRule rule)
+    {
+        foreach (var entry in _rules)
+        {
+            if (string.Equals(resultId, entry.Key, StringComparison.Ordinal)
+                || resultId.EndsWith($" > {entry.Key}", StringComparison.Ordinal))
+            {
+                rule = entry.Value;
+                return true;
+            }
+        }
+
+        rule = null!;
+        return false;
+    }
+
+    private static StatusAlternativeRule ParseCompositeRule(string testName, JsonObject marker)
+    {
+        var children = marker["extension"]?.AsArray()
+            ?? throw new InvalidDataException(
+                $"Test '{testName}' must give its {ExtensionUrl} marker a valueCode or structured extension children.");
+        var childUrls = children
+            .Select(child => child?.AsObject()["url"]?.GetValue<string>())
+            .ToArray();
+        if (childUrls.Any(url => url is not ("policy" or "method" or "status")))
+        {
+            throw new InvalidDataException(
+                $"Test '{testName}' response-status-set-v1 policy contains an unsupported structured child.");
+        }
+
+        var policyValues = GetChildValues<string>(children, "policy", "valueCode");
+        if (policyValues.Count != 1 || policyValues[0] != "response-status-set-v1")
+        {
+            throw new InvalidDataException(
+                $"Test '{testName}' must declare exactly one supported structured status-alternative policy.");
+        }
+
+        var methods = GetChildValues<string>(children, "method", "valueCode");
+        if (methods.Count != 1
+            || methods[0] is not ("GET" or "POST" or "PUT" or "PATCH" or "DELETE" or "HEAD" or "OPTIONS"))
+        {
+            throw new InvalidDataException(
+                $"Test '{testName}' response-status-set-v1 policy must declare exactly one uppercase HTTP method.");
+        }
+
+        var statuses = GetChildValues<int>(children, "status", "valueInteger");
+        if (statuses.Count < 2
+            || statuses.Distinct().Count() != statuses.Count
+            || statuses.Any(status => status is < 100 or > 599))
+        {
+            throw new InvalidDataException(
+                $"Test '{testName}' response-status-set-v1 policy must declare at least two distinct HTTP statuses from 100 through 599.");
+        }
+
+        return new StatusAlternativeRule(
+            StatusAlternativePolicy.ResponseStatusSet,
+            methods[0],
+            statuses);
+    }
+
+    private static IReadOnlyList<T> GetChildValues<T>(
+        JsonArray children,
+        string childUrl,
+        string valueProperty) =>
+        children
+            .Select(child => child?.AsObject())
+            .Where(child => child?["url"]?.GetValue<string>() == childUrl)
+            .Select(child =>
+            {
+                var value = child![valueProperty]
+                    ?? throw new InvalidDataException(
+                        $"Structured status-alternative child '{childUrl}' must declare {valueProperty}.");
+                return value.GetValue<T>();
+            })
+            .ToArray();
 }

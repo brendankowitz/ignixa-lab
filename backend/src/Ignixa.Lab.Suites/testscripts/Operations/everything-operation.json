@@ -143,14 +143,14 @@
     },
     {
       "name": "$everything: _type filter narrows compartment content",
-      "description": "_type=Patient,Observation must return only patient and observation entries; condition, appointment, and organization must be excluded.",
+      "description": "_type=Patient,Observation must filter returned resource types, but result inclusion is informational because R4 compartment inclusion is a SHOULD rather than a SHALL.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "$everything" }, "method": "GET", "url": "Patient/ignixa-evx-pat/$everything?_type=Patient,Observation", "responseId": "evx-type-filter", "description": "GET Patient/ignixa-evx-pat/$everything?_type=Patient,Observation" } },
         { "assert": { "description": "Must return HTTP 200", "response": "okay" } },
         { "assert": { "description": "Response must be a Bundle", "resource": "Bundle" } },
-        { "assert": { "description": "Must include the patient", "expression": "entry.where(resource.id = 'ignixa-evx-pat').exists()" } },
-        { "assert": { "description": "Must include the observation", "expression": "entry.where(resource.id = 'ignixa-evx-obs').exists()" } },
+        { "assert": { "description": "Informational compartment-completeness check: result should include the patient", "expression": "entry.where(resource.id = 'ignixa-evx-pat').exists()", "warningOnly": true } },
+        { "assert": { "description": "Informational compartment-completeness check: result should include the observation", "expression": "entry.where(resource.id = 'ignixa-evx-obs').exists()", "warningOnly": true } },
         { "assert": { "description": "Must NOT include the condition (not in _type list)", "expression": "entry.where(resource.id = 'ignixa-evx-cond').empty()" } },
         { "assert": { "description": "Must NOT include the appointment (not in _type list)", "expression": "entry.where(resource.id = 'ignixa-evx-appt').empty()" } },
         { "assert": { "description": "Must NOT include the organization (not in _type list)", "expression": "entry.where(resource.id = 'ignixa-evx-org').empty()" } }

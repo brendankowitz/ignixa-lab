@@ -229,6 +229,71 @@ public sealed class TestScriptRunnerTests
             ["ReadAfterDelete"] = StatusAlternativePolicy.SubscriptionDeleteReadback,
         });
 
+    private static TestScriptDefinition WarningOnlyCreateStatusAlternativesDefinition() => new()
+    {
+        Metadata = new TestScriptMetadata { Name = "CreateStatusAlternatives" },
+        Fixtures =
+        [
+            new FixtureDefinition
+            {
+                Id = "invalid-patient",
+                Autocreate = false,
+                Autodelete = false,
+                Resource = ResourceJsonNode.Parse("""{"resourceType":"Patient"}"""),
+            },
+        ],
+        Tests =
+        [
+            new TestPhaseDefinition
+            {
+                Name = "InvalidCreate",
+                Actions =
+                [
+                    new OperationExpression
+                    {
+                        Type = "create",
+                        Resource = "Patient",
+                        SourceId = "invalid-patient",
+                    },
+                    new AssertExpression
+                    {
+                        Description = "Accepted validation status: 400 Bad Request",
+                        Criteria = new ResponseCodeCriteria("400"),
+                        WarningOnly = true,
+                    },
+                    new AssertExpression
+                    {
+                        Description = "Accepted validation status: 422 Unprocessable Entity",
+                        Criteria = new ResponseCodeCriteria("422"),
+                        WarningOnly = true,
+                    },
+                ],
+            },
+        ],
+    };
+
+    private static StatusAlternativeEnforcementPlan AllowedCreateStatusesPlan(string method = "POST") =>
+        StatusAlternativeEnforcementPlan.Parse($$"""
+            {
+              "resourceType": "TestScript",
+              "name": "CreateStatusAlternatives",
+              "status": "active",
+              "test": [{
+                "name": "InvalidCreate",
+                "extension": [{
+                  "url": "http://ignixa.io/testscript/statusAlternativePolicy",
+                  "extension": [
+                    { "url": "policy", "valueCode": "response-status-set-v1" },
+                    { "url": "method", "valueCode": "{{method}}" },
+                    { "url": "status", "valueInteger": 400 },
+                    { "url": "status", "valueInteger": 422 }
+                  ]
+                }],
+                "action": []
+              }]
+            }
+            """);
+
     [Fact]
     public async Task GivenSuiteRequiringUndeclaredCapability_WhenRun_ThenTestIsSkippedAndNoRequestIsSent()
     {
@@ -773,6 +838,72 @@ public sealed class TestScriptRunnerTests
         outcome.IsValid.Should().BeTrue();
         outcome.Report!.Results.Should().ContainSingle().Which.Status.Should().Be(ConformanceStatus.Fail);
     }
+
+    [Theory]
+    [InlineData(400)]
+    [InlineData(422)]
+    public async Task GivenStructuredAllowedStatusSet_WhenTargetReturnsAllowedStatus_ThenRunPasses(int statusCode)
+    {
+        var provider = new RecordingRequestProvider(new TestResponse { StatusCode = statusCode });
+        var runner = CreateStatusAlternativeRunner(provider, AllowedCreateStatusesPlan());
+
+        var outcome = await runner.RunAsync(
+            new RunRequest { TargetUrl = TargetUrl, SuiteIds = ["create-status.json"] },
+            CancellationToken.None);
+
+        outcome.IsValid.Should().BeTrue();
+        outcome.Report!.Results.Should().ContainSingle().Which.Status.Should().Be(ConformanceStatus.Pass);
+    }
+
+    [Theory]
+    [InlineData(200)]
+    [InlineData(201)]
+    [InlineData(409)]
+    [InlineData(500)]
+    public async Task GivenStructuredAllowedStatusSet_WhenTargetReturnsOtherStatus_ThenRunFails(int statusCode)
+    {
+        var provider = new RecordingRequestProvider(new TestResponse { StatusCode = statusCode });
+        var runner = CreateStatusAlternativeRunner(provider, AllowedCreateStatusesPlan());
+
+        var outcome = await runner.RunAsync(
+            new RunRequest { TargetUrl = TargetUrl, SuiteIds = ["create-status.json"] },
+            CancellationToken.None);
+
+        outcome.IsValid.Should().BeTrue();
+        var result = outcome.Report!.Results.Should().ContainSingle().Which;
+        result.Status.Should().Be(ConformanceStatus.Fail);
+        result.Error!.Received.Should().Contain("400").And.Contain("422")
+            .And.Contain(statusCode.ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    [Fact]
+    public async Task GivenStructuredAllowedStatusSetForDifferentMethod_WhenRun_ThenPolicyFailsClosed()
+    {
+        var provider = new RecordingRequestProvider(new TestResponse { StatusCode = 400 });
+        var runner = CreateStatusAlternativeRunner(provider, AllowedCreateStatusesPlan("PUT"));
+
+        var outcome = await runner.RunAsync(
+            new RunRequest { TargetUrl = TargetUrl, SuiteIds = ["create-status.json"] },
+            CancellationToken.None);
+
+        outcome.Report!.Results.Should().ContainSingle().Which.Status.Should().Be(ConformanceStatus.Fail);
+    }
+
+    private static TestScriptRunner CreateStatusAlternativeRunner(
+        RecordingRequestProvider provider,
+        StatusAlternativeEnforcementPlan plan) =>
+        new(
+            new FakeSuiteCatalog(
+                "create-status.json",
+                WarningOnlyCreateStatusAlternativesDefinition(),
+                plan),
+            new FakeEvaluatorFactory(provider),
+            new CapabilityStatementFetcher(
+                new FixedResponseHttpClientFactory(CapabilityStatementWithoutReindex),
+                Options.Create(new IgnixaLabOptions())),
+            Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
+            NullLogger<TestScriptRunner>.Instance);
 
     private sealed class FakeSuiteCatalog(
         string id,

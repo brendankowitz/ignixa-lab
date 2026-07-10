@@ -23,8 +23,8 @@ internal static class WarningOnlyStatusAlternativeEnforcer
                 continue;
             }
 
-            var enforcement = plan.TryGetPolicy(result.Id, out var policy)
-                ? FindUnexpectedStatusAlternative(result, policy)
+            var enforcement = plan.TryGetRule(result.Id, out var rule)
+                ? FindUnexpectedStatusAlternative(result, rule)
                 : null;
             if (enforcement is null)
             {
@@ -62,7 +62,7 @@ internal static class WarningOnlyStatusAlternativeEnforcer
 
     private static StatusAlternativeFailure? FindUnexpectedStatusAlternative(
         ConformanceResult result,
-        StatusAlternativePolicy policy)
+        StatusAlternativeRule rule)
     {
         var testSteps = result.Steps
             .Select((Step, Index) => (Step, Index))
@@ -72,6 +72,11 @@ internal static class WarningOnlyStatusAlternativeEnforcer
         if (testSteps.Length == 0)
         {
             return null;
+        }
+
+        if (rule.Policy == StatusAlternativePolicy.ResponseStatusSet)
+        {
+            return FindUnexpectedResponseStatus(testSteps, rule);
         }
 
         for (var stepIndex = 0; stepIndex < testSteps.Length;)
@@ -91,7 +96,7 @@ internal static class WarningOnlyStatusAlternativeEnforcer
                 groupEnd++;
             }
 
-            if (policy == StatusAlternativePolicy.SubscriptionDeleteReadback
+            if (rule.Policy == StatusAlternativePolicy.SubscriptionDeleteReadback
                 && IsDeleteResponseAlternativeGroup(alternatives)
                 && TryGetPreviousOperation(testSteps, stepIndex, out var deleteOperation)
                 && string.Equals(deleteOperation.Method, "DELETE", StringComparison.OrdinalIgnoreCase)
@@ -104,7 +109,7 @@ internal static class WarningOnlyStatusAlternativeEnforcer
                     "DELETE warningOnly alternatives");
             }
 
-            if (policy == StatusAlternativePolicy.SubscriptionDeleteReadback
+            if (rule.Policy == StatusAlternativePolicy.SubscriptionDeleteReadback
                 && IsDeletedResourceReadbackAlternativeGroup(alternatives)
                 && TryGetPreviousOperation(testSteps, stepIndex, out var readOperation)
                 && string.Equals(readOperation.Method, "GET", StringComparison.OrdinalIgnoreCase))
@@ -132,7 +137,7 @@ internal static class WarningOnlyStatusAlternativeEnforcer
                 }
             }
 
-            if (policy == StatusAlternativePolicy.DeletedResourceReadback
+            if (rule.Policy == StatusAlternativePolicy.DeletedResourceReadback
                 && IsClassicDeletedResourceReadbackAlternativeGroup(alternatives)
                 && TryGetPreviousOperation(testSteps, stepIndex, out var classicReadOperation)
                 && string.Equals(classicReadOperation.Method, "GET", StringComparison.OrdinalIgnoreCase)
@@ -154,6 +159,34 @@ internal static class WarningOnlyStatusAlternativeEnforcer
         }
 
         return null;
+    }
+
+    private static StatusAlternativeFailure? FindUnexpectedResponseStatus(
+        IReadOnlyList<(ConformanceStep Step, int Index)> testSteps,
+        StatusAlternativeRule rule)
+    {
+        var operations = testSteps
+            .Where(item => string.Equals(item.Step.Kind, "operation", StringComparison.Ordinal)
+                && item.Step.Response is not null
+                && string.Equals(item.Step.Request?.Method, rule.Method, StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        if (operations.Length != 1)
+        {
+            return new StatusAlternativeFailure(
+                testSteps[^1].Index,
+                $"Expected exactly one executed {rule.Method} operation for the structured response-status policy, but found {operations.Length}.");
+        }
+
+        var actualStatus = operations[0].Step.Response!.StatusCode;
+        var allowedStatuses = rule.AllowedStatusCodes ?? [];
+        if (allowedStatuses.Contains(actualStatus))
+        {
+            return null;
+        }
+
+        return new StatusAlternativeFailure(
+            testSteps[^1].Index,
+            $"Expected {rule.Method} response status {string.Join(" or ", allowedStatuses)}, but actual status was {actualStatus}.");
     }
 
     private static StatusAlternativeFailure CreateUnexpectedStatusFailure(

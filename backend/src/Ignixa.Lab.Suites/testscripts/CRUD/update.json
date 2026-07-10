@@ -218,13 +218,13 @@
     },
     {
       "name": "conditional reference by identifier on generalPractitioner resolves correctly",
-      "description": "PUT a Patient whose generalPractitioner reference is a conditional (identifier-based) search reference to the Practitioner created in setup. The server must resolve it to the concrete Practitioner/ignixa-update-prac1 reference.",
+      "description": "Informational server-behavior check: conditional-reference resolution is required in transactions, not for an ordinary PUT, so this test does not establish base-FHIR conformance.",
       "action": [
         { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-update-patgp1", "sourceId": "patient-with-gp", "responseId": "gp-response", "description": "PUT Patient/ignixa-update-patgp1 with a conditional generalPractitioner reference" } },
-        { "assert": { "description": "Must return a 2xx success status", "response": "okay" } },
+        { "assert": { "description": "Informational ordinary-PUT check: server should return a 2xx success status", "response": "okay", "warningOnly": true } },
         { "operation": { "type": { "code": "read" }, "url": "Patient/ignixa-update-patgp1", "responseId": "gp-read-response", "description": "Read back the Patient because an update response body is optional" } },
-        { "assert": { "description": "Updated Patient must be readable", "sourceId": "gp-read-response", "response": "okay" } },
-        { "assert": { "description": "generalPractitioner reference must resolve to the concrete Practitioner reference", "sourceId": "gp-read-response", "expression": "Patient.generalPractitioner.reference", "value": "Practitioner/ignixa-update-prac1", "operator": "equals" } }
+        { "assert": { "description": "Informational ordinary-PUT check: updated Patient should be readable", "sourceId": "gp-read-response", "response": "okay", "warningOnly": true } },
+        { "assert": { "description": "Informational ordinary-PUT check: generalPractitioner reference should resolve to the concrete Practitioner reference", "sourceId": "gp-read-response", "expression": "Patient.generalPractitioner.reference", "value": "Practitioner/ignixa-update-prac1", "operator": "equals", "warningOnly": true } }
       ]
     }
   ],

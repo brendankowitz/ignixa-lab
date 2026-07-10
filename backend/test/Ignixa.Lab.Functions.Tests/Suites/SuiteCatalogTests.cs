@@ -177,6 +177,65 @@ public sealed class SuiteCatalogTests : IDisposable
     }
 
     [Fact]
+    public void TryGet_ExposesGenericMethodCorrelatedAllowedStatusRule()
+    {
+        var file = Path.Combine(_root, "marked.json");
+        File.WriteAllText(file, """
+            {
+              "resourceType": "TestScript",
+              "name": "Marked",
+              "status": "active",
+              "test": [{
+                "name": "invalid create",
+                "extension": [{
+                  "url": "http://ignixa.io/testscript/statusAlternativePolicy",
+                  "extension": [
+                    { "url": "policy", "valueCode": "response-status-set-v1" },
+                    { "url": "method", "valueCode": "POST" },
+                    { "url": "status", "valueInteger": 400 },
+                    { "url": "status", "valueInteger": 422 }
+                  ]
+                }],
+                "action": []
+              }]
+            }
+            """);
+
+        CreateCatalog().TryGet("marked.json", out var entry).Should().BeTrue();
+        entry.StatusAlternativePlan.TryGetRule("Marked > invalid create", out var rule).Should().BeTrue();
+        rule.Policy.Should().Be(StatusAlternativePolicy.ResponseStatusSet);
+        rule.Method.Should().Be("POST");
+        rule.AllowedStatusCodes.Should().Equal(400, 422);
+    }
+
+    [Theory]
+    [InlineData("""{"url":"policy","valueCode":"response-status-set-v1"}""")]
+    [InlineData("""{"url":"method","valueCode":"POST"},{"url":"status","valueInteger":400},{"url":"status","valueInteger":422}""")]
+    [InlineData("""{"url":"policy","valueCode":"response-status-set-v1"},{"url":"method","valueCode":"POST"},{"url":"status","valueInteger":99},{"url":"status","valueInteger":422}""")]
+    [InlineData("""{"url":"policy","valueCode":"response-status-set-v1"},{"url":"method","valueCode":"POST"},{"url":"status","valueInteger":400},{"url":"status","valueInteger":422},{"url":"unexpected","valueCode":"ignored"}""")]
+    public void GetSuites_SkipsMalformedGenericAllowedStatusRules(string children)
+    {
+        var file = Path.Combine(_root, "bad-policy.json");
+        File.WriteAllText(file, $$"""
+            {
+              "resourceType": "TestScript",
+              "name": "Bad policy",
+              "status": "active",
+              "test": [{
+                "name": "invalid create",
+                "extension": [{
+                  "url": "http://ignixa.io/testscript/statusAlternativePolicy",
+                  "extension": [{{children}}]
+                }],
+                "action": []
+              }]
+            }
+            """);
+
+        CreateCatalog().GetSuites().Should().BeEmpty();
+    }
+
+    [Fact]
     public void TryGet_ReturnsFalseForUnknownId()
     {
         WriteScript(Path.Combine("crud", "patient.json"), "Patient CRUD");
@@ -1058,6 +1117,247 @@ public sealed class SuiteCatalogTests : IDisposable
         description.Should().Contain("X-Provenance coverage is Microsoft FHIR Server informational");
     }
 
+    [Theory]
+    [InlineData("create with an invalid (incomplete) resource body returns 400", "POST")]
+    [InlineData("create with a malformed dateTime returns 400", "POST")]
+    [InlineData("update with an illegal id format returns 400", "PUT")]
+    public void BundledCreateValidationTests_AcceptOnly400Or422WithStructuredPolicy(
+        string testName,
+        string method)
+    {
+        var test = ReadBundledTest("CRUD/create.json", testName);
+        var assertions = FindAssertions(test);
+        var marker = test["extension"]!.AsArray()
+            .Single(extension => GetStringValue(extension?["url"]) == StatusAlternativeEnforcementPlan.ExtensionUrl);
+        var children = marker!["extension"]!.AsArray();
+
+        assertions.Should().HaveCount(2, "both accepted statuses are required and deletion must break the guard");
+        assertions.Select(assertion => GetStringValue(assertion["responseCode"]))
+            .Should().Equal("400", "422");
+        assertions.Select(assertion => assertion["warningOnly"]?.GetValue<bool>() == true)
+            .Should().OnlyContain(warningOnly => warningOnly);
+        children.Single(child => GetStringValue(child?["url"]) == "policy")!["valueCode"]!.GetValue<string>()
+            .Should().Be("response-status-set-v1");
+        children.Single(child => GetStringValue(child?["url"]) == "method")!["valueCode"]!.GetValue<string>()
+            .Should().Be(method);
+        children.Where(child => GetStringValue(child?["url"]) == "status")
+            .Select(child => child!["valueInteger"]!.GetValue<int>())
+            .Should().Equal(400, 422);
+
+        CreateBundledCatalog().TryGet("CRUD/create.json", out var entry).Should().BeTrue();
+        entry.StatusAlternativePlan.TryGetRule($"{entry.Descriptor.Name} > {testName}", out var rule)
+            .Should().BeTrue();
+        rule.Policy.Should().Be(StatusAlternativePolicy.ResponseStatusSet);
+        rule.Method.Should().Be(method);
+        rule.AllowedStatusCodes.Should().Equal(400, 422);
+    }
+
+    [Fact]
+    public void BundledMaliciousNarrativeRejection_IsClearlyInformational()
+    {
+        var test = ReadBundledTest("CRUD/create.json", "create blocks a malicious narrative containing a script tag");
+        var assertions = FindAssertions(test);
+
+        GetStringValue(test["description"]).Should().Contain("Informational", Exactly.Once());
+        GetStringValue(test["description"]).Should().Contain("not a universal base-FHIR SHALL");
+        assertions.Should().ContainSingle("deleting the informational outcome assertion must break the guard");
+        assertions.Select(assertion => assertion["warningOnly"]?.GetValue<bool>() == true)
+            .Should().OnlyContain(warningOnly => warningOnly);
+        assertions.Select(assertion => GetStringValue(assertion["description"]))
+            .Should().OnlyContain(description => description!.Contains("Informational", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void BundledCreateStrictNeighbors_RemainStrict()
+    {
+        var suite = ReadBundledSuite("CRUD/create.json");
+        var unsupported = FindAssertions(ReadBundledTest(
+            "CRUD/create.json",
+            "create with an unsupported Content-Type returns 415"));
+        var locationAssertions = FindAssertions(ReadBundledTest(
+                "CRUD/create.json",
+                "create returns 201 with id, version, and location metadata"))
+            .Where(assertion => GetStringValue(assertion["headerField"]) == "Location")
+            .ToArray();
+
+        unsupported.Should().ContainSingle();
+        GetStringValue(unsupported[0]["responseCode"]).Should().Be("415");
+        (unsupported[0]["warningOnly"]?.GetValue<bool>() ?? false).Should().BeFalse();
+        locationAssertions.Should().HaveCount(2);
+        locationAssertions.Select(assertion => GetStringValue(assertion["value"]))
+            .Should().Contain("_history");
+        locationAssertions.Select(assertion => assertion["warningOnly"]?.GetValue<bool>() ?? false)
+            .Should().OnlyContain(warningOnly => !warningOnly);
+        suite.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void BundledOrdinaryUpdateConditionalReferenceTest_IsClearlyInformational()
+    {
+        var test = ReadBundledTest(
+            "CRUD/update.json",
+            "conditional reference by identifier on generalPractitioner resolves correctly");
+        var assertions = FindAssertions(test);
+
+        GetStringValue(test["description"]).Should().Contain("Informational");
+        GetStringValue(test["description"]).Should().Contain("transactions");
+        GetStringValue(test["description"]).Should().Contain("ordinary PUT");
+        assertions.Should().HaveCount(3, "the full request outcome must stay informational");
+        assertions.Select(assertion => assertion["warningOnly"]?.GetValue<bool>() == true)
+            .Should().OnlyContain(warningOnly => warningOnly);
+    }
+
+    [Theory]
+    [InlineData("update with an unsupported Content-Type header is rejected", "415")]
+    [InlineData("update with a body containing no id returns 400", "bad")]
+    [InlineData("update to a URL id that disagrees with the body id returns 400", "bad")]
+    public void BundledUpdateSpecBackedFailures_RemainStrict(string testName, string response)
+    {
+        var statusAssertions = FindAssertions(ReadBundledTest("CRUD/update.json", testName))
+            .Where(assertion => GetStringValue(assertion["response"]) == response
+                || GetStringValue(assertion["responseCode"]) == response)
+            .ToArray();
+
+        statusAssertions.Should().ContainSingle();
+        (statusAssertions[0]["warningOnly"]?.GetValue<bool>() ?? false).Should().BeFalse();
+    }
+
+    [Fact]
+    public void BundledCustomSearchParameterPersistencePolicySuite_IsFullyInformational()
+    {
+        var suite = ReadBundledSuite("Search/custom-search-param.json");
+        var tests = suite["test"]!.AsArray().Select(test => test!.AsObject()).ToArray();
+
+        GetStringValue(suite["description"]).Should().Contain("Informational");
+        GetStringValue(suite["description"]).Should().Contain("server validation policy");
+        tests.Should().HaveCount(8, "deleting a validation-policy case must break the guard");
+        tests.Select(test => GetStringValue(test["name"]))
+            .Should().OnlyContain(name => name!.StartsWith("invalid SearchParameter:", StringComparison.Ordinal));
+        foreach (var test in tests)
+        {
+            GetStringValue(test["description"]).Should().Contain("Informational");
+            GetStringValue(test["description"]).Should().Contain("persistence");
+            var assertions = FindAssertions(test);
+            assertions.Should().HaveCount(4, "every request outcome assertion must remain present");
+            assertions.Select(assertion => assertion["warningOnly"]?.GetValue<bool>() == true)
+                .Should().OnlyContain(warningOnly => warningOnly);
+            assertions.Select(assertion => GetStringValue(assertion["description"]))
+                .Should().OnlyContain(description => description!.StartsWith("Informational persistence-policy check:", StringComparison.Ordinal));
+        }
+    }
+
+    [Theory]
+    [InlineData("Invalid date search value returns 400")]
+    [InlineData("Out-of-range date value returns 400")]
+    public void BundledInvalidDateSearchTests_AreFullyInformational(string testName)
+    {
+        var test = ReadBundledTest("Search/date.json", testName);
+        var assertions = FindAssertions(test);
+
+        GetStringValue(test["description"]).Should().Contain("SHOULD");
+        GetStringValue(test["description"]).Should().Contain("Informational");
+        assertions.Should().ContainSingle();
+        assertions.Select(assertion => assertion["warningOnly"]?.GetValue<bool>() == true)
+            .Should().OnlyContain(warningOnly => warningOnly);
+    }
+
+    [Fact]
+    public void BundledEffectivePeriodDateMatch_RemainsStrict()
+    {
+        var test = ReadBundledTest("Search/date.json", "Date search matched against an effectivePeriod");
+        var assertion = FindAssertions(test)
+            .Single(assertion => GetStringValue(assertion["description"]) == "Must include obs-7 (period directly contains the instant)");
+
+        (assertion["warningOnly"]?.GetValue<bool>() ?? false).Should().BeFalse();
+    }
+
+    [Fact]
+    public void BundledInvalidIncludeTargetTest_IsFullyInformational()
+    {
+        var test = ReadBundledTest(
+            "Search/includes.json",
+            "Invalid target resource type on _include returns a Bad Request");
+        var assertions = FindAssertions(test);
+
+        GetStringValue(test["description"]).Should().Contain("Prefer: handling=strict");
+        GetStringValue(test["description"]).Should().Contain("Informational");
+        assertions.Should().HaveCount(2);
+        assertions.Select(assertion => assertion["warningOnly"]?.GetValue<bool>() == true)
+            .Should().OnlyContain(warningOnly => warningOnly);
+    }
+
+    [Theory]
+    [InlineData("Forward _include pulls in the direct reference target")]
+    [InlineData("_revinclude pulls in resources that reference the match")]
+    [InlineData("_include and _revinclude combine in a single request")]
+    public void BundledAdvertisedValidIncludeTests_RemainStrict(string testName)
+    {
+        var assertions = FindAssertions(ReadBundledTest("Search/includes.json", testName));
+
+        assertions.Should().NotBeEmpty();
+        assertions.Select(assertion => assertion["warningOnly"]?.GetValue<bool>() ?? false)
+            .Should().OnlyContain(warningOnly => !warningOnly);
+    }
+
+    [Fact]
+    public void BundledEverythingTypeFilter_OnlyResultInclusionAssertionsAreInformational()
+    {
+        var test = ReadBundledTest(
+            "Operations/everything-operation.json",
+            "$everything: _type filter narrows compartment content");
+        var assertions = FindAssertions(test);
+        var informationalDescriptions = new[]
+        {
+            "Informational compartment-completeness check: result should include the patient",
+            "Informational compartment-completeness check: result should include the observation",
+        };
+
+        assertions.Should().HaveCount(7, "request, Bundle, inclusion, and exclusion checks must all remain present");
+        assertions.Where(assertion => assertion["warningOnly"]?.GetValue<bool>() == true)
+            .Select(assertion => GetStringValue(assertion["description"]))
+            .Should().Equal(informationalDescriptions);
+        assertions.Where(assertion => !(assertion["warningOnly"]?.GetValue<bool>() ?? false))
+            .Select(assertion => GetStringValue(assertion["description"]))
+            .Should().Equal(
+                "Must return HTTP 200",
+                "Response must be a Bundle",
+                "Must NOT include the condition (not in _type list)",
+                "Must NOT include the appointment (not in _type list)",
+                "Must NOT include the organization (not in _type list)");
+        GetStringValue(test["description"]).Should().Contain("SHOULD");
+    }
+
+    [Fact]
+    public void PackSuitesScript_InvalidatesOnlyRepoLocalFixedVersionCacheBeforePacking()
+    {
+        var scriptPath = FindRepositoryFile(Path.Combine("backend", "pack-suites.ps1"));
+        var script = File.ReadAllText(scriptPath);
+        const string cacheDeclaration =
+            "$repoPackageCache = Join-Path $repoRoot 'artifacts/nuget-packages/ignixalab.testscript.suites/0.1.0-local'";
+        const string cacheRemoval = "Remove-Item -Recurse -Force -Path $repoPackageCache";
+        const string assetsRemoval = "Remove-Item -Force -Path $assetsFile";
+        const string packCommand = "dotnet pack $project -c Release -o $outputDir /nodeReuse:false";
+
+        script.Should().Contain(cacheDeclaration);
+        script.Should().Contain(cacheRemoval);
+        script.Should().Contain("backend/src/Ignixa.Lab.Functions/obj/project.assets.json");
+        script.Should().Contain("backend/test/Ignixa.Lab.Functions.Tests/obj/project.assets.json");
+        script.Should().Contain(assetsRemoval);
+        script.IndexOf(cacheRemoval, StringComparison.Ordinal)
+            .Should().BeLessThan(script.IndexOf(packCommand, StringComparison.Ordinal));
+        script.Should().NotContain(".nuget", "the global user cache must not be touched");
+        script.Should().NotContain("NUGET_PACKAGES", "only the configured repo-local cache is in scope");
+    }
+
+    [Fact]
+    public void NuGetConfig_UsesRepositoryLocalPackageCache()
+    {
+        var configPath = FindRepositoryFile("nuget.config");
+        var config = File.ReadAllText(configPath);
+
+        config.Should().Contain("<add key=\"globalPackagesFolder\" value=\"artifacts/nuget-packages\" />");
+    }
+
     [Fact]
     public void BundledUnrelatedCreateAssertions_RemainStrict()
     {
@@ -1065,6 +1365,10 @@ public sealed class SuiteCatalogTests : IDisposable
         {
             "create with a valid X-Provenance header links a Provenance resource",
             "create with a malformed X-Provenance header returns 400",
+            "create with an invalid (incomplete) resource body returns 400",
+            "create with a malformed dateTime returns 400",
+            "create blocks a malicious narrative containing a script tag",
+            "update with an illegal id format returns 400",
         };
         var assertions = ReadBundledSuite("CRUD/create.json")["test"]!.AsArray()
             .Where(test => !informationalTests.Contains(GetStringValue(test?["name"])))
@@ -1082,6 +1386,22 @@ public sealed class SuiteCatalogTests : IDisposable
     {
         var root = Path.Combine(AppContext.BaseDirectory, "testscripts");
         return JsonNode.Parse(File.ReadAllText(Path.Combine(root, relativePath)))!;
+    }
+
+    private static string FindRepositoryFile(string relativePath)
+    {
+        for (var directory = new DirectoryInfo(AppContext.BaseDirectory);
+             directory is not null;
+             directory = directory.Parent)
+        {
+            var candidate = Path.Combine(directory.FullName, relativePath);
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        throw new FileNotFoundException($"Could not locate repository file '{relativePath}'.");
     }
 
     private static JsonObject ReadBundledTest(string relativePath, string testName)
