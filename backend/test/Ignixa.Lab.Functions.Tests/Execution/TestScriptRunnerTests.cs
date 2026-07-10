@@ -155,13 +155,19 @@ public sealed class TestScriptRunnerTests
                     new OperationExpression { Type = "read", Url = "Patient/deleted", ResponseId = "after-delete-read" },
                     new AssertExpression
                     {
-                        Description = "Preferred: 410 Gone for a deleted resource",
+                        Description = "Accepted alternative: 200 OK while an asynchronous delete is still pending",
+                        Criteria = new ResponseCodeCriteria("200"),
+                        WarningOnly = true,
+                    },
+                    new AssertExpression
+                    {
+                        Description = "Accepted alternative: 410 Gone when the server tracks the deleted resource",
                         Criteria = new ResponseStatusCriteria("gone"),
                         WarningOnly = true,
                     },
                     new AssertExpression
                     {
-                        Description = "Alternative: 404 Not Found is accepted when deleted resources are not tracked",
+                        Description = "Accepted alternative: 404 Not Found when deleted resources are not tracked",
                         Criteria = new ResponseStatusCriteria("notFound"),
                         WarningOnly = true,
                     },
@@ -579,9 +585,9 @@ public sealed class TestScriptRunnerTests
     }
 
     [Fact]
-    public async Task GivenWarningOnlyDeletedResourceStatusAlternatives_WhenTargetReturnsUnexpectedSuccess_ThenRunFails()
+    public async Task GivenWarningOnlyDeletedResourceStatusAlternatives_WhenTargetReturnsUnexpectedStatus_ThenRunFails()
     {
-        var provider = new RecordingRequestProvider(new TestResponse { StatusCode = 200 });
+        var provider = new RecordingRequestProvider(new TestResponse { StatusCode = 500 });
         var runner = new TestScriptRunner(
             new FakeSuiteCatalog("deleted-resource-status.json", WarningOnlyDeletedResourceStatusAlternativesDefinition()),
             new FakeEvaluatorFactory(provider),
@@ -599,10 +605,11 @@ public sealed class TestScriptRunnerTests
         outcome.IsValid.Should().BeTrue();
         var result = outcome.Report!.Results.Should().ContainSingle().Which;
         result.Status.Should().Be(ConformanceStatus.Fail);
-        result.Error!.Received.Should().Contain("410").And.Contain("404").And.Contain("200");
+        result.Error!.Received.Should().Contain("200").And.Contain("410").And.Contain("404").And.Contain("500");
     }
 
     [Theory]
+    [InlineData(200)]
     [InlineData(404)]
     [InlineData(410)]
     public async Task GivenWarningOnlyDeletedResourceStatusAlternatives_WhenTargetReturnsAcceptedStatus_ThenRunPasses(int statusCode)

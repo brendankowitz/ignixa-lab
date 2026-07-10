@@ -85,7 +85,7 @@ internal static class WarningOnlyStatusAlternativeEnforcer
                 groupEnd++;
             }
 
-            if (IsDeletedResourceGoneNotFoundAlternativeGroup(alternatives)
+            if (IsDeletedResourceReadbackAlternativeGroup(alternatives)
                 && TryGetPreviousOperationStatusCode(testSteps, stepIndex, out var actualStatusCode)
                 && !alternatives.Any(alternative => alternative.StatusCode == actualStatusCode))
             {
@@ -93,7 +93,7 @@ internal static class WarningOnlyStatusAlternativeEnforcer
                 var expected = string.Join(" or ", alternatives.Select(alternative => alternative.StatusCode));
                 return new StatusAlternativeFailure(
                     assertionStepIndex,
-                    $"Expected response status {expected} for deleted-resource warningOnly alternatives, but actual status was {actualStatusCode}.");
+                    $"Expected response status {expected} for deleted-resource readback warningOnly alternatives, but actual status was {actualStatusCode}.");
             }
 
             stepIndex = groupEnd + 1;
@@ -102,9 +102,10 @@ internal static class WarningOnlyStatusAlternativeEnforcer
         return null;
     }
 
-    private static bool IsDeletedResourceGoneNotFoundAlternativeGroup(IReadOnlyList<StatusAlternative> alternatives)
+    private static bool IsDeletedResourceReadbackAlternativeGroup(IReadOnlyList<StatusAlternative> alternatives)
     {
-        if (alternatives.Count != 2
+        if (alternatives.Count != 3
+            || !alternatives.Any(alternative => alternative.StatusCode == 200)
             || !alternatives.Any(alternative => alternative.StatusCode == 410)
             || !alternatives.Any(alternative => alternative.StatusCode == 404))
         {
@@ -112,7 +113,8 @@ internal static class WarningOnlyStatusAlternativeEnforcer
         }
 
         var text = alternatives.Select(alternative => alternative.Text).ToArray();
-        return text.Any(value => ContainsAny(value, "deleted resource", "deleted resources"))
+        return text.Any(value => ContainsAny(value, "asynchronous delete", "async delete"))
+            && text.Any(value => ContainsAny(value, "deleted resource", "deleted resources"))
             && text.Any(value => ContainsAny(value, "not tracked", "does not track", "don't distinguish deleted", "doesn't distinguish deleted", "does not distinguish deleted"));
     }
 
@@ -149,6 +151,12 @@ internal static class WarningOnlyStatusAlternativeEnforcer
         }
 
         var text = string.Join(" ", step.Label, step.Description, step.Message);
+        if (ContainsAny(text, "200 ok"))
+        {
+            alternative = new StatusAlternative(200, text);
+            return true;
+        }
+
         if (ContainsAny(text, "410", "gone"))
         {
             alternative = new StatusAlternative(410, text);

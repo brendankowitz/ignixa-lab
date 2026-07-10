@@ -688,14 +688,15 @@ public sealed class SuiteCatalogTests : IDisposable
     {
         var suite = ReadBundledSuite("Subscriptions/basic.json");
         const string expected =
-            "rest.resource.where(type='Subscription').interaction.where(code='create').exists() and "
-            + "rest.resource.where(type='Subscription').interaction.where(code='read').exists() and "
+            "rest.resource.where(type='Subscription').interaction.where(code='read').exists() and "
             + "rest.resource.where(type='Subscription').interaction.where(code='update').exists() and "
             + "rest.resource.where(type='Subscription').interaction.where(code='delete').exists() and "
             + "rest.resource.where(type='Subscription').interaction.where(code='search-type').exists() and "
-            + "rest.resource.where(type='Subscription').updateCreate = true";
+            + "rest.resource.where(type='Subscription').updateCreate = true and "
+            + "rest.extension.where(url='http://hl7.org/fhir/StructureDefinition/capabilitystatement-websocket').exists()";
 
         GetMetadataCapabilityRequirement(suite).Should().Be(expected);
+        GetMetadataCapabilityRequirement(suite).Should().NotContain("code='create'");
         GetStringValue(suite["requiresCapability"]).Should().BeNull(
             "top-level capability gates must use the executable extension form");
     }
@@ -726,31 +727,78 @@ public sealed class SuiteCatalogTests : IDisposable
         actions.Should().HaveCount(2, "removing the setup success assertion would let setup false-pass");
         GetStringValue(actions[0]?["operation"]?["responseId"]).Should().Be("setup-update-response");
         var assertion = actions[1]?["assert"];
-        GetStringValue(assertion?["response"]).Should().Be("okay");
-        GetStringValue(assertion?["description"]).Should().Be("Setup PUT must return a success status (2xx)");
+        GetStringValue(assertion?["response"]).Should().Be("created");
+        GetStringValue(assertion?["description"]).Should().Be("Setup PUT of the fresh run-scoped id must return 201 Created");
         (assertion?["warningOnly"]?.GetValue<bool>() ?? false).Should().BeFalse();
+
+        var laterUpdateAssertion = ReadBundledTest("Subscriptions/basic.json", "update replaces criteria and status while retaining websocket channel")
+            ["action"]![1]!["assert"];
+        GetStringValue(laterUpdateAssertion?["response"]).Should().Be("okay",
+            "an update of the now-existing Subscription may return any successful 2xx status");
+        (laterUpdateAssertion?["warningOnly"]?.GetValue<bool>() ?? false).Should().BeFalse();
+    }
+
+    [Fact]
+    public void BundledSubscriptionSuite_UsesRunScopedIdThroughoutLifecycle()
+    {
+        var suite = ReadBundledSuite("Subscriptions/basic.json");
+        var expectedId = "ignixa-sub-basic-${runId}";
+        var resourceIds = suite["fixture"]!.AsArray()
+            .Select(fixture => GetStringValue(fixture?["resource"]?["id"]));
+        var operationUrls = suite["setup"]!["action"]!.AsArray()
+            .Concat(suite["test"]!.AsArray().SelectMany(test => test!["action"]!.AsArray()))
+            .Concat(suite["teardown"]!["action"]!.AsArray())
+            .Select(action => GetStringValue(action?["operation"]?["url"]))
+            .Where(url => url?.StartsWith("Subscription/", StringComparison.Ordinal) == true);
+
+        resourceIds.Should().HaveCount(2).And.OnlyContain(id => id == expectedId);
+        operationUrls.Should().HaveCount(7).And.OnlyContain(url => url == $"Subscription/{expectedId}");
+        GetStringValue(ReadBundledTest("Subscriptions/basic.json", "search by _id locates the created Subscription")
+            ["action"]![0]!["operation"]!["params"]).Should().Be($"?_id={expectedId}");
+        GetStringValue(ReadBundledTest("Subscriptions/basic.json", "search by _id locates the created Subscription")
+            ["action"]![3]!["assert"]!["expression"]).Should().Contain(expectedId);
+    }
+
+    [Fact]
+    public void BundledSubscriptionSuite_UsesPrivacySafeAdvertisedWebsocketChannel()
+    {
+        var channels = ReadBundledSuite("Subscriptions/basic.json")["fixture"]!.AsArray()
+            .Select(fixture => fixture!["resource"]!["channel"]!)
+            .ToArray();
+
+        channels.Should().HaveCount(2);
+        channels.Select(channel => GetStringValue(channel["type"])).Should().OnlyContain(type => type == "websocket");
+        channels.Select(channel => channel["endpoint"]).Should().OnlyContain(endpoint => endpoint == null);
+        channels.Select(channel => channel["payload"]).Should().OnlyContain(payload => payload == null);
     }
 
     [Fact]
     public void BundledSubscriptionSuite_DeletedReadUsesNarrowEnforcedWarningAlternatives()
     {
-        var test = ReadBundledTest("Subscriptions/basic.json", "read after delete returns 410 or 404");
+        var test = ReadBundledTest("Subscriptions/basic.json", "read after delete accepts pending or completed outcomes");
         var actions = test["action"]!.AsArray();
         var assertions = actions
             .Skip(1)
             .Select(action => action?["assert"])
             .ToArray();
 
-        actions.Should().HaveCount(3, "both accepted statuses and the read operation are required");
-        assertions.Should().HaveCount(2, "deleting either alternative must break this guard");
-        assertions.Select(assertion => GetStringValue(assertion?["response"]))
+        actions.Should().HaveCount(4, "all three accepted statuses and the read operation are required");
+        assertions.Should().HaveCount(3, "deleting any alternative must break this guard");
+        GetStringValue(assertions[0]?["responseCode"]).Should().Be("200");
+        assertions.Skip(1).Select(assertion => GetStringValue(assertion?["response"]))
             .Should().Equal("gone", "notFound");
         assertions.Select(assertion => assertion?["warningOnly"]?.GetValue<bool>() == true)
             .Should().OnlyContain(warningOnly => warningOnly);
         assertions.Select(assertion => GetStringValue(assertion?["description"]))
             .Should().Equal(
+                "Accepted alternative: 200 OK while an asynchronous delete is still pending",
                 "Accepted alternative: 410 Gone when the server tracks the deleted resource",
                 "Accepted alternative: 404 Not Found when deleted resources are not tracked");
+
+        var deleteAssertion = ReadBundledTest("Subscriptions/basic.json", "delete removes the subscription")
+            ["action"]![1]!["assert"];
+        GetStringValue(deleteAssertion?["response"]).Should().Be("okay");
+        (deleteAssertion?["warningOnly"]?.GetValue<bool>() ?? false).Should().BeFalse();
     }
 
     [Theory]

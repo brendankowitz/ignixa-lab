@@ -11,17 +11,18 @@ public sealed class WarningOnlyStatusAlternativeEnforcerTests
     {
         var results = new[]
         {
-            PassingResult("parameterized case 1", DeletedResourceStepsWithStatus(200)),
-            PassingResult("parameterized case 2", DeletedResourceStepsWithStatus(200)),
+            PassingResult("parameterized case 1", DeletedResourceStepsWithStatus(500)),
+            PassingResult("parameterized case 2", DeletedResourceStepsWithStatus(500)),
         };
 
         var updated = WarningOnlyStatusAlternativeEnforcer.Apply(results);
 
         updated.Should().OnlyContain(result => result.Status == ConformanceStatus.Fail);
         updated.Select(result => result.Error!.Received).Should().OnlyContain(message =>
-            message!.Contains("410", StringComparison.Ordinal)
+            message!.Contains("200", StringComparison.Ordinal)
+            && message.Contains("410", StringComparison.Ordinal)
             && message.Contains("404", StringComparison.Ordinal)
-            && message.Contains("200", StringComparison.Ordinal));
+            && message.Contains("500", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -31,13 +32,13 @@ public sealed class WarningOnlyStatusAlternativeEnforcerTests
             "synthesized action",
             [
                 AssertionStep("Engine-synthesized URL encoding warning", "The engine inserted this step before the operation."),
-                .. DeletedResourceStepsWithStatus(200),
+                .. DeletedResourceStepsWithStatus(500),
             ]);
 
         var updated = WarningOnlyStatusAlternativeEnforcer.Apply([result]);
 
         updated.Should().ContainSingle().Which.Status.Should().Be(ConformanceStatus.Fail);
-        updated.Single().Error!.Received.Should().Contain("200");
+        updated.Single().Error!.Received.Should().Contain("500");
     }
 
     private static ConformanceResult PassingResult(string id, IReadOnlyList<ConformanceStep> steps) =>
@@ -54,8 +55,9 @@ public sealed class WarningOnlyStatusAlternativeEnforcerTests
     private static ConformanceStep[] DeletedResourceStepsWithStatus(int statusCode) =>
     [
         OperationStep(statusCode),
-        AssertionStep("Preferred: 410 Gone for a deleted resource"),
-        AssertionStep("Alternative: 404 Not Found is accepted when deleted resources are not tracked"),
+        AssertionStep("Accepted alternative: 200 OK while an asynchronous delete is still pending"),
+        AssertionStep("Accepted alternative: 410 Gone when the server tracks the deleted resource"),
+        AssertionStep("Accepted alternative: 404 Not Found when deleted resources are not tracked"),
     ];
 
     private static ConformanceStep OperationStep(int statusCode) =>
