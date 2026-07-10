@@ -765,6 +765,48 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
     }
 
     [Theory]
+    [InlineData("reference")]
+    [InlineData("relationship")]
+    public async Task NewProvenanceSidecars_FailsWhenManifestContainsNestedDuplicateJsonProperties(
+        string duplicateProperty)
+    {
+        WriteScript(Path.Combine("CRUD", "basic.json"));
+        var manifest = WriteManifest($$"""
+        {
+          "schemaVersion": 1,
+          "profiles": {
+            "example": {
+              "sources": [
+                {
+                  "reference": "https://example.test/source",
+                  "{{duplicateProperty}}": "first",
+                  "display": "Example source",
+                  "{{duplicateProperty}}": "second",
+                  "relationship": "distilled-from",
+                  "license": "MIT",
+                  "notes": "Test source"
+                }
+              ]
+            }
+          },
+          "suites": {
+            "CRUD/basic.json": {
+              "profile": "example",
+              "activity": "distill-testscript",
+              "recorded": "2026-07-10T12:34:56Z"
+            }
+          }
+        }
+        """);
+
+        var result = await RunGeneratorAsync(_root, manifest);
+
+        result.ExitCode.Should().NotBe(0);
+        result.CombinedOutput.Should().Contain("Duplicate manifest property");
+        File.Exists(Path.Combine(_root, "CRUD", "basic.provenance.json")).Should().BeFalse();
+    }
+
+    [Theory]
     [InlineData("2")]
     [InlineData("\"1\"")]
     public async Task NewProvenanceSidecars_FailsWhenManifestSchemaVersionIsInvalid(string schemaVersion)
@@ -799,12 +841,49 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         File.Exists(Path.Combine(_root, "CRUD", "basic.provenance.json")).Should().BeFalse();
     }
 
+    [Fact]
+    public async Task NewProvenanceSidecars_FailsWhenRecordedPropertyIsMissing()
+    {
+        WriteScript(Path.Combine("CRUD", "basic.json"));
+        var manifest = WriteManifest("""
+        {
+          "schemaVersion": 1,
+          "profiles": {
+            "example": {
+              "sources": [
+                {
+                  "reference": "https://example.test/source",
+                  "display": "Example source",
+                  "relationship": "distilled-from",
+                  "license": "MIT",
+                  "version": "v1.0.0",
+                  "notes": "Test source"
+                }
+              ]
+            }
+          },
+          "suites": {
+            "CRUD/basic.json": {
+              "profile": "example",
+              "activity": "distill-testscript"
+            }
+          }
+        }
+        """);
+
+        var result = await RunGeneratorAsync(_root, manifest);
+
+        result.ExitCode.Should().NotBe(0);
+        result.CombinedOutput.Should().Contain("Invalid recorded date");
+        File.Exists(Path.Combine(_root, "CRUD", "basic.provenance.json")).Should().BeFalse();
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("not-a-date")]
     [InlineData("2026-07-10")]
     [InlineData("2026-07-10T12:34:56")]
-    public async Task NewProvenanceSidecars_FailsWhenRecordedDateIsInvalidOrMissing(string recorded)
+    public async Task NewProvenanceSidecars_FailsWhenRecordedDateIsInvalid(string recorded)
     {
         WriteScript(Path.Combine("CRUD", "basic.json"));
         var manifest = WriteManifest(CreateManifest(recorded: recorded));
