@@ -228,6 +228,42 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
     }
 
     [Fact]
+    public async Task NewTestScriptProvenance_RejectsMixedCaseActivity()
+    {
+        var module = FindRepoRootTool("TestScriptProvenance.psm1");
+        using var process = new Process();
+        process.StartInfo = new ProcessStartInfo
+        {
+            FileName = "pwsh",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+        process.StartInfo.ArgumentList.Add("-NoLogo");
+        process.StartInfo.ArgumentList.Add("-NoProfile");
+        process.StartInfo.ArgumentList.Add("-NonInteractive");
+        process.StartInfo.ArgumentList.Add("-Command");
+        process.StartInfo.ArgumentList.Add($$"""
+        Import-Module '{{module}}' -Force
+        $source = @{}
+        New-TestScriptProvenance `
+          -RelativePath 'CRUD/basic.json' `
+          -Activity 'Author-TestScript' `
+          -Recorded '2026-07-10T12:34:56Z' `
+          -Sources @($source) | ConvertTo-Json -Depth 20
+        """);
+
+        process.Start();
+        var stdoutTask = process.StandardOutput.ReadToEndAsync();
+        var stderrTask = process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync();
+        var stdout = await stdoutTask;
+        var stderr = await stderrTask;
+
+        process.ExitCode.Should().NotBe(0, stdout);
+        stderr.Should().Contain("Cannot validate argument on parameter 'Activity'");
+    }
+
+    [Fact]
     public async Task NewProvenanceSidecars_GeneratesDeterministicOutputAcrossProcesses()
     {
         var firstRoot = Path.Combine(_root, "first");
@@ -247,6 +283,11 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         var secondSidecar = await File.ReadAllBytesAsync(Path.Combine(secondRoot, "CRUD", "basic.provenance.json"));
 
         firstSidecar.Should().Equal(secondSidecar);
+
+        using var document = JsonDocument.Parse(firstSidecar);
+        document.RootElement.GetProperty("activity").GetProperty("coding")[0].GetProperty("code").GetString()
+            .Should().Be("distill-testscript");
+        document.RootElement.GetProperty("recorded").GetString().Should().Be("2026-07-07T00:00:00Z");
     }
 
     [Fact]

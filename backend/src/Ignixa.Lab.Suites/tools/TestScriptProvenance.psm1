@@ -91,7 +91,7 @@ function New-TestScriptProvenance {
         [string] $RelativePath,
 
         [Parameter(Mandatory = $true)]
-        [ValidateSet('author-testscript', 'distill-testscript')]
+        [ValidateSet('author-testscript', 'distill-testscript', IgnoreCase = $false)]
         [string] $Activity,
 
         [Parameter(Mandatory = $true)]
