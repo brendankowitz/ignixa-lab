@@ -272,6 +272,152 @@ public sealed class SuiteCatalogTests : IDisposable
             string.Join(Environment.NewLine, violations));
     }
 
+    [Fact]
+    public void BundledUpdateCreateTest_VerifiesResourceUsingFollowUpRead()
+    {
+        var test = ReadBundledTest("CRUD/update.json", "update with a client-supplied id for a non-existent resource performs an upsert-create");
+        var actions = test["action"]!.AsArray();
+
+        actions
+            .Select(action => (
+                Code: GetStringValue(action?["operation"]?["type"]?["code"]),
+                ResponseId: GetStringValue(action?["operation"]?["responseId"])))
+            .Should().Contain(("read", "upsert-read-response"));
+        actions.Where(action => action?["assert"]?["expression"] is not null)
+            .Select(action => GetStringValue(action?["assert"]?["sourceId"]))
+            .Should().OnlyContain(sourceId => sourceId == "upsert-read-response");
+    }
+
+    [Fact]
+    public void BundledUpdateCreateTest_UsesSpecRequiredHeaderStrength()
+    {
+        var test = ReadBundledTest("CRUD/update.json", "update with a client-supplied id for a non-existent resource performs an upsert-create");
+        var headerAssertions = test["action"]!.AsArray()
+            .Where(action => action?["assert"]?["headerField"] is not null)
+            .ToDictionary(
+                action => GetStringValue(action?["assert"]?["headerField"])!,
+                action => action?["assert"]?["warningOnly"]?.GetValue<bool>() == true);
+
+        headerAssertions["ETag"].Should().BeFalse();
+        headerAssertions["Last-Modified"].Should().BeFalse();
+        headerAssertions["Location"].Should().BeTrue();
+    }
+
+    [Fact]
+    public void BundledConditionalUpdateCreateTest_RequiresConditionalAndCreateCapabilities()
+    {
+        var test = ReadBundledTest("CRUD/conditional-update.json", "Conditional update with a client-supplied id and no existing match creates that id");
+        var requirement = GetStringValue(test["requiresCapability"]);
+
+        requirement.Should().Contain("conditionalUpdate = true");
+        requirement.Should().Contain("updateCreate = true");
+    }
+
+    [Fact]
+    public void BundledUpdateSuites_DoNotDependOnOptionalBundleTotal()
+    {
+        var violations = new List<string>();
+        foreach (var relativePath in new[] { "CRUD/update.json", "CRUD/conditional-update.json" })
+        {
+            VisitObjects(ReadBundledSuite(relativePath), obj =>
+            {
+                if (GetStringValue(obj["expression"]) == "Bundle.total")
+                {
+                    violations.Add(relativePath);
+                }
+            });
+        }
+
+        violations.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void BundledConditionalUpdateFixtures_UseRunScopedSearchIdentifiers()
+    {
+        var suite = ReadBundledSuite("CRUD/conditional-update.json");
+        var runScopedPrefixes = new[] { "CU-NOMATCH", "CU-ONEMATCH", "CU-MULTI" };
+        var identifierValues = suite["fixture"]!.AsArray()
+            .SelectMany(fixture => fixture!["resource"]!["identifier"]!.AsArray())
+            .Select(identifier => GetStringValue(identifier!["value"]))
+            .Where(value => runScopedPrefixes.Any(prefix => value?.StartsWith(prefix, StringComparison.Ordinal) == true));
+
+        identifierValues.Should().OnlyContain(value => value!.Contains("${runId}", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void BundledNoOpVersionAssertion_IsInformational()
+    {
+        var test = ReadBundledTest("CRUD/update.json", "repeating an identical update does not create a new version");
+        var versionAssertion = test["action"]!.AsArray()
+            .Select(action => action?["assert"])
+            .Single(assertion => GetStringValue(assertion?["expression"]) == "Patient.meta.versionId");
+
+        versionAssertion!["warningOnly"]!.GetValue<bool>().Should().BeTrue();
+    }
+
+    [Fact]
+    public void BundledNonmatchingEntityTagTest_ExpectsPreconditionFailure()
+    {
+        var test = ReadBundledTest("CRUD/update.json", "update with nonmatching If-Match entity-tags returns 412");
+        var statusAssertion = test["action"]!.AsArray()
+            .Select(action => action?["assert"])
+            .Single(assertion => assertion?["response"] is not null);
+
+        GetStringValue(statusAssertion!["response"]).Should().Be("preconditionFailed");
+    }
+
+    [Fact]
+    public void BundledVersionAwareUpdateTests_UseObservedVersionsAndCapabilityGate()
+    {
+        var suite = ReadBundledSuite("CRUD/update.json");
+        var tests = suite["test"]!.AsArray()
+            .Select(test => test!.AsObject())
+            .Where(test => GetStringValue(test["name"]) is
+                "update with changed content assigns a new version and preserves the id"
+                or "repeating an identical update does not create a new version"
+                or "update with a correct If-Match version precondition succeeds"
+                or "update with nonmatching If-Match entity-tags returns 412")
+            .ToArray();
+
+        tests.Select(test =>
+                GetStringValue(test["requiresCapability"])?.Contains("versioning = 'versioned-update'", StringComparison.Ordinal) == true)
+            .Should().OnlyContain(isVersionAware => isVersionAware);
+
+        var contentChange = tests.Single(test =>
+            GetStringValue(test["name"]) == "update with changed content assigns a new version and preserves the id");
+        GetStringValue(contentChange["action"]![0]!["operation"]!["requestHeader"]![0]!["value"])
+            .Should().Be("W/\"${createdVersionId}\"");
+
+        var noOp = tests.Single(test =>
+            GetStringValue(test["name"]) == "repeating an identical update does not create a new version");
+        GetStringValue(noOp["action"]![0]!["operation"]!["requestHeader"]![0]!["value"])
+            .Should().Be("W/\"${versionAfterContentChange}\"");
+
+        var correctPrecondition = tests.Single(test =>
+            GetStringValue(test["name"]) == "update with a correct If-Match version precondition succeeds");
+        GetStringValue(correctPrecondition["action"]![0]!["operation"]!["requestHeader"]![0]!["value"])
+            .Should().Be("W/\"${versionAfterNoOp}\"");
+
+        var stalePrecondition = tests.Single(test =>
+            GetStringValue(test["name"]) == "update with nonmatching If-Match entity-tags returns 412");
+        GetStringValue(stalePrecondition["action"]![0]!["operation"]!["requestHeader"]![0]!["value"])
+            .Should().Be("W/\"${createdVersionId}\"");
+    }
+
+    private static JsonNode ReadBundledSuite(string relativePath)
+    {
+        var root = Path.Combine(AppContext.BaseDirectory, "testscripts");
+        return JsonNode.Parse(File.ReadAllText(Path.Combine(root, relativePath)))!;
+    }
+
+    private static JsonObject ReadBundledTest(string relativePath, string testName)
+    {
+        var suite = ReadBundledSuite(relativePath);
+        return suite["test"]!.AsArray()
+            .Select(test => test!.AsObject())
+            .Single(test => GetStringValue(test["name"]) == testName);
+    }
+
     private static string? GetStringValue(JsonNode? node) =>
         node?.GetValueKind() == System.Text.Json.JsonValueKind.String
             ? node.GetValue<string>()

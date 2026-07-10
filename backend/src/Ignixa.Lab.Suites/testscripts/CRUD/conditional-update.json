@@ -10,7 +10,7 @@
       "autodelete": false,
       "resource": {
         "resourceType": "Patient",
-        "identifier": [{ "system": "http://ignixa.io/testscript/suite/cond-update", "value": "CU-NOMATCH" }],
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/cond-update", "value": "CU-NOMATCH-${runId}" }],
         "name": [{ "family": "CondUpdate", "given": ["NoMatch"] }],
         "gender": "unknown"
       }
@@ -33,7 +33,7 @@
       "autodelete": false,
       "resource": {
         "resourceType": "Patient",
-        "identifier": [{ "system": "http://ignixa.io/testscript/suite/cond-update", "value": "CU-ONEMATCH" }],
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/cond-update", "value": "CU-ONEMATCH-${runId}" }],
         "name": [{ "family": "CondUpdate", "given": ["OneMatch"] }],
         "gender": "male"
       }
@@ -44,7 +44,7 @@
       "autodelete": false,
       "resource": {
         "resourceType": "Patient",
-        "identifier": [{ "system": "http://ignixa.io/testscript/suite/cond-update", "value": "CU-ONEMATCH" }],
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/cond-update", "value": "CU-ONEMATCH-${runId}" }],
         "name": [{ "family": "CondUpdate", "given": ["OneMatchUpdated"] }],
         "gender": "female"
       }
@@ -91,7 +91,7 @@
       "autodelete": false,
       "resource": {
         "resourceType": "Patient",
-        "identifier": [{ "system": "http://ignixa.io/testscript/suite/cond-update", "value": "CU-MULTI" }],
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/cond-update", "value": "CU-MULTI-${runId}" }],
         "name": [{ "family": "CondUpdate", "given": ["MultiA"] }]
       }
     },
@@ -101,7 +101,7 @@
       "autodelete": false,
       "resource": {
         "resourceType": "Patient",
-        "identifier": [{ "system": "http://ignixa.io/testscript/suite/cond-update", "value": "CU-MULTI" }],
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/cond-update", "value": "CU-MULTI-${runId}" }],
         "name": [{ "family": "CondUpdate", "given": ["MultiB"] }]
       }
     },
@@ -111,7 +111,7 @@
       "autodelete": false,
       "resource": {
         "resourceType": "Patient",
-        "identifier": [{ "system": "http://ignixa.io/testscript/suite/cond-update", "value": "CU-MULTI" }],
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/cond-update", "value": "CU-MULTI-${runId}" }],
         "name": [{ "family": "CondUpdate", "given": ["MultiUpdated"] }]
       }
     }
@@ -124,33 +124,23 @@
     },
     {
       "name": "cuNoMatchId",
-      "sourceId": "cu-nomatch-response",
-      "path": "id",
-      "description": "Server-assigned id of the Patient created by the CU-NOMATCH conditional update"
+      "sourceId": "cu-nomatch-search-response",
+      "expression": "Bundle.entry.resource.ofType(Patient).first().id",
+      "description": "Server-assigned id found after the CU-NOMATCH conditional update"
     },
     {
       "name": "seedOneMatchId",
-      "sourceId": "seed-onematch-response",
-      "path": "id",
-      "description": "Server-assigned id of the Patient unconditionally created in setup that carries identifier CU-ONEMATCH"
-    },
-    {
-      "name": "seedMultiAId",
-      "sourceId": "seed-multi-a-response",
-      "path": "id",
-      "description": "Server-assigned id of the first Patient created in setup with identifier CU-MULTI"
-    },
-    {
-      "name": "seedMultiBId",
-      "sourceId": "seed-multi-b-response",
-      "path": "id",
-      "description": "Server-assigned id of the second Patient created in setup with identifier CU-MULTI"
+      "sourceId": "seed-onematch-search-response",
+      "expression": "Bundle.entry.resource.ofType(Patient).first().id",
+      "description": "Server-assigned id found for the Patient created in setup that carries identifier CU-ONEMATCH"
     }
   ],
   "setup": {
     "action": [
       { "operation": { "type": { "code": "create" }, "resource": "Patient", "sourceId": "patient-seed-onematch-body", "responseId": "seed-onematch-response", "description": "Unconditionally create the Patient that later conditional-update attempts should match exactly once (CU-ONEMATCH)" } },
       { "assert": { "description": "Setup create for CU-ONEMATCH Patient must return 201 Created", "sourceId": "seed-onematch-response", "response": "created" } },
+      { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-ONEMATCH-${runId}", "responseId": "seed-onematch-search-response", "description": "Find the current-run CU-ONEMATCH Patient without depending on an optional create response body" } },
+      { "assert": { "description": "Setup search must return exactly one CU-ONEMATCH Patient entry", "sourceId": "seed-onematch-search-response", "expression": "Bundle.entry.resource.ofType(Patient).count()", "value": "1", "operator": "equals" } },
       { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-cond-upd-correctid", "sourceId": "patient-seed-correctid-body", "responseId": "seed-correctid-response", "description": "PUT a client-id Patient (CU-CORRECTID) so later tests can deterministically match or mismatch its id in a conditional update body" } },
       { "assert": { "description": "Setup PUT Patient/ignixa-cond-upd-correctid (CU-CORRECTID) must succeed", "sourceId": "seed-correctid-response", "response": "okay" } },
       { "operation": { "type": { "code": "create" }, "resource": "Patient", "sourceId": "patient-seed-multi-a-body", "responseId": "seed-multi-a-response", "description": "Unconditionally create the first of two Patients sharing identifier CU-MULTI" } },
@@ -165,10 +155,11 @@
       "description": "PUT /Patient?identifier=... matching no existing resource with an id-less body; the server must upsert (create) it and return 201 Created.",
       "requiresCapability": "rest.resource.where(type='Patient').conditionalUpdate = true",
       "action": [
-        { "operation": { "type": { "code": "update" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-NOMATCH", "sourceId": "patient-nomatch-body", "responseId": "cu-nomatch-response", "description": "Conditional PUT /Patient?identifier=...CU-NOMATCH, matches nothing" } },
+        { "operation": { "type": { "code": "update" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-NOMATCH-${runId}", "sourceId": "patient-nomatch-body", "responseId": "cu-nomatch-response", "description": "Conditional PUT for the current-run CU-NOMATCH identifier, matching nothing" } },
         { "assert": { "description": "Must return HTTP 201 Created", "response": "created" } },
-        { "assert": { "description": "Response body must be a Patient", "resource": "Patient" } },
-        { "assert": { "description": "Server must have assigned an id", "expression": "Patient.id.exists()" } }
+        { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-NOMATCH-${runId}", "responseId": "cu-nomatch-search-response", "description": "Find the current-run created Patient because a conditional update response body is optional" } },
+        { "assert": { "description": "Search must return exactly one created Patient entry", "sourceId": "cu-nomatch-search-response", "expression": "Bundle.entry.resource.ofType(Patient).count()", "value": "1", "operator": "equals" } },
+        { "assert": { "description": "Server must have assigned an id", "sourceId": "cu-nomatch-search-response", "expression": "Bundle.entry.resource.ofType(Patient).first().id.exists()" } }
       ]
     },
     {
@@ -183,11 +174,13 @@
     {
       "name": "Conditional update with a client-supplied id and no existing match creates that id",
       "description": "PUT /Patient?identifier=... matching no existing resource with a body carrying a client-supplied id; the server must create the resource using that id and return 201 Created.",
-      "requiresCapability": "rest.resource.where(type='Patient').conditionalUpdate = true",
+      "requiresCapability": "rest.resource.where(type='Patient').conditionalUpdate = true and rest.resource.where(type='Patient').updateCreate = true",
       "action": [
         { "operation": { "type": { "code": "update" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-EXPLICIT-${runId}", "sourceId": "patient-explicit-id-body", "responseId": "cu-explicit-response", "description": "Conditional PUT /Patient?identifier=...CU-EXPLICIT-${runId}, body carries id=ignixa-cond-upd-explicit-${runId}" } },
         { "assert": { "description": "Must return HTTP 201 Created", "response": "created" } },
-        { "assert": { "description": "Server must have used the client-supplied id", "expression": "Patient.id", "value": "ignixa-cond-upd-explicit-${runId}", "operator": "equals" } }
+        { "operation": { "type": { "code": "read" }, "url": "Patient/ignixa-cond-upd-explicit-${runId}", "responseId": "cu-explicit-read-response", "description": "Read back the created Patient because a conditional update response body is optional" } },
+        { "assert": { "description": "Created Patient must be readable at the client-supplied id", "sourceId": "cu-explicit-read-response", "response": "okay" } },
+        { "assert": { "description": "Server must have used the client-supplied id", "sourceId": "cu-explicit-read-response", "expression": "Patient.id", "value": "ignixa-cond-upd-explicit-${runId}", "operator": "equals" } }
       ]
     },
     {
@@ -195,9 +188,11 @@
       "description": "PUT /Patient?identifier=... matching exactly one existing Patient with an id-less body; the server must update it in place and return 200 OK with the same id.",
       "requiresCapability": "rest.resource.where(type='Patient').conditionalUpdate = true",
       "action": [
-        { "operation": { "type": { "code": "update" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-ONEMATCH", "sourceId": "patient-update-onematch-body", "responseId": "cu-onematch-response", "description": "Conditional PUT /Patient?identifier=...CU-ONEMATCH, matches the single seeded Patient" } },
+        { "operation": { "type": { "code": "update" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-ONEMATCH-${runId}", "sourceId": "patient-update-onematch-body", "responseId": "cu-onematch-response", "description": "Conditional PUT matching the single current-run CU-ONEMATCH Patient" } },
         { "assert": { "description": "Must return HTTP 200 OK (updated, not created)", "response": "okay" } },
-        { "assert": { "description": "Returned id must match the existing seeded resource's id", "expression": "Patient.id", "value": "${seedOneMatchId}", "operator": "equals" } }
+        { "operation": { "type": { "code": "read" }, "url": "Patient/${seedOneMatchId}", "responseId": "cu-onematch-read-response", "description": "Read back the matched Patient because a conditional update response body is optional" } },
+        { "assert": { "description": "Updated Patient must be readable", "sourceId": "cu-onematch-read-response", "response": "okay" } },
+        { "assert": { "description": "Updated id must match the existing seeded resource's id", "sourceId": "cu-onematch-read-response", "expression": "Patient.id", "value": "${seedOneMatchId}", "operator": "equals" } }
       ]
     },
     {
@@ -207,8 +202,10 @@
       "action": [
         { "operation": { "type": { "code": "update" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-CORRECTID", "sourceId": "patient-update-correctid-body", "responseId": "cu-correctid-response", "description": "Conditional PUT /Patient?identifier=...CU-CORRECTID, body id matches the resolved resource's id" } },
         { "assert": { "description": "Must return HTTP 200 OK", "response": "okay" } },
-        { "assert": { "description": "Id must remain ignixa-cond-upd-correctid", "expression": "Patient.id", "value": "ignixa-cond-upd-correctid", "operator": "equals" } },
-        { "assert": { "description": "Content must reflect the update (gender changed to female)", "expression": "Patient.gender", "value": "female", "operator": "equals" } }
+        { "operation": { "type": { "code": "read" }, "url": "Patient/ignixa-cond-upd-correctid", "responseId": "cu-correctid-read-response", "description": "Read back the matched Patient because a conditional update response body is optional" } },
+        { "assert": { "description": "Updated Patient must be readable", "sourceId": "cu-correctid-read-response", "response": "okay" } },
+        { "assert": { "description": "Id must remain ignixa-cond-upd-correctid", "sourceId": "cu-correctid-read-response", "expression": "Patient.id", "value": "ignixa-cond-upd-correctid", "operator": "equals" } },
+        { "assert": { "description": "Content must reflect the update (gender changed to female)", "sourceId": "cu-correctid-read-response", "expression": "Patient.gender", "value": "female", "operator": "equals" } }
       ]
     },
     {
@@ -225,7 +222,7 @@
       "description": "PUT /Patient?identifier=... matching two existing Patients; the server must return 412 Precondition Failed since the criteria isn't selective enough.",
       "requiresCapability": "rest.resource.where(type='Patient').conditionalUpdate = true",
       "action": [
-        { "operation": { "type": { "code": "update" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-MULTI", "sourceId": "patient-update-multi-body", "responseId": "cu-multi-response", "description": "Conditional PUT /Patient?identifier=...CU-MULTI, matches both seeded Patients" } },
+        { "operation": { "type": { "code": "update" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-MULTI-${runId}", "sourceId": "patient-update-multi-body", "responseId": "cu-multi-response", "description": "Conditional PUT matching both current-run CU-MULTI Patients" } },
         { "assert": { "description": "Must return HTTP 412 Precondition Failed", "response": "preconditionFailed" } }
       ]
     }
@@ -236,14 +233,12 @@
       { "operation": { "type": { "code": "delete" }, "url": "Patient/ignixa-cond-upd-explicit-${runId}", "description": "Teardown: delete the current-run explicit-id conditional-update Patient ignixa-cond-upd-explicit-${runId}" } },
       { "operation": { "type": { "code": "delete" }, "url": "Patient/${seedOneMatchId}", "description": "Teardown: delete the current-run CU-ONEMATCH Patient by server-assigned id" } },
       { "operation": { "type": { "code": "delete" }, "url": "Patient/ignixa-cond-upd-correctid", "description": "Teardown: delete the current-run CU-CORRECTID Patient by fixed id" } },
-      { "operation": { "type": { "code": "delete" }, "url": "Patient/${seedMultiAId}", "description": "Teardown: delete the first current-run CU-MULTI Patient by server-assigned id" } },
-      { "operation": { "type": { "code": "delete" }, "url": "Patient/${seedMultiBId}", "description": "Teardown: delete the second current-run CU-MULTI Patient by server-assigned id" } },
       { "operation": { "type": { "code": "delete" }, "url": "Patient/ignixa-cond-upd-wrongid", "description": "Teardown: defensively delete the mismatched-body id if a nonconforming server wrote it" } },
-      { "operation": { "type": { "code": "delete" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-NOMATCH", "description": "Teardown fallback: conditionally delete CU-NOMATCH leftovers or contamination" } },
+      { "operation": { "type": { "code": "delete" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-NOMATCH-${runId}", "description": "Teardown fallback: conditionally delete current-run CU-NOMATCH leftovers" } },
       { "operation": { "type": { "code": "delete" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-EXPLICIT-${runId}", "description": "Teardown fallback: conditionally delete CU-EXPLICIT-${runId} leftovers or contamination" } },
-      { "operation": { "type": { "code": "delete" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-ONEMATCH", "description": "Teardown fallback: conditionally delete CU-ONEMATCH leftovers or contamination" } },
+      { "operation": { "type": { "code": "delete" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-ONEMATCH-${runId}", "description": "Teardown fallback: conditionally delete current-run CU-ONEMATCH leftovers" } },
       { "operation": { "type": { "code": "delete" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-CORRECTID", "description": "Teardown fallback: conditionally delete CU-CORRECTID leftovers or contamination" } },
-      { "operation": { "type": { "code": "delete" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-MULTI", "description": "Teardown fallback: conditionally delete CU-MULTI leftovers or contamination" } }
+      { "operation": { "type": { "code": "delete" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-MULTI-${runId}", "description": "Teardown fallback: conditionally delete current-run CU-MULTI leftovers" } }
     ]
   }
 }
