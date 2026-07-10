@@ -125,6 +125,62 @@ public sealed class TestScriptRunnerTests
         ],
     };
 
+    private static TestScriptDefinition WarningOnlyDeletedResourceStatusAlternativesDefinition() => new()
+    {
+        Metadata = new TestScriptMetadata { Name = "DeletedResourceStatusAlternatives" },
+        Tests =
+        [
+            new TestPhaseDefinition
+            {
+                Name = "ReadAfterDelete",
+                Actions =
+                [
+                    new OperationExpression { Type = "read", Url = "Patient/deleted", ResponseId = "after-delete-read" },
+                    new AssertExpression
+                    {
+                        Description = "Preferred: 410 Gone for a deleted resource",
+                        Criteria = new ResponseStatusCriteria("gone"),
+                        WarningOnly = true,
+                    },
+                    new AssertExpression
+                    {
+                        Description = "Alternative: 404 Not Found is accepted when deleted resources are not tracked",
+                        Criteria = new ResponseStatusCriteria("notFound"),
+                        WarningOnly = true,
+                    },
+                ],
+            },
+        ],
+    };
+
+    private static TestScriptDefinition UnrelatedWarningOnlyStatusAlternativesDefinition() => new()
+    {
+        Metadata = new TestScriptMetadata { Name = "UnrelatedStatusAlternatives" },
+        Tests =
+        [
+            new TestPhaseDefinition
+            {
+                Name = "InformationalHeadBehavior",
+                Actions =
+                [
+                    new OperationExpression { Type = "read", Url = "metadata" },
+                    new AssertExpression
+                    {
+                        Description = "Alternative A: server aliases HEAD to GET and returns 200 (informational: not a FHIR spec requirement)",
+                        Criteria = new ResponseStatusCriteria("okay"),
+                        WarningOnly = true,
+                    },
+                    new AssertExpression
+                    {
+                        Description = "Alternative B: server rejects HEAD with 405 Method Not Allowed (informational: also acceptable)",
+                        Criteria = new ResponseCodeCriteria("405"),
+                        WarningOnly = true,
+                    },
+                ],
+            },
+        ],
+    };
+
     [Fact]
     public async Task GivenSuiteRequiringUndeclaredCapability_WhenRun_ThenTestIsSkippedAndNoRequestIsSent()
     {
@@ -451,6 +507,76 @@ public sealed class TestScriptRunnerTests
         var setupStep = outcome.Report!.Results[0].Steps.Should().ContainSingle(step => step.Phase == "setup").Which;
         setupStep.Status.Should().Be(ConformanceStatus.Error);
         setupStep.Message.Should().Contain("not valid for FHIR version R4");
+    }
+
+    [Fact]
+    public async Task GivenWarningOnlyDeletedResourceStatusAlternatives_WhenTargetReturnsUnexpectedSuccess_ThenRunFails()
+    {
+        var provider = new RecordingRequestProvider(new TestResponse { StatusCode = 200 });
+        var runner = new TestScriptRunner(
+            new FakeSuiteCatalog("deleted-resource-status.json", WarningOnlyDeletedResourceStatusAlternativesDefinition()),
+            new FakeEvaluatorFactory(provider),
+            new CapabilityStatementFetcher(
+                new FixedResponseHttpClientFactory(CapabilityStatementWithoutReindex),
+                Options.Create(new IgnixaLabOptions())),
+            Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
+            NullLogger<TestScriptRunner>.Instance);
+
+        var outcome = await runner.RunAsync(
+            new RunRequest { TargetUrl = TargetUrl, SuiteIds = ["deleted-resource-status.json"] },
+            CancellationToken.None);
+
+        outcome.IsValid.Should().BeTrue();
+        var result = outcome.Report!.Results.Should().ContainSingle().Which;
+        result.Status.Should().Be(ConformanceStatus.Fail);
+        result.Error!.Received.Should().Contain("410").And.Contain("404").And.Contain("200");
+    }
+
+    [Theory]
+    [InlineData(404)]
+    [InlineData(410)]
+    public async Task GivenWarningOnlyDeletedResourceStatusAlternatives_WhenTargetReturnsAcceptedStatus_ThenRunPasses(int statusCode)
+    {
+        var provider = new RecordingRequestProvider(new TestResponse { StatusCode = statusCode });
+        var runner = new TestScriptRunner(
+            new FakeSuiteCatalog("deleted-resource-status.json", WarningOnlyDeletedResourceStatusAlternativesDefinition()),
+            new FakeEvaluatorFactory(provider),
+            new CapabilityStatementFetcher(
+                new FixedResponseHttpClientFactory(CapabilityStatementWithoutReindex),
+                Options.Create(new IgnixaLabOptions())),
+            Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
+            NullLogger<TestScriptRunner>.Instance);
+
+        var outcome = await runner.RunAsync(
+            new RunRequest { TargetUrl = TargetUrl, SuiteIds = ["deleted-resource-status.json"] },
+            CancellationToken.None);
+
+        outcome.IsValid.Should().BeTrue();
+        outcome.Report!.Results.Should().ContainSingle().Which.Status.Should().Be(ConformanceStatus.Pass);
+    }
+
+    [Fact]
+    public async Task GivenUnrelatedWarningOnlyStatusAlternatives_WhenTargetReturnsOutsideAlternatives_ThenRunStillPasses()
+    {
+        var provider = new RecordingRequestProvider(new TestResponse { StatusCode = 202 });
+        var runner = new TestScriptRunner(
+            new FakeSuiteCatalog("unrelated-status.json", UnrelatedWarningOnlyStatusAlternativesDefinition()),
+            new FakeEvaluatorFactory(provider),
+            new CapabilityStatementFetcher(
+                new FixedResponseHttpClientFactory(CapabilityStatementWithoutReindex),
+                Options.Create(new IgnixaLabOptions())),
+            Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
+            NullLogger<TestScriptRunner>.Instance);
+
+        var outcome = await runner.RunAsync(
+            new RunRequest { TargetUrl = TargetUrl, SuiteIds = ["unrelated-status.json"] },
+            CancellationToken.None);
+
+        outcome.IsValid.Should().BeTrue();
+        outcome.Report!.Results.Should().ContainSingle().Which.Status.Should().Be(ConformanceStatus.Pass);
     }
 
     private sealed class FakeSuiteCatalog(string id, TestScriptDefinition definition) : ISuiteCatalog
