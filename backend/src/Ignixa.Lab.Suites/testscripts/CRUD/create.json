@@ -212,11 +212,11 @@
       ]
     },
     {
-      "name": "create with an unsupported Content-Type returns 415",
-      "description": "POST with an unsupported Content-Type (not a FHIR media type) must return 415 Unsupported Media Type.",
+      "name": "create with unsupported Content-Type reports recommended 415 behavior",
+      "description": "Informational MIME handling check: this request deliberately violates the client MIME requirement; 415 Unsupported Media Type is appropriate but not required as the exact server response by base R4.",
       "action": [
         { "operation": { "type": { "code": "create" }, "resource": "Observation", "sourceId": "observation-bad-contenttype", "contentType": "application/x-www-form-urlencoded", "responseId": "create-contenttype-response", "description": "POST Observation with an unsupported Content-Type header" } },
-        { "assert": { "description": "Server must return 415 Unsupported Media Type", "responseCode": "415" } }
+        { "assert": { "description": "Informational MIME handling check: 415 Unsupported Media Type is appropriate but not required by base R4", "responseCode": "415", "warningOnly": true } }
       ]
     },
     {

@@ -138,11 +138,11 @@
       ]
     },
     {
-      "name": "update with an unsupported Content-Type header is rejected",
-      "description": "PUT Patient/ignixa-update-content with a syntactically valid but unsupported Content-Type must return 415 Unsupported Media Type.",
+      "name": "update with unsupported Content-Type reports recommended 415 behavior",
+      "description": "Informational MIME handling check: this request deliberately violates the client MIME requirement; 415 Unsupported Media Type is appropriate but not required as the exact server response by base R4.",
       "action": [
         { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-update-content", "sourceId": "patient-v2", "contentType": "application/not-fhir+json", "responseId": "bad-contenttype-response", "description": "PUT Patient/ignixa-update-content with Content-Type: application/not-fhir+json" } },
-        { "assert": { "description": "Server must return 415 Unsupported Media Type", "responseCode": "415" } }
+        { "assert": { "description": "Informational MIME handling check: 415 Unsupported Media Type is appropriate but not required by base R4", "responseCode": "415", "warningOnly": true } }
       ]
     },
     {

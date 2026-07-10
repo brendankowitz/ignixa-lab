@@ -1168,27 +1168,64 @@ public sealed class SuiteCatalogTests : IDisposable
     }
 
     [Fact]
-    public void BundledCreateStrictNeighbors_RemainStrict()
+    public void BundledCreateLocationHistoryAssertions_RemainStrict()
     {
-        var suite = ReadBundledSuite("CRUD/create.json");
-        var unsupported = FindAssertions(ReadBundledTest(
-            "CRUD/create.json",
-            "create with an unsupported Content-Type returns 415"));
         var locationAssertions = FindAssertions(ReadBundledTest(
                 "CRUD/create.json",
                 "create returns 201 with id, version, and location metadata"))
             .Where(assertion => GetStringValue(assertion["headerField"]) == "Location")
             .ToArray();
 
-        unsupported.Should().ContainSingle();
-        GetStringValue(unsupported[0]["responseCode"]).Should().Be("415");
-        (unsupported[0]["warningOnly"]?.GetValue<bool>() ?? false).Should().BeFalse();
         locationAssertions.Should().HaveCount(2);
         locationAssertions.Select(assertion => GetStringValue(assertion["value"]))
             .Should().Contain("_history");
         locationAssertions.Select(assertion => assertion["warningOnly"]?.GetValue<bool>() ?? false)
             .Should().OnlyContain(warningOnly => !warningOnly);
-        suite.Should().NotBeNull();
+    }
+
+    [Theory]
+    [InlineData(
+        "CRUD/create.json",
+        "create with unsupported Content-Type reports recommended 415 behavior",
+        "application/x-www-form-urlencoded",
+        "create")]
+    [InlineData(
+        "CRUD/update.json",
+        "update with unsupported Content-Type reports recommended 415 behavior",
+        "application/not-fhir+json",
+        "update")]
+    public void BundledUnsupportedContentTypeTests_AreFullyInformational(
+        string suiteId,
+        string testName,
+        string contentType,
+        string operationCode)
+    {
+        var suite = ReadBundledSuite(suiteId);
+        var matchingTests = suite["test"]!.AsArray()
+            .Select(test => test!.AsObject())
+            .Where(test => GetStringValue(test["name"])!
+                .Contains("unsupported Content-Type", StringComparison.Ordinal))
+            .ToArray();
+        var test = matchingTests.Should().ContainSingle(
+            "deleting or duplicating the MIME-handling test must break the guard").Which;
+        var actions = test["action"]!.AsArray();
+        var operation = actions
+            .Select(action => action?["operation"])
+            .Single(candidate => candidate is not null);
+        var assertions = FindAssertions(test);
+
+        GetStringValue(test["name"]).Should().Be(testName);
+        GetStringValue(test["description"]).Should().Contain("Informational");
+        GetStringValue(test["description"]).Should().Contain("415 Unsupported Media Type is appropriate");
+        GetStringValue(test["description"]).Should().Contain("not required");
+        actions.Should().HaveCount(2, "the request and recommended response observation must remain present");
+        GetStringValue(operation?["type"]?["code"]).Should().Be(operationCode);
+        GetStringValue(operation?["contentType"]).Should().Be(contentType);
+        assertions.Should().ContainSingle("partial warning-only weakening must break the guard");
+        GetStringValue(assertions[0]["description"]).Should()
+            .Be("Informational MIME handling check: 415 Unsupported Media Type is appropriate but not required by base R4");
+        GetStringValue(assertions[0]["responseCode"]).Should().Be("415");
+        assertions[0]["warningOnly"]!.GetValue<bool>().Should().BeTrue();
     }
 
     [Fact]
@@ -1208,7 +1245,6 @@ public sealed class SuiteCatalogTests : IDisposable
     }
 
     [Theory]
-    [InlineData("update with an unsupported Content-Type header is rejected", "415")]
     [InlineData("update with a body containing no id returns 400", "bad")]
     [InlineData("update to a URL id that disagrees with the body id returns 400", "bad")]
     public void BundledUpdateSpecBackedFailures_RemainStrict(string testName, string response)
@@ -1372,6 +1408,7 @@ public sealed class SuiteCatalogTests : IDisposable
         {
             "create with a valid X-Provenance header links a Provenance resource",
             "create with a malformed X-Provenance header returns 400",
+            "create with unsupported Content-Type reports recommended 415 behavior",
             "create with an invalid (incomplete) resource body returns 400",
             "create with a malformed dateTime returns 400",
             "create blocks a malicious narrative containing a script tag",
@@ -1386,6 +1423,37 @@ public sealed class SuiteCatalogTests : IDisposable
 
         assertions.Should().NotBeEmpty();
         assertions.Select(assertion => assertion!["warningOnly"]?.GetValue<bool>() == true)
+            .Should().OnlyContain(warningOnly => !warningOnly);
+    }
+
+    [Fact]
+    public void BundledUpdateWarningOnlyAssertions_RemainExactlyScoped()
+    {
+        var expectedInformationalDescriptions = new[]
+        {
+            "Informational: meta.versionId is unchanged when no data changed",
+            "Informational MIME handling check: 415 Unsupported Media Type is appropriate but not required by base R4",
+            "Location header should be present",
+            "Informational ordinary-PUT check: server should return a 2xx success status",
+            "Informational ordinary-PUT check: updated Patient should be readable",
+            "Informational ordinary-PUT check: generalPractitioner reference should resolve to the concrete Practitioner reference",
+        };
+        var assertions = ReadBundledSuite("CRUD/update.json")["test"]!.AsArray()
+            .SelectMany(test => test!["action"]!.AsArray())
+            .Select(action => action?["assert"])
+            .Where(assertion => assertion is not null)
+            .Select(assertion => assertion!.AsObject())
+            .ToArray();
+        var informationalDescriptions = assertions
+            .Where(assertion => assertion["warningOnly"]?.GetValue<bool>() == true)
+            .Select(assertion => GetStringValue(assertion["description"]))
+            .ToArray();
+
+        informationalDescriptions.Should().BeEquivalentTo(expectedInformationalDescriptions);
+        assertions
+            .Where(assertion => !expectedInformationalDescriptions.Contains(
+                GetStringValue(assertion["description"])))
+            .Select(assertion => assertion["warningOnly"]?.GetValue<bool>() ?? false)
             .Should().OnlyContain(warningOnly => !warningOnly);
     }
 
