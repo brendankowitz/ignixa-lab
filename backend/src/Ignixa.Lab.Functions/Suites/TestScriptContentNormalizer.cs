@@ -31,6 +31,26 @@ internal static class TestScriptContentNormalizer
         var changed = false;
         foreach (var test in tests.OfType<JsonObject>())
         {
+            if (test["extension"] is not null and not JsonArray)
+            {
+                return content;
+            }
+
+            var extensions = test["extension"] as JsonArray;
+            var canonicalExtensions = extensions?.OfType<JsonObject>().Where(extension =>
+                    extension["url"] is JsonValue url
+                    && url.TryGetValue<string>(out var urlValue)
+                    && urlValue == RequiresCapabilityUrl).ToArray() ?? [];
+            var canonicalValues = canonicalExtensions
+                .Select(extension => extension["valueString"] is JsonValue value
+                    && value.TryGetValue<string>(out var text) ? text : null)
+                .ToArray();
+
+            if (canonicalValues.Where(value => value is not null).Distinct(StringComparer.Ordinal).Take(2).Count() > 1)
+            {
+                throw new InvalidDataException("TestScript contains conflicting requiresCapability values.");
+            }
+
             if (test["requiresCapability"] is not JsonValue requirementValue
                 || !requirementValue.TryGetValue<string>(out var requirement)
                 || string.IsNullOrWhiteSpace(requirement))
@@ -38,17 +58,18 @@ internal static class TestScriptContentNormalizer
                 continue;
             }
 
-            var extensions = test["extension"] as JsonArray;
+            if (canonicalValues.Any(value => !string.Equals(value, requirement, StringComparison.Ordinal)))
+            {
+                throw new InvalidDataException("TestScript contains conflicting requiresCapability values.");
+            }
+
             if (extensions is null)
             {
                 extensions = [];
                 test["extension"] = extensions;
             }
 
-            if (!extensions.OfType<JsonObject>().Any(extension =>
-                    extension["url"] is JsonValue url
-                    && url.TryGetValue<string>(out var urlValue)
-                    && urlValue == RequiresCapabilityUrl))
+            if (canonicalExtensions.Length == 0)
             {
                 extensions.Add(new JsonObject
                 {

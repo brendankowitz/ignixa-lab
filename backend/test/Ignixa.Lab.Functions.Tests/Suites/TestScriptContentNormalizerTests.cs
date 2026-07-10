@@ -6,6 +6,8 @@ namespace Ignixa.Lab.Functions.Tests.Suites;
 
 public sealed class TestScriptContentNormalizerTests
 {
+    private const string CapabilityUrl = "http://ignixa.io/testscript/requiresCapability";
+
     [Fact]
     public void Normalize_GivenInvalidJson_ReturnsContentForParserValidation()
     {
@@ -42,5 +44,36 @@ public sealed class TestScriptContentNormalizerTests
             "http://ignixa.io/testscript/fhirVersions",
             "http://ignixa.io/testscript/requiresCapability");
         normalized["test"]![0]!["requiresCapability"].Should().BeNull();
+    }
+
+    [Fact]
+    public void Normalize_GivenNonArrayExtension_PreservesMalformedInput()
+    {
+        var content = """{"test":[{"requiresCapability":"direct","extension":{"url":"$URL","valueString":"direct"}}]}"""
+            .Replace("$URL", CapabilityUrl, StringComparison.Ordinal);
+
+        TestScriptContentNormalizer.Normalize(content).Should().Be(content);
+    }
+
+    [Fact]
+    public void Normalize_GivenConflictingCanonicalCapability_RejectsInput()
+    {
+        var content = """{"test":[{"requiresCapability":"direct","extension":[{"url":"$URL","valueString":"different"}]}]}"""
+            .Replace("$URL", CapabilityUrl, StringComparison.Ordinal);
+
+        var act = () => TestScriptContentNormalizer.Normalize(content);
+
+        act.Should().Throw<InvalidDataException>().WithMessage("*conflicting*");
+    }
+
+    [Fact]
+    public void Normalize_GivenMultipleConflictingCanonicalCapabilities_RejectsInput()
+    {
+        var content = """{"test":[{"extension":[{"url":"$URL","valueString":"one"},{"url":"$URL","valueString":"two"}]}]}"""
+            .Replace("$URL", CapabilityUrl, StringComparison.Ordinal);
+
+        var act = () => TestScriptContentNormalizer.Normalize(content);
+
+        act.Should().Throw<InvalidDataException>().WithMessage("*conflicting*");
     }
 }

@@ -247,6 +247,34 @@ public sealed class TestScriptRunnerTests
         provider.CallCount.Should().Be(0);
     }
 
+    [Theory]
+    [InlineData("""{"resourceType":"TestScript","name":"Bad","status":"active","test":[{"name":"bad","requiresCapability":"direct","extension":{"url":"http://ignixa.io/testscript/requiresCapability","valueString":"direct"},"action":[]}]}""")]
+    [InlineData("""{"resourceType":"TestScript","name":"Bad","status":"active","test":[{"name":"bad","requiresCapability":"direct","extension":[{"url":"http://ignixa.io/testscript/requiresCapability","valueString":"different"}],"action":[]}]}""")]
+    public async Task GivenUploadedMalformedOrConflictingCapabilityMetadata_WhenRun_ThenRequestIsInvalid(string content)
+    {
+        var provider = new RecordingRequestProvider(new TestResponse { StatusCode = 200 });
+        var runner = new TestScriptRunner(
+            new FakeSuiteCatalog("unused.json", GatedDefinition("true")),
+            new FakeEvaluatorFactory(provider),
+            new CapabilityStatementFetcher(
+                new FixedResponseHttpClientFactory(CapabilityStatementWithoutReindex),
+                Options.Create(new IgnixaLabOptions())),
+            Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
+            NullLogger<TestScriptRunner>.Instance);
+
+        var outcome = await runner.RunAsync(
+            new RunRequest
+            {
+                TargetUrl = TargetUrl,
+                UploadedTestScripts = [new UploadedTestScript { FileName = "bad.json", Content = content }],
+            },
+            CancellationToken.None);
+
+        outcome.IsValid.Should().BeFalse();
+        provider.CallCount.Should().Be(0);
+    }
+
     [Fact]
     public async Task GivenSuiteRequiringDeclaredCapability_WhenRun_ThenTestRuns()
     {

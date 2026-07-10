@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using Ignixa.Abstractions;
 using Ignixa.Lab.Functions.Conformance;
@@ -277,8 +278,18 @@ public sealed class TestScriptRunner(
                 continue;
             }
 
-            var content = TestScriptContentNormalizer.Normalize(uploaded.Content);
-            var parseResult = TestScriptParser.Parse(content);
+            ParseResult<TestScriptDefinition> parseResult;
+            try
+            {
+                var content = TestScriptContentNormalizer.Normalize(uploaded.Content);
+                parseResult = TestScriptParser.Parse(content);
+            }
+            catch (Exception ex) when (ex is InvalidDataException or InvalidOperationException or JsonException)
+            {
+                error = $"Uploaded TestScript '{uploaded.FileName ?? "(unnamed)"}' could not be parsed: {ex.Message}";
+                return Array.Empty<SuiteJob>();
+            }
+
             if (!parseResult.IsSuccess || parseResult.Value is null)
             {
                 var reason = parseResult.Errors.Count > 0 ? parseResult.Errors[0].Message : "invalid TestScript";

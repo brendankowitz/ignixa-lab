@@ -116,6 +116,17 @@ public sealed class SuiteCatalogTests : IDisposable
         suites.Should().ContainSingle().Which.Name.Should().Be("Patient CRUD");
     }
 
+    [Theory]
+    [InlineData("""{"resourceType":"TestScript","name":"Bad","status":"active","test":[{"name":"bad","requiresCapability":"direct","extension":{"url":"http://ignixa.io/testscript/requiresCapability","valueString":"direct"},"action":[]}]}""")]
+    [InlineData("""{"resourceType":"TestScript","name":"Bad","status":"active","test":[{"name":"bad","requiresCapability":"direct","extension":[{"url":"http://ignixa.io/testscript/requiresCapability","valueString":"different"}],"action":[]}]}""")]
+    public void GetSuites_SkipsMalformedOrConflictingCapabilityMetadata(string content)
+    {
+        var file = Path.Combine(_root, "bad.json");
+        File.WriteAllText(file, content);
+
+        CreateCatalog().GetSuites().Should().BeEmpty();
+    }
+
     [Fact]
     public void GetSuites_ReturnsEmptyWhenDirectoryMissing()
     {
@@ -668,6 +679,7 @@ public sealed class SuiteCatalogTests : IDisposable
         var requirement = GetMetadataCapabilityRequirement(ReadBundledSuite("Search/custom-search-param.json"));
 
         requirement.Should().Contain("interaction.where(code='update').exists()");
+        requirement.Should().Contain("updateCreate = true");
         requirement.Should().NotContain("code='create'");
     }
 
