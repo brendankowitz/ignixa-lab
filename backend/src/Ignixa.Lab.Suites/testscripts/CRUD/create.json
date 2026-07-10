@@ -277,7 +277,7 @@
     },
     {
       "name": "create with a valid X-Provenance header links a Provenance resource",
-      "description": "POST with a valid X-Provenance header must succeed with 201 Created and create a linked Provenance resource targeting the new Observation.",
+      "description": "Informational only: X-Provenance is a Microsoft FHIR Server extension, not part of base FHIR. A supporting server should create a linked Provenance resource.",
       "action": [
         {
           "operation": {
@@ -285,22 +285,22 @@
             "resource": "Observation",
             "sourceId": "observation-provenance-ok",
             "responseId": "create-provenance-ok-response",
-            "description": "POST Observation with a valid X-Provenance header",
+            "description": "POST Observation using X-Provenance, a Microsoft FHIR Server extension that is not part of base FHIR",
             "requestHeader": [
               { "field": "X-Provenance", "value": "{\"resourceType\":\"Provenance\",\"recorded\":\"2024-01-01T00:00:00Z\",\"agent\":[{\"who\":{\"reference\":\"Practitioner/ignixa-prov-agent\"}}],\"activity\":{\"coding\":[{\"system\":\"http://terminology.hl7.org/CodeSystem/v3-ParticipationType\",\"code\":\"AUT\"}]}}" }
             ]
           }
         },
-        { "assert": { "description": "Server must return 201 Created", "response": "created" } },
-        { "operation": { "type": { "code": "search" }, "resource": "Provenance", "params": "?target=Observation/${provenanceOkId}", "responseId": "provenance-search-response", "description": "Search for the linked Provenance by target" } },
-        { "assert": { "description": "Provenance search must return HTTP 200", "response": "okay" } },
-        { "assert": { "description": "Provenance search response must be a Bundle", "resource": "Bundle" } },
-        { "assert": { "description": "Bundle must contain at least one linked Provenance resource", "expression": "entry.count() >= 1" } }
+        { "assert": { "description": "Informational Microsoft FHIR Server X-Provenance extension check: server should return 201 Created", "response": "created", "warningOnly": true } },
+        { "operation": { "type": { "code": "search" }, "resource": "Provenance", "params": "?target=Observation/${provenanceOkId}", "responseId": "provenance-search-response", "description": "Search for Provenance created by the Microsoft FHIR Server X-Provenance extension, which is not part of base FHIR" } },
+        { "assert": { "description": "Informational Microsoft FHIR Server X-Provenance extension check: search should return HTTP 200", "response": "okay", "warningOnly": true } },
+        { "assert": { "description": "Informational Microsoft FHIR Server X-Provenance extension check: search response should be a Bundle", "resource": "Bundle", "warningOnly": true } },
+        { "assert": { "description": "Informational Microsoft FHIR Server X-Provenance extension check: Bundle should contain linked Provenance", "expression": "entry.count() >= 1", "warningOnly": true } }
       ]
     },
     {
       "name": "create with a malformed X-Provenance header returns 400",
-      "description": "POST with a malformed (non-JSON) X-Provenance header must return 400 Bad Request.",
+      "description": "Informational only: X-Provenance is a Microsoft FHIR Server extension, not part of base FHIR. A supporting server should reject a malformed header with 400 Bad Request.",
       "action": [
         {
           "operation": {
@@ -308,13 +308,13 @@
             "resource": "Observation",
             "sourceId": "observation-provenance-bad",
             "responseId": "create-provenance-bad-response",
-            "description": "POST Observation with a malformed X-Provenance header",
+            "description": "POST malformed X-Provenance, a Microsoft FHIR Server extension that is not part of base FHIR",
             "requestHeader": [
               { "field": "X-Provenance", "value": "Jibberish" }
             ]
           }
         },
-        { "assert": { "description": "Server must return 400 Bad Request for a malformed X-Provenance header", "response": "bad" } }
+        { "assert": { "description": "Informational Microsoft FHIR Server X-Provenance extension check: malformed header should return 400", "response": "bad", "warningOnly": true } }
       ]
     }
   ],

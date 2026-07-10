@@ -694,6 +694,79 @@ public sealed class SuiteCatalogTests : IDisposable
             .Should().Contain(expected);
     }
 
+    [Theory]
+    [InlineData("Foundation/cors.json", "CORS", "HTTP hosting behavior", "not universal FHIR conformance")]
+    [InlineData("Foundation/health.json", "/health/check", "not part of base FHIR", null)]
+    public void BundledHostingBehaviorSuites_AreClearlyInformational(
+        string relativePath,
+        string descriptionFragment,
+        string rationaleFragment,
+        string? additionalRationaleFragment)
+    {
+        var suite = ReadBundledSuite(relativePath);
+        var descriptions = suite["test"]!.AsArray()
+            .Select(test => GetStringValue(test?["description"]))
+            .Prepend(GetStringValue(suite["description"]))
+            .ToArray();
+        var assertions = suite["test"]!.AsArray()
+            .SelectMany(test => test!["action"]!.AsArray())
+            .Select(action => action?["assert"])
+            .Where(assertion => assertion is not null)
+            .ToArray();
+
+        foreach (var description in descriptions)
+        {
+            description.Should().Contain(descriptionFragment);
+            description.Should().Contain(rationaleFragment);
+            if (additionalRationaleFragment is not null)
+            {
+                description.Should().Contain(additionalRationaleFragment);
+            }
+        }
+
+        assertions.Should().NotBeEmpty();
+        assertions.Select(assertion => assertion!["warningOnly"]?.GetValue<bool>() == true)
+            .Should().OnlyContain(warningOnly => warningOnly);
+    }
+
+    [Theory]
+    [InlineData("create with a valid X-Provenance header links a Provenance resource")]
+    [InlineData("create with a malformed X-Provenance header returns 400")]
+    public void BundledXProvenanceTests_AreClearlyInformational(string testName)
+    {
+        var test = ReadBundledTest("CRUD/create.json", testName);
+        var assertions = test["action"]!.AsArray()
+            .Select(action => action?["assert"])
+            .Where(assertion => assertion is not null)
+            .ToArray();
+
+        GetStringValue(test["description"]).Should().Contain("Microsoft FHIR Server extension");
+        GetStringValue(test["description"]).Should().Contain("not part of base FHIR");
+        assertions.Should().NotBeEmpty();
+        assertions.Select(assertion => assertion!["warningOnly"]?.GetValue<bool>() == true)
+            .Should().OnlyContain(warningOnly => warningOnly);
+    }
+
+    [Fact]
+    public void BundledUnrelatedCreateAssertions_RemainStrict()
+    {
+        var informationalTests = new[]
+        {
+            "create with a valid X-Provenance header links a Provenance resource",
+            "create with a malformed X-Provenance header returns 400",
+        };
+        var assertions = ReadBundledSuite("CRUD/create.json")["test"]!.AsArray()
+            .Where(test => !informationalTests.Contains(GetStringValue(test?["name"])))
+            .SelectMany(test => test!["action"]!.AsArray())
+            .Select(action => action?["assert"])
+            .Where(assertion => assertion is not null)
+            .ToArray();
+
+        assertions.Should().NotBeEmpty();
+        assertions.Select(assertion => assertion!["warningOnly"]?.GetValue<bool>() == true)
+            .Should().OnlyContain(warningOnly => !warningOnly);
+    }
+
     private static JsonNode ReadBundledSuite(string relativePath)
     {
         var root = Path.Combine(AppContext.BaseDirectory, "testscripts");
