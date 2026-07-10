@@ -14,8 +14,8 @@
     "coding": [
       {
         "system": "http://ignixa.io/fhir/provenance-activity",
-        "code": "distill-testscript",
-        "display": "Distill TestScript"
+        "code": "author-testscript",
+        "display": "Author TestScript"
       }
     ]
   },

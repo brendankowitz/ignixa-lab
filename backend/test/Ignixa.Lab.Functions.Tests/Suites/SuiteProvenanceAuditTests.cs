@@ -7,6 +7,7 @@ namespace Ignixa.Lab.Functions.Tests.Suites;
 public sealed class SuiteProvenanceAuditTests : IDisposable
 {
     private readonly string _root;
+    private const string RepositoryManifestRecorded = "2026-07-07T00:00:00Z";
     private static readonly JsonSerializerOptions ManifestJsonOptions = new()
     {
         WriteIndented = true
@@ -1050,9 +1051,200 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         File.Exists(Path.Combine(_root, "CRUD", "basic.provenance.json")).Should().BeFalse();
     }
 
+    [Fact]
+    public void RepositoryManifest_ClassifiesEveryBundledTestScript()
+    {
+        var suitesDirectory = GetBundledSuitesDirectory();
+        var bundledSuitePaths = Directory
+            .EnumerateFiles(suitesDirectory, "*.json", SearchOption.AllDirectories)
+            .Where(path => !path.EndsWith(".provenance.json", StringComparison.OrdinalIgnoreCase))
+            .Select(path => Path.GetRelativePath(suitesDirectory, path).Replace('\\', '/'))
+            .OrderBy(path => path, StringComparer.Ordinal)
+            .ToArray();
+
+        var manifest = ReadRepositoryManifest();
+        var manifestPaths = manifest.Suites.Keys
+            .OrderBy(path => path, StringComparer.Ordinal)
+            .ToArray();
+
+        bundledSuitePaths.Should().HaveCount(87);
+        manifestPaths.Should().Equal(bundledSuitePaths);
+    }
+
+    [Fact]
+    public void RepositoryManifest_UsesExpectedSchemaProfilesAndActivityRules()
+    {
+        var manifest = ReadRepositoryManifest();
+
+        manifest.SchemaVersion.Should().Be(1);
+        manifest.Profiles.Keys
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .Should()
+            .Equal(
+                "bundles",
+                "fhir262-http",
+                "fhir262-search",
+                "fhir262-validation",
+                "ignixa-all-resource-types",
+                "microsoft",
+                "operations-expand",
+                "operations-terminology",
+                "subscriptions");
+
+        manifest.Suites.Should().HaveCount(87);
+
+        foreach (var suite in manifest.Suites.OrderBy(entry => entry.Key, StringComparer.Ordinal))
+        {
+            suite.Value.Recorded.Should().Be(RepositoryManifestRecorded);
+            suite.Value.Activity.Should().Be(
+                suite.Key.StartsWith("CRUD/all-resource-types", StringComparison.Ordinal)
+                    ? "author-testscript"
+                    : "distill-testscript");
+        }
+    }
+
+    [Theory]
+    [InlineData("CRUD/all-resource-types.json", "author-testscript")]
+    [InlineData("CRUD/all-resource-types-r4-only.json", "author-testscript")]
+    [InlineData("Search/basic.json", "distill-testscript")]
+    [InlineData("Subscriptions/basic.json", "distill-testscript")]
+    [InlineData("Microsoft/ms-convert-data.json", "distill-testscript")]
+    public void RepositoryManifest_RecordsExpectedActivity(string suitePath, string expectedActivity)
+    {
+        var suites = ReadRepositoryManifest().Suites;
+        suites.TryGetValue(suitePath, out var entry).Should().BeTrue();
+
+        entry!.Activity.Should().Be(expectedActivity);
+        entry.Recorded.Should().Be(RepositoryManifestRecorded);
+    }
+
+    [Fact]
+    public void RepositoryProvenanceSidecars_MatchManifest()
+    {
+        var suitesDirectory = GetBundledSuitesDirectory();
+        var manifest = ReadRepositoryManifest();
+        var sidecarPaths = Directory
+            .EnumerateFiles(suitesDirectory, "*.provenance.json", SearchOption.AllDirectories)
+            .Select(path => Path.GetRelativePath(suitesDirectory, path).Replace('\\', '/'))
+            .OrderBy(path => path, StringComparer.Ordinal)
+            .ToArray();
+
+        sidecarPaths.Should().HaveCount(87);
+        sidecarPaths.Should().Equal(
+            manifest.Suites.Keys
+                .Select(path => Path.ChangeExtension(path, ".provenance.json")!.Replace('\\', '/'))
+                .OrderBy(path => path, StringComparer.Ordinal));
+
+        foreach (var suite in manifest.Suites.OrderBy(entry => entry.Key, StringComparer.Ordinal))
+        {
+            var sidecarPath = Path.Combine(suitesDirectory, Path.ChangeExtension(suite.Key, ".provenance.json")!);
+            using var document = JsonDocument.Parse(File.ReadAllText(sidecarPath));
+            var provenance = document.RootElement;
+
+            provenance.GetProperty("target")[0].GetProperty("identifier").GetProperty("value").GetString()
+                .Should().Be(suite.Key);
+            provenance.GetProperty("recorded").GetString().Should().Be(suite.Value.Recorded);
+            provenance.GetProperty("activity").GetProperty("coding")[0].GetProperty("code").GetString()
+                .Should().Be(suite.Value.Activity);
+
+            var actualSources = provenance.GetProperty("entity")
+                .EnumerateArray()
+                .Select(ParseSidecarSource)
+                .ToArray();
+            actualSources.Should().Equal(manifest.Profiles[suite.Value.Profile]);
+        }
+    }
+
     private void WriteScript(string relativePath)
     {
         WriteScript(_root, relativePath);
+    }
+
+    private static string GetBundledSuitesDirectory()
+    {
+        return Path.Combine(
+            FindRepoRootDirectory(),
+            "backend",
+            "src",
+            "Ignixa.Lab.Suites",
+            "testscripts");
+    }
+
+    private static RepositoryManifest ReadRepositoryManifest()
+    {
+        using var document = JsonDocument.Parse(File.ReadAllText(FindRepoRootTool("provenance-manifest.json")));
+        var root = document.RootElement;
+
+        var profiles = root
+            .GetProperty("profiles")
+            .EnumerateObject()
+            .ToDictionary(
+                property => property.Name,
+                property => property.Value
+                    .GetProperty("sources")
+                    .EnumerateArray()
+                    .Select(ParseManifestSource)
+                    .ToArray(),
+                StringComparer.Ordinal);
+
+        var suites = root
+            .GetProperty("suites")
+            .EnumerateObject()
+            .ToDictionary(
+                property => property.Name,
+                property => new RepositoryManifestSuite(
+                    property.Value.GetProperty("profile").GetString()!,
+                    property.Value.GetProperty("activity").GetString()!,
+                    property.Value.GetProperty("recorded").GetString()!),
+                StringComparer.Ordinal);
+
+        return new RepositoryManifest(root.GetProperty("schemaVersion").GetInt32(), profiles, suites);
+    }
+
+    private static ManifestSource ParseManifestSource(JsonElement source)
+    {
+        return new ManifestSource(
+            source.GetProperty("reference").GetString()!,
+            source.GetProperty("display").GetString()!,
+            source.GetProperty("relationship").GetString()!,
+            source.GetProperty("license").GetString()!,
+            source.TryGetProperty("version", out var version) ? version.GetString() : null,
+            source.GetProperty("notes").GetString()!);
+    }
+
+    private static ManifestSource ParseSidecarSource(JsonElement entity)
+    {
+        string? relationship = null;
+        string? license = null;
+        string? version = null;
+        string? notes = null;
+
+        foreach (var extension in entity.GetProperty("extension").EnumerateArray())
+        {
+            switch (extension.GetProperty("url").GetString())
+            {
+                case "http://ignixa.io/fhir/StructureDefinition/provenance-source-relationship":
+                    relationship = extension.GetProperty("valueCode").GetString();
+                    break;
+                case "http://ignixa.io/fhir/StructureDefinition/provenance-source-license":
+                    license = extension.GetProperty("valueString").GetString();
+                    break;
+                case "http://ignixa.io/fhir/StructureDefinition/provenance-source-version":
+                    version = extension.GetProperty("valueString").GetString();
+                    break;
+                case "http://ignixa.io/fhir/StructureDefinition/provenance-distillation-notes":
+                    notes = extension.GetProperty("valueString").GetString();
+                    break;
+            }
+        }
+
+        return new ManifestSource(
+            entity.GetProperty("what").GetProperty("reference").GetString()!,
+            entity.GetProperty("what").GetProperty("display").GetString()!,
+            relationship!,
+            license!,
+            version,
+            notes!);
     }
 
     private string WriteManifest(string json, string relativePath = "provenance-manifest.json")
@@ -1356,6 +1548,16 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
     }
 
     private sealed record AuditResult(int ExitCode, string CombinedOutput);
+
+    private sealed record RepositoryManifest(
+        int SchemaVersion,
+        IReadOnlyDictionary<string, ManifestSource[]> Profiles,
+        IReadOnlyDictionary<string, RepositoryManifestSuite> Suites);
+
+    private sealed record RepositoryManifestSuite(
+        string Profile,
+        string Activity,
+        string Recorded);
 
     private sealed record ManifestSource(
         string Reference,

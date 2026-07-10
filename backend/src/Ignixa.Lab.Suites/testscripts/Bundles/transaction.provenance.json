@@ -77,7 +77,7 @@
         },
         {
           "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-version",
-          "valueString": "repository source reviewed during Ignixa Lab suite distillation"
+          "valueString": "not recorded during original distillation"
         }
       ]
     }
