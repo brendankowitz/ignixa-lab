@@ -20,7 +20,7 @@
       "autodelete": false,
       "resource": {
         "resourceType": "Patient",
-        "id": "ignixa-cond-upd-explicit",
+        "id": "ignixa-cond-upd-explicit-reliable",
         "name": [{ "family": "CondUpdate", "given": ["Explicit"] }],
         "gender": "male"
       }
@@ -151,9 +151,9 @@
       "name": "Conditional update with a client-supplied id and no existing match creates that id",
       "description": "PUT /Patient?identifier=... matching no existing resource with a body carrying a client-supplied id; the server must create the resource using that id and return 201 Created.",
       "action": [
-        { "operation": { "type": { "code": "update" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-EXPLICIT", "sourceId": "patient-explicit-id-body", "responseId": "cu-explicit-response", "description": "Conditional PUT /Patient?identifier=...CU-EXPLICIT, body carries id=ignixa-cond-upd-explicit" } },
+        { "operation": { "type": { "code": "update" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-EXPLICIT-RELIABLE", "sourceId": "patient-explicit-id-body", "responseId": "cu-explicit-response", "description": "Conditional PUT /Patient?identifier=...CU-EXPLICIT-RELIABLE, body carries id=ignixa-cond-upd-explicit-reliable" } },
         { "assert": { "description": "Must return HTTP 201 Created", "response": "created" } },
-        { "assert": { "description": "Server must have used the client-supplied id", "expression": "Patient.id", "value": "ignixa-cond-upd-explicit", "operator": "equals" } }
+        { "assert": { "description": "Server must have used the client-supplied id", "expression": "Patient.id", "value": "ignixa-cond-upd-explicit-reliable", "operator": "equals" } }
       ]
     },
     {
@@ -195,7 +195,7 @@
   "teardown": {
     "action": [
       { "operation": { "type": { "code": "delete" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-NOMATCH", "description": "Teardown: conditional delete the CU-NOMATCH Patient" } },
-      { "operation": { "type": { "code": "delete" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-EXPLICIT", "description": "Teardown: conditional delete the CU-EXPLICIT Patient" } },
+      { "operation": { "type": { "code": "delete" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-EXPLICIT-RELIABLE", "description": "Teardown: conditional delete the CU-EXPLICIT-RELIABLE Patient" } },
       { "operation": { "type": { "code": "delete" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-ONEMATCH", "description": "Teardown: conditional delete the CU-ONEMATCH Patient" } },
       { "operation": { "type": { "code": "delete" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-CORRECTID", "description": "Teardown: conditional delete the CU-CORRECTID Patient" } },
       { "operation": { "type": { "code": "delete" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-MULTI", "description": "Teardown: conditional delete both CU-MULTI Patients" } }

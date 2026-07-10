@@ -737,10 +737,16 @@
       "autocreate": false,
       "autodelete": false,
       "resource": {
-        "extension": [
+        "resourceType": "MessageHeader",
+        "eventUri": "http://example.org/ignixa/testscript/message",
+        "source": {
+          "name": "Ignixa TestScript",
+          "endpoint": "urn:ignixa:testscript:source"
+        },
+        "destination": [
           {
-            "url": "http://ignixa.io/testscript/fhirfakes",
-            "valueCode": "MessageHeader"
+            "name": "FHIR server under test",
+            "endpoint": "urn:ignixa:testscript:destination"
           }
         ]
       }

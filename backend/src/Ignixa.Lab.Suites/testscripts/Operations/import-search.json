@@ -390,7 +390,7 @@
           ]
         },
         "status": "final",
-        "effectiveDateTime": "1980-05-11T16:32:15"
+        "effectiveDateTime": "1980-05-11T16:32:15Z"
       }
     },
     {
@@ -942,7 +942,7 @@
           },
           "url": "Observation/ignixa-impsrch-date-4",
           "sourceId": "ignixa-impsrch-date-4",
-          "description": "PUT Observation date-4 (effectiveDateTime=1980-05-11T16:32:15, datetime precision, a single second on 1980-05-11)"
+          "description": "PUT Observation date-4 (effectiveDateTime=1980-05-11T16:32:15Z, datetime precision, a single second on 1980-05-11)"
         }
       },
       {

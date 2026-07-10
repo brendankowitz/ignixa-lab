@@ -107,13 +107,20 @@
   ],
   "setup": {
     "action": [
-      { "operation": { "type": { "code": "update" }, "url": "Organization/ignixa-evx-org", "sourceId": "org", "description": "PUT Organization/ignixa-evx-org" } },
-      { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-evx-pat", "sourceId": "patient", "description": "PUT Patient/ignixa-evx-pat (managingOrganization=org)" } },
-      { "operation": { "type": { "code": "update" }, "url": "Observation/ignixa-evx-obs", "sourceId": "obs", "description": "PUT Observation/ignixa-evx-obs (subject=pat)" } },
-      { "operation": { "type": { "code": "update" }, "url": "Condition/ignixa-evx-cond", "sourceId": "cond", "description": "PUT Condition/ignixa-evx-cond (subject=pat)" } },
-      { "operation": { "type": { "code": "update" }, "url": "Appointment/ignixa-evx-appt", "sourceId": "appt", "description": "PUT Appointment/ignixa-evx-appt (participant=pat)" } },
-      { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-evx-other", "sourceId": "other-patient", "description": "PUT Patient/ignixa-evx-other (decoy, unrelated patient)" } },
-      { "operation": { "type": { "code": "update" }, "url": "Observation/ignixa-evx-other-obs", "sourceId": "other-obs", "description": "PUT Observation/ignixa-evx-other-obs (subject=other, decoy)" } }
+      { "operation": { "type": { "code": "update" }, "url": "Organization/ignixa-evx-org", "sourceId": "org", "responseId": "setup-org-response", "description": "PUT Organization/ignixa-evx-org" } },
+      { "assert": { "description": "Setup PUT Organization/ignixa-evx-org must succeed", "sourceId": "setup-org-response", "response": "okay" } },
+      { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-evx-pat", "sourceId": "patient", "responseId": "setup-patient-response", "description": "PUT Patient/ignixa-evx-pat (managingOrganization=org)" } },
+      { "assert": { "description": "Setup PUT Patient/ignixa-evx-pat must succeed", "sourceId": "setup-patient-response", "response": "okay" } },
+      { "operation": { "type": { "code": "update" }, "url": "Observation/ignixa-evx-obs", "sourceId": "obs", "responseId": "setup-obs-response", "description": "PUT Observation/ignixa-evx-obs (subject=pat)" } },
+      { "assert": { "description": "Setup PUT Observation/ignixa-evx-obs must succeed", "sourceId": "setup-obs-response", "response": "okay" } },
+      { "operation": { "type": { "code": "update" }, "url": "Condition/ignixa-evx-cond", "sourceId": "cond", "responseId": "setup-condition-response", "description": "PUT Condition/ignixa-evx-cond (subject=pat)" } },
+      { "assert": { "description": "Setup PUT Condition/ignixa-evx-cond must succeed", "sourceId": "setup-condition-response", "response": "okay" } },
+      { "operation": { "type": { "code": "update" }, "url": "Appointment/ignixa-evx-appt", "sourceId": "appt", "responseId": "setup-appointment-response", "description": "PUT Appointment/ignixa-evx-appt (participant=pat)" } },
+      { "assert": { "description": "Setup PUT Appointment/ignixa-evx-appt must succeed", "sourceId": "setup-appointment-response", "response": "okay" } },
+      { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-evx-other", "sourceId": "other-patient", "responseId": "setup-decoy-patient-response", "description": "PUT Patient/ignixa-evx-other (decoy, unrelated patient)" } },
+      { "assert": { "description": "Setup PUT Patient/ignixa-evx-other must succeed", "sourceId": "setup-decoy-patient-response", "response": "okay" } },
+      { "operation": { "type": { "code": "update" }, "url": "Observation/ignixa-evx-other-obs", "sourceId": "other-obs", "responseId": "setup-decoy-obs-response", "description": "PUT Observation/ignixa-evx-other-obs (subject=other, decoy)" } },
+      { "assert": { "description": "Setup PUT Observation/ignixa-evx-other-obs must succeed", "sourceId": "setup-decoy-obs-response", "response": "okay" } }
     ]
   },
   "test": [

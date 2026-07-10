@@ -46,7 +46,7 @@
       "autodelete": false,
       "resource": {
         "resourceType": "Patient",
-        "id": "ignixa-update-newpat",
+        "id": "ignixa-update-newpat-reliable",
         "meta": { "versionId": "9999", "lastUpdated": "2000-01-01T00:00:00Z" },
         "identifier": [{ "system": "http://ignixa.io/testscript/suite/test", "value": "UPDATE-NEWPAT-1" }],
         "name": [{ "family": "UpdateNewpat", "given": ["Upsert"] }]
@@ -95,8 +95,11 @@
   "setup": {
     "action": [
       { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-update-content", "sourceId": "patient-v1", "responseId": "setup-create-response", "description": "PUT Patient/ignixa-update-content (Version A) to establish the resource for the content-change/no-op/etag tests" } },
+      { "assert": { "description": "Setup PUT Patient/ignixa-update-content must succeed", "sourceId": "setup-create-response", "response": "okay" } },
       { "operation": { "type": { "code": "create" }, "resource": "Patient", "sourceId": "patient-mismatch-source", "responseId": "mismatch-create-response", "description": "POST a Patient with a server-assigned id, used later to demonstrate a URL/body id mismatch" } },
-      { "operation": { "type": { "code": "update" }, "url": "Practitioner/ignixa-update-prac1", "sourceId": "practitioner-gp", "responseId": "setup-prac-response", "description": "PUT Practitioner/ignixa-update-prac1, referenced later via a conditional (identifier) reference" } }
+      { "assert": { "description": "Setup create for mismatch Patient must return 201 Created", "sourceId": "mismatch-create-response", "response": "created" } },
+      { "operation": { "type": { "code": "update" }, "url": "Practitioner/ignixa-update-prac1", "sourceId": "practitioner-gp", "responseId": "setup-prac-response", "description": "PUT Practitioner/ignixa-update-prac1, referenced later via a conditional (identifier) reference" } },
+      { "assert": { "description": "Setup PUT Practitioner/ignixa-update-prac1 must succeed", "sourceId": "setup-prac-response", "response": "okay" } }
     ]
   },
   "test": [
@@ -131,12 +134,12 @@
     },
     {
       "name": "update with a client-supplied id for a non-existent resource performs an upsert-create",
-      "description": "PUT Patient/ignixa-update-newpat, which does not yet exist, must return 201 Created, assign the client-supplied id, and override the client-supplied meta.versionId ('9999') and lastUpdated with server-assigned values (FHIR R4 upsert-create semantics).",
+      "description": "PUT Patient/ignixa-update-newpat-reliable, which does not yet exist, must return 201 Created, assign the client-supplied id, and override the client-supplied meta.versionId ('9999') and lastUpdated with server-assigned values (FHIR R4 upsert-create semantics).",
       "action": [
-        { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-update-newpat", "sourceId": "patient-new-upsert", "responseId": "upsert-response", "description": "PUT Patient/ignixa-update-newpat with client-supplied meta.versionId=9999" } },
+        { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-update-newpat-reliable", "sourceId": "patient-new-upsert", "responseId": "upsert-response", "description": "PUT Patient/ignixa-update-newpat-reliable with client-supplied meta.versionId=9999" } },
         { "assert": { "description": "Server must return 201 Created", "response": "created" } },
         { "assert": { "description": "Response body must be a Patient", "resource": "Patient" } },
-        { "assert": { "description": "id must match the client-supplied id", "expression": "Patient.id", "value": "ignixa-update-newpat", "operator": "equals" } },
+        { "assert": { "description": "id must match the client-supplied id", "expression": "Patient.id", "value": "ignixa-update-newpat-reliable", "operator": "equals" } },
         { "assert": { "description": "Server must have assigned a meta.versionId", "expression": "Patient.meta.versionId.exists()" } },
         { "assert": { "description": "Server must override the client-supplied meta.versionId of '9999'", "expression": "Patient.meta.versionId", "value": "9999", "operator": "notEquals" } },
         { "assert": { "description": "ETag header must be present", "headerField": "ETag", "operator": "notEmpty" } },
@@ -236,7 +239,7 @@
   "teardown": {
     "action": [
       { "operation": { "type": { "code": "delete" }, "url": "Patient/ignixa-update-content", "description": "Teardown: delete the content-change/etag test Patient" } },
-      { "operation": { "type": { "code": "delete" }, "url": "Patient/ignixa-update-newpat", "description": "Teardown: delete the upsert-create Patient" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/ignixa-update-newpat-reliable", "description": "Teardown: delete the upsert-create Patient" } },
       { "operation": { "type": { "code": "delete" }, "url": "Patient/${mismatchPatientId}", "description": "Teardown: delete the mismatch-test Patient" } },
       { "operation": { "type": { "code": "delete" }, "url": "Patient/ignixa-update-patgp1", "description": "Teardown: delete the generalPractitioner-reference Patient" } },
       { "operation": { "type": { "code": "delete" }, "url": "Practitioner/ignixa-update-prac1", "description": "Teardown: delete the referenced Practitioner" } },
