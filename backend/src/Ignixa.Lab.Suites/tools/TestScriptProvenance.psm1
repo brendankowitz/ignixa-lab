@@ -846,6 +846,16 @@ function Invoke-TestScriptProvenanceAudit {
     }
     catch {
         $errors.Add($_.Exception.Message)
+        $sortedErrors = @($errors | Sort-Object -Unique)
+        $sortedWarnings = @($warnings | Sort-Object -Unique)
+
+        return [pscustomobject] @{
+            ScriptCount = $scripts.Count
+            ErrorCount = $sortedErrors.Count
+            WarningCount = $sortedWarnings.Count
+            Errors = $sortedErrors
+            Warnings = $sortedWarnings
+        }
     }
 
     foreach ($scriptFile in $scripts) {

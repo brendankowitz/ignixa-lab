@@ -55,6 +55,40 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         result.CombinedOutput.Should().Contain("ERROR: Missing provenance sidecar: CRUD/basic.provenance.json");
     }
 
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("malformed")]
+    public async Task VerifyProvenance_DefaultModeReportsManifestReadFailureAndSkipsSidecarFallback(string failureMode)
+    {
+        WriteScript(Path.Combine("CRUD", "basic.json"));
+        var (manifestPath, expectedError) = CreateManifestReadFailure(failureMode);
+
+        var result = await RunAuditAsync(manifestPath);
+
+        result.ExitCode.Should().Be(0);
+        result.CombinedOutput.Should().Contain($"ERROR: {expectedError}");
+        result.CombinedOutput.Should().Contain("Provenance audit scanned 1 TestScript file and found 1 error(s) and 0 warning(s).");
+        result.CombinedOutput.Should().NotContain("Missing provenance sidecar");
+        result.CombinedOutput.Should().NotContain("0 error(s)");
+    }
+
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("malformed")]
+    public async Task VerifyProvenance_StrictModeFailsForManifestReadFailureAndSkipsSidecarFallback(string failureMode)
+    {
+        WriteScript(Path.Combine("CRUD", "basic.json"));
+        var (manifestPath, expectedError) = CreateManifestReadFailure(failureMode);
+
+        var result = await RunAuditAsync(manifestPath, strict: true);
+
+        result.ExitCode.Should().Be(1);
+        result.CombinedOutput.Should().Contain($"ERROR: {expectedError}");
+        result.CombinedOutput.Should().Contain("Provenance audit scanned 1 TestScript file and found 1 error(s) and 0 warning(s).");
+        result.CombinedOutput.Should().NotContain("Missing provenance sidecar");
+        result.CombinedOutput.Should().NotContain("0 error(s)");
+    }
+
     [Fact]
     public async Task VerifyProvenance_DefaultModeReportsErrorButSucceedsWhenTargetDoesNotMatchScript()
     {
@@ -187,21 +221,25 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         var result = await RunAuditAsync(manifest, strict: true);
 
         result.ExitCode.Should().Be(0);
-        result.CombinedOutput.Should().Contain("WARNING");
+        result.CombinedOutput.Should().Contain("WARNING: Source version not recorded during original distillation for manifest entry CRUD/basic.json: Example source");
+        result.CombinedOutput.Should().Contain("Provenance audit scanned 1 TestScript file and found 0 error(s) and 1 warning(s).");
     }
 
-    [Fact]
-    public async Task VerifyProvenance_StrictModeAllowsLicenseAdvisoryWarnings()
+    [Theory]
+    [InlineData("source-declared open-source license")]
+    [InlineData("repository license")]
+    public async Task VerifyProvenance_StrictModeAllowsLicenseAdvisoryWarnings(string license)
     {
         WriteScript(Path.Combine("CRUD", "basic.json"));
-        var manifest = WriteManifest(CreateManifest(license: "source-declared open-source license"));
+        var manifest = WriteManifest(CreateManifest(license: license));
         var generation = await RunGeneratorAsync(_root, manifest);
         generation.ExitCode.Should().Be(0, generation.CombinedOutput);
 
         var result = await RunAuditAsync(manifest, strict: true);
 
         result.ExitCode.Should().Be(0);
-        result.CombinedOutput.Should().Contain("WARNING");
+        result.CombinedOutput.Should().Contain($"WARNING: Source license advisory for manifest entry CRUD/basic.json: Example source ({license})");
+        result.CombinedOutput.Should().Contain("Provenance audit scanned 1 TestScript file and found 0 error(s) and 1 warning(s).");
     }
 
     [Fact]
@@ -1494,6 +1532,21 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         }
 
         return manifestSource;
+    }
+
+    private (string ManifestPath, string ExpectedError) CreateManifestReadFailure(string failureMode)
+    {
+        switch (failureMode)
+        {
+            case "missing":
+                var missingPath = Path.Combine(_root, "manifests", "missing-manifest.json");
+                return (missingPath, $"Provenance manifest not found: {missingPath}");
+            case "malformed":
+                var malformedPath = WriteManifest("{ not json", Path.Combine("manifests", "malformed-manifest.json"));
+                return (malformedPath, "Exception calling \"Parse\" with \"1\" argument(s): \"'n' is an invalid start of a property name. Expected a '\"'. LineNumber: 0 | BytePositionInLine: 2.\"");
+            default:
+                throw new ArgumentOutOfRangeException(nameof(failureMode), failureMode, null);
+        }
     }
 
     private static void WriteScript(string root, string relativePath)
