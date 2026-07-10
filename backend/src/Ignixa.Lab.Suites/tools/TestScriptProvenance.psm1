@@ -41,7 +41,6 @@ function Get-TestScriptFile {
         Where-Object {
             $_.Name -notlike '*.provenance.json' -and
             $_.Name -ne 'source-revision.txt' -and
-            $_.Name -ne 'provenance-manifest.json' -and
             -not $excludedFullPaths.Contains([System.IO.Path]::GetFullPath($_.FullName))
         } |
         Sort-Object FullName

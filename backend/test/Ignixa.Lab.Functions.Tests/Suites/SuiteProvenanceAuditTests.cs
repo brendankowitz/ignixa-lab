@@ -215,7 +215,7 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         var result = await RunAuditAsync(manifest, strict: true);
 
         result.ExitCode.Should().Be(0);
-        result.CombinedOutput.Should().Contain("Provenance audit scanned 1 TestScript file(s) and found 0 error(s) and 0 warning(s).");
+        result.CombinedOutput.Should().Contain("Provenance audit scanned 1 TestScript file and found 0 error(s) and 0 warning(s).");
         result.CombinedOutput.Should().NotContain("ERROR:");
         result.CombinedOutput.Should().NotContain("WARNING");
     }
@@ -1023,6 +1023,33 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         File.Exists(Path.Combine(_root, "CRUD", "basic.provenance.json")).Should().BeTrue();
     }
 
+    [Fact]
+    public async Task NewProvenanceSidecars_GeneratesAndAuditsTestScriptNamedProvenanceManifestWhenManifestPathDiffers()
+    {
+        WriteScript(Path.Combine("Search", "provenance-manifest.json"));
+        var manifest = WriteManifest(
+            CreateManifest(suitePath: "Search/provenance-manifest.json"),
+            Path.Combine("manifests", "custom-suite-manifest.json"));
+
+        var generation = await RunGeneratorAsync(_root, manifest);
+
+        generation.ExitCode.Should().Be(0, generation.CombinedOutput);
+        generation.CombinedOutput.Should().Contain("Generated 1 provenance sidecar(s); skipped 0 existing sidecar(s).");
+        var sidecarPath = Path.Combine(_root, "Search", "provenance-manifest.provenance.json");
+        File.Exists(sidecarPath).Should().BeTrue();
+        using (var document = JsonDocument.Parse(File.ReadAllText(sidecarPath)))
+        {
+            document.RootElement.GetProperty("target")[0].GetProperty("identifier").GetProperty("value").GetString()
+                .Should().Be("Search/provenance-manifest.json");
+        }
+
+        var audit = await RunAuditAsync(manifest, strict: true);
+
+        audit.ExitCode.Should().Be(0, audit.CombinedOutput);
+        audit.CombinedOutput.Should().Contain("Provenance audit scanned 1 TestScript file and found 0 error(s) and 0 warning(s).");
+        audit.CombinedOutput.Should().NotContain("ERROR:");
+    }
+
     [Theory]
     [InlineData("2")]
     [InlineData("\"1\"")]
@@ -1222,7 +1249,7 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         var result = await RunAuditAsync(FindRepoRootTool("provenance-manifest.json"), strict: true, suitesDirectory: GetBundledSuitesDirectory());
 
         result.ExitCode.Should().Be(0, result.CombinedOutput);
-        result.CombinedOutput.Should().Contain("Provenance audit scanned 87 TestScript file(s) and found 0 error(s)");
+        result.CombinedOutput.Should().Contain("Provenance audit scanned 87 TestScript files and found 0 error(s)");
         result.CombinedOutput.Should().NotContain("ERROR:");
     }
 

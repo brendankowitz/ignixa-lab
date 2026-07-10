@@ -23,7 +23,8 @@ foreach ($warning in $result.Warnings) {
     Write-Warning $warning
 }
 
-Write-Output "Provenance audit scanned $($result.ScriptCount) TestScript file(s) and found $($result.ErrorCount) error(s) and $($result.WarningCount) warning(s)."
+$scriptNoun = if ($result.ScriptCount -eq 1) { 'file' } else { 'files' }
+Write-Output "Provenance audit scanned $($result.ScriptCount) TestScript $scriptNoun and found $($result.ErrorCount) error(s) and $($result.WarningCount) warning(s)."
 
 if ($Strict -and $result.ErrorCount -gt 0) {
     exit 1
