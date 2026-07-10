@@ -25,10 +25,10 @@ New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 
 # The fixed local development version otherwise allows restore to reuse stale
 # suite content. Invalidate only this repository's configured package cache.
-if (Test-Path $repoPackageCache) {
-    Remove-Item -Recurse -Force -Path $repoPackageCache
+if (Test-Path -LiteralPath $repoPackageCache) {
+    Remove-Item -Recurse -Force -LiteralPath $repoPackageCache
 }
-if (Test-Path $repoPackageCache) {
+if (Test-Path -LiteralPath $repoPackageCache) {
     throw "Failed to invalidate repo-local suite package cache: $repoPackageCache"
 }
 
@@ -37,8 +37,8 @@ $consumerAssets = @(
     (Join-Path $repoRoot 'backend/test/Ignixa.Lab.Functions.Tests/obj/project.assets.json')
 )
 foreach ($assetsFile in $consumerAssets) {
-    if (Test-Path $assetsFile) {
-        Remove-Item -Force -Path $assetsFile
+    if (Test-Path -LiteralPath $assetsFile) {
+        Remove-Item -Force -LiteralPath $assetsFile
     }
 }
 

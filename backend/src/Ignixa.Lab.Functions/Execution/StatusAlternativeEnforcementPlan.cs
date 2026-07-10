@@ -39,9 +39,16 @@ public sealed class StatusAlternativeEnforcementPlan
     {
         var root = JsonNode.Parse(content)?.AsObject()
             ?? throw new InvalidDataException("TestScript content must be a JSON object.");
+        var testScriptName = root["name"]?.GetValue<string>();
         var rules = new Dictionary<string, StatusAlternativeRule>(StringComparer.Ordinal);
+        var tests = root["test"]?.AsArray() ?? [];
+        var testNameCounts = tests
+            .Select(test => test?.AsObject()["name"]?.GetValue<string>())
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .GroupBy(name => name!, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal);
 
-        foreach (var test in root["test"]?.AsArray() ?? [])
+        foreach (var test in tests)
         {
             var testObject = test?.AsObject();
             var testName = testObject?["name"]?.GetValue<string>();
@@ -63,10 +70,20 @@ public sealed class StatusAlternativeEnforcementPlan
             {
                 throw new InvalidDataException($"Test '{testName}' must declare exactly one {ExtensionUrl} marker.");
             }
+            if (string.IsNullOrWhiteSpace(testScriptName))
+            {
+                throw new InvalidDataException(
+                    $"TestScript name is required to map marked test '{testName}' to an exact result identifier.");
+            }
+            if (testNameCounts[testName] != 1)
+            {
+                throw new InvalidDataException(
+                    $"Marked test name '{testName}' is duplicated in TestScript '{testScriptName}'.");
+            }
 
             var marker = markers[0]!;
             var markerValue = marker["valueCode"]?.GetValue<string>();
-            rules[testName] = markerValue switch
+            var rule = markerValue switch
             {
                 "subscription-delete-readback-v1" => new(StatusAlternativePolicy.SubscriptionDeleteReadback),
                 "deleted-resource-readback-v1" => new(StatusAlternativePolicy.DeletedResourceReadback),
@@ -74,6 +91,12 @@ public sealed class StatusAlternativeEnforcementPlan
                 _ => throw new InvalidDataException(
                     $"Test '{testName}' declares unsupported status-alternative policy '{markerValue}'."),
             };
+            var resultId = $"{testScriptName} > {testName}";
+            if (!rules.TryAdd(resultId, rule))
+            {
+                throw new InvalidDataException(
+                    $"Marked test name '{testName}' is duplicated in TestScript '{testScriptName}'.");
+            }
         }
 
         return new StatusAlternativeEnforcementPlan(rules);
@@ -92,20 +115,7 @@ public sealed class StatusAlternativeEnforcementPlan
     }
 
     internal bool TryGetRule(string resultId, out StatusAlternativeRule rule)
-    {
-        foreach (var entry in _rules)
-        {
-            if (string.Equals(resultId, entry.Key, StringComparison.Ordinal)
-                || resultId.EndsWith($" > {entry.Key}", StringComparison.Ordinal))
-            {
-                rule = entry.Value;
-                return true;
-            }
-        }
-
-        rule = null!;
-        return false;
-    }
+        => _rules.TryGetValue(resultId, out rule!);
 
     private static StatusAlternativeRule ParseCompositeRule(string testName, JsonObject marker)
     {

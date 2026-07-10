@@ -226,7 +226,8 @@ public sealed class TestScriptRunnerTests
     private static StatusAlternativeEnforcementPlan SubscriptionDeleteReadbackPlan() =>
         new(new Dictionary<string, StatusAlternativePolicy>
         {
-            ["ReadAfterDelete"] = StatusAlternativePolicy.SubscriptionDeleteReadback,
+            ["DeletedResourceStatusAlternatives > ReadAfterDelete"] =
+                StatusAlternativePolicy.SubscriptionDeleteReadback,
         });
 
     private static TestScriptDefinition WarningOnlyCreateStatusAlternativesDefinition() => new()

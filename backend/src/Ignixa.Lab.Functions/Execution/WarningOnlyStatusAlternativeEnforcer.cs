@@ -43,8 +43,17 @@ internal static class WarningOnlyStatusAlternativeEnforcer
         StatusAlternativeFailure failure)
     {
         var steps = result.Steps.ToArray();
-        var failingStep = steps[failure.StepIndex];
-        steps[failure.StepIndex] = failingStep with
+        if (failure.StepIndex is not { } stepIndex)
+        {
+            return result with
+            {
+                Status = ConformanceStatus.Fail,
+                Error = new ConformanceError("response status alternatives", failure.Message),
+            };
+        }
+
+        var failingStep = steps[stepIndex];
+        steps[stepIndex] = failingStep with
         {
             Status = ConformanceStatus.Fail,
             Message = failure.Message,
@@ -69,14 +78,14 @@ internal static class WarningOnlyStatusAlternativeEnforcer
             .Where(item => string.Equals(item.Step.Phase, "test", StringComparison.Ordinal))
             .ToArray();
 
-        if (testSteps.Length == 0)
-        {
-            return null;
-        }
-
         if (rule.Policy == StatusAlternativePolicy.ResponseStatusSet)
         {
             return FindUnexpectedResponseStatus(testSteps, rule);
+        }
+
+        if (testSteps.Length == 0)
+        {
+            return null;
         }
 
         for (var stepIndex = 0; stepIndex < testSteps.Length;)
@@ -173,7 +182,7 @@ internal static class WarningOnlyStatusAlternativeEnforcer
         if (operations.Length != 1)
         {
             return new StatusAlternativeFailure(
-                testSteps[^1].Index,
+                testSteps.Count == 0 ? null : testSteps[^1].Index,
                 $"Expected exactly one executed {rule.Method} operation for the structured response-status policy, but found {operations.Length}.");
         }
 
@@ -332,7 +341,7 @@ internal static class WarningOnlyStatusAlternativeEnforcer
         return false;
     }
 
-    private readonly record struct StatusAlternativeFailure(int StepIndex, string Message);
+    private readonly record struct StatusAlternativeFailure(int? StepIndex, string Message);
 
     private readonly record struct StatusAlternative(int StatusCode, string Text);
 

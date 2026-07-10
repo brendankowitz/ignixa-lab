@@ -12,6 +12,7 @@ public sealed class WarningOnlyStatusAlternativeEnforcerTests
         var plan = StatusAlternativeEnforcementPlan.Parse("""
             {
               "resourceType": "TestScript",
+              "name": "Uploaded",
               "test": [{
                 "name": "marked lifecycle",
                 "extension": [{
@@ -26,6 +27,42 @@ public sealed class WarningOnlyStatusAlternativeEnforcerTests
         plan.TryGetPolicy("Uploaded > marked lifecycle", out var policy).Should().BeTrue();
         policy.Should().Be(StatusAlternativePolicy.SubscriptionDeleteReadback);
         plan.TryGetPolicy("Uploaded > other test", out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Parse_MapsOnlyExactResultIdentifiersWithoutSuffixCollisions()
+    {
+        var plan = StatusAlternativeEnforcementPlan.Parse("""
+            {
+              "resourceType": "TestScript",
+              "name": "Collision suite",
+              "test": [
+                {
+                  "name": "x",
+                  "extension": [{
+                    "url": "http://ignixa.io/testscript/statusAlternativePolicy",
+                    "valueCode": "subscription-delete-readback-v1"
+                  }],
+                  "action": []
+                },
+                {
+                  "name": "y > x",
+                  "extension": [{
+                    "url": "http://ignixa.io/testscript/statusAlternativePolicy",
+                    "valueCode": "deleted-resource-readback-v1"
+                  }],
+                  "action": []
+                }
+              ]
+            }
+            """);
+
+        plan.TryGetPolicy("Collision suite > x", out var xPolicy).Should().BeTrue();
+        xPolicy.Should().Be(StatusAlternativePolicy.SubscriptionDeleteReadback);
+        plan.TryGetPolicy("Collision suite > y > x", out var nestedPolicy).Should().BeTrue();
+        nestedPolicy.Should().Be(StatusAlternativePolicy.DeletedResourceReadback);
+        plan.TryGetPolicy("Other suite > x", out _).Should().BeFalse();
+        plan.TryGetPolicy("x", out _).Should().BeFalse();
     }
 
     [Theory]
@@ -50,6 +87,70 @@ public sealed class WarningOnlyStatusAlternativeEnforcerTests
     }
 
     [Fact]
+    public void Parse_RejectsDuplicateMarkedTestNames()
+    {
+        var content = """
+            {
+              "resourceType": "TestScript",
+              "name": "Duplicate suite",
+              "test": [
+                {
+                  "name": "duplicate",
+                  "extension": [{
+                    "url": "http://ignixa.io/testscript/statusAlternativePolicy",
+                    "valueCode": "subscription-delete-readback-v1"
+                  }],
+                  "action": []
+                },
+                {
+                  "name": "duplicate",
+                  "extension": [{
+                    "url": "http://ignixa.io/testscript/statusAlternativePolicy",
+                    "valueCode": "deleted-resource-readback-v1"
+                  }],
+                  "action": []
+                }
+              ]
+            }
+            """;
+
+        var act = () => StatusAlternativeEnforcementPlan.Parse(content);
+
+        act.Should().Throw<InvalidDataException>()
+            .WithMessage("Marked test name 'duplicate' is duplicated in TestScript 'Duplicate suite'.");
+    }
+
+    [Fact]
+    public void Parse_RejectsMarkedNameDuplicatedByUnmarkedTest()
+    {
+        var content = """
+            {
+              "resourceType": "TestScript",
+              "name": "Duplicate suite",
+              "test": [
+                {
+                  "name": "duplicate",
+                  "extension": [{
+                    "url": "http://ignixa.io/testscript/statusAlternativePolicy",
+                    "valueCode": "subscription-delete-readback-v1"
+                  }],
+                  "action": []
+                },
+                {
+                  "name": "duplicate",
+                  "action": []
+                }
+              ]
+            }
+            """;
+
+        var act = () => StatusAlternativeEnforcementPlan.Parse(content);
+
+        act.Should().Throw<InvalidDataException>()
+            .WithMessage("Marked test name 'duplicate' is duplicated in TestScript 'Duplicate suite'.");
+    }
+
+    [Fact]
     public void Apply_WhenUnmarkedResultUsesSameThreeStatusProse_DoesNotEnforce()
     {
         var result = PassingResult("unmarked near collision", DeletedResourceLifecycleSteps(201, 500));
@@ -57,6 +158,21 @@ public sealed class WarningOnlyStatusAlternativeEnforcerTests
         var updated = WarningOnlyStatusAlternativeEnforcer.Apply([result]);
 
         updated.Should().ContainSingle().Which.Status.Should().Be(ConformanceStatus.Pass);
+    }
+
+    [Fact]
+    public void Apply_ResponseStatusSetWithNoTestSteps_FailsClosed()
+    {
+        var result = PassingResult("Suite > marked create", []);
+
+        var updated = WarningOnlyStatusAlternativeEnforcer.Apply(
+            [result],
+            ResponseStatusPlan(result.Id));
+
+        var failed = updated.Should().ContainSingle().Which;
+        failed.Status.Should().Be(ConformanceStatus.Fail);
+        failed.Error!.Received.Should().Contain("exactly one executed POST operation").And.Contain("found 0");
+        failed.Steps.Should().BeEmpty();
     }
 
     [Theory]
@@ -237,6 +353,15 @@ public sealed class WarningOnlyStatusAlternativeEnforcerTests
         new(new Dictionary<string, StatusAlternativePolicy>(StringComparer.Ordinal)
         {
             [resultId] = policy,
+        });
+
+    private static StatusAlternativeEnforcementPlan ResponseStatusPlan(string resultId) =>
+        new(new Dictionary<string, StatusAlternativeRule>(StringComparer.Ordinal)
+        {
+            [resultId] = new(
+                StatusAlternativePolicy.ResponseStatusSet,
+                "POST",
+                [400, 422]),
         });
 
     private static ConformanceResult PassingResult(string id, IReadOnlyList<ConformanceStep> steps) =>

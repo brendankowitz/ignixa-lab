@@ -1334,19 +1334,26 @@ public sealed class SuiteCatalogTests : IDisposable
         var script = File.ReadAllText(scriptPath);
         const string cacheDeclaration =
             "$repoPackageCache = Join-Path $repoRoot 'artifacts/nuget-packages/ignixalab.testscript.suites/0.1.0-local'";
-        const string cacheRemoval = "Remove-Item -Recurse -Force -Path $repoPackageCache";
-        const string assetsRemoval = "Remove-Item -Force -Path $assetsFile";
+        const string cacheRemoval = "Remove-Item -Recurse -Force -LiteralPath $repoPackageCache";
+        const string assetsRemoval = "Remove-Item -Force -LiteralPath $assetsFile";
         const string packCommand = "dotnet pack $project -c Release -o $outputDir /nodeReuse:false";
 
         script.Should().Contain(cacheDeclaration);
+        script.Split("Test-Path -LiteralPath $repoPackageCache", StringSplitOptions.None)
+            .Should().HaveCount(3, "the cache is checked before and after removal");
         script.Should().Contain(cacheRemoval);
         script.Should().Contain("backend/src/Ignixa.Lab.Functions/obj/project.assets.json");
         script.Should().Contain("backend/test/Ignixa.Lab.Functions.Tests/obj/project.assets.json");
+        script.Should().Contain("Test-Path -LiteralPath $assetsFile");
         script.Should().Contain(assetsRemoval);
         script.IndexOf(cacheRemoval, StringComparison.Ordinal)
             .Should().BeLessThan(script.IndexOf(packCommand, StringComparison.Ordinal));
         script.Should().NotContain(".nuget", "the global user cache must not be touched");
         script.Should().NotContain("NUGET_PACKAGES", "only the configured repo-local cache is in scope");
+        script.Should().NotContain("Test-Path $repoPackageCache");
+        script.Should().NotContain("Test-Path $assetsFile");
+        script.Should().NotContain("Remove-Item -Recurse -Force -Path $repoPackageCache");
+        script.Should().NotContain("Remove-Item -Force -Path $assetsFile");
     }
 
     [Fact]
