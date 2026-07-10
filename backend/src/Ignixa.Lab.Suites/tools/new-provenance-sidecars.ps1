@@ -11,15 +11,19 @@ $ErrorActionPreference = 'Stop'
 
 Import-Module (Join-Path $PSScriptRoot 'TestScriptProvenance.psm1') -Force
 
+$resolvedManifestPath = [System.IO.Path]::GetFullPath($ManifestPath)
 $manifest = Read-TestScriptProvenanceManifest -ManifestPath $ManifestPath
-$validation = Test-TestScriptProvenanceManifest -SuitesDirectory $SuitesDirectory -Manifest $manifest
+$validation = Test-TestScriptProvenanceManifest `
+    -SuitesDirectory $SuitesDirectory `
+    -Manifest $manifest `
+    -ExcludedPaths @($resolvedManifestPath)
 
 if ($validation.Errors.Count -gt 0) {
     throw ($validation.Errors -join [System.Environment]::NewLine)
 }
 
 $scripts = @(
-    Get-TestScriptFile -SuitesDirectory $SuitesDirectory |
+    Get-TestScriptFile -SuitesDirectory $SuitesDirectory -ExcludedPaths @($resolvedManifestPath) |
         Sort-Object {
             ConvertTo-SuiteRelativePath -SuitesDirectory $SuitesDirectory -Path $_.FullName
         }

@@ -806,6 +806,161 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         File.Exists(Path.Combine(_root, "CRUD", "basic.provenance.json")).Should().BeFalse();
     }
 
+    [Fact]
+    public async Task NewProvenanceSidecars_FailsWhenManifestContainsCaseVariantSuiteEntryDuplicateProperties()
+    {
+        WriteScript(Path.Combine("CRUD", "basic.json"));
+        var manifest = WriteManifest("""
+        {
+          "schemaVersion": 1,
+          "profiles": {
+            "example": {
+              "sources": [
+                {
+                  "reference": "https://example.test/source",
+                  "display": "Example source",
+                  "relationship": "distilled-from",
+                  "license": "MIT",
+                  "notes": "Test source"
+                }
+              ]
+            }
+          },
+          "suites": {
+            "CRUD/basic.json": {
+              "profile": "example",
+              "Profile": "example",
+              "activity": "distill-testscript",
+              "recorded": "2026-07-10T12:34:56Z"
+            }
+          }
+        }
+        """);
+
+        var result = await RunGeneratorAsync(_root, manifest);
+
+        result.ExitCode.Should().NotBe(0);
+        result.CombinedOutput.Should().Contain("Duplicate manifest property");
+        File.Exists(Path.Combine(_root, "CRUD", "basic.provenance.json")).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task NewProvenanceSidecars_FailsWhenManifestContainsCaseVariantNestedDuplicateProperties()
+    {
+        WriteScript(Path.Combine("CRUD", "basic.json"));
+        var manifest = WriteManifest("""
+        {
+          "schemaVersion": 1,
+          "profiles": {
+            "example": {
+              "sources": [
+                {
+                  "reference": "https://example.test/source",
+                  "display": "Example source",
+                  "relationship": "distilled-from",
+                  "Relationship": "distilled-from",
+                  "license": "MIT",
+                  "notes": "Test source"
+                }
+              ]
+            }
+          },
+          "suites": {
+            "CRUD/basic.json": {
+              "profile": "example",
+              "activity": "distill-testscript",
+              "recorded": "2026-07-10T12:34:56Z"
+            }
+          }
+        }
+        """);
+
+        var result = await RunGeneratorAsync(_root, manifest);
+
+        result.ExitCode.Should().NotBe(0);
+        result.CombinedOutput.Should().Contain("Duplicate manifest property");
+        File.Exists(Path.Combine(_root, "CRUD", "basic.provenance.json")).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task NewProvenanceSidecars_FailsWhenProfileSourcesIsAnObjectInsteadOfAnArray()
+    {
+        WriteScript(Path.Combine("CRUD", "basic.json"));
+        var manifest = WriteManifest("""
+        {
+          "schemaVersion": 1,
+          "profiles": {
+            "example": {
+              "sources": {
+                "reference": "https://example.test/source",
+                "display": "Example source",
+                "relationship": "distilled-from",
+                "license": "MIT",
+                "notes": "Test source"
+              }
+            }
+          },
+          "suites": {
+            "CRUD/basic.json": {
+              "profile": "example",
+              "activity": "distill-testscript",
+              "recorded": "2026-07-10T12:34:56Z"
+            }
+          }
+        }
+        """);
+
+        var result = await RunGeneratorAsync(_root, manifest);
+
+        result.ExitCode.Should().NotBe(0);
+        result.CombinedOutput.Should().Contain("sources must be an array");
+        File.Exists(Path.Combine(_root, "CRUD", "basic.provenance.json")).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task NewProvenanceSidecars_FailsWhenInlineSourcesIsAnObjectInsteadOfAnArray()
+    {
+        WriteScript(Path.Combine("CRUD", "basic.json"));
+        var manifest = WriteManifest("""
+        {
+          "schemaVersion": 1,
+          "profiles": {},
+          "suites": {
+            "CRUD/basic.json": {
+              "activity": "distill-testscript",
+              "recorded": "2026-07-10T12:34:56Z",
+              "sources": {
+                "reference": "https://example.test/source",
+                "display": "Example source",
+                "relationship": "distilled-from",
+                "license": "MIT",
+                "notes": "Test source"
+              }
+            }
+          }
+        }
+        """);
+
+        var result = await RunGeneratorAsync(_root, manifest);
+
+        result.ExitCode.Should().NotBe(0);
+        result.CombinedOutput.Should().Contain("sources must be an array");
+        File.Exists(Path.Combine(_root, "CRUD", "basic.provenance.json")).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task NewProvenanceSidecars_IgnoresManifestPathInsideSuitesRootWhenNamedDifferently()
+    {
+        WriteScript(Path.Combine("CRUD", "basic.json"));
+        var manifest = WriteManifest(CreateManifest(), Path.Combine("manifests", "custom-suite-manifest.json"));
+
+        var result = await RunGeneratorAsync(_root, manifest);
+
+        result.ExitCode.Should().Be(0, result.CombinedOutput);
+        result.CombinedOutput.Should().Contain("Generated 1 provenance sidecar(s); skipped 0 existing sidecar(s).");
+        File.Exists(Path.Combine(_root, "CRUD", "basic.provenance.json")).Should().BeTrue();
+    }
+
     [Theory]
     [InlineData("2")]
     [InlineData("\"1\"")]
@@ -900,9 +1055,10 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         WriteScript(_root, relativePath);
     }
 
-    private string WriteManifest(string json)
+    private string WriteManifest(string json, string relativePath = "provenance-manifest.json")
     {
-        var path = Path.Combine(_root, "provenance-manifest.json");
+        var path = Path.Combine(_root, relativePath);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, json);
         return path;
     }

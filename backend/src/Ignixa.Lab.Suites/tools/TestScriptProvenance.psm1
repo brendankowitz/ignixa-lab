@@ -18,18 +18,28 @@ $script:AllowedRelationships = @(
 function Get-TestScriptFile {
     param(
         [Parameter(Mandatory = $true)]
-        [string] $SuitesDirectory
+        [string] $SuitesDirectory,
+
+        [string[]] $ExcludedPaths = @()
     )
 
     if (-not (Test-Path -LiteralPath $SuitesDirectory -PathType Container)) {
         return @()
     }
 
+    $excludedFullPaths = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($excludedPath in $ExcludedPaths) {
+        if (-not [string]::IsNullOrWhiteSpace($excludedPath)) {
+            [void] $excludedFullPaths.Add([System.IO.Path]::GetFullPath($excludedPath))
+        }
+    }
+
     Get-ChildItem -LiteralPath $SuitesDirectory -Recurse -File -Filter '*.json' |
         Where-Object {
             $_.Name -notlike '*.provenance.json' -and
             $_.Name -ne 'source-revision.txt' -and
-            $_.Name -ne 'provenance-manifest.json'
+            $_.Name -ne 'provenance-manifest.json' -and
+            -not $excludedFullPaths.Contains([System.IO.Path]::GetFullPath($_.FullName))
         } |
         Sort-Object FullName
 }
@@ -237,6 +247,28 @@ function Get-DictionaryValue {
     $null
 }
 
+function Get-DictionaryKey {
+    param(
+        [AllowNull()]
+        [object] $InputObject,
+
+        [Parameter(Mandatory = $true)]
+        [string] $Name
+    )
+
+    if (-not (Test-IsDictionary -InputObject $InputObject)) {
+        return $null
+    }
+
+    foreach ($key in $InputObject.Keys) {
+        if ([string]::Equals([string] $key, $Name, [System.StringComparison]::OrdinalIgnoreCase)) {
+            return [string] $key
+        }
+    }
+
+    $null
+}
+
 function ConvertTo-ManifestItemArray {
     param(
         [AllowNull()]
@@ -323,7 +355,7 @@ function Assert-NoDuplicateManifestProperty {
     )
 
     if ($Element.ValueKind -eq [System.Text.Json.JsonValueKind]::Object) {
-        $names = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+        $names = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
         foreach ($property in $Element.EnumerateObject()) {
             $propertyPath = "$Path.$($property.Name)"
             if (-not $names.Add($property.Name)) {
@@ -412,10 +444,46 @@ function Resolve-TestScriptProvenanceEntry {
             throw "Manifest profile entry must be an object: $profileName"
         }
 
-        $sources = ConvertTo-ManifestItemArray -Value (Get-DictionaryValue -InputObject $profile -Name 'sources')
+        $profileSourcesKey = Get-DictionaryKey -InputObject $profile -Name 'sources'
+        $profileSourcesValue = $null
+        if ($null -ne $profileSourcesKey) {
+            $profileSourcesValue = $profile[$profileSourcesKey]
+        }
+
+        $profileSourcesIsArray = $null -ne $profileSourcesValue -and
+            $profileSourcesValue -isnot [string] -and
+            $profileSourcesValue -isnot [System.Collections.IDictionary] -and
+            (
+                $profileSourcesValue -is [System.Array] -or
+                $profileSourcesValue -is [System.Collections.IEnumerable]
+            )
+
+        if (-not $profileSourcesIsArray) {
+            throw "Manifest profile $profileName sources must be an array."
+        }
+
+        $sources = ConvertTo-ManifestItemArray -Value $profileSourcesValue
     }
     else {
-        $sources = ConvertTo-ManifestItemArray -Value (Get-DictionaryValue -InputObject $entry -Name 'sources')
+        $entrySourcesKey = Get-DictionaryKey -InputObject $entry -Name 'sources'
+        $entrySourcesValue = $null
+        if ($null -ne $entrySourcesKey) {
+            $entrySourcesValue = $entry[$entrySourcesKey]
+        }
+
+        $entrySourcesIsArray = $null -ne $entrySourcesValue -and
+            $entrySourcesValue -isnot [string] -and
+            $entrySourcesValue -isnot [System.Collections.IDictionary] -and
+            (
+                $entrySourcesValue -is [System.Array] -or
+                $entrySourcesValue -is [System.Collections.IEnumerable]
+            )
+
+        if (-not $entrySourcesIsArray) {
+            throw "Manifest entry $RelativePath sources must be an array."
+        }
+
+        $sources = ConvertTo-ManifestItemArray -Value $entrySourcesValue
     }
 
     [pscustomobject] @{
@@ -431,7 +499,9 @@ function Test-TestScriptProvenanceManifest {
         [string] $SuitesDirectory,
 
         [Parameter(Mandatory = $true)]
-        [System.Collections.IDictionary] $Manifest
+        [System.Collections.IDictionary] $Manifest,
+
+        [string[]] $ExcludedPaths = @()
     )
 
     $errors = [System.Collections.Generic.List[string]]::new()
@@ -468,7 +538,7 @@ function Test-TestScriptProvenanceManifest {
     }
 
     $scriptPaths = @(
-        Get-TestScriptFile -SuitesDirectory $SuitesDirectory |
+        Get-TestScriptFile -SuitesDirectory $SuitesDirectory -ExcludedPaths $ExcludedPaths |
             ForEach-Object {
                 ConvertTo-SuiteRelativePath -SuitesDirectory $SuitesDirectory -Path $_.FullName
             } |
@@ -531,10 +601,46 @@ function Test-TestScriptProvenanceManifest {
                 continue
             }
 
-            $sources = ConvertTo-ManifestItemArray -Value (Get-DictionaryValue -InputObject $profile -Name 'sources')
+            $profileSourcesKey = Get-DictionaryKey -InputObject $profile -Name 'sources'
+            $profileSourcesValue = $null
+            if ($null -ne $profileSourcesKey) {
+                $profileSourcesValue = $profile[$profileSourcesKey]
+            }
+            $profileSourcesIsArray = $null -ne $profileSourcesValue -and
+                $profileSourcesValue -isnot [string] -and
+                $profileSourcesValue -isnot [System.Collections.IDictionary] -and
+                (
+                    $profileSourcesValue -is [System.Array] -or
+                    $profileSourcesValue -is [System.Collections.IEnumerable]
+                )
+
+            if (-not $profileSourcesIsArray) {
+                $errors.Add("Manifest profile $profileName sources must be an array.")
+                continue
+            }
+
+            $sources = ConvertTo-ManifestItemArray -Value $profileSourcesValue
         }
         else {
-            $sources = ConvertTo-ManifestItemArray -Value (Get-DictionaryValue -InputObject $entry -Name 'sources')
+            $entrySourcesKey = Get-DictionaryKey -InputObject $entry -Name 'sources'
+            $entrySourcesValue = $null
+            if ($null -ne $entrySourcesKey) {
+                $entrySourcesValue = $entry[$entrySourcesKey]
+            }
+            $entrySourcesIsArray = $null -ne $entrySourcesValue -and
+                $entrySourcesValue -isnot [string] -and
+                $entrySourcesValue -isnot [System.Collections.IDictionary] -and
+                (
+                    $entrySourcesValue -is [System.Array] -or
+                    $entrySourcesValue -is [System.Collections.IEnumerable]
+                )
+
+            if (-not $entrySourcesIsArray) {
+                $errors.Add("Manifest entry $entryPath sources must be an array.")
+                continue
+            }
+
+            $sources = ConvertTo-ManifestItemArray -Value $entrySourcesValue
         }
 
         if ($sources.Count -eq 0) {
