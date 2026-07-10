@@ -43,6 +43,13 @@
       }
     }
   ],
+  "variable": [
+    {
+      "name": "runId",
+      "defaultValue": "unscoped",
+      "description": "Runner-generated per-suite value used to isolate the fixed-id Subscription lifecycle"
+    }
+  ],
   "setup": {
     "action": [
       { "operation": { "type": { "code": "update" }, "url": "Subscription/ignixa-sub-basic-${runId}", "sourceId": "subscription-initial", "responseId": "setup-update-response", "description": "PUT the fresh run-scoped Subscription with a criteria-based websocket channel" } },
@@ -99,7 +106,10 @@
     {
       "name": "delete accepts valid outcomes and checks immediate readback",
       "description": "DELETE Subscription/{id} must return exactly 200, 202, or 204. The immediate readback must return 404 or 410 after completed deletion, while 200 is accepted only when the correlated DELETE returned 202 for asynchronous processing.",
-      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3" }],
+      "extension": [
+        { "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3" },
+        { "url": "http://ignixa.io/testscript/statusAlternativePolicy", "valueCode": "subscription-delete-readback-v1" }
+      ],
       "action": [
         { "operation": { "type": { "code": "delete" }, "url": "Subscription/ignixa-sub-basic-${runId}", "responseId": "delete-response", "description": "DELETE the run-scoped Subscription" } },
         { "assert": { "description": "Accepted DELETE response: 200 OK for completed deletion", "responseCode": "200", "warningOnly": true } },

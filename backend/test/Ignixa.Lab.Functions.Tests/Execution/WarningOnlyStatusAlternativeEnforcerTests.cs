@@ -6,6 +6,59 @@ namespace Ignixa.Lab.Functions.Tests.Execution;
 
 public sealed class WarningOnlyStatusAlternativeEnforcerTests
 {
+    [Fact]
+    public void Parse_UsesTestLevelStructuredPolicyMarker()
+    {
+        var plan = StatusAlternativeEnforcementPlan.Parse("""
+            {
+              "resourceType": "TestScript",
+              "test": [{
+                "name": "marked lifecycle",
+                "extension": [{
+                  "url": "http://ignixa.io/testscript/statusAlternativePolicy",
+                  "valueCode": "subscription-delete-readback-v1"
+                }],
+                "action": []
+              }]
+            }
+            """);
+
+        plan.TryGetPolicy("Uploaded > marked lifecycle", out var policy).Should().BeTrue();
+        policy.Should().Be(StatusAlternativePolicy.SubscriptionDeleteReadback);
+        plan.TryGetPolicy("Uploaded > other test", out _).Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("""{"url":"http://ignixa.io/testscript/statusAlternativePolicy"}""")]
+    [InlineData("""{"url":"http://ignixa.io/testscript/statusAlternativePolicy","valueCode":"unknown-policy"}""")]
+    public void Parse_RejectsMalformedOrUnknownPolicyMarker(string extension)
+    {
+        var content = $$"""
+            {
+              "resourceType": "TestScript",
+              "test": [{
+                "name": "marked lifecycle",
+                "extension": [{{extension}}],
+                "action": []
+              }]
+            }
+            """;
+
+        var act = () => StatusAlternativeEnforcementPlan.Parse(content);
+
+        act.Should().Throw<InvalidDataException>();
+    }
+
+    [Fact]
+    public void Apply_WhenUnmarkedResultUsesSameThreeStatusProse_DoesNotEnforce()
+    {
+        var result = PassingResult("unmarked near collision", DeletedResourceLifecycleSteps(201, 500));
+
+        var updated = WarningOnlyStatusAlternativeEnforcer.Apply([result]);
+
+        updated.Should().ContainSingle().Which.Status.Should().Be(ConformanceStatus.Pass);
+    }
+
     [Theory]
     [InlineData(200)]
     [InlineData(202)]
@@ -14,7 +67,7 @@ public sealed class WarningOnlyStatusAlternativeEnforcerTests
     {
         var result = PassingResult("allowed delete", DeletedResourceLifecycleSteps(deleteStatus, 404));
 
-        var updated = WarningOnlyStatusAlternativeEnforcer.Apply([result]);
+        var updated = WarningOnlyStatusAlternativeEnforcer.Apply([result], Plan(result.Id));
 
         updated.Should().ContainSingle().Which.Status.Should().Be(ConformanceStatus.Pass);
     }
@@ -24,7 +77,7 @@ public sealed class WarningOnlyStatusAlternativeEnforcerTests
     {
         var result = PassingResult("invalid delete", DeletedResourceLifecycleSteps(201, 404));
 
-        var updated = WarningOnlyStatusAlternativeEnforcer.Apply([result]);
+        var updated = WarningOnlyStatusAlternativeEnforcer.Apply([result], Plan(result.Id));
 
         updated.Should().ContainSingle().Which.Status.Should().Be(ConformanceStatus.Fail);
         updated.Single().Error!.Received.Should().Contain("200").And.Contain("202").And.Contain("204").And.Contain("201");
@@ -43,7 +96,7 @@ public sealed class WarningOnlyStatusAlternativeEnforcerTests
     {
         var result = PassingResult("correlated lifecycle", DeletedResourceLifecycleSteps(deleteStatus, readStatus));
 
-        var updated = WarningOnlyStatusAlternativeEnforcer.Apply([result]);
+        var updated = WarningOnlyStatusAlternativeEnforcer.Apply([result], Plan(result.Id));
 
         updated.Should().ContainSingle().Which.Status.Should().Be(expectedStatus);
     }
@@ -57,7 +110,9 @@ public sealed class WarningOnlyStatusAlternativeEnforcerTests
             PassingResult("parameterized complete", DeletedResourceLifecycleSteps(204, 200)),
         };
 
-        var updated = WarningOnlyStatusAlternativeEnforcer.Apply(results);
+        var updated = WarningOnlyStatusAlternativeEnforcer.Apply(
+            results,
+            Plan(results.Select(result => result.Id).ToArray()));
 
         updated[0].Status.Should().Be(ConformanceStatus.Pass);
         updated[1].Status.Should().Be(ConformanceStatus.Fail);
@@ -75,7 +130,7 @@ public sealed class WarningOnlyStatusAlternativeEnforcerTests
                 .. ReadbackSteps(200),
             ]);
 
-        var updated = WarningOnlyStatusAlternativeEnforcer.Apply([result]);
+        var updated = WarningOnlyStatusAlternativeEnforcer.Apply([result], Plan(result.Id));
 
         updated.Should().ContainSingle().Which.Status.Should().Be(ConformanceStatus.Pass);
     }
@@ -90,10 +145,99 @@ public sealed class WarningOnlyStatusAlternativeEnforcerTests
                 .. ReadbackSteps(200),
             ]);
 
-        var updated = WarningOnlyStatusAlternativeEnforcer.Apply([result]);
+        var updated = WarningOnlyStatusAlternativeEnforcer.Apply([result], Plan(result.Id));
 
         updated.Should().ContainSingle().Which.Status.Should().Be(ConformanceStatus.Fail);
     }
+
+    [Fact]
+    public void Apply_WhenMarkedDeleteAlternativesFollowNonDeleteOperation_DoesNotEnforce()
+    {
+        var result = PassingResult(
+            "wrong delete method",
+            [
+                OperationStep("PUT", 201),
+                AssertionStep("Accepted DELETE response: 200 OK for completed deletion"),
+                AssertionStep("Accepted DELETE response: 202 Accepted for asynchronous deletion"),
+                AssertionStep("Accepted DELETE response: 204 No Content for completed deletion"),
+            ]);
+
+        var updated = WarningOnlyStatusAlternativeEnforcer.Apply([result], Plan(result.Id));
+
+        updated.Should().ContainSingle().Which.Status.Should().Be(ConformanceStatus.Pass);
+    }
+
+    [Fact]
+    public void Apply_WhenMarkedReadbackAlternativesFollowNonGetOperation_DoesNotEnforce()
+    {
+        var result = PassingResult(
+            "wrong read method",
+            [
+                .. DeleteSteps(202),
+                OperationStep("POST", 500),
+                AssertionStep("Accepted alternative: 200 OK while an asynchronous delete is still pending"),
+                AssertionStep("Accepted alternative: 410 Gone when the server tracks the deleted resource"),
+                AssertionStep("Accepted alternative: 404 Not Found when deleted resources are not tracked"),
+            ]);
+
+        var updated = WarningOnlyStatusAlternativeEnforcer.Apply([result], Plan(result.Id));
+
+        updated.Should().ContainSingle().Which.Status.Should().Be(ConformanceStatus.Pass);
+    }
+
+    [Theory]
+    [InlineData(404, "pass")]
+    [InlineData(410, "pass")]
+    [InlineData(500, "fail")]
+    public void Apply_DeletedResourceReadbackPolicy_EnforcesOnly404Or410(int statusCode, string expected)
+    {
+        var result = PassingResult(
+            "classic deleted readback",
+            [
+                OperationStep("DELETE", 204),
+                OperationStep("GET", statusCode),
+                AssertionStep("Preferred: 410 Gone for a deleted resource"),
+                AssertionStep("Alternative: 404 Not Found when deleted resources are not tracked"),
+            ]);
+        var plan = PolicyPlan(result.Id, StatusAlternativePolicy.DeletedResourceReadback);
+
+        var updated = WarningOnlyStatusAlternativeEnforcer.Apply([result], plan);
+
+        updated.Should().ContainSingle().Which.Status.Should().Be(expected);
+    }
+
+    [Fact]
+    public void Apply_DeletedResourceReadbackPolicy_RequiresSameUrlDeleteAndGet()
+    {
+        var result = PassingResult(
+            "uncorrelated classic readback",
+            [
+                OperationStep("DELETE", 204, "https://example.test/Patient/other"),
+                OperationStep("GET", 500),
+                AssertionStep("Preferred: 410 Gone for a deleted resource"),
+                AssertionStep("Alternative: 404 Not Found when deleted resources are not tracked"),
+            ]);
+
+        var updated = WarningOnlyStatusAlternativeEnforcer.Apply(
+            [result],
+            PolicyPlan(result.Id, StatusAlternativePolicy.DeletedResourceReadback));
+
+        updated.Should().ContainSingle().Which.Status.Should().Be(ConformanceStatus.Pass);
+    }
+
+    private static StatusAlternativeEnforcementPlan Plan(params string[] resultIds) =>
+        new(resultIds.ToDictionary(
+            resultId => resultId,
+            _ => StatusAlternativePolicy.SubscriptionDeleteReadback,
+            StringComparer.Ordinal));
+
+    private static StatusAlternativeEnforcementPlan PolicyPlan(
+        string resultId,
+        StatusAlternativePolicy policy) =>
+        new(new Dictionary<string, StatusAlternativePolicy>(StringComparer.Ordinal)
+        {
+            [resultId] = policy,
+        });
 
     private static ConformanceResult PassingResult(string id, IReadOnlyList<ConformanceStep> steps) =>
         new(

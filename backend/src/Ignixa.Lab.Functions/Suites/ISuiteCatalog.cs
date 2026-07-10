@@ -1,10 +1,15 @@
+using Ignixa.Lab.Functions.Execution;
 using Ignixa.Lab.Functions.Models;
 using Ignixa.TestScript.Model;
 
 namespace Ignixa.Lab.Functions.Suites;
 
 /// <summary>A discovered bundled suite: its descriptor, source path, and parsed definition.</summary>
-public sealed record CatalogEntry(SuiteDescriptor Descriptor, string FilePath, TestScriptDefinition Definition);
+public sealed record CatalogEntry(
+    SuiteDescriptor Descriptor,
+    string FilePath,
+    TestScriptDefinition Definition,
+    StatusAlternativeEnforcementPlan StatusAlternativePlan);
 
 /// <summary>Provides access to the bundled TestScript suite catalog.</summary>
 public interface ISuiteCatalog

@@ -220,7 +220,7 @@ public sealed class TestScriptRunner(
             var definition = RunScopedDefinitionPreparer.Prepare(job.Definition);
             var report = await evaluator.ExecuteAsync(definition, cancellationToken, fhirVersion, capabilityStatement);
             var results = ConformanceReportMapper.Map(report, job.Id, job.Category, job.File);
-            return WarningOnlyStatusAlternativeEnforcer.Apply(results);
+            return WarningOnlyStatusAlternativeEnforcer.Apply(results, job.StatusAlternativePlan);
         }
         catch (OperationCanceledException)
         {
@@ -268,7 +268,12 @@ public sealed class TestScriptRunner(
                 return Array.Empty<SuiteJob>();
             }
 
-            jobs.Add(new SuiteJob(entry.Descriptor.Id, entry.Descriptor.Category, entry.Descriptor.File, entry.Definition));
+            jobs.Add(new SuiteJob(
+                entry.Descriptor.Id,
+                entry.Descriptor.Category,
+                entry.Descriptor.File,
+                entry.Definition,
+                entry.StatusAlternativePlan));
         }
 
         foreach (var uploaded in request.UploadedTestScripts ?? Array.Empty<UploadedTestScript>())
@@ -279,10 +284,12 @@ public sealed class TestScriptRunner(
             }
 
             ParseResult<TestScriptDefinition> parseResult;
+            StatusAlternativeEnforcementPlan statusAlternativePlan;
             try
             {
                 var content = TestScriptContentNormalizer.Normalize(uploaded.Content);
                 parseResult = TestScriptParser.Parse(content);
+                statusAlternativePlan = StatusAlternativeEnforcementPlan.Parse(content);
             }
             catch (Exception ex) when (ex is InvalidDataException or InvalidOperationException or JsonException)
             {
@@ -298,11 +305,16 @@ public sealed class TestScriptRunner(
             }
 
             var fileName = string.IsNullOrWhiteSpace(uploaded.FileName) ? "uploaded.json" : uploaded.FileName!;
-            jobs.Add(new SuiteJob(fileName, "uploaded", fileName, parseResult.Value));
+            jobs.Add(new SuiteJob(fileName, "uploaded", fileName, parseResult.Value, statusAlternativePlan));
         }
 
         return jobs;
     }
 
-    private sealed record SuiteJob(string Id, string Category, string File, TestScriptDefinition Definition);
+    private sealed record SuiteJob(
+        string Id,
+        string Category,
+        string File,
+        TestScriptDefinition Definition,
+        StatusAlternativeEnforcementPlan StatusAlternativePlan);
 }

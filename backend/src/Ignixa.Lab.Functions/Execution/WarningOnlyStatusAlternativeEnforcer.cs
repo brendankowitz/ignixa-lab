@@ -4,9 +4,11 @@ namespace Ignixa.Lab.Functions.Execution;
 
 internal static class WarningOnlyStatusAlternativeEnforcer
 {
-    public static IReadOnlyList<ConformanceResult> Apply(IReadOnlyList<ConformanceResult> results)
+    public static IReadOnlyList<ConformanceResult> Apply(
+        IReadOnlyList<ConformanceResult> results,
+        StatusAlternativeEnforcementPlan? plan = null)
     {
-        if (results.Count == 0)
+        if (results.Count == 0 || plan is null)
         {
             return results;
         }
@@ -21,7 +23,9 @@ internal static class WarningOnlyStatusAlternativeEnforcer
                 continue;
             }
 
-            var enforcement = FindUnexpectedStatusAlternative(result);
+            var enforcement = plan.TryGetPolicy(result.Id, out var policy)
+                ? FindUnexpectedStatusAlternative(result, policy)
+                : null;
             if (enforcement is null)
             {
                 continue;
@@ -56,7 +60,9 @@ internal static class WarningOnlyStatusAlternativeEnforcer
         };
     }
 
-    private static StatusAlternativeFailure? FindUnexpectedStatusAlternative(ConformanceResult result)
+    private static StatusAlternativeFailure? FindUnexpectedStatusAlternative(
+        ConformanceResult result,
+        StatusAlternativePolicy policy)
     {
         var testSteps = result.Steps
             .Select((Step, Index) => (Step, Index))
@@ -85,8 +91,10 @@ internal static class WarningOnlyStatusAlternativeEnforcer
                 groupEnd++;
             }
 
-            if (IsDeleteResponseAlternativeGroup(alternatives)
+            if (policy == StatusAlternativePolicy.SubscriptionDeleteReadback
+                && IsDeleteResponseAlternativeGroup(alternatives)
                 && TryGetPreviousOperation(testSteps, stepIndex, out var deleteOperation)
+                && string.Equals(deleteOperation.Method, "DELETE", StringComparison.OrdinalIgnoreCase)
                 && !alternatives.Any(alternative => alternative.StatusCode == deleteOperation.StatusCode))
             {
                 return CreateUnexpectedStatusFailure(
@@ -96,8 +104,10 @@ internal static class WarningOnlyStatusAlternativeEnforcer
                     "DELETE warningOnly alternatives");
             }
 
-            if (IsDeletedResourceReadbackAlternativeGroup(alternatives)
-                && TryGetPreviousOperation(testSteps, stepIndex, out var readOperation))
+            if (policy == StatusAlternativePolicy.SubscriptionDeleteReadback
+                && IsDeletedResourceReadbackAlternativeGroup(alternatives)
+                && TryGetPreviousOperation(testSteps, stepIndex, out var readOperation)
+                && string.Equals(readOperation.Method, "GET", StringComparison.OrdinalIgnoreCase))
             {
                 if (!alternatives.Any(alternative => alternative.StatusCode == readOperation.StatusCode))
                 {
@@ -120,6 +130,24 @@ internal static class WarningOnlyStatusAlternativeEnforcer
                         testSteps[groupEnd].Index,
                         $"A 200 readback is accepted only after a 202 asynchronous DELETE, but the preceding DELETE status was {(deleteStatusCode == 0 ? "unavailable" : deleteStatusCode)}.");
                 }
+            }
+
+            if (policy == StatusAlternativePolicy.DeletedResourceReadback
+                && IsClassicDeletedResourceReadbackAlternativeGroup(alternatives)
+                && TryGetPreviousOperation(testSteps, stepIndex, out var classicReadOperation)
+                && string.Equals(classicReadOperation.Method, "GET", StringComparison.OrdinalIgnoreCase)
+                && TryGetPreviousDeleteStatusCode(
+                    testSteps,
+                    classicReadOperation.StepIndex,
+                    classicReadOperation.RequestUrl,
+                    out _)
+                && !alternatives.Any(alternative => alternative.StatusCode == classicReadOperation.StatusCode))
+            {
+                return CreateUnexpectedStatusFailure(
+                    testSteps[groupEnd].Index,
+                    alternatives,
+                    classicReadOperation.StatusCode,
+                    "deleted-resource readback warningOnly alternatives");
             }
 
             stepIndex = groupEnd + 1;
@@ -169,6 +197,12 @@ internal static class WarningOnlyStatusAlternativeEnforcer
             && text.Any(value => ContainsAny(value, "not tracked", "does not track", "don't distinguish deleted", "doesn't distinguish deleted", "does not distinguish deleted"));
     }
 
+    private static bool IsClassicDeletedResourceReadbackAlternativeGroup(
+        IReadOnlyList<StatusAlternative> alternatives) =>
+        alternatives.Count == 2
+        && alternatives.Any(alternative => alternative.StatusCode == 410)
+        && alternatives.Any(alternative => alternative.StatusCode == 404);
+
     private static bool ContainsAny(string value, params string[] candidates) =>
         candidates.Any(candidate => value.Contains(candidate, StringComparison.OrdinalIgnoreCase));
 
@@ -184,7 +218,7 @@ internal static class WarningOnlyStatusAlternativeEnforcer
             if (string.Equals(step.Kind, "operation", StringComparison.Ordinal)
                 && step.Response is { StatusCode: var code })
             {
-                operation = new OperationStatus(i, code, step.Request?.Url);
+                operation = new OperationStatus(i, code, step.Request?.Method, step.Request?.Url);
                 return true;
             }
         }
@@ -269,5 +303,5 @@ internal static class WarningOnlyStatusAlternativeEnforcer
 
     private readonly record struct StatusAlternative(int StatusCode, string Text);
 
-    private readonly record struct OperationStatus(int StepIndex, int StatusCode, string? RequestUrl);
+    private readonly record struct OperationStatus(int StepIndex, int StatusCode, string? Method, string? RequestUrl);
 }

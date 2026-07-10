@@ -223,6 +223,12 @@ public sealed class TestScriptRunnerTests
         ],
     };
 
+    private static StatusAlternativeEnforcementPlan SubscriptionDeleteReadbackPlan() =>
+        new(new Dictionary<string, StatusAlternativePolicy>
+        {
+            ["ReadAfterDelete"] = StatusAlternativePolicy.SubscriptionDeleteReadback,
+        });
+
     [Fact]
     public async Task GivenSuiteRequiringUndeclaredCapability_WhenRun_ThenTestIsSkippedAndNoRequestIsSent()
     {
@@ -610,7 +616,10 @@ public sealed class TestScriptRunnerTests
             new TestResponse { StatusCode = 202 },
             new TestResponse { StatusCode = 500 });
         var runner = new TestScriptRunner(
-            new FakeSuiteCatalog("deleted-resource-status.json", WarningOnlyDeletedResourceStatusAlternativesDefinition()),
+            new FakeSuiteCatalog(
+                "deleted-resource-status.json",
+                WarningOnlyDeletedResourceStatusAlternativesDefinition(),
+                SubscriptionDeleteReadbackPlan()),
             new FakeEvaluatorFactory(provider),
             new CapabilityStatementFetcher(
                 new FixedResponseHttpClientFactory(CapabilityStatementWithoutReindex),
@@ -641,7 +650,10 @@ public sealed class TestScriptRunnerTests
             new TestResponse { StatusCode = deleteStatus },
             new TestResponse { StatusCode = readStatus });
         var runner = new TestScriptRunner(
-            new FakeSuiteCatalog("deleted-resource-status.json", WarningOnlyDeletedResourceStatusAlternativesDefinition()),
+            new FakeSuiteCatalog(
+                "deleted-resource-status.json",
+                WarningOnlyDeletedResourceStatusAlternativesDefinition(),
+                SubscriptionDeleteReadbackPlan()),
             new FakeEvaluatorFactory(provider),
             new CapabilityStatementFetcher(
                 new FixedResponseHttpClientFactory(CapabilityStatementWithoutReindex),
@@ -668,7 +680,10 @@ public sealed class TestScriptRunnerTests
             new TestResponse { StatusCode = deleteStatus },
             new TestResponse { StatusCode = readStatus });
         var runner = new TestScriptRunner(
-            new FakeSuiteCatalog("deleted-resource-status.json", WarningOnlyDeletedResourceStatusAlternativesDefinition()),
+            new FakeSuiteCatalog(
+                "deleted-resource-status.json",
+                WarningOnlyDeletedResourceStatusAlternativesDefinition(),
+                SubscriptionDeleteReadbackPlan()),
             new FakeEvaluatorFactory(provider),
             new CapabilityStatementFetcher(
                 new FixedResponseHttpClientFactory(CapabilityStatementWithoutReindex),
@@ -707,7 +722,62 @@ public sealed class TestScriptRunnerTests
         outcome.Report!.Results.Should().ContainSingle().Which.Status.Should().Be(ConformanceStatus.Pass);
     }
 
-    private sealed class FakeSuiteCatalog(string id, TestScriptDefinition definition) : ISuiteCatalog
+    [Fact]
+    public async Task GivenUploadedScriptWithStructuredPolicy_WhenStatusIsUnexpected_ThenRunFails()
+    {
+        var provider = new RecordingRequestProvider(
+            new TestResponse { StatusCode = 202 },
+            new TestResponse { StatusCode = 500 });
+        var runner = new TestScriptRunner(
+            new FakeSuiteCatalog("unused.json", UnrelatedWarningOnlyStatusAlternativesDefinition()),
+            new FakeEvaluatorFactory(provider),
+            new CapabilityStatementFetcher(
+                new FixedResponseHttpClientFactory(CapabilityStatementWithoutReindex),
+                Options.Create(new IgnixaLabOptions())),
+            Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
+            NullLogger<TestScriptRunner>.Instance);
+        var content = """
+            {
+              "resourceType": "TestScript",
+              "name": "UploadedMarked",
+              "status": "active",
+              "test": [{
+                "name": "delete readback",
+                "extension": [{
+                  "url": "http://ignixa.io/testscript/statusAlternativePolicy",
+                  "valueCode": "subscription-delete-readback-v1"
+                }],
+                "action": [
+                  { "operation": { "type": { "code": "delete" }, "url": "Patient/deleted" } },
+                  { "assert": { "description": "Accepted DELETE response: 200 OK for completed deletion", "responseCode": "200", "warningOnly": true } },
+                  { "assert": { "description": "Accepted DELETE response: 202 Accepted for asynchronous deletion", "responseCode": "202", "warningOnly": true } },
+                  { "assert": { "description": "Accepted DELETE response: 204 No Content for completed deletion", "responseCode": "204", "warningOnly": true } },
+                  { "operation": { "type": { "code": "read" }, "url": "Patient/deleted" } },
+                  { "assert": { "description": "Accepted alternative: 200 OK while an asynchronous delete is still pending", "responseCode": "200", "warningOnly": true } },
+                  { "assert": { "description": "Accepted alternative: 410 Gone when the server tracks the deleted resource", "response": "gone", "warningOnly": true } },
+                  { "assert": { "description": "Accepted alternative: 404 Not Found when deleted resources are not tracked", "response": "notFound", "warningOnly": true } }
+                ]
+              }]
+            }
+            """;
+
+        var outcome = await runner.RunAsync(
+            new RunRequest
+            {
+                TargetUrl = TargetUrl,
+                UploadedTestScripts = [new UploadedTestScript { FileName = "uploaded-copy.json", Content = content }],
+            },
+            CancellationToken.None);
+
+        outcome.IsValid.Should().BeTrue();
+        outcome.Report!.Results.Should().ContainSingle().Which.Status.Should().Be(ConformanceStatus.Fail);
+    }
+
+    private sealed class FakeSuiteCatalog(
+        string id,
+        TestScriptDefinition definition,
+        StatusAlternativeEnforcementPlan? statusAlternativePlan = null) : ISuiteCatalog
     {
         public IReadOnlyList<SuiteDescriptor> GetSuites() => [];
 
@@ -722,7 +792,8 @@ public sealed class TestScriptRunnerTests
             entry = new CatalogEntry(
                 new SuiteDescriptor(id, definition.Metadata.Name, definition.Metadata.Description ?? "", "test", "", id, definition.Tests.Count, []),
                 id,
-                definition);
+                definition,
+                statusAlternativePlan ?? StatusAlternativeEnforcementPlan.Empty);
             return true;
         }
     }

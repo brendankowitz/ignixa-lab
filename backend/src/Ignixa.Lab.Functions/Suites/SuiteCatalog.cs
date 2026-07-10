@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Ignixa.Lab.Functions.Configuration;
+using Ignixa.Lab.Functions.Execution;
 using Ignixa.Lab.Functions.Models;
 using Ignixa.TestScript.Model;
 using Ignixa.TestScript.Parsing;
@@ -67,7 +68,11 @@ public sealed class SuiteCatalog : ISuiteCatalog
                 }
 
                 var descriptor = BuildDescriptor(directory, file, parseResult.Value);
-                entries.Add(new CatalogEntry(descriptor, file, parseResult.Value));
+                entries.Add(new CatalogEntry(
+                    descriptor,
+                    file,
+                    parseResult.Value,
+                    StatusAlternativeEnforcementPlan.Parse(content)));
             }
             catch (Exception ex)
             {

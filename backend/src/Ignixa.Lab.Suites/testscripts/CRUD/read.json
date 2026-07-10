@@ -61,6 +61,7 @@
     {
       "name": "read after delete returns 410 or 404",
       "description": "GET after DELETE must return 410 Gone (primary assertion); 404 Not Found is accepted as a warningOnly alternative for servers that don't distinguish deleted from never-existed.",
+      "extension": [{ "url": "http://ignixa.io/testscript/statusAlternativePolicy", "valueCode": "deleted-resource-readback-v1" }],
       "action": [
         { "operation": { "type": { "code": "delete" }, "url": "Observation/${obsId}", "responseId": "delete-response", "description": "Delete the Observation created in setup" } },
         { "assert": { "description": "Delete must return a 2xx success status", "response": "okay" } },

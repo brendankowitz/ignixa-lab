@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Ignixa.Lab.Functions.Configuration;
+using Ignixa.Lab.Functions.Execution;
 using Ignixa.Lab.Functions.Suites;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -146,6 +147,33 @@ public sealed class SuiteCatalogTests : IDisposable
         catalog.TryGet("CRUD/Patient.json", out var entry).Should().BeTrue();
         entry.Descriptor.Name.Should().Be("Patient CRUD");
         entry.Definition.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void TryGet_ExposesStructuredStatusAlternativePlan()
+    {
+        var file = Path.Combine(_root, "marked.json");
+        File.WriteAllText(file, """
+            {
+              "resourceType": "TestScript",
+              "name": "Marked",
+              "status": "active",
+              "test": [{
+                "name": "delete readback",
+                "extension": [{
+                  "url": "http://ignixa.io/testscript/statusAlternativePolicy",
+                  "valueCode": "subscription-delete-readback-v1"
+                }],
+                "action": []
+              }]
+            }
+            """);
+
+        CreateCatalog().TryGet("marked.json", out var entry).Should().BeTrue();
+        entry.StatusAlternativePlan.TryGetPolicy(
+            "Marked > delete readback",
+            out var policy).Should().BeTrue();
+        policy.Should().Be(StatusAlternativePolicy.SubscriptionDeleteReadback);
     }
 
     [Fact]
@@ -723,16 +751,23 @@ public sealed class SuiteCatalogTests : IDisposable
     public void BundledSubscriptionSuite_SetupCapturesResponseAndStrictlyRequiresSuccess()
     {
         var actions = ReadBundledSuite("Subscriptions/basic.json")["setup"]!["action"]!.AsArray();
+        var setupOperation = actions
+            .Select(action => action?["operation"])
+            .Single(operation => operation is not null);
+        var setupAssertion = actions
+            .Select(action => action?["assert"])
+            .Single(assertion => assertion is not null);
 
         actions.Should().HaveCount(2, "removing the setup success assertion would let setup false-pass");
-        GetStringValue(actions[0]?["operation"]?["responseId"]).Should().Be("setup-update-response");
-        var assertion = actions[1]?["assert"];
-        GetStringValue(assertion?["response"]).Should().Be("created");
-        GetStringValue(assertion?["description"]).Should().Be("Setup PUT of the fresh run-scoped id must return 201 Created");
-        (assertion?["warningOnly"]?.GetValue<bool>() ?? false).Should().BeFalse();
+        GetStringValue(setupOperation?["responseId"]).Should().Be("setup-update-response");
+        GetStringValue(setupAssertion?["response"]).Should().Be("created");
+        GetStringValue(setupAssertion?["description"]).Should().Be("Setup PUT of the fresh run-scoped id must return 201 Created");
+        (setupAssertion?["warningOnly"]?.GetValue<bool>() ?? false).Should().BeFalse();
 
         var laterUpdateAssertion = ReadBundledTest("Subscriptions/basic.json", "update replaces criteria and status while retaining websocket channel")
-            ["action"]![1]!["assert"];
+            ["action"]!.AsArray()
+            .Select(action => action?["assert"])
+            .Single(assertion => GetStringValue(assertion?["description"]) == "Existing-resource update must return 200 OK");
         GetStringValue(laterUpdateAssertion?["responseCode"]).Should().Be("200");
         GetStringValue(laterUpdateAssertion?["response"]).Should().BeNull();
         (laterUpdateAssertion?["warningOnly"]?.GetValue<bool>() ?? false).Should().BeFalse();
@@ -782,10 +817,39 @@ public sealed class SuiteCatalogTests : IDisposable
 
         resourceIds.Should().HaveCount(2).And.OnlyContain(id => id == expectedId);
         operationUrls.Should().HaveCount(7).And.OnlyContain(url => url == $"Subscription/{expectedId}");
-        GetStringValue(ReadBundledTest("Subscriptions/basic.json", "search by _id locates the created Subscription")
-            ["action"]![0]!["operation"]!["params"]).Should().Be($"?_id={expectedId}");
-        GetStringValue(ReadBundledTest("Subscriptions/basic.json", "search by _id locates the created Subscription")
-            ["action"]![3]!["assert"]!["expression"]).Should().Contain(expectedId);
+        var searchActions = ReadBundledTest("Subscriptions/basic.json", "search by _id locates the created Subscription")
+            ["action"]!.AsArray();
+        var searchOperation = searchActions
+            .Select(action => action?["operation"])
+            .Single(operation => GetStringValue(operation?["type"]?["code"]) == "search");
+        var bundleAssertion = searchActions
+            .Select(action => action?["assert"])
+            .Single(assertion => GetStringValue(assertion?["description"]) == "Bundle must include the created Subscription");
+        GetStringValue(searchOperation?["params"]).Should().Be($"?_id={expectedId}");
+        GetStringValue(bundleAssertion?["expression"]).Should().Contain(expectedId);
+    }
+
+    [Fact]
+    public void BundledSubscriptionSuite_DeclaresAndExpandsRunId()
+    {
+        var suite = ReadBundledSuite("Subscriptions/basic.json");
+        suite["variable"].Should().NotBeNull("the runner expands only declared runId variables");
+        var runIdVariable = suite["variable"]!.AsArray()
+            .Select(variable => variable!.AsObject())
+            .Single(variable => GetStringValue(variable["name"]) == "runId");
+        var rawMarkers = suite.ToJsonString().Split("${runId}", StringSplitOptions.None).Length - 1;
+
+        GetStringValue(runIdVariable["defaultValue"]).Should().Be("unscoped");
+        rawMarkers.Should().BeGreaterThanOrEqualTo(10,
+            "fixture ids, criteria, operations, assertions, and teardown must all be run-scoped");
+
+        CreateBundledCatalog().TryGet("Subscriptions/basic.json", out var entry).Should().BeTrue();
+        var prepared = RunScopedDefinitionPreparer.Prepare(entry.Definition);
+        var expandedRunId = prepared.Variables.Single(variable => variable.Name == "runId").DefaultValue;
+        expandedRunId.Should().MatchRegex("^[0-9a-f]{32}$");
+        prepared.Fixtures.Select(fixture => fixture.Resource!.MutableNode["id"]!.GetValue<string>())
+            .Should().OnlyContain(id => id.Contains(expandedRunId!, StringComparison.Ordinal)
+                && !id.Contains("${runId}", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -806,10 +870,35 @@ public sealed class SuiteCatalogTests : IDisposable
     {
         var test = ReadBundledTest("Subscriptions/basic.json", "delete accepts valid outcomes and checks immediate readback");
         var actions = test["action"]!.AsArray();
-        var deleteAssertions = actions.Skip(1).Take(3).Select(action => action?["assert"]).ToArray();
-        var readbackAssertions = actions.Skip(5).Take(3).Select(action => action?["assert"]).ToArray();
+        var operations = actions
+            .Select(action => action?["operation"])
+            .Where(operation => operation is not null)
+            .ToArray();
+        var assertions = actions
+            .Select(action => action?["assert"])
+            .Where(assertion => assertion is not null)
+            .ToArray();
+        var deleteOperation = operations.Single(operation => GetStringValue(operation?["type"]?["code"]) == "delete");
+        var readOperation = operations.Single(operation => GetStringValue(operation?["type"]?["code"]) == "read");
+        var deleteAssertions = assertions
+            .Where(assertion => GetStringValue(assertion?["description"])!.StartsWith("Accepted DELETE response:", StringComparison.Ordinal))
+            .ToArray();
+        var readbackAssertions = assertions
+            .Where(assertion => GetStringValue(assertion?["description"])!.StartsWith("Accepted alternative:", StringComparison.Ordinal))
+            .ToArray();
+        var policyMarkers = test["extension"]!.AsArray()
+            .Where(extension => GetStringValue(extension?["url"]) == StatusAlternativeEnforcementPlan.ExtensionUrl)
+            .ToArray();
 
-        actions.Should().HaveCount(8, "both operations and all six narrow alternatives are required");
+        policyMarkers.Should().ContainSingle();
+        GetStringValue(policyMarkers[0]?["valueCode"]).Should().Be("subscription-delete-readback-v1");
+        CreateBundledCatalog().TryGet("Subscriptions/basic.json", out var catalogEntry).Should().BeTrue();
+        catalogEntry.StatusAlternativePlan.TryGetPolicy(
+            $"Subscriptions/basic > {GetStringValue(test["name"])}",
+            out var policy).Should().BeTrue();
+        policy.Should().Be(StatusAlternativePolicy.SubscriptionDeleteReadback);
+        GetStringValue(deleteOperation?["url"]).Should().Be(GetStringValue(readOperation?["url"]));
+        actions.IndexOf(deleteOperation!.Parent!.AsObject()).Should().BeLessThan(actions.IndexOf(readOperation!.Parent!.AsObject()));
         deleteAssertions.Should().HaveCount(3, "deleting any DELETE alternative must break this guard");
         deleteAssertions.Select(assertion => GetStringValue(assertion?["responseCode"]))
             .Should().Equal("200", "202", "204");
@@ -832,6 +921,38 @@ public sealed class SuiteCatalogTests : IDisposable
                 "Accepted alternative: 200 OK while an asynchronous delete is still pending",
                 "Accepted alternative: 410 Gone when the server tracks the deleted resource",
                 "Accepted alternative: 404 Not Found when deleted resources are not tracked");
+    }
+
+    [Theory]
+    [InlineData("CRUD/read.json", "read after delete returns 410 or 404")]
+    [InlineData("CRUD/delete.json", "delete removes the resource; a plain read is Gone/NotFound while the original version remains vread-able")]
+    public void BundledCrudDeletedReadbacks_UseExplicitEnforcementMarker(string suiteId, string testName)
+    {
+        var test = ReadBundledTest(suiteId, testName);
+        var marker = test["extension"]!.AsArray()
+            .Single(extension => GetStringValue(extension?["url"]) == StatusAlternativeEnforcementPlan.ExtensionUrl);
+        var actions = test["action"]!.AsArray();
+        var deleteOperation = actions
+            .Select(action => action?["operation"])
+            .Single(operation => GetStringValue(operation?["type"]?["code"]) == "delete");
+        var readOperation = actions
+            .Select(action => action?["operation"])
+            .Single(operation => GetStringValue(operation?["type"]?["code"]) == "read");
+        var alternatives = actions
+            .Select(action => action?["assert"])
+            .Where(assertion => assertion?["warningOnly"]?.GetValue<bool>() == true)
+            .Where(assertion => GetStringValue(assertion?["response"]) is "gone" or "notFound")
+            .ToArray();
+
+        GetStringValue(marker?["valueCode"]).Should().Be("deleted-resource-readback-v1");
+        GetStringValue(deleteOperation?["url"]).Should().Be(GetStringValue(readOperation?["url"]));
+        alternatives.Should().HaveCount(2, "deleting either accepted readback status must break the guard");
+        alternatives.Select(assertion => GetStringValue(assertion?["response"]))
+            .Should().BeEquivalentTo("gone", "notFound");
+        CreateBundledCatalog().TryGet(suiteId, out var entry).Should().BeTrue();
+        entry.StatusAlternativePlan.TryGetPolicy($"{entry.Descriptor.Name} > {testName}", out var policy)
+            .Should().BeTrue();
+        policy.Should().Be(StatusAlternativePolicy.DeletedResourceReadback);
     }
 
     [Theory]
