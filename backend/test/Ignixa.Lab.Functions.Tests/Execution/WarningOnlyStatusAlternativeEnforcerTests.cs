@@ -30,6 +30,58 @@ public sealed class WarningOnlyStatusAlternativeEnforcerTests
     }
 
     [Fact]
+    public void Parse_MapsConditionalDeleteMethodCorrelatedStatusSets()
+    {
+        var plan = StatusAlternativeEnforcementPlan.Parse("""
+            {
+              "resourceType": "TestScript",
+              "name": "CRUD/conditional-delete",
+              "test": [
+                {
+                  "name": "Conditional delete with no search criteria is rejected",
+                  "extension": [{
+                    "url": "http://ignixa.io/testscript/statusAlternativePolicy",
+                    "extension": [
+                      { "url": "policy", "valueCode": "response-status-set-v1" },
+                      { "url": "method", "valueCode": "DELETE" },
+                      { "url": "status", "valueInteger": 400 },
+                      { "url": "status", "valueInteger": 412 }
+                    ]
+                  }],
+                  "action": []
+                },
+                {
+                  "name": "Conditional delete with exactly one matching resource removes it",
+                  "extension": [{
+                    "url": "http://ignixa.io/testscript/statusAlternativePolicy",
+                    "extension": [
+                      { "url": "policy", "valueCode": "response-status-set-v1" },
+                      { "url": "method", "valueCode": "GET" },
+                      { "url": "status", "valueInteger": 404 },
+                      { "url": "status", "valueInteger": 410 }
+                    ]
+                  }],
+                  "action": []
+                }
+              ]
+            }
+            """);
+
+        plan.TryGetRule(
+            "CRUD/conditional-delete > Conditional delete with no search criteria is rejected",
+            out var rejection).Should().BeTrue();
+        rejection.Policy.Should().Be(StatusAlternativePolicy.ResponseStatusSet);
+        rejection.Method.Should().Be("DELETE");
+        rejection.AllowedStatusCodes.Should().Equal(400, 412);
+        plan.TryGetRule(
+            "CRUD/conditional-delete > Conditional delete with exactly one matching resource removes it",
+            out var readback).Should().BeTrue();
+        readback.Policy.Should().Be(StatusAlternativePolicy.ResponseStatusSet);
+        readback.Method.Should().Be("GET");
+        readback.AllowedStatusCodes.Should().Equal(404, 410);
+    }
+
+    [Fact]
     public void Parse_MapsOnlyExactResultIdentifiersWithoutSuffixCollisions()
     {
         var plan = StatusAlternativeEnforcementPlan.Parse("""
@@ -173,6 +225,67 @@ public sealed class WarningOnlyStatusAlternativeEnforcerTests
         failed.Status.Should().Be(ConformanceStatus.Fail);
         failed.Error!.Received.Should().Contain("exactly one executed POST operation").And.Contain("found 0");
         failed.Steps.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("DELETE", 400, 400, 412)]
+    [InlineData("DELETE", 412, 400, 412)]
+    [InlineData("GET", 404, 404, 410)]
+    [InlineData("GET", 410, 404, 410)]
+    public void Apply_ConditionalDeleteStatusSets_AcceptOnlyDeclaredAlternatives(
+        string method,
+        int actualStatus,
+        int firstAllowed,
+        int secondAllowed)
+    {
+        var result = PassingResult(
+            $"Conditional delete > {method}",
+            [OperationStep(method, actualStatus)]);
+
+        var updated = WarningOnlyStatusAlternativeEnforcer.Apply(
+            [result],
+            ResponseStatusPlan(result.Id, method, firstAllowed, secondAllowed));
+
+        updated.Should().ContainSingle().Which.Status.Should().Be(ConformanceStatus.Pass);
+    }
+
+    [Theory]
+    [InlineData("DELETE", 204, 400, 412)]
+    [InlineData("GET", 200, 404, 410)]
+    [InlineData("GET", 500, 404, 410)]
+    public void Apply_ConditionalDeleteStatusSets_RejectStatusesOutsideDeclaredAlternatives(
+        string method,
+        int actualStatus,
+        int firstAllowed,
+        int secondAllowed)
+    {
+        var result = PassingResult(
+            $"Conditional delete > {method}",
+            [OperationStep(method, actualStatus)]);
+
+        var updated = WarningOnlyStatusAlternativeEnforcer.Apply(
+            [result],
+            ResponseStatusPlan(result.Id, method, firstAllowed, secondAllowed));
+
+        var failed = updated.Should().ContainSingle().Which;
+        failed.Status.Should().Be(ConformanceStatus.Fail);
+        failed.Error!.Received.Should().Contain(actualStatus.ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    [Fact]
+    public void Apply_ResponseStatusSetWithTwoMatchingOperations_FailsClosed()
+    {
+        var result = PassingResult(
+            "Conditional delete > ambiguous GET",
+            [OperationStep("GET", 404), OperationStep("GET", 410)]);
+
+        var updated = WarningOnlyStatusAlternativeEnforcer.Apply(
+            [result],
+            ResponseStatusPlan(result.Id, "GET", 404, 410));
+
+        var failed = updated.Should().ContainSingle().Which;
+        failed.Status.Should().Be(ConformanceStatus.Fail);
+        failed.Error!.Received.Should().Contain("exactly one executed GET operation").And.Contain("found 2");
     }
 
     [Theory]
@@ -356,12 +469,18 @@ public sealed class WarningOnlyStatusAlternativeEnforcerTests
         });
 
     private static StatusAlternativeEnforcementPlan ResponseStatusPlan(string resultId) =>
+        ResponseStatusPlan(resultId, "POST", 400, 422);
+
+    private static StatusAlternativeEnforcementPlan ResponseStatusPlan(
+        string resultId,
+        string method,
+        params int[] allowedStatuses) =>
         new(new Dictionary<string, StatusAlternativeRule>(StringComparer.Ordinal)
         {
             [resultId] = new(
                 StatusAlternativePolicy.ResponseStatusSet,
-                "POST",
-                [400, 422]),
+                method,
+                allowedStatuses),
         });
 
     private static ConformanceResult PassingResult(string id, IReadOnlyList<ConformanceStep> steps) =>

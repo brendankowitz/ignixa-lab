@@ -295,6 +295,74 @@ public sealed class TestScriptRunnerTests
             }
             """);
 
+    private static TestScriptDefinition WarningOnlyMethodStatusAlternativesDefinition(
+        string metadataName,
+        string testName,
+        string operationType,
+        int firstStatus,
+        int secondStatus)
+    {
+        var operation = operationType == "delete"
+            ? new OperationExpression { Type = "delete", Resource = "Patient" }
+            : new OperationExpression { Type = "read", Url = "Patient/conditional-delete-target" };
+        return new TestScriptDefinition
+        {
+            Metadata = new TestScriptMetadata { Name = metadataName },
+            Tests =
+            [
+                new TestPhaseDefinition
+                {
+                    Name = testName,
+                    Actions =
+                    [
+                        operation,
+                        new AssertExpression
+                        {
+                            Description = $"Accepted response status: {firstStatus}",
+                            Criteria = new ResponseCodeCriteria(firstStatus.ToString(
+                                System.Globalization.CultureInfo.InvariantCulture)),
+                            WarningOnly = true,
+                        },
+                        new AssertExpression
+                        {
+                            Description = $"Accepted response status: {secondStatus}",
+                            Criteria = new ResponseCodeCriteria(secondStatus.ToString(
+                                System.Globalization.CultureInfo.InvariantCulture)),
+                            WarningOnly = true,
+                        },
+                    ],
+                },
+            ],
+        };
+    }
+
+    private static StatusAlternativeEnforcementPlan MethodStatusAlternativesPlan(
+        string metadataName,
+        string testName,
+        string method,
+        int firstStatus,
+        int secondStatus) =>
+        StatusAlternativeEnforcementPlan.Parse($$"""
+            {
+              "resourceType": "TestScript",
+              "name": "{{metadataName}}",
+              "status": "active",
+              "test": [{
+                "name": "{{testName}}",
+                "extension": [{
+                  "url": "http://ignixa.io/testscript/statusAlternativePolicy",
+                  "extension": [
+                    { "url": "policy", "valueCode": "response-status-set-v1" },
+                    { "url": "method", "valueCode": "{{method}}" },
+                    { "url": "status", "valueInteger": {{firstStatus}} },
+                    { "url": "status", "valueInteger": {{secondStatus}} }
+                  ]
+                }],
+                "action": []
+              }]
+            }
+            """);
+
     [Fact]
     public async Task GivenSuiteRequiringUndeclaredCapability_WhenRun_ThenTestIsSkippedAndNoRequestIsSent()
     {
@@ -890,6 +958,74 @@ public sealed class TestScriptRunnerTests
         outcome.Report!.Results.Should().ContainSingle().Which.Status.Should().Be(ConformanceStatus.Fail);
     }
 
+    [Theory]
+    [InlineData("delete", "DELETE", 400, 412, 400)]
+    [InlineData("delete", "DELETE", 400, 412, 412)]
+    [InlineData("read", "GET", 404, 410, 404)]
+    [InlineData("read", "GET", 404, 410, 410)]
+    public async Task GivenConditionalDeleteStatusSet_WhenTargetReturnsAllowedAlternative_ThenRunPasses(
+        string operationType,
+        string method,
+        int firstAllowed,
+        int secondAllowed,
+        int actualStatus)
+    {
+        const string metadataName = "ConditionalDeleteStatusAlternatives";
+        const string testName = "ConditionalDeletePolicy";
+        var provider = new RecordingRequestProvider(new TestResponse { StatusCode = actualStatus });
+        var runner = CreateMethodStatusAlternativeRunner(
+            provider,
+            WarningOnlyMethodStatusAlternativesDefinition(
+                metadataName,
+                testName,
+                operationType,
+                firstAllowed,
+                secondAllowed),
+            MethodStatusAlternativesPlan(metadataName, testName, method, firstAllowed, secondAllowed));
+
+        var outcome = await runner.RunAsync(
+            new RunRequest { TargetUrl = TargetUrl, SuiteIds = ["conditional-delete-status.json"] },
+            CancellationToken.None);
+
+        outcome.IsValid.Should().BeTrue();
+        outcome.Report!.Results.Should().ContainSingle().Which.Status.Should().Be(ConformanceStatus.Pass);
+    }
+
+    [Theory]
+    [InlineData("delete", "DELETE", 400, 412, 204)]
+    [InlineData("read", "GET", 404, 410, 200)]
+    [InlineData("read", "GET", 404, 410, 500)]
+    public async Task GivenConditionalDeleteStatusSet_WhenTargetReturnsDisallowedStatus_ThenRunFails(
+        string operationType,
+        string method,
+        int firstAllowed,
+        int secondAllowed,
+        int actualStatus)
+    {
+        const string metadataName = "ConditionalDeleteStatusAlternatives";
+        const string testName = "ConditionalDeletePolicy";
+        var provider = new RecordingRequestProvider(new TestResponse { StatusCode = actualStatus });
+        var runner = CreateMethodStatusAlternativeRunner(
+            provider,
+            WarningOnlyMethodStatusAlternativesDefinition(
+                metadataName,
+                testName,
+                operationType,
+                firstAllowed,
+                secondAllowed),
+            MethodStatusAlternativesPlan(metadataName, testName, method, firstAllowed, secondAllowed));
+
+        var outcome = await runner.RunAsync(
+            new RunRequest { TargetUrl = TargetUrl, SuiteIds = ["conditional-delete-status.json"] },
+            CancellationToken.None);
+
+        outcome.IsValid.Should().BeTrue();
+        var failed = outcome.Report!.Results.Should().ContainSingle().Which;
+        failed.Status.Should().Be(ConformanceStatus.Fail);
+        failed.Error!.Received.Should()
+            .Contain(actualStatus.ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
+
     private static TestScriptRunner CreateStatusAlternativeRunner(
         RecordingRequestProvider provider,
         StatusAlternativeEnforcementPlan plan) =>
@@ -898,6 +1034,20 @@ public sealed class TestScriptRunnerTests
                 "create-status.json",
                 WarningOnlyCreateStatusAlternativesDefinition(),
                 plan),
+            new FakeEvaluatorFactory(provider),
+            new CapabilityStatementFetcher(
+                new FixedResponseHttpClientFactory(CapabilityStatementWithoutReindex),
+                Options.Create(new IgnixaLabOptions())),
+            Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
+            NullLogger<TestScriptRunner>.Instance);
+
+    private static TestScriptRunner CreateMethodStatusAlternativeRunner(
+        RecordingRequestProvider provider,
+        TestScriptDefinition definition,
+        StatusAlternativeEnforcementPlan plan) =>
+        new(
+            new FakeSuiteCatalog("conditional-delete-status.json", definition, plan),
             new FakeEvaluatorFactory(provider),
             new CapabilityStatementFetcher(
                 new FixedResponseHttpClientFactory(CapabilityStatementWithoutReindex),

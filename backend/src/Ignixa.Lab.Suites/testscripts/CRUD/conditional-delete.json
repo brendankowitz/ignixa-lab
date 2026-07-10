@@ -56,7 +56,18 @@
   "test": [
     {
       "name": "Conditional delete with no search criteria is rejected",
-      "description": "DELETE /Patient with no search criteria must be rejected, as 412 Precondition Failed or 400 Bad Request (both warningOnly: the spec doesn't mandate a specific status).",
+      "description": "DELETE /Patient with no search criteria must be rejected with either 400 Bad Request or 412 Precondition Failed.",
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/statusAlternativePolicy",
+          "extension": [
+            { "url": "policy", "valueCode": "response-status-set-v1" },
+            { "url": "method", "valueCode": "DELETE" },
+            { "url": "status", "valueInteger": 400 },
+            { "url": "status", "valueInteger": 412 }
+          ]
+        }
+      ],
       "action": [
         { "operation": { "type": { "code": "delete" }, "resource": "Patient", "responseId": "cd-nocriteria-response", "description": "Conditional DELETE /Patient with no query string" } },
         { "assert": { "description": "Primary: expect 412 Precondition Failed (warningOnly: some servers return 400 instead)", "response": "preconditionFailed", "warningOnly": true } },
@@ -73,12 +84,23 @@
     },
     {
       "name": "Conditional delete with exactly one matching resource removes it",
-      "description": "DELETE /Patient?identifier=... matching exactly one existing Patient; the server must delete it (2xx), and a subsequent read must return 410 Gone (404 Not Found accepted as a warningOnly alternative).",
+      "description": "DELETE /Patient?identifier=... matching exactly one existing Patient; the server must delete it (2xx), and a subsequent read must return either 404 Not Found or 410 Gone.",
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/statusAlternativePolicy",
+          "extension": [
+            { "url": "policy", "valueCode": "response-status-set-v1" },
+            { "url": "method", "valueCode": "GET" },
+            { "url": "status", "valueInteger": 404 },
+            { "url": "status", "valueInteger": 410 }
+          ]
+        }
+      ],
       "action": [
         { "operation": { "type": { "code": "delete" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-delete|CD-ONEMATCH", "responseId": "cd-onematch-response", "description": "Conditional DELETE /Patient?identifier=...CD-ONEMATCH, matches the single seeded Patient" } },
         { "assert": { "description": "Must return a 2xx success status", "response": "okay" } },
         { "operation": { "type": { "code": "read" }, "url": "Patient/${oneMatchId}", "responseId": "cd-onematch-read-after", "description": "Attempt to read the deleted Patient" } },
-        { "assert": { "description": "Primary: expect 410 Gone", "response": "gone", "warningOnly": false } },
+        { "assert": { "description": "Primary: expect 410 Gone", "response": "gone", "warningOnly": true } },
         { "assert": { "description": "Alternative: 404 Not Found is also accepted", "response": "notFound", "warningOnly": true } }
       ]
     },

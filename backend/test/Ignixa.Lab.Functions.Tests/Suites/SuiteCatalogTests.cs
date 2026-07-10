@@ -1152,6 +1152,111 @@ public sealed class SuiteCatalogTests : IDisposable
         rule.AllowedStatusCodes.Should().Equal(400, 422);
     }
 
+    [Theory]
+    [InlineData(
+        "Conditional delete with no search criteria is rejected",
+        "delete",
+        "DELETE",
+        "preconditionFailed",
+        "bad",
+        400,
+        412)]
+    [InlineData(
+        "Conditional delete with exactly one matching resource removes it",
+        "read",
+        "GET",
+        "notFound",
+        "gone",
+        404,
+        410)]
+    public void BundledConditionalDeleteAlternatives_UseMethodCorrelatedStructuredPolicy(
+        string testName,
+        string operationCode,
+        string method,
+        string firstResponse,
+        string secondResponse,
+        int firstStatus,
+        int secondStatus)
+    {
+        var test = ReadBundledTest("CRUD/conditional-delete.json", testName);
+        var actions = test["action"]!.AsArray();
+        var matchingOperations = actions
+            .Select(action => action?["operation"])
+            .Where(operation => GetStringValue(operation?["type"]?["code"]) == operationCode)
+            .ToArray();
+        var alternatives = FindAssertions(test)
+            .Where(assertion => GetStringValue(assertion["response"]) is { } response
+                && (response == firstResponse || response == secondResponse))
+            .ToArray();
+        var marker = (test["extension"]?.AsArray() ?? [])
+            .Where(extension => GetStringValue(extension?["url"]) == StatusAlternativeEnforcementPlan.ExtensionUrl)
+            .Should().ContainSingle("deleting the structured policy marker must break the guard").Which;
+        var children = marker!["extension"]!.AsArray();
+
+        matchingOperations.Should().ContainSingle(
+            $"the marked test must execute exactly one relevant {method} operation");
+        alternatives.Should().HaveCount(2, "deleting either accepted status must break the guard");
+        alternatives.Select(assertion => GetStringValue(assertion["response"]))
+            .Should().BeEquivalentTo(firstResponse, secondResponse);
+        alternatives.Select(assertion => assertion["warningOnly"]?.GetValue<bool>() == true)
+            .Should().OnlyContain(warningOnly => warningOnly);
+        children.Single(child => GetStringValue(child?["url"]) == "policy")!["valueCode"]!.GetValue<string>()
+            .Should().Be("response-status-set-v1");
+        children.Single(child => GetStringValue(child?["url"]) == "method")!["valueCode"]!.GetValue<string>()
+            .Should().Be(method);
+        children.Where(child => GetStringValue(child?["url"]) == "status")
+            .Select(child => child!["valueInteger"]!.GetValue<int>())
+            .Should().Equal(firstStatus, secondStatus);
+
+        CreateBundledCatalog().TryGet("CRUD/conditional-delete.json", out var entry).Should().BeTrue();
+        entry.StatusAlternativePlan.TryGetRule($"{entry.Descriptor.Name} > {testName}", out var rule)
+            .Should().BeTrue();
+        rule.Policy.Should().Be(StatusAlternativePolicy.ResponseStatusSet);
+        rule.Method.Should().Be(method);
+        rule.AllowedStatusCodes.Should().Equal(firstStatus, secondStatus);
+    }
+
+    [Fact]
+    public void BundledConditionalDeletePolicy_DoesNotWeakenGateOrLifecycle()
+    {
+        var suite = ReadBundledSuite("CRUD/conditional-delete.json");
+        var setupActions = suite["setup"]!["action"]!.AsArray();
+        var teardownActions = suite["teardown"]!["action"]!.AsArray();
+        var noCriteriaTest = ReadBundledTest(
+            "CRUD/conditional-delete.json",
+            "Conditional delete with no search criteria is rejected");
+        var noCriteriaDelete = noCriteriaTest["action"]!.AsArray()
+            .Select(action => action?["operation"])
+            .Single(operation => GetStringValue(operation?["type"]?["code"]) == "delete");
+        var singleMatchTest = ReadBundledTest(
+            "CRUD/conditional-delete.json",
+            "Conditional delete with exactly one matching resource removes it");
+        var singleMatchActions = singleMatchTest["action"]!.AsArray();
+        var singleMatchDelete = singleMatchActions
+            .Select(action => action?["operation"])
+            .Single(operation => GetStringValue(operation?["type"]?["code"]) == "delete");
+        var successfulDeleteAssertions = FindAssertions(singleMatchTest)
+            .Where(assertion => GetStringValue(assertion["response"]) == "okay")
+            .ToArray();
+
+        GetMetadataCapabilityRequirement(suite).Should().Be(
+            "rest.resource.where(type='Patient').where(conditionalDelete.exists() and conditionalDelete != 'not-supported').exists()");
+        suite["test"]!.AsArray().Should().HaveCount(5);
+        noCriteriaDelete!["params"].Should().BeNull(
+            "the rejection test must remain a collection DELETE without search criteria");
+        GetStringValue(singleMatchDelete?["params"]).Should().Be(
+            "?identifier=http://ignixa.io/testscript/suite/cond-delete|CD-ONEMATCH");
+        successfulDeleteAssertions.Should().ContainSingle(
+            "the successful conditional DELETE must remain independently strict");
+        (successfulDeleteAssertions[0]["warningOnly"]?.GetValue<bool>() ?? false).Should().BeFalse();
+        setupActions.Should().HaveCount(3);
+        setupActions.Select(action => GetStringValue(action?["operation"]?["type"]?["code"]))
+            .Should().OnlyContain(code => code == "create");
+        teardownActions.Should().HaveCount(3);
+        teardownActions.Select(action => GetStringValue(action?["operation"]?["type"]?["code"]))
+            .Should().OnlyContain(code => code == "delete");
+    }
+
     [Fact]
     public void BundledMaliciousNarrativeRejection_IsClearlyInformational()
     {
