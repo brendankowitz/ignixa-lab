@@ -152,6 +152,25 @@ public sealed class TestScriptRunnerTests
                 Name = "ReadAfterDelete",
                 Actions =
                 [
+                    new OperationExpression { Type = "delete", Url = "Patient/deleted", ResponseId = "delete-response" },
+                    new AssertExpression
+                    {
+                        Description = "Accepted DELETE response: 200 OK for completed deletion",
+                        Criteria = new ResponseCodeCriteria("200"),
+                        WarningOnly = true,
+                    },
+                    new AssertExpression
+                    {
+                        Description = "Accepted DELETE response: 202 Accepted for asynchronous deletion",
+                        Criteria = new ResponseCodeCriteria("202"),
+                        WarningOnly = true,
+                    },
+                    new AssertExpression
+                    {
+                        Description = "Accepted DELETE response: 204 No Content for completed deletion",
+                        Criteria = new ResponseCodeCriteria("204"),
+                        WarningOnly = true,
+                    },
                     new OperationExpression { Type = "read", Url = "Patient/deleted", ResponseId = "after-delete-read" },
                     new AssertExpression
                     {
@@ -587,7 +606,9 @@ public sealed class TestScriptRunnerTests
     [Fact]
     public async Task GivenWarningOnlyDeletedResourceStatusAlternatives_WhenTargetReturnsUnexpectedStatus_ThenRunFails()
     {
-        var provider = new RecordingRequestProvider(new TestResponse { StatusCode = 500 });
+        var provider = new RecordingRequestProvider(
+            new TestResponse { StatusCode = 202 },
+            new TestResponse { StatusCode = 500 });
         var runner = new TestScriptRunner(
             new FakeSuiteCatalog("deleted-resource-status.json", WarningOnlyDeletedResourceStatusAlternativesDefinition()),
             new FakeEvaluatorFactory(provider),
@@ -609,12 +630,16 @@ public sealed class TestScriptRunnerTests
     }
 
     [Theory]
-    [InlineData(200)]
-    [InlineData(404)]
-    [InlineData(410)]
-    public async Task GivenWarningOnlyDeletedResourceStatusAlternatives_WhenTargetReturnsAcceptedStatus_ThenRunPasses(int statusCode)
+    [InlineData(202, 200)]
+    [InlineData(200, 404)]
+    [InlineData(204, 410)]
+    [InlineData(202, 404)]
+    [InlineData(202, 410)]
+    public async Task GivenCorrelatedDeleteAndReadbackStatuses_WhenValid_ThenRunPasses(int deleteStatus, int readStatus)
     {
-        var provider = new RecordingRequestProvider(new TestResponse { StatusCode = statusCode });
+        var provider = new RecordingRequestProvider(
+            new TestResponse { StatusCode = deleteStatus },
+            new TestResponse { StatusCode = readStatus });
         var runner = new TestScriptRunner(
             new FakeSuiteCatalog("deleted-resource-status.json", WarningOnlyDeletedResourceStatusAlternativesDefinition()),
             new FakeEvaluatorFactory(provider),
@@ -631,6 +656,33 @@ public sealed class TestScriptRunnerTests
 
         outcome.IsValid.Should().BeTrue();
         outcome.Report!.Results.Should().ContainSingle().Which.Status.Should().Be(ConformanceStatus.Pass);
+    }
+
+    [Theory]
+    [InlineData(201, 404)]
+    [InlineData(200, 200)]
+    [InlineData(204, 200)]
+    public async Task GivenCorrelatedDeleteAndReadbackStatuses_WhenInvalid_ThenRunFails(int deleteStatus, int readStatus)
+    {
+        var provider = new RecordingRequestProvider(
+            new TestResponse { StatusCode = deleteStatus },
+            new TestResponse { StatusCode = readStatus });
+        var runner = new TestScriptRunner(
+            new FakeSuiteCatalog("deleted-resource-status.json", WarningOnlyDeletedResourceStatusAlternativesDefinition()),
+            new FakeEvaluatorFactory(provider),
+            new CapabilityStatementFetcher(
+                new FixedResponseHttpClientFactory(CapabilityStatementWithoutReindex),
+                Options.Create(new IgnixaLabOptions())),
+            Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
+            NullLogger<TestScriptRunner>.Instance);
+
+        var outcome = await runner.RunAsync(
+            new RunRequest { TargetUrl = TargetUrl, SuiteIds = ["deleted-resource-status.json"] },
+            CancellationToken.None);
+
+        outcome.IsValid.Should().BeTrue();
+        outcome.Report!.Results.Should().ContainSingle().Which.Status.Should().Be(ConformanceStatus.Fail);
     }
 
     [Fact]
@@ -680,8 +732,16 @@ public sealed class TestScriptRunnerTests
         public RequestProviderScope CreateRequestProvider(Uri target) => new(provider, null);
     }
 
-    private sealed class RecordingRequestProvider(TestResponse response) : ITestRequestProvider
+    private sealed class RecordingRequestProvider : ITestRequestProvider
     {
+        private readonly Queue<TestResponse> _responses;
+
+        public RecordingRequestProvider(params TestResponse[] responses)
+        {
+            responses.Should().NotBeEmpty();
+            _responses = new Queue<TestResponse>(responses);
+        }
+
         public List<TestRequest> Requests { get; } = [];
 
         public int CallCount { get; private set; }
@@ -690,6 +750,7 @@ public sealed class TestScriptRunnerTests
         {
             CallCount++;
             Requests.Add(request);
+            var response = _responses.Count > 1 ? _responses.Dequeue() : _responses.Peek();
             return Task.FromResult(response);
         }
     }

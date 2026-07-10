@@ -733,9 +733,38 @@ public sealed class SuiteCatalogTests : IDisposable
 
         var laterUpdateAssertion = ReadBundledTest("Subscriptions/basic.json", "update replaces criteria and status while retaining websocket channel")
             ["action"]![1]!["assert"];
-        GetStringValue(laterUpdateAssertion?["response"]).Should().Be("okay",
-            "an update of the now-existing Subscription may return any successful 2xx status");
+        GetStringValue(laterUpdateAssertion?["responseCode"]).Should().Be("200");
+        GetStringValue(laterUpdateAssertion?["response"]).Should().BeNull();
         (laterUpdateAssertion?["warningOnly"]?.GetValue<bool>() ?? false).Should().BeFalse();
+    }
+
+    [Fact]
+    public void BundledSubscriptionSuite_ReadSearchAndExistingUpdateRequireExact200()
+    {
+        var suite = ReadBundledSuite("Subscriptions/basic.json");
+        var assertionDescriptions = new[]
+        {
+            "Initial read must return 200 OK",
+            "Search must return 200 OK",
+            "Existing-resource update must return 200 OK",
+            "Read after update must return 200 OK",
+        };
+        var assertions = suite["test"]!.AsArray()
+            .SelectMany(test => test!["action"]!.AsArray())
+            .Select(action => action?["assert"])
+            .Where(assertion => assertionDescriptions.Contains(GetStringValue(assertion?["description"])))
+            .ToArray();
+
+        assertions.Should().HaveCount(assertionDescriptions.Length,
+            "deleting any exact status assertion must break this guard");
+        assertions.Select(assertion => GetStringValue(assertion?["description"]))
+            .Should().BeEquivalentTo(assertionDescriptions);
+        assertions.Select(assertion => GetStringValue(assertion?["responseCode"]))
+            .Should().OnlyContain(responseCode => responseCode == "200");
+        assertions.Select(assertion => assertion?["response"])
+            .Should().OnlyContain(response => response == null);
+        assertions.Select(assertion => assertion?["warningOnly"]?.GetValue<bool>() ?? false)
+            .Should().OnlyContain(warningOnly => !warningOnly);
     }
 
     [Fact]
@@ -775,30 +804,34 @@ public sealed class SuiteCatalogTests : IDisposable
     [Fact]
     public void BundledSubscriptionSuite_DeletedReadUsesNarrowEnforcedWarningAlternatives()
     {
-        var test = ReadBundledTest("Subscriptions/basic.json", "read after delete accepts pending or completed outcomes");
+        var test = ReadBundledTest("Subscriptions/basic.json", "delete accepts valid outcomes and checks immediate readback");
         var actions = test["action"]!.AsArray();
-        var assertions = actions
-            .Skip(1)
-            .Select(action => action?["assert"])
-            .ToArray();
+        var deleteAssertions = actions.Skip(1).Take(3).Select(action => action?["assert"]).ToArray();
+        var readbackAssertions = actions.Skip(5).Take(3).Select(action => action?["assert"]).ToArray();
 
-        actions.Should().HaveCount(4, "all three accepted statuses and the read operation are required");
-        assertions.Should().HaveCount(3, "deleting any alternative must break this guard");
-        GetStringValue(assertions[0]?["responseCode"]).Should().Be("200");
-        assertions.Skip(1).Select(assertion => GetStringValue(assertion?["response"]))
-            .Should().Equal("gone", "notFound");
-        assertions.Select(assertion => assertion?["warningOnly"]?.GetValue<bool>() == true)
+        actions.Should().HaveCount(8, "both operations and all six narrow alternatives are required");
+        deleteAssertions.Should().HaveCount(3, "deleting any DELETE alternative must break this guard");
+        deleteAssertions.Select(assertion => GetStringValue(assertion?["responseCode"]))
+            .Should().Equal("200", "202", "204");
+        deleteAssertions.Select(assertion => assertion?["warningOnly"]?.GetValue<bool>() == true)
             .Should().OnlyContain(warningOnly => warningOnly);
-        assertions.Select(assertion => GetStringValue(assertion?["description"]))
+        deleteAssertions.Select(assertion => GetStringValue(assertion?["description"]))
+            .Should().Equal(
+                "Accepted DELETE response: 200 OK for completed deletion",
+                "Accepted DELETE response: 202 Accepted for asynchronous deletion",
+                "Accepted DELETE response: 204 No Content for completed deletion");
+
+        readbackAssertions.Should().HaveCount(3, "deleting any readback alternative must break this guard");
+        GetStringValue(readbackAssertions[0]?["responseCode"]).Should().Be("200");
+        readbackAssertions.Skip(1).Select(assertion => GetStringValue(assertion?["response"]))
+            .Should().Equal("gone", "notFound");
+        readbackAssertions.Select(assertion => assertion?["warningOnly"]?.GetValue<bool>() == true)
+            .Should().OnlyContain(warningOnly => warningOnly);
+        readbackAssertions.Select(assertion => GetStringValue(assertion?["description"]))
             .Should().Equal(
                 "Accepted alternative: 200 OK while an asynchronous delete is still pending",
                 "Accepted alternative: 410 Gone when the server tracks the deleted resource",
                 "Accepted alternative: 404 Not Found when deleted resources are not tracked");
-
-        var deleteAssertion = ReadBundledTest("Subscriptions/basic.json", "delete removes the subscription")
-            ["action"]![1]!["assert"];
-        GetStringValue(deleteAssertion?["response"]).Should().Be("okay");
-        (deleteAssertion?["warningOnly"]?.GetValue<bool>() ?? false).Should().BeFalse();
     }
 
     [Theory]
