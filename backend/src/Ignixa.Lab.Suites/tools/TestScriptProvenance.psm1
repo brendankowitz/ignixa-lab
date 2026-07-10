@@ -6,6 +6,14 @@ $script:RelationshipExtensionUrl = 'http://ignixa.io/fhir/StructureDefinition/pr
 $script:LicenseExtensionUrl = 'http://ignixa.io/fhir/StructureDefinition/provenance-source-license'
 $script:VersionExtensionUrl = 'http://ignixa.io/fhir/StructureDefinition/provenance-source-version'
 $script:NotesExtensionUrl = 'http://ignixa.io/fhir/StructureDefinition/provenance-distillation-notes'
+$script:AllowedActivities = @('author-testscript', 'distill-testscript')
+$script:AllowedRelationships = @(
+    'authored-in',
+    'direct-port',
+    'distilled-from',
+    'inspired-by',
+    'spec-reference'
+)
 
 function Get-TestScriptFile {
     param(
@@ -18,7 +26,11 @@ function Get-TestScriptFile {
     }
 
     Get-ChildItem -LiteralPath $SuitesDirectory -Recurse -File -Filter '*.json' |
-        Where-Object { $_.Name -notlike '*.provenance.json' -and $_.Name -ne 'source-revision.txt' } |
+        Where-Object {
+            $_.Name -notlike '*.provenance.json' -and
+            $_.Name -ne 'source-revision.txt' -and
+            $_.Name -ne 'provenance-manifest.json'
+        } |
         Sort-Object FullName
 }
 
@@ -53,33 +65,41 @@ function New-ProvenanceEntity {
         [System.Collections.IDictionary] $Source
     )
 
+    $relationship = Get-DictionaryValue -InputObject $Source -Name 'Relationship'
+    $license = Get-DictionaryValue -InputObject $Source -Name 'License'
+    $notes = Get-DictionaryValue -InputObject $Source -Name 'Notes'
+    $version = Get-DictionaryValue -InputObject $Source -Name 'Version'
+    $reference = Get-DictionaryValue -InputObject $Source -Name 'Reference'
+    $display = Get-DictionaryValue -InputObject $Source -Name 'Display'
+
     $extensions = @(
         [ordered] @{
             url = $script:RelationshipExtensionUrl
-            valueCode = $Source.Relationship
+            valueCode = $relationship
         },
         [ordered] @{
             url = $script:LicenseExtensionUrl
-            valueString = $Source.License
+            valueString = $license
         },
         [ordered] @{
             url = $script:NotesExtensionUrl
-            valueString = $Source.Notes
+            valueString = $notes
         }
     )
 
-    if ($Source.Contains('Version') -and -not [string]::IsNullOrWhiteSpace([string] $Source.Version)) {
+    if ((Test-DictionaryContainsKey -InputObject $Source -Name 'Version') -and
+        -not [string]::IsNullOrWhiteSpace([string] $version)) {
         $extensions += [ordered] @{
             url = $script:VersionExtensionUrl
-            valueString = $Source.Version
+            valueString = $version
         }
     }
 
     [ordered] @{
         role = 'source'
         what = [ordered] @{
-            reference = $Source.Reference
-            display = $Source.Display
+            reference = $reference
+            display = $display
         }
         extension = $extensions
     }
@@ -162,6 +182,400 @@ function Get-JsonPropertyValue {
     }
 
     $property.Value
+}
+
+function Test-IsDictionary {
+    param(
+        [AllowNull()]
+        [object] $InputObject
+    )
+
+    $InputObject -is [System.Collections.IDictionary]
+}
+
+function Test-DictionaryContainsKey {
+    param(
+        [AllowNull()]
+        [object] $InputObject,
+
+        [Parameter(Mandatory = $true)]
+        [string] $Name
+    )
+
+    if (-not (Test-IsDictionary -InputObject $InputObject)) {
+        return $false
+    }
+
+    foreach ($key in $InputObject.Keys) {
+        if ([string]::Equals([string] $key, $Name, [System.StringComparison]::OrdinalIgnoreCase)) {
+            return $true
+        }
+    }
+
+    $false
+}
+
+function Get-DictionaryValue {
+    param(
+        [AllowNull()]
+        [object] $InputObject,
+
+        [Parameter(Mandatory = $true)]
+        [string] $Name
+    )
+
+    if (-not (Test-DictionaryContainsKey -InputObject $InputObject -Name $Name)) {
+        return $null
+    }
+
+    foreach ($key in $InputObject.Keys) {
+        if ([string]::Equals([string] $key, $Name, [System.StringComparison]::OrdinalIgnoreCase)) {
+            return $InputObject[$key]
+        }
+    }
+
+    $null
+}
+
+function ConvertTo-ManifestItemArray {
+    param(
+        [AllowNull()]
+        [object] $Value
+    )
+
+    if ($null -eq $Value) {
+        return @()
+    }
+
+    if ($Value -is [string]) {
+        return @($Value)
+    }
+
+    if ($Value -is [System.Array]) {
+        return @($Value)
+    }
+
+    if ($Value -is [System.Collections.IEnumerable] -and $Value -isnot [System.Collections.IDictionary]) {
+        return @($Value)
+    }
+
+    @($Value)
+}
+
+function Test-IsSchemaVersionOne {
+    param(
+        [AllowNull()]
+        [object] $Value
+    )
+
+    if ($null -eq $Value) {
+        return $false
+    }
+
+    $integralTypes = @(
+        [byte],
+        [sbyte],
+        [int16],
+        [uint16],
+        [int32],
+        [uint32],
+        [int64],
+        [uint64]
+    )
+
+    foreach ($integralType in $integralTypes) {
+        if ($Value -is $integralType) {
+            return ([int64] $Value) -eq 1
+        }
+    }
+
+    $false
+}
+
+function Test-IsRoundTripRecordedValue {
+    param(
+        [AllowNull()]
+        [string] $Value
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return $false
+    }
+
+    if ($Value -notmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,7})?(?:Z|[+-]\d{2}:\d{2})$') {
+        return $false
+    }
+
+    $parsed = [System.DateTimeOffset]::MinValue
+    [System.DateTimeOffset]::TryParse(
+        $Value,
+        [System.Globalization.CultureInfo]::InvariantCulture,
+        [System.Globalization.DateTimeStyles]::RoundtripKind,
+        [ref] $parsed)
+}
+
+function Assert-NoDuplicateManifestProperty {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Text.Json.JsonElement] $Element,
+
+        [string] $Path = '$'
+    )
+
+    if ($Element.ValueKind -eq [System.Text.Json.JsonValueKind]::Object) {
+        $names = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+        foreach ($property in $Element.EnumerateObject()) {
+            $propertyPath = "$Path.$($property.Name)"
+            if (-not $names.Add($property.Name)) {
+                throw "Duplicate manifest property at $propertyPath"
+            }
+
+            Assert-NoDuplicateManifestProperty -Element $property.Value -Path $propertyPath
+        }
+    }
+    elseif ($Element.ValueKind -eq [System.Text.Json.JsonValueKind]::Array) {
+        $index = 0
+        foreach ($item in $Element.EnumerateArray()) {
+            Assert-NoDuplicateManifestProperty -Element $item -Path "$Path[$index]"
+            $index++
+        }
+    }
+}
+
+function Read-TestScriptProvenanceManifest {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $ManifestPath
+    )
+
+    if (-not (Test-Path -LiteralPath $ManifestPath -PathType Leaf)) {
+        throw "Provenance manifest not found: $ManifestPath"
+    }
+
+    $json = Get-Content -LiteralPath $ManifestPath -Raw
+    $document = [System.Text.Json.JsonDocument]::Parse($json)
+    try {
+        Assert-NoDuplicateManifestProperty -Element $document.RootElement
+    }
+    finally {
+        $document.Dispose()
+    }
+
+    $json | ConvertFrom-Json -Depth 100 -AsHashtable -DateKind String
+}
+
+function Resolve-TestScriptProvenanceEntry {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Collections.IDictionary] $Manifest,
+
+        [Parameter(Mandatory = $true)]
+        [string] $RelativePath
+    )
+
+    $suiteEntries = Get-DictionaryValue -InputObject $Manifest -Name 'suites'
+    if (-not (Test-IsDictionary -InputObject $suiteEntries)) {
+        throw 'Provenance manifest suites must be an object.'
+    }
+
+    if (-not $suiteEntries.Contains($RelativePath)) {
+        throw "Missing manifest entry for TestScript: $RelativePath"
+    }
+
+    $entry = $suiteEntries[$RelativePath]
+    if (-not (Test-IsDictionary -InputObject $entry)) {
+        throw "Manifest suite entry must be an object: $RelativePath"
+    }
+
+    $hasProfile = (Test-DictionaryContainsKey -InputObject $entry -Name 'profile') -and
+        -not [string]::IsNullOrWhiteSpace([string] (Get-DictionaryValue -InputObject $entry -Name 'profile'))
+    $hasInlineSources = (Test-DictionaryContainsKey -InputObject $entry -Name 'sources') -and
+        $null -ne (Get-DictionaryValue -InputObject $entry -Name 'sources')
+
+    if ($hasProfile -eq $hasInlineSources) {
+        throw "Manifest entry must contain exactly one of profile or sources: $RelativePath"
+    }
+
+    if ($hasProfile) {
+        $profiles = Get-DictionaryValue -InputObject $Manifest -Name 'profiles'
+        if (-not (Test-IsDictionary -InputObject $profiles)) {
+            throw 'Provenance manifest profiles must be an object.'
+        }
+
+        $profileName = [string] (Get-DictionaryValue -InputObject $entry -Name 'profile')
+        if (-not $profiles.Contains($profileName)) {
+            throw "Unknown provenance profile for $RelativePath`: $profileName"
+        }
+
+        $profile = $profiles[$profileName]
+        if (-not (Test-IsDictionary -InputObject $profile)) {
+            throw "Manifest profile entry must be an object: $profileName"
+        }
+
+        $sources = ConvertTo-ManifestItemArray -Value (Get-DictionaryValue -InputObject $profile -Name 'sources')
+    }
+    else {
+        $sources = ConvertTo-ManifestItemArray -Value (Get-DictionaryValue -InputObject $entry -Name 'sources')
+    }
+
+    [pscustomobject] @{
+        Activity = [string] (Get-DictionaryValue -InputObject $entry -Name 'activity')
+        Recorded = [string] (Get-DictionaryValue -InputObject $entry -Name 'recorded')
+        Sources = @($sources)
+    }
+}
+
+function Test-TestScriptProvenanceManifest {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $SuitesDirectory,
+
+        [Parameter(Mandatory = $true)]
+        [System.Collections.IDictionary] $Manifest
+    )
+
+    $errors = [System.Collections.Generic.List[string]]::new()
+    $warnings = [System.Collections.Generic.List[string]]::new()
+    $resolvedSuites = [ordered] @{}
+
+    if (-not (Test-DictionaryContainsKey -InputObject $Manifest -Name 'schemaVersion') -or
+        -not (Test-IsSchemaVersionOne -Value (Get-DictionaryValue -InputObject $Manifest -Name 'schemaVersion'))) {
+        $errors.Add('Unsupported provenance manifest schemaVersion: expected 1.')
+    }
+
+    if (-not (Test-DictionaryContainsKey -InputObject $Manifest -Name 'profiles')) {
+        $errors.Add('Provenance manifest must contain a profiles object.')
+        $profiles = [ordered] @{}
+    }
+    else {
+        $profiles = Get-DictionaryValue -InputObject $Manifest -Name 'profiles'
+        if (-not (Test-IsDictionary -InputObject $profiles)) {
+            $errors.Add('Provenance manifest profiles must be an object.')
+            $profiles = [ordered] @{}
+        }
+    }
+
+    if (-not (Test-DictionaryContainsKey -InputObject $Manifest -Name 'suites')) {
+        $errors.Add('Provenance manifest must contain a suites object.')
+        $suiteEntries = [ordered] @{}
+    }
+    else {
+        $suiteEntries = Get-DictionaryValue -InputObject $Manifest -Name 'suites'
+        if (-not (Test-IsDictionary -InputObject $suiteEntries)) {
+            $errors.Add('Provenance manifest suites must be an object.')
+            $suiteEntries = [ordered] @{}
+        }
+    }
+
+    $scriptPaths = @(
+        Get-TestScriptFile -SuitesDirectory $SuitesDirectory |
+            ForEach-Object {
+                ConvertTo-SuiteRelativePath -SuitesDirectory $SuitesDirectory -Path $_.FullName
+            } |
+            Sort-Object
+    )
+
+    foreach ($scriptPath in $scriptPaths) {
+        if (-not $suiteEntries.Contains($scriptPath)) {
+            $errors.Add("Missing manifest entry for TestScript: $scriptPath")
+        }
+    }
+
+    foreach ($entryPath in @($suiteEntries.Keys | Sort-Object)) {
+        if ($entryPath -like '*\*') {
+            $errors.Add("Manifest suite path must use '/': $entryPath")
+        }
+
+        if ($entryPath -notin $scriptPaths) {
+            $errors.Add("Manifest entry has no TestScript: $entryPath")
+        }
+
+        $entry = $suiteEntries[$entryPath]
+        if (-not (Test-IsDictionary -InputObject $entry)) {
+            $errors.Add("Manifest suite entry must be an object: $entryPath")
+            continue
+        }
+
+        $entryErrorCount = $errors.Count
+
+        $activity = [string] (Get-DictionaryValue -InputObject $entry -Name 'activity')
+        if ([string]::IsNullOrWhiteSpace($activity) -or $script:AllowedActivities -cnotcontains $activity) {
+            $errors.Add("Unsupported activity for $entryPath`: $activity")
+        }
+
+        $recorded = [string] (Get-DictionaryValue -InputObject $entry -Name 'recorded')
+        if (-not (Test-IsRoundTripRecordedValue -Value $recorded)) {
+            $errors.Add("Invalid recorded date for $entryPath`: $recorded")
+        }
+
+        $hasProfile = (Test-DictionaryContainsKey -InputObject $entry -Name 'profile') -and
+            -not [string]::IsNullOrWhiteSpace([string] (Get-DictionaryValue -InputObject $entry -Name 'profile'))
+        $hasInlineSources = (Test-DictionaryContainsKey -InputObject $entry -Name 'sources') -and
+            $null -ne (Get-DictionaryValue -InputObject $entry -Name 'sources')
+
+        if ($hasProfile -eq $hasInlineSources) {
+            $errors.Add("Manifest entry must contain exactly one of profile or sources: $entryPath")
+            continue
+        }
+
+        if ($hasProfile) {
+            $profileName = [string] (Get-DictionaryValue -InputObject $entry -Name 'profile')
+            if (-not $profiles.Contains($profileName)) {
+                $errors.Add("Unknown provenance profile for $entryPath`: $profileName")
+                continue
+            }
+
+            $profile = $profiles[$profileName]
+            if (-not (Test-IsDictionary -InputObject $profile)) {
+                $errors.Add("Manifest profile entry must be an object: $profileName")
+                continue
+            }
+
+            $sources = ConvertTo-ManifestItemArray -Value (Get-DictionaryValue -InputObject $profile -Name 'sources')
+        }
+        else {
+            $sources = ConvertTo-ManifestItemArray -Value (Get-DictionaryValue -InputObject $entry -Name 'sources')
+        }
+
+        if ($sources.Count -eq 0) {
+            $errors.Add("No provenance sources configured for $entryPath")
+            continue
+        }
+
+        foreach ($source in $sources) {
+            if (-not (Test-IsDictionary -InputObject $source)) {
+                $errors.Add("Manifest source must be an object for $entryPath")
+                continue
+            }
+
+            foreach ($requiredField in @('reference', 'display', 'relationship', 'license', 'notes')) {
+                if (-not (Test-DictionaryContainsKey -InputObject $source -Name $requiredField) -or
+                    [string]::IsNullOrWhiteSpace([string] (Get-DictionaryValue -InputObject $source -Name $requiredField))) {
+                    $errors.Add("Missing source $requiredField for manifest entry: $entryPath")
+                }
+            }
+
+            $relationship = [string] (Get-DictionaryValue -InputObject $source -Name 'relationship')
+            if (-not [string]::IsNullOrWhiteSpace($relationship) -and
+                $script:AllowedRelationships -cnotcontains $relationship) {
+                $errors.Add("Unsupported source relationship for $entryPath`: $relationship")
+            }
+        }
+
+        if ($errors.Count -eq $entryErrorCount) {
+            $resolvedSuites[$entryPath] = [pscustomobject] @{
+                Activity = $activity
+                Recorded = $recorded
+                Sources = @($sources)
+            }
+        }
+    }
+
+    [pscustomobject] @{
+        Errors = @($errors | Sort-Object -Unique)
+        Warnings = @($warnings | Sort-Object -Unique)
+        ResolvedSuites = $resolvedSuites
+    }
 }
 
 function Test-ProvenanceSidecar {
@@ -249,6 +663,9 @@ Export-ModuleMember -Function @(
     'Get-TestScriptFile',
     'ConvertTo-SuiteRelativePath',
     'Get-ProvenanceSidecarPath',
+    'Read-TestScriptProvenanceManifest',
+    'Resolve-TestScriptProvenanceEntry',
+    'Test-TestScriptProvenanceManifest',
     'New-TestScriptProvenance',
     'Invoke-TestScriptProvenanceAudit'
 )

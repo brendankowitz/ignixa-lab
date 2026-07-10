@@ -7,6 +7,10 @@ namespace Ignixa.Lab.Functions.Tests.Suites;
 public sealed class SuiteProvenanceAuditTests : IDisposable
 {
     private readonly string _root;
+    private static readonly JsonSerializerOptions ManifestJsonOptions = new()
+    {
+        WriteIndented = true
+    };
 
     public SuiteProvenanceAuditTests()
     {
@@ -268,11 +272,12 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
     {
         var firstRoot = Path.Combine(_root, "first");
         var secondRoot = Path.Combine(_root, "second");
+        var manifest = WriteManifest(CreateManifest());
         WriteScript(firstRoot, Path.Combine("CRUD", "basic.json"));
         WriteScript(secondRoot, Path.Combine("CRUD", "basic.json"));
 
-        var firstResult = await RunGeneratorAsync(firstRoot);
-        var secondResult = await RunGeneratorAsync(secondRoot);
+        var firstResult = await RunGeneratorAsync(firstRoot, manifest);
+        var secondResult = await RunGeneratorAsync(secondRoot, manifest);
 
         firstResult.ExitCode.Should().Be(0, firstResult.CombinedOutput);
         secondResult.ExitCode.Should().Be(0, secondResult.CombinedOutput);
@@ -287,15 +292,43 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         using var document = JsonDocument.Parse(firstSidecar);
         document.RootElement.GetProperty("activity").GetProperty("coding")[0].GetProperty("code").GetString()
             .Should().Be("distill-testscript");
-        document.RootElement.GetProperty("recorded").GetString().Should().Be("2026-07-07T00:00:00Z");
+        document.RootElement.GetProperty("recorded").GetString().Should().Be("2026-07-10T12:34:56Z");
+        document.RootElement.GetProperty("entity")[0].GetProperty("what").GetProperty("reference").GetString()
+            .Should().Be("https://example.test/source");
     }
 
     [Fact]
     public async Task NewProvenanceSidecars_MapsExpandOperationToTerminologySources()
     {
         WriteScript(Path.Combine("Operations", "expand-operation.json"));
+        var manifest = WriteManifest(CreateInlineManifest(
+            "Operations/expand-operation.json",
+            sources:
+            [
+                new ManifestSource(
+                    "https://hl7.org/fhir/R4/terminology-service.html",
+                    "FHIR R4 terminology service operations",
+                    "spec-reference",
+                    "FHIR specification license",
+                    "FHIR R4",
+                    "Used the FHIR operation definitions as the normative source for terminology-operation behavior."),
+                new ManifestSource(
+                    "https://github.com/hapifhir/hapi-fhir",
+                    "HAPI FHIR terminology test coverage",
+                    "inspired-by",
+                    "Apache-2.0",
+                    "v7.0.0",
+                    "Used as comparative open-source coverage while distilling black-box FHIR TestScript terminology scenarios."),
+                new ManifestSource(
+                    "https://github.com/microsoft/fhir-server",
+                    "Microsoft FHIR Server ExpandOperationTests coverage",
+                    "distilled-from",
+                    "MIT",
+                    "v1.0.0",
+                    "Converted Microsoft FHIR Server ValueSet $expand e2e behavior into black-box FHIR TestScript assertions.")
+            ]));
 
-        var result = await RunGeneratorAsync(_root);
+        var result = await RunGeneratorAsync(_root, manifest);
 
         result.ExitCode.Should().Be(0, result.CombinedOutput);
         using var document = JsonDocument.Parse(
@@ -323,8 +356,20 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         string fileName)
     {
         WriteScript(Path.Combine(category, fileName));
+        var manifest = WriteManifest(CreateInlineManifest(
+            $"{category}/{fileName}",
+            sources:
+            [
+                new ManifestSource(
+                    "https://github.com/microsoft/fhir-server",
+                    "Microsoft FHIR Server test coverage",
+                    "distilled-from",
+                    "MIT",
+                    "v1.0.0",
+                    "Converted Microsoft FHIR Server behavior into black-box FHIR TestScript assertions.")
+            ]));
 
-        var result = await RunGeneratorAsync(_root);
+        var result = await RunGeneratorAsync(_root, manifest);
 
         result.ExitCode.Should().Be(0, result.CombinedOutput);
         var sidecarName = Path.ChangeExtension(fileName, ".provenance.json");
@@ -354,8 +399,28 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
     public async Task NewProvenanceSidecars_MapsAllResourceTypeSuitesToIgnixaAuthoredSource(string fileName)
     {
         WriteScript(Path.Combine("CRUD", fileName));
+        var manifest = WriteManifest(CreateInlineManifest(
+            $"CRUD/{fileName}",
+            activity: "author-testscript",
+            sources:
+            [
+                new ManifestSource(
+                    "https://github.com/brendankowitz/ignixa-lab",
+                    "Ignixa Lab all resource type TestScripts",
+                    "authored-in",
+                    "MIT",
+                    "v1.0.0",
+                    "Authored in Ignixa Lab to exercise create/read coverage across every concrete resource type."),
+                new ManifestSource(
+                    "https://hl7.org/fhir/R4/resourcelist.html",
+                    "FHIR R4 resource list",
+                    "spec-reference",
+                    "FHIR specification license",
+                    "FHIR R4",
+                    "Used as normative resource taxonomy context for the generated all-resource-type suites.")
+            ]));
 
-        var result = await RunGeneratorAsync(_root);
+        var result = await RunGeneratorAsync(_root, manifest);
 
         result.ExitCode.Should().Be(0, result.CombinedOutput);
         var sidecarName = Path.ChangeExtension(fileName, ".provenance.json");
@@ -371,6 +436,8 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         references.Should().Contain("https://github.com/brendankowitz/ignixa-lab");
         references.Should().Contain("https://hl7.org/fhir/R4/resourcelist.html");
         references.Should().NotContain("https://github.com/microsoft/fhir-server");
+        document.RootElement.GetProperty("activity").GetProperty("coding")[0].GetProperty("code").GetString()
+            .Should().Be("author-testscript");
     }
 
     [Theory]
@@ -390,8 +457,27 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         string expectedSpecReference)
     {
         WriteScript(Path.Combine(category, fileName));
+        var manifest = WriteManifest(CreateInlineManifest(
+            $"{category}/{fileName}",
+            sources:
+            [
+                new ManifestSource(
+                    "https://github.com/fhir-fi/fhir262",
+                    "fhir262 tests",
+                    "distilled-from",
+                    "MIT",
+                    "v1.0.0",
+                    "Ported fhir262 coverage into black-box FHIR TestScript assertions."),
+                new ManifestSource(
+                    expectedSpecReference,
+                    "FHIR R4 specification context",
+                    "spec-reference",
+                    "FHIR specification license",
+                    "FHIR R4",
+                    "Used as normative operation context for the assertions.")
+            ]));
 
-        var result = await RunGeneratorAsync(_root);
+        var result = await RunGeneratorAsync(_root, manifest);
 
         result.ExitCode.Should().Be(0, result.CombinedOutput);
         var sidecarName = Path.ChangeExtension(fileName, ".provenance.json");
@@ -417,8 +503,20 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         string fileName)
     {
         WriteScript(Path.Combine(category, fileName));
+        var manifest = WriteManifest(CreateInlineManifest(
+            $"{category}/{fileName}",
+            sources:
+            [
+                new ManifestSource(
+                    "https://github.com/microsoft/fhir-server",
+                    "Microsoft FHIR Server test coverage",
+                    "distilled-from",
+                    "MIT",
+                    "v1.0.0",
+                    "Converted Microsoft FHIR Server behavior into black-box FHIR TestScript assertions.")
+            ]));
 
-        var result = await RunGeneratorAsync(_root);
+        var result = await RunGeneratorAsync(_root, manifest);
 
         result.ExitCode.Should().Be(0, result.CombinedOutput);
         var sidecarName = Path.ChangeExtension(fileName, ".provenance.json");
@@ -439,8 +537,34 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
     public async Task NewProvenanceSidecars_PreservesSubscriptionAttribution()
     {
         WriteScript(Path.Combine("Subscriptions", "basic.json"));
+        var manifest = WriteManifest(CreateInlineManifest(
+            "Subscriptions/basic.json",
+            sources:
+            [
+                new ManifestSource(
+                    "https://hl7.org/fhir/R4/subscription.html",
+                    "FHIR R4 Subscription resource",
+                    "spec-reference",
+                    "FHIR specification license",
+                    "FHIR R4",
+                    "Used the FHIR Subscription definition for basic create/read/search/update/delete expectations."),
+                new ManifestSource(
+                    "https://github.com/medplum/fhir-candle",
+                    "fhir-candle Subscription coverage",
+                    "inspired-by",
+                    "Apache-2.0",
+                    "v1.0.0",
+                    "Used as comparative open-source coverage for Subscription round-tripping."),
+                new ManifestSource(
+                    "https://github.com/LinuxForHealth/FHIR",
+                    "LinuxForHealth FHIR Subscription coverage",
+                    "inspired-by",
+                    "Apache-2.0",
+                    "v1.0.0",
+                    "Used as comparative open-source coverage for Subscription resource behavior.")
+            ]));
 
-        var result = await RunGeneratorAsync(_root);
+        var result = await RunGeneratorAsync(_root, manifest);
 
         result.ExitCode.Should().Be(0, result.CombinedOutput);
         using var document = JsonDocument.Parse(
@@ -458,9 +582,388 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         references.Should().NotContain("https://github.com/microsoft/fhir-server");
     }
 
+    [Fact]
+    public async Task NewProvenanceSidecars_FailsWhenScriptIsMissingFromManifest()
+    {
+        WriteScript(Path.Combine("CRUD", "basic.json"));
+        var manifest = WriteManifest(CreateManifest("Search/basic.json"));
+
+        var result = await RunGeneratorAsync(_root, manifest);
+
+        result.ExitCode.Should().NotBe(0);
+        result.CombinedOutput.Should().Contain("Missing manifest entry for TestScript: CRUD/basic.json");
+        File.Exists(Path.Combine(_root, "CRUD", "basic.provenance.json")).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task NewProvenanceSidecars_FailsWhenManifestContainsOrphanedSuite()
+    {
+        WriteScript(Path.Combine("CRUD", "basic.json"));
+        var manifest = WriteManifest(CreateManifest("Search/basic.json"));
+
+        var result = await RunGeneratorAsync(_root, manifest);
+
+        result.ExitCode.Should().NotBe(0);
+        result.CombinedOutput.Should().Contain("Manifest entry has no TestScript: Search/basic.json");
+        File.Exists(Path.Combine(_root, "CRUD", "basic.provenance.json")).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task NewProvenanceSidecars_FailsWhenManifestReferencesUnknownProfile()
+    {
+        WriteScript(Path.Combine("CRUD", "basic.json"));
+        var manifest = WriteManifest(CreateProfileManifest(
+            "CRUD/basic.json",
+            definedProfile: "example",
+            referencedProfile: "missing",
+            sources:
+            [
+                new ManifestSource(
+                    "https://example.test/source",
+                    "Example source",
+                    "distilled-from",
+                    "MIT",
+                    "v1.0.0",
+                    "Test source")
+            ]));
+
+        var result = await RunGeneratorAsync(_root, manifest);
+
+        result.ExitCode.Should().NotBe(0);
+        result.CombinedOutput.Should().Contain("Unknown provenance profile");
+        File.Exists(Path.Combine(_root, "CRUD", "basic.provenance.json")).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task NewProvenanceSidecars_FailsWhenManifestEntryContainsBothProfileAndInlineSources()
+    {
+        WriteScript(Path.Combine("CRUD", "basic.json"));
+        var manifest = WriteManifest("""
+        {
+          "schemaVersion": 1,
+          "profiles": {
+            "example": {
+              "sources": [
+                {
+                  "reference": "https://example.test/source",
+                  "display": "Example source",
+                  "relationship": "distilled-from",
+                  "license": "MIT",
+                  "version": "v1.0.0",
+                  "notes": "Test source"
+                }
+              ]
+            }
+          },
+          "suites": {
+            "CRUD/basic.json": {
+              "profile": "example",
+              "activity": "distill-testscript",
+              "recorded": "2026-07-10T12:34:56Z",
+              "sources": [
+                {
+                  "reference": "https://example.test/source",
+                  "display": "Example source",
+                  "relationship": "distilled-from",
+                  "license": "MIT",
+                  "version": "v1.0.0",
+                  "notes": "Test source"
+                }
+              ]
+            }
+          }
+        }
+        """);
+
+        var result = await RunGeneratorAsync(_root, manifest);
+
+        result.ExitCode.Should().NotBe(0);
+        result.CombinedOutput.Should().Contain("exactly one of profile or sources");
+        File.Exists(Path.Combine(_root, "CRUD", "basic.provenance.json")).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task NewProvenanceSidecars_FailsWhenManifestEntryContainsNeitherProfileNorInlineSources()
+    {
+        WriteScript(Path.Combine("CRUD", "basic.json"));
+        var manifest = WriteManifest("""
+        {
+          "schemaVersion": 1,
+          "profiles": {},
+          "suites": {
+            "CRUD/basic.json": {
+              "activity": "distill-testscript",
+              "recorded": "2026-07-10T12:34:56Z"
+            }
+          }
+        }
+        """);
+
+        var result = await RunGeneratorAsync(_root, manifest);
+
+        result.ExitCode.Should().NotBe(0);
+        result.CombinedOutput.Should().Contain("exactly one of profile or sources");
+        File.Exists(Path.Combine(_root, "CRUD", "basic.provenance.json")).Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("unsupported-activity", "distilled-from", "Unsupported activity")]
+    [InlineData("distill-testscript", "copied-from", "Unsupported source relationship")]
+    public async Task NewProvenanceSidecars_FailsForUnsupportedVocabulary(
+        string activity,
+        string relationship,
+        string expectedMessage)
+    {
+        WriteScript(Path.Combine("CRUD", "basic.json"));
+        var manifest = WriteManifest(CreateManifest(
+            activity: activity,
+            relationship: relationship));
+
+        var result = await RunGeneratorAsync(_root, manifest);
+
+        result.ExitCode.Should().NotBe(0);
+        result.CombinedOutput.Should().Contain(expectedMessage);
+        File.Exists(Path.Combine(_root, "CRUD", "basic.provenance.json")).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task NewProvenanceSidecars_FailsWhenManifestContainsDuplicateJsonProperties()
+    {
+        WriteScript(Path.Combine("CRUD", "basic.json"));
+        var manifest = WriteManifest("""
+        {
+          "schemaVersion": 1,
+          "profiles": {
+            "example": {
+              "sources": [
+                {
+                  "reference": "https://example.test/source",
+                  "display": "Example source",
+                  "relationship": "distilled-from",
+                  "license": "MIT",
+                  "notes": "Test source"
+                }
+              ]
+            }
+          },
+          "suites": {
+            "CRUD/basic.json": {
+              "profile": "example",
+              "profile": "duplicate",
+              "activity": "distill-testscript",
+              "recorded": "2026-07-10T12:34:56Z"
+            }
+          }
+        }
+        """);
+
+        var result = await RunGeneratorAsync(_root, manifest);
+
+        result.ExitCode.Should().NotBe(0);
+        result.CombinedOutput.Should().Contain("Duplicate manifest property");
+        File.Exists(Path.Combine(_root, "CRUD", "basic.provenance.json")).Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("2")]
+    [InlineData("\"1\"")]
+    public async Task NewProvenanceSidecars_FailsWhenManifestSchemaVersionIsInvalid(string schemaVersion)
+    {
+        WriteScript(Path.Combine("CRUD", "basic.json"));
+        var manifest = WriteManifest(
+            CreateManifest().Replace("\"schemaVersion\": 1", $"\"schemaVersion\": {schemaVersion}"));
+
+        var result = await RunGeneratorAsync(_root, manifest);
+
+        result.ExitCode.Should().NotBe(0);
+        result.CombinedOutput.Should().Contain("Unsupported provenance manifest schemaVersion");
+        File.Exists(Path.Combine(_root, "CRUD", "basic.provenance.json")).Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("reference")]
+    [InlineData("display")]
+    [InlineData("relationship")]
+    [InlineData("license")]
+    [InlineData("notes")]
+    public async Task NewProvenanceSidecars_FailsWhenRequiredSourceMetadataIsMissing(
+        string propertyName)
+    {
+        WriteScript(Path.Combine("CRUD", "basic.json"));
+        var manifest = WriteManifest(CreateManifestWithMissingSourceField(propertyName));
+
+        var result = await RunGeneratorAsync(_root, manifest);
+
+        result.ExitCode.Should().NotBe(0);
+        result.CombinedOutput.Should().Contain($"Missing source {propertyName}");
+        File.Exists(Path.Combine(_root, "CRUD", "basic.provenance.json")).Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("not-a-date")]
+    [InlineData("2026-07-10")]
+    [InlineData("2026-07-10T12:34:56")]
+    public async Task NewProvenanceSidecars_FailsWhenRecordedDateIsInvalidOrMissing(string recorded)
+    {
+        WriteScript(Path.Combine("CRUD", "basic.json"));
+        var manifest = WriteManifest(CreateManifest(recorded: recorded));
+
+        var result = await RunGeneratorAsync(_root, manifest);
+
+        result.ExitCode.Should().NotBe(0);
+        result.CombinedOutput.Should().Contain("Invalid recorded date");
+        File.Exists(Path.Combine(_root, "CRUD", "basic.provenance.json")).Should().BeFalse();
+    }
+
     private void WriteScript(string relativePath)
     {
         WriteScript(_root, relativePath);
+    }
+
+    private string WriteManifest(string json)
+    {
+        var path = Path.Combine(_root, "provenance-manifest.json");
+        File.WriteAllText(path, json);
+        return path;
+    }
+
+    private static string CreateManifest(
+        string suitePath = "CRUD/basic.json",
+        string profile = "example",
+        string activity = "distill-testscript",
+        string relationship = "distilled-from",
+        string recorded = "2026-07-10T12:34:56Z")
+    {
+        return CreateProfileManifest(
+            suitePath,
+            definedProfile: profile,
+            referencedProfile: profile,
+            activity: activity,
+            recorded: recorded,
+            sources:
+            [
+                new ManifestSource(
+                    "https://example.test/source",
+                    "Example source",
+                    relationship,
+                    "MIT",
+                    "v1.0.0",
+                    "Test source")
+            ]);
+    }
+
+    private static string CreateProfileManifest(
+        string suitePath,
+        string definedProfile,
+        string referencedProfile,
+        string activity = "distill-testscript",
+        string recorded = "2026-07-10T12:34:56Z",
+        params ManifestSource[] sources)
+    {
+        return JsonSerializer.Serialize(
+            new
+            {
+                schemaVersion = 1,
+                profiles = new Dictionary<string, object?>
+                {
+                    [definedProfile] = new
+                    {
+                        sources = sources.Select(ToManifestSource).ToArray()
+                    }
+                },
+                suites = new Dictionary<string, object?>
+                {
+                    [suitePath] = new
+                    {
+                        profile = referencedProfile,
+                        activity,
+                        recorded
+                    }
+                }
+            },
+            ManifestJsonOptions);
+    }
+
+    private static string CreateInlineManifest(
+        string suitePath,
+        string activity = "distill-testscript",
+        string recorded = "2026-07-10T12:34:56Z",
+        params ManifestSource[] sources)
+    {
+        return JsonSerializer.Serialize(
+            new
+            {
+                schemaVersion = 1,
+                profiles = new Dictionary<string, object?>(),
+                suites = new Dictionary<string, object?>
+                {
+                    [suitePath] = new
+                    {
+                        activity,
+                        recorded,
+                        sources = sources.Select(ToManifestSource).ToArray()
+                    }
+                }
+            },
+            ManifestJsonOptions);
+    }
+
+    private static string CreateManifestWithMissingSourceField(string missingField)
+    {
+        var source = new Dictionary<string, string?>
+        {
+            ["reference"] = "https://example.test/source",
+            ["display"] = "Example source",
+            ["relationship"] = "distilled-from",
+            ["license"] = "MIT",
+            ["version"] = "v1.0.0",
+            ["notes"] = "Test source"
+        };
+
+        source.Remove(missingField);
+
+        return JsonSerializer.Serialize(
+            new
+            {
+                schemaVersion = 1,
+                profiles = new Dictionary<string, object?>
+                {
+                    ["example"] = new
+                    {
+                        sources = new object[] { source }
+                    }
+                },
+                suites = new Dictionary<string, object?>
+                {
+                    ["CRUD/basic.json"] = new
+                    {
+                        profile = "example",
+                        activity = "distill-testscript",
+                        recorded = "2026-07-10T12:34:56Z"
+                    }
+                }
+            },
+            ManifestJsonOptions);
+    }
+
+    private static object ToManifestSource(ManifestSource source)
+    {
+        var manifestSource = new Dictionary<string, string?>
+        {
+            ["reference"] = source.Reference,
+            ["display"] = source.Display,
+            ["relationship"] = source.Relationship,
+            ["license"] = source.License,
+            ["notes"] = source.Notes
+        };
+
+        if (source.Version is not null)
+        {
+            manifestSource["version"] = source.Version;
+        }
+
+        return manifestSource;
     }
 
     private static void WriteScript(string root, string relativePath)
@@ -556,7 +1059,9 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         return new AuditResult(process.ExitCode, stdout + stderr);
     }
 
-    private static async Task<AuditResult> RunGeneratorAsync(string suitesDirectory)
+    private static async Task<AuditResult> RunGeneratorAsync(
+        string suitesDirectory,
+        string manifestPath)
     {
         var script = FindRepoRootTool("new-provenance-sidecars.ps1");
         using var process = new Process();
@@ -573,6 +1078,8 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         process.StartInfo.ArgumentList.Add(script);
         process.StartInfo.ArgumentList.Add("-SuitesDirectory");
         process.StartInfo.ArgumentList.Add(suitesDirectory);
+        process.StartInfo.ArgumentList.Add("-ManifestPath");
+        process.StartInfo.ArgumentList.Add(manifestPath);
         process.StartInfo.ArgumentList.Add("-Force");
 
         process.Start();
@@ -614,4 +1121,12 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
     }
 
     private sealed record AuditResult(int ExitCode, string CombinedOutput);
+
+    private sealed record ManifestSource(
+        string Reference,
+        string Display,
+        string Relationship,
+        string License,
+        string? Version,
+        string Notes);
 }
