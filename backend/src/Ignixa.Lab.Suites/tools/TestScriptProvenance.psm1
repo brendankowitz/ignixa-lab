@@ -14,6 +14,9 @@ $script:AllowedRelationships = @(
     'inspired-by',
     'spec-reference'
 )
+$script:MissingSourceVersionWarning = 'not recorded during original distillation'
+$script:DeclaredOpenSourceLicenseWarning = 'source-declared open-source license'
+$script:RepositoryLicenseWarning = 'repository license'
 
 function Get-TestScriptFile {
     param(
@@ -170,6 +173,31 @@ function New-TestScriptProvenance {
         )
         entity = @($Sources | ForEach-Object { New-ProvenanceEntity -Source $_ })
     }
+}
+
+function ConvertTo-TestScriptProvenanceJson {
+    param(
+        [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
+        [AllowNull()]
+        [object] $Provenance
+    )
+
+    process {
+        $Provenance | ConvertTo-Json -Depth 100
+    }
+}
+
+function Remove-TestScriptProvenanceTrailingNewlines {
+    param(
+        [AllowNull()]
+        [string] $Json
+    )
+
+    if ($null -eq $Json) {
+        return $null
+    }
+
+    $Json.TrimEnd("`r", "`n")
 }
 
 function Get-JsonPropertyValue {
@@ -654,6 +682,8 @@ function Test-TestScriptProvenanceManifest {
                 continue
             }
 
+            $sourceErrorCount = $errors.Count
+
             foreach ($requiredField in @('reference', 'display', 'relationship', 'license', 'notes')) {
                 if (-not (Test-DictionaryContainsKey -InputObject $source -Name $requiredField) -or
                     [string]::IsNullOrWhiteSpace([string] (Get-DictionaryValue -InputObject $source -Name $requiredField))) {
@@ -665,6 +695,26 @@ function Test-TestScriptProvenanceManifest {
             if (-not [string]::IsNullOrWhiteSpace($relationship) -and
                 $script:AllowedRelationships -cnotcontains $relationship) {
                 $errors.Add("Unsupported source relationship for $entryPath`: $relationship")
+            }
+
+            if ($errors.Count -ne $sourceErrorCount) {
+                continue
+            }
+
+            $display = [string] (Get-DictionaryValue -InputObject $source -Name 'display')
+            $version = [string] (Get-DictionaryValue -InputObject $source -Name 'version')
+            $license = [string] (Get-DictionaryValue -InputObject $source -Name 'license')
+
+            if ([string]::IsNullOrWhiteSpace($version)) {
+                $warnings.Add("Source version missing for manifest entry $entryPath`: $display")
+            }
+            elseif ([string]::Equals($version, $script:MissingSourceVersionWarning, [System.StringComparison]::Ordinal)) {
+                $warnings.Add("Source version not recorded during original distillation for manifest entry $entryPath`: $display")
+            }
+
+            if ([string]::Equals($license, $script:DeclaredOpenSourceLicenseWarning, [System.StringComparison]::Ordinal) -or
+                [string]::Equals($license, $script:RepositoryLicenseWarning, [System.StringComparison]::Ordinal)) {
+                $warnings.Add("Source license advisory for manifest entry $entryPath`: $display ($license)")
             }
         }
 
@@ -696,72 +746,147 @@ function Test-ProvenanceSidecar {
     $relativePath = ConvertTo-SuiteRelativePath -SuitesDirectory $SuitesDirectory -Path $TestScript.FullName
     $sidecarPath = Get-ProvenanceSidecarPath -TestScriptPath $TestScript.FullName
     $relativeSidecarPath = ConvertTo-SuiteRelativePath -SuitesDirectory $SuitesDirectory -Path $sidecarPath
-    $warnings = New-Object System.Collections.Generic.List[string]
+    $errors = New-Object System.Collections.Generic.List[string]
+    $rawJson = $null
+    $provenance = $null
 
     if (-not (Test-Path -LiteralPath $sidecarPath -PathType Leaf)) {
-        $warnings.Add("Missing provenance sidecar: $relativeSidecarPath")
-        return $warnings
+        $errors.Add("Missing provenance sidecar: $relativeSidecarPath")
+        return [pscustomobject] @{
+            RelativePath = $relativePath
+            RelativeSidecarPath = $relativeSidecarPath
+            Errors = @($errors)
+            Provenance = $null
+            RawJson = $null
+            CanCompare = $false
+        }
     }
 
     try {
-        $provenance = Get-Content -LiteralPath $sidecarPath -Raw | ConvertFrom-Json -Depth 100
+        $rawJson = Get-Content -LiteralPath $sidecarPath -Raw
+        $provenance = $rawJson | ConvertFrom-Json -Depth 100
     }
     catch {
-        $warnings.Add("Invalid JSON in $relativeSidecarPath`: $($_.Exception.Message)")
-        return $warnings
+        $errors.Add("Invalid JSON in $relativeSidecarPath`: $($_.Exception.Message)")
+        return [pscustomobject] @{
+            RelativePath = $relativePath
+            RelativeSidecarPath = $relativeSidecarPath
+            Errors = @($errors)
+            Provenance = $null
+            RawJson = $rawJson
+            CanCompare = $false
+        }
     }
 
     if ((Get-JsonPropertyValue -InputObject $provenance -Name 'resourceType') -ne 'Provenance') {
-        $warnings.Add("Invalid provenance resourceType in $relativeSidecarPath`: expected Provenance.")
+        $errors.Add("Invalid provenance resourceType in $relativeSidecarPath`: expected Provenance.")
     }
 
     $targetValueObject = Get-JsonPropertyValue -InputObject $provenance -Name 'target'
     $target = @($targetValueObject)
     if ($null -eq $targetValueObject -or $target.Count -lt 1) {
-        $warnings.Add("Missing target in $relativeSidecarPath")
+        $errors.Add("Missing target in $relativeSidecarPath")
     }
     else {
         $identifier = Get-JsonPropertyValue -InputObject $target[0] -Name 'identifier'
         $targetValue = [string] (Get-JsonPropertyValue -InputObject $identifier -Name 'value')
         if ($targetValue -ne $relativePath) {
-            $warnings.Add("Target mismatch in $relativeSidecarPath`: expected $relativePath, found $targetValue")
+            $errors.Add("Target mismatch in $relativeSidecarPath`: expected $relativePath, found $targetValue")
         }
     }
 
     $agentValueObject = Get-JsonPropertyValue -InputObject $provenance -Name 'agent'
     $agent = @($agentValueObject)
     if ($null -eq $agentValueObject -or $agent.Count -lt 1) {
-        $warnings.Add("Missing agent in $relativeSidecarPath")
+        $errors.Add("Missing agent in $relativeSidecarPath")
     }
 
     $entityValueObject = Get-JsonPropertyValue -InputObject $provenance -Name 'entity'
     $entity = @($entityValueObject)
     if ($null -eq $entityValueObject -or $entity.Count -lt 1) {
-        $warnings.Add("Missing entity in $relativeSidecarPath")
+        $errors.Add("Missing entity in $relativeSidecarPath")
     }
 
-    $warnings
+    [pscustomobject] @{
+        RelativePath = $relativePath
+        RelativeSidecarPath = $relativeSidecarPath
+        Errors = @($errors)
+        Provenance = $provenance
+        RawJson = $rawJson
+        CanCompare = $errors.Count -eq 0
+    }
 }
 
 function Invoke-TestScriptProvenanceAudit {
     param(
         [Parameter(Mandatory = $true)]
-        [string] $SuitesDirectory
+        [string] $SuitesDirectory,
+
+        [Parameter(Mandatory = $true)]
+        [string] $ManifestPath
     )
 
+    $errors = New-Object System.Collections.Generic.List[string]
     $warnings = New-Object System.Collections.Generic.List[string]
-    $scripts = @(Get-TestScriptFile -SuitesDirectory $SuitesDirectory)
+    $resolvedManifestPath = [System.IO.Path]::GetFullPath($ManifestPath)
+    $scripts = @(Get-TestScriptFile -SuitesDirectory $SuitesDirectory -ExcludedPaths @($resolvedManifestPath))
+    $validation = $null
 
-    foreach ($scriptFile in $scripts) {
-        foreach ($warning in Test-ProvenanceSidecar -SuitesDirectory $SuitesDirectory -TestScript $scriptFile) {
+    try {
+        $manifest = Read-TestScriptProvenanceManifest -ManifestPath $resolvedManifestPath
+        $validation = Test-TestScriptProvenanceManifest `
+            -SuitesDirectory $SuitesDirectory `
+            -Manifest $manifest `
+            -ExcludedPaths @($resolvedManifestPath)
+        foreach ($validationError in $validation.Errors) {
+            $errors.Add($validationError)
+        }
+        foreach ($warning in $validation.Warnings) {
             $warnings.Add($warning)
         }
     }
+    catch {
+        $errors.Add($_.Exception.Message)
+    }
+
+    foreach ($scriptFile in $scripts) {
+        $sidecarResult = Test-ProvenanceSidecar -SuitesDirectory $SuitesDirectory -TestScript $scriptFile
+
+        foreach ($sidecarError in $sidecarResult.Errors) {
+            $errors.Add($sidecarError)
+        }
+
+        if ($null -eq $validation -or -not $sidecarResult.CanCompare) {
+            continue
+        }
+
+        $entry = $validation.ResolvedSuites[$sidecarResult.RelativePath]
+        if ($null -eq $entry) {
+            continue
+        }
+
+        $expectedProvenance = New-TestScriptProvenance `
+            -RelativePath $sidecarResult.RelativePath `
+            -Activity $entry.Activity `
+            -Recorded $entry.Recorded `
+            -Sources $entry.Sources
+        $expectedJson = ConvertTo-TestScriptProvenanceJson -Provenance $expectedProvenance
+
+        if ((Remove-TestScriptProvenanceTrailingNewlines -Json $sidecarResult.RawJson) -ne
+            (Remove-TestScriptProvenanceTrailingNewlines -Json $expectedJson)) {
+            $errors.Add("Provenance sidecar does not match manifest: $($sidecarResult.RelativeSidecarPath)")
+        }
+    }
+
+    $sortedErrors = @($errors | Sort-Object -Unique)
+    $sortedWarnings = @($warnings | Sort-Object -Unique)
 
     [pscustomobject] @{
         ScriptCount = $scripts.Count
-        WarningCount = $warnings.Count
-        Warnings = @($warnings)
+        ErrorCount = $sortedErrors.Count
+        WarningCount = $sortedWarnings.Count
+        Errors = $sortedErrors
+        Warnings = $sortedWarnings
     }
 }
 
@@ -773,5 +898,6 @@ Export-ModuleMember -Function @(
     'Resolve-TestScriptProvenanceEntry',
     'Test-TestScriptProvenanceManifest',
     'New-TestScriptProvenance',
+    'ConvertTo-TestScriptProvenanceJson',
     'Invoke-TestScriptProvenanceAudit'
 )

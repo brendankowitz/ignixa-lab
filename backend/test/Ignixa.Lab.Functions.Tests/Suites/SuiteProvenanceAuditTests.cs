@@ -32,47 +32,60 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
     }
 
     [Fact]
-    public async Task VerifyProvenance_WarnsButSucceedsWhenSidecarIsMissing()
+    public async Task VerifyProvenance_DefaultModeReportsErrorButSucceedsWhenSidecarIsMissing()
     {
         WriteScript(Path.Combine("CRUD", "basic.json"));
+        var manifest = WriteManifest(CreateManifest());
 
-        var result = await RunAuditAsync();
+        var result = await RunAuditAsync(manifest);
 
         result.ExitCode.Should().Be(0);
-        result.CombinedOutput.Should().Contain("WARNING");
-        result.CombinedOutput.Should().Contain("Missing provenance sidecar: CRUD/basic.provenance.json");
+        result.CombinedOutput.Should().Contain("ERROR: Missing provenance sidecar: CRUD/basic.provenance.json");
     }
 
     [Fact]
-    public async Task VerifyProvenance_WarnsButSucceedsWhenTargetDoesNotMatchScript()
+    public async Task VerifyProvenance_StrictModeFailsWhenSidecarIsMissing()
     {
         WriteScript(Path.Combine("CRUD", "basic.json"));
+        var manifest = WriteManifest(CreateManifest());
+
+        var result = await RunAuditAsync(manifest, strict: true);
+
+        result.ExitCode.Should().Be(1);
+        result.CombinedOutput.Should().Contain("ERROR: Missing provenance sidecar: CRUD/basic.provenance.json");
+    }
+
+    [Fact]
+    public async Task VerifyProvenance_DefaultModeReportsErrorButSucceedsWhenTargetDoesNotMatchScript()
+    {
+        WriteScript(Path.Combine("CRUD", "basic.json"));
+        var manifest = WriteManifest(CreateManifest());
         WriteProvenance(Path.Combine("CRUD", "basic.provenance.json"), "Search/basic.json");
 
-        var result = await RunAuditAsync();
+        var result = await RunAuditAsync(manifest);
 
         result.ExitCode.Should().Be(0);
-        result.CombinedOutput.Should().Contain("WARNING");
-        result.CombinedOutput.Should().Contain("Target mismatch in CRUD/basic.provenance.json: expected CRUD/basic.json, found Search/basic.json");
+        result.CombinedOutput.Should().Contain("ERROR: Target mismatch in CRUD/basic.provenance.json: expected CRUD/basic.json, found Search/basic.json");
     }
 
     [Fact]
-    public async Task VerifyProvenance_WarnsButSucceedsWhenSidecarJsonIsInvalid()
+    public async Task VerifyProvenance_DefaultModeReportsErrorButSucceedsWhenSidecarJsonIsInvalid()
     {
         WriteScript(Path.Combine("CRUD", "basic.json"));
+        var manifest = WriteManifest(CreateManifest());
         WriteSidecar(Path.Combine("CRUD", "basic.provenance.json"), "{ this is not valid json");
 
-        var result = await RunAuditAsync();
+        var result = await RunAuditAsync(manifest);
 
         result.ExitCode.Should().Be(0);
-        result.CombinedOutput.Should().Contain("WARNING");
-        result.CombinedOutput.Should().Contain("Invalid JSON in CRUD/basic.provenance.json");
+        result.CombinedOutput.Should().Contain("ERROR: Invalid JSON in CRUD/basic.provenance.json");
     }
 
     [Fact]
-    public async Task VerifyProvenance_WarnsButSucceedsWhenResourceTypeIsWrong()
+    public async Task VerifyProvenance_DefaultModeReportsErrorButSucceedsWhenResourceTypeIsWrong()
     {
         WriteScript(Path.Combine("CRUD", "basic.json"));
+        var manifest = WriteManifest(CreateManifest());
         WriteSidecar(Path.Combine("CRUD", "basic.provenance.json"), """
         {
           "resourceType": "Patient",
@@ -82,17 +95,17 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         }
         """);
 
-        var result = await RunAuditAsync();
+        var result = await RunAuditAsync(manifest);
 
         result.ExitCode.Should().Be(0);
-        result.CombinedOutput.Should().Contain("WARNING");
-        result.CombinedOutput.Should().Contain("Invalid provenance resourceType in CRUD/basic.provenance.json");
+        result.CombinedOutput.Should().Contain("ERROR: Invalid provenance resourceType in CRUD/basic.provenance.json");
     }
 
     [Fact]
-    public async Task VerifyProvenance_WarnsButSucceedsWhenTargetIsMissing()
+    public async Task VerifyProvenance_DefaultModeReportsErrorButSucceedsWhenTargetIsMissing()
     {
         WriteScript(Path.Combine("CRUD", "basic.json"));
+        var manifest = WriteManifest(CreateManifest());
         WriteSidecar(Path.Combine("CRUD", "basic.provenance.json"), """
         {
           "resourceType": "Provenance",
@@ -101,17 +114,17 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         }
         """);
 
-        var result = await RunAuditAsync();
+        var result = await RunAuditAsync(manifest);
 
         result.ExitCode.Should().Be(0);
-        result.CombinedOutput.Should().Contain("WARNING");
-        result.CombinedOutput.Should().Contain("Missing target in CRUD/basic.provenance.json");
+        result.CombinedOutput.Should().Contain("ERROR: Missing target in CRUD/basic.provenance.json");
     }
 
     [Fact]
-    public async Task VerifyProvenance_WarnsButSucceedsWhenAgentIsMissing()
+    public async Task VerifyProvenance_DefaultModeReportsErrorButSucceedsWhenAgentIsMissing()
     {
         WriteScript(Path.Combine("CRUD", "basic.json"));
+        var manifest = WriteManifest(CreateManifest());
         WriteSidecar(Path.Combine("CRUD", "basic.provenance.json"), """
         {
           "resourceType": "Provenance",
@@ -120,17 +133,17 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         }
         """);
 
-        var result = await RunAuditAsync();
+        var result = await RunAuditAsync(manifest);
 
         result.ExitCode.Should().Be(0);
-        result.CombinedOutput.Should().Contain("WARNING");
-        result.CombinedOutput.Should().Contain("Missing agent in CRUD/basic.provenance.json");
+        result.CombinedOutput.Should().Contain("ERROR: Missing agent in CRUD/basic.provenance.json");
     }
 
     [Fact]
-    public async Task VerifyProvenance_WarnsButSucceedsWhenEntityIsMissing()
+    public async Task VerifyProvenance_DefaultModeReportsErrorButSucceedsWhenEntityIsMissing()
     {
         WriteScript(Path.Combine("CRUD", "basic.json"));
+        var manifest = WriteManifest(CreateManifest());
         WriteSidecar(Path.Combine("CRUD", "basic.provenance.json"), """
         {
           "resourceType": "Provenance",
@@ -139,23 +152,71 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         }
         """);
 
-        var result = await RunAuditAsync();
+        var result = await RunAuditAsync(manifest);
 
         result.ExitCode.Should().Be(0);
-        result.CombinedOutput.Should().Contain("WARNING");
-        result.CombinedOutput.Should().Contain("Missing entity in CRUD/basic.provenance.json");
+        result.CombinedOutput.Should().Contain("ERROR: Missing entity in CRUD/basic.provenance.json");
     }
 
     [Fact]
-    public async Task VerifyProvenance_SucceedsWithoutWarningsWhenSidecarIsValid()
+    public async Task VerifyProvenance_StrictModeFailsWhenSidecarDoesNotMatchManifest()
     {
         WriteScript(Path.Combine("CRUD", "basic.json"));
-        WriteProvenance(Path.Combine("CRUD", "basic.provenance.json"), "CRUD/basic.json");
+        var manifest = WriteManifest(CreateManifest());
+        var generation = await RunGeneratorAsync(_root, manifest);
+        generation.ExitCode.Should().Be(0, generation.CombinedOutput);
+        var sidecarPath = Path.Combine(_root, "CRUD", "basic.provenance.json");
+        File.WriteAllText(
+            sidecarPath,
+            File.ReadAllText(sidecarPath).Replace("Example source", "Tampered source", StringComparison.Ordinal));
 
-        var result = await RunAuditAsync();
+        var result = await RunAuditAsync(manifest, strict: true);
+
+        result.ExitCode.Should().Be(1);
+        result.CombinedOutput.Should().Contain("ERROR: Provenance sidecar does not match manifest: CRUD/basic.provenance.json");
+    }
+
+    [Fact]
+    public async Task VerifyProvenance_StrictModeAllowsVersionAdvisoryWarnings()
+    {
+        WriteScript(Path.Combine("CRUD", "basic.json"));
+        var manifest = WriteManifest(CreateManifest(version: "not recorded during original distillation"));
+        var generation = await RunGeneratorAsync(_root, manifest);
+        generation.ExitCode.Should().Be(0, generation.CombinedOutput);
+
+        var result = await RunAuditAsync(manifest, strict: true);
 
         result.ExitCode.Should().Be(0);
-        result.CombinedOutput.Should().Contain("Provenance audit scanned 1 TestScript file and found 0 warning(s).");
+        result.CombinedOutput.Should().Contain("WARNING");
+    }
+
+    [Fact]
+    public async Task VerifyProvenance_StrictModeAllowsLicenseAdvisoryWarnings()
+    {
+        WriteScript(Path.Combine("CRUD", "basic.json"));
+        var manifest = WriteManifest(CreateManifest(license: "source-declared open-source license"));
+        var generation = await RunGeneratorAsync(_root, manifest);
+        generation.ExitCode.Should().Be(0, generation.CombinedOutput);
+
+        var result = await RunAuditAsync(manifest, strict: true);
+
+        result.ExitCode.Should().Be(0);
+        result.CombinedOutput.Should().Contain("WARNING");
+    }
+
+    [Fact]
+    public async Task VerifyProvenance_StrictModeSucceedsWithoutErrorsOrWarningsWhenSidecarMatchesManifest()
+    {
+        WriteScript(Path.Combine("CRUD", "basic.json"));
+        var manifest = WriteManifest(CreateManifest());
+        var generation = await RunGeneratorAsync(_root, manifest);
+        generation.ExitCode.Should().Be(0, generation.CombinedOutput);
+
+        var result = await RunAuditAsync(manifest, strict: true);
+
+        result.ExitCode.Should().Be(0);
+        result.CombinedOutput.Should().Contain("Provenance audit scanned 1 TestScript file(s) and found 0 error(s) and 0 warning(s).");
+        result.CombinedOutput.Should().NotContain("ERROR:");
         result.CombinedOutput.Should().NotContain("WARNING");
     }
 
@@ -188,7 +249,7 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
           -RelativePath 'CRUD/basic.json' `
           -Activity 'author-testscript' `
           -Recorded '2026-07-10T12:34:56Z' `
-          -Sources @($source) | ConvertTo-Json -Depth 20
+          -Sources @($source) | ConvertTo-TestScriptProvenanceJson
         """);
 
         process.Start();
@@ -254,7 +315,7 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
           -RelativePath 'CRUD/basic.json' `
           -Activity 'Author-TestScript' `
           -Recorded '2026-07-10T12:34:56Z' `
-          -Sources @($source) | ConvertTo-Json -Depth 20
+          -Sources @($source) | ConvertTo-TestScriptProvenanceJson
         """);
 
         process.Start();
@@ -1155,6 +1216,16 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         }
     }
 
+    [Fact]
+    public async Task VerifyProvenance_StrictModeSucceedsForRepositoryManifestAndSidecars()
+    {
+        var result = await RunAuditAsync(FindRepoRootTool("provenance-manifest.json"), strict: true, suitesDirectory: GetBundledSuitesDirectory());
+
+        result.ExitCode.Should().Be(0, result.CombinedOutput);
+        result.CombinedOutput.Should().Contain("Provenance audit scanned 87 TestScript file(s) and found 0 error(s)");
+        result.CombinedOutput.Should().NotContain("ERROR:");
+    }
+
     private void WriteScript(string relativePath)
     {
         WriteScript(_root, relativePath);
@@ -1260,7 +1331,12 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         string profile = "example",
         string activity = "distill-testscript",
         string relationship = "distilled-from",
-        string recorded = "2026-07-10T12:34:56Z")
+        string recorded = "2026-07-10T12:34:56Z",
+        string license = "MIT",
+        string? version = "v1.0.0",
+        string reference = "https://example.test/source",
+        string display = "Example source",
+        string notes = "Test source")
     {
         return CreateProfileManifest(
             suitePath,
@@ -1271,12 +1347,12 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
             sources:
             [
                 new ManifestSource(
-                    "https://example.test/source",
-                    "Example source",
+                    reference,
+                    display,
                     relationship,
-                    "MIT",
-                    "v1.0.0",
-                    "Test source")
+                    license,
+                    version,
+                    notes)
             ]);
     }
 
@@ -1458,7 +1534,10 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         """);
     }
 
-    private async Task<AuditResult> RunAuditAsync()
+    private async Task<AuditResult> RunAuditAsync(
+        string manifestPath,
+        bool strict = false,
+        string? suitesDirectory = null)
     {
         var script = FindRepoRootTool("verify-provenance.ps1");
         using var process = new Process();
@@ -1474,7 +1553,13 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         process.StartInfo.ArgumentList.Add("-File");
         process.StartInfo.ArgumentList.Add(script);
         process.StartInfo.ArgumentList.Add("-SuitesDirectory");
-        process.StartInfo.ArgumentList.Add(_root);
+        process.StartInfo.ArgumentList.Add(suitesDirectory ?? _root);
+        process.StartInfo.ArgumentList.Add("-ManifestPath");
+        process.StartInfo.ArgumentList.Add(manifestPath);
+        if (strict)
+        {
+            process.StartInfo.ArgumentList.Add("-Strict");
+        }
 
         process.Start();
         var stdoutTask = process.StandardOutput.ReadToEndAsync();

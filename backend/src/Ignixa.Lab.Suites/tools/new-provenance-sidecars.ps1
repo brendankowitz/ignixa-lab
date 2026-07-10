@@ -52,7 +52,7 @@ foreach ($scriptFile in $scripts) {
         -Recorded $entry.Recorded `
         -Sources $entry.Sources
 
-    $json = $provenance | ConvertTo-Json -Depth 100
+    $json = ConvertTo-TestScriptProvenanceJson -Provenance $provenance
     Set-Content -LiteralPath $sidecarPath -Value $json -Encoding utf8
     $created++
 }
