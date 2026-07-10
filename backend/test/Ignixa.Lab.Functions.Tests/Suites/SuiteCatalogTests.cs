@@ -683,6 +683,76 @@ public sealed class SuiteCatalogTests : IDisposable
         requirement.Should().NotContain("code='create'");
     }
 
+    [Fact]
+    public void BundledSubscriptionSuite_RequiresExactClassicLifecycleCapabilities()
+    {
+        var suite = ReadBundledSuite("Subscriptions/basic.json");
+        const string expected =
+            "rest.resource.where(type='Subscription').interaction.where(code='create').exists() and "
+            + "rest.resource.where(type='Subscription').interaction.where(code='read').exists() and "
+            + "rest.resource.where(type='Subscription').interaction.where(code='update').exists() and "
+            + "rest.resource.where(type='Subscription').interaction.where(code='delete').exists() and "
+            + "rest.resource.where(type='Subscription').interaction.where(code='search-type').exists() and "
+            + "rest.resource.where(type='Subscription').updateCreate = true";
+
+        GetMetadataCapabilityRequirement(suite).Should().Be(expected);
+        GetStringValue(suite["requiresCapability"]).Should().BeNull(
+            "top-level capability gates must use the executable extension form");
+    }
+
+    [Fact]
+    public void BundledSubscriptionSuite_IsRestrictedToClassicR4AndR4B()
+    {
+        var suite = ReadBundledSuite("Subscriptions/basic.json");
+        var tests = suite["test"]!.AsArray();
+
+        GetStringValue(suite["description"]).Should().Contain("classic only");
+        GetStringValue(suite["description"]).Should().Contain("Topic/backport subscriptions require separate coverage");
+        tests.Should().NotBeEmpty();
+        foreach (var test in tests)
+        {
+            test!["extension"]!.AsArray()
+                .Where(extension => GetStringValue(extension?["url"]) == "http://ignixa.io/testscript/fhirVersions")
+                .Select(extension => GetStringValue(extension?["valueString"]))
+                .Should().Equal("4.0,4.3");
+        }
+    }
+
+    [Fact]
+    public void BundledSubscriptionSuite_SetupCapturesResponseAndStrictlyRequiresSuccess()
+    {
+        var actions = ReadBundledSuite("Subscriptions/basic.json")["setup"]!["action"]!.AsArray();
+
+        actions.Should().HaveCount(2, "removing the setup success assertion would let setup false-pass");
+        GetStringValue(actions[0]?["operation"]?["responseId"]).Should().Be("setup-update-response");
+        var assertion = actions[1]?["assert"];
+        GetStringValue(assertion?["response"]).Should().Be("okay");
+        GetStringValue(assertion?["description"]).Should().Be("Setup PUT must return a success status (2xx)");
+        (assertion?["warningOnly"]?.GetValue<bool>() ?? false).Should().BeFalse();
+    }
+
+    [Fact]
+    public void BundledSubscriptionSuite_DeletedReadUsesNarrowEnforcedWarningAlternatives()
+    {
+        var test = ReadBundledTest("Subscriptions/basic.json", "read after delete returns 410 or 404");
+        var actions = test["action"]!.AsArray();
+        var assertions = actions
+            .Skip(1)
+            .Select(action => action?["assert"])
+            .ToArray();
+
+        actions.Should().HaveCount(3, "both accepted statuses and the read operation are required");
+        assertions.Should().HaveCount(2, "deleting either alternative must break this guard");
+        assertions.Select(assertion => GetStringValue(assertion?["response"]))
+            .Should().Equal("gone", "notFound");
+        assertions.Select(assertion => assertion?["warningOnly"]?.GetValue<bool>() == true)
+            .Should().OnlyContain(warningOnly => warningOnly);
+        assertions.Select(assertion => GetStringValue(assertion?["description"]))
+            .Should().Equal(
+                "Accepted alternative: 410 Gone when the server tracks the deleted resource",
+                "Accepted alternative: 404 Not Found when deleted resources are not tracked");
+    }
+
     [Theory]
     [InlineData("Forward _include pulls in the direct reference target", "Patient:organization")]
     [InlineData("Wildcard _include=* pulls in every direct reference", "$this='*'")]
