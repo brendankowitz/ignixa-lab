@@ -854,7 +854,7 @@ git commit -m "fix: tighten classic subscription suite scope" -m "Co-authored-by
 - No code changes expected.
 - Artifacts: write live rerun reports under `C:\Users\brend\.copilot\session-state\4897abb2-6c42-48fb-b9d7-11feffce6ce8\files\fhir-suite-runs-reliability-rerun`
 
-- [ ] **Step 1: Run full backend verification**
+- [x] **Step 1: Run full backend verification**
 
 Run:
 
@@ -867,7 +867,7 @@ dotnet test Ignixa.Lab.sln
 
 Expected: build succeeds and all xUnit tests pass.
 
-- [ ] **Step 2: Start the local Functions backend**
+- [x] **Step 2: Start the local Functions backend**
 
 Run in a background shell:
 
@@ -887,7 +887,7 @@ Invoke-WebRequest -Uri 'http://127.0.0.1:7071/api/health'
 
 returns HTTP 200.
 
-- [ ] **Step 3: Rerun touched suites against both live targets**
+- [x] **Step 3: Rerun touched suites against both live targets**
 
 Run:
 
@@ -960,11 +960,11 @@ Expected:
 - Invalid dateTime setup failures no longer appear.
 - `Subscriptions/basic.json` either passes on classic-capable Azure or fails only with a clear target behavior issue; Argo classic failures should no longer cascade without setup evidence.
 
-- [ ] **Step 4: Stop the local Functions backend**
+- [x] **Step 4: Stop the local Functions backend**
 
 Stop the specific `func start` process that was launched for this validation.
 
-- [ ] **Step 5: Commit validation notes if a docs update is needed**
+- [x] **Step 5: Commit validation notes if a docs update is needed**
 
 If the rerun reveals a spec-backed adjustment made during validation, update the relevant suite description or `backend/README.md` with the specific spec reason and commit it:
 
@@ -975,3 +975,8 @@ git commit -m "docs: record FHIR suite reliability rationale" -m "Co-authored-by
 
 Skip this commit if no documentation changed.
 
+Final focused rerun artifacts are in
+`C:\Users\brend\.copilot\session-state\4897abb2-6c42-48fb-b9d7-11feffce6ce8\files\fhir-suite-runs-final`.
+Azure passed all affected suites. Argo retained four strict, specification-backed
+failures: versioned create Location metadata, both mandatory update id checks,
+and date search matching against `effectivePeriod`.
