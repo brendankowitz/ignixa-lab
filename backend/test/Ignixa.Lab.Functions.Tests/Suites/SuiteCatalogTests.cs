@@ -443,7 +443,6 @@ public sealed class SuiteCatalogTests : IDisposable
     [InlineData("CRUD/patch-fhirpath.json", "interaction.where(code='patch').exists()")]
     [InlineData("CRUD/patch-json.json", "interaction.where(code='patch').exists()")]
     [InlineData("CRUD/vread.json", "interaction.where(code='vread').exists()")]
-    [InlineData("CRUD/history.json", "interaction.where(code='history-instance' or code='history-type').exists()")]
     [InlineData("CRUD/conditional-delete.json", "conditionalDelete.exists()")]
     [InlineData("Operations/import-search.json", "searchParam.where(name='_tag').exists()")]
     [InlineData("Operations/import-search-2.json", "searchParam.where(name='_tag').exists()")]
@@ -489,6 +488,30 @@ public sealed class SuiteCatalogTests : IDisposable
         requirement.Should().Contain("versioning != 'no-version'");
     }
 
+    [Theory]
+    [InlineData("system-level history returns a non-empty bundle", "rest.interaction.where(code='history-system').exists()", false)]
+    [InlineData("type-level history returns a non-empty bundle", "type='Patient').interaction.where(code='history-type').exists()", false)]
+    [InlineData("instance history reflects create then update, newest first by default", "code='history-instance'", true)]
+    [InlineData("instance history with explicit ascending sort returns oldest first", "code='history-instance'", true)]
+    [InlineData("instance history with explicit descending sort matches default order", "code='history-instance'", true)]
+    [InlineData("history entries report a well-formed response.status for every version", "code='history-instance'", true)]
+    [InlineData("_summary=count on history returns totals without entries", "code='history-type'", false)]
+    [InlineData("a far-past _since does not wrongly exclude existing history", "rest.interaction.where(code='history-system').exists()", false)]
+    [InlineData("a far-future _before returns 400 Bad Request", "rest.interaction.where(code='history-system').exists()", false)]
+    [InlineData("_sort=_id on history is unsupported and returns 400 Bad Request", "code='history-type'", false)]
+    public void BundledHistoryTests_UseInteractionSpecificCapabilityGates(
+        string testName,
+        string expectedHistoryCapability,
+        bool requiresPatch)
+    {
+        var suite = ReadBundledSuite("CRUD/history.json");
+        GetMetadataCapabilityRequirement(suite).Should().BeNull();
+        var requirement = GetStringValue(ReadBundledTest("CRUD/history.json", testName)["requiresCapability"]);
+
+        requirement.Should().Contain(expectedHistoryCapability);
+        requirement!.Contains("code='patch'", StringComparison.Ordinal).Should().Be(requiresPatch);
+    }
+
     [Fact]
     public void BundledCapabilityGates_AreParsedIntoExecutableDefinitions()
     {
@@ -528,7 +551,6 @@ public sealed class SuiteCatalogTests : IDisposable
     [Theory]
     [InlineData("Search/includes.json", "_include", "searchInclude")]
     [InlineData("Search/includes.json", "_revinclude", "searchRevInclude")]
-    [InlineData("Search/chaining.json", "Forward chain", "type='reference'")]
     [InlineData("Search/chaining.json", "_has", "name='_has'")]
     [InlineData("Search/chaining-and-sort.json", null, "name='_has'")]
     public void BundledOptionalSearchTests_DeclareTestLevelCapabilityGates(
@@ -540,12 +562,107 @@ public sealed class SuiteCatalogTests : IDisposable
             .Select(test => test!.AsObject())
             .Where(test => testNameFragment is null
                 || GetStringValue(test["name"])!.Contains(testNameFragment, StringComparison.OrdinalIgnoreCase))
+            .Where(test => relativePath != "Search/includes.json"
+                || !GetStringValue(test["name"])!.Contains(":iterate", StringComparison.Ordinal))
             .ToArray();
 
         matchingTests.Should().NotBeEmpty();
         matchingTests.Select(test =>
                 GetStringValue(test["requiresCapability"])?.Contains(expected, StringComparison.Ordinal) == true)
             .Should().OnlyContain(hasRequirement => hasRequirement);
+    }
+
+    [Fact]
+    public void BundledForwardChainingTests_AreInformationalWithoutMisleadingCapabilityGate()
+    {
+        var tests = ReadBundledSuite("Search/chaining.json")["test"]!.AsArray()
+            .Select(test => test!.AsObject())
+            .Where(test => GetStringValue(test["name"])!.StartsWith("Forward chain", StringComparison.Ordinal))
+            .ToArray();
+
+        tests.Should().HaveCount(2);
+        foreach (var test in tests)
+        {
+            GetStringValue(test["requiresCapability"]).Should().BeNull();
+            var assertions = test["action"]!.AsArray()
+                .Select(action => action?["assert"])
+                .Where(assertion => assertion is not null)
+                .ToArray();
+            assertions.Where(assertion => assertion!["expression"] is not null)
+                .Select(assertion => assertion!["warningOnly"]?.GetValue<bool>() == true)
+                .Should().OnlyContain(warningOnly => warningOnly);
+            assertions.Where(assertion => assertion!["response"] is not null || assertion["resource"] is not null)
+                .Select(assertion => assertion!["warningOnly"] is null)
+                .Should().OnlyContain(isStrict => isStrict);
+        }
+    }
+
+    [Theory]
+    [InlineData("Search/chaining.json", "_has", "Patient")]
+    [InlineData("Search/chaining-and-sort.json", null, "HealthcareService")]
+    public void BundledReverseChainingTests_ScopeHasCapabilityToSearchedResource(
+        string relativePath,
+        string? testNameFragment,
+        string resourceType)
+    {
+        var tests = ReadBundledSuite(relativePath)["test"]!.AsArray()
+            .Select(test => test!.AsObject())
+            .Where(test => testNameFragment is null
+                || GetStringValue(test["name"])!.Contains(testNameFragment, StringComparison.OrdinalIgnoreCase));
+
+        tests.Select(test => GetStringValue(test["requiresCapability"]))
+            .Should().OnlyContain(requirement =>
+                requirement!.Contains($"type='{resourceType}'", StringComparison.Ordinal)
+                && !requirement.Contains("rest.resource.searchParam", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("Search/chaining-and-sort.json", "_sort=name orders chained results ascending (missing name last)", "_sort", "HealthcareService")]
+    [InlineData("Search/chaining-and-sort.json", "_summary=count on the combined query reports the total without returning entries", "_summary", "HealthcareService")]
+    [InlineData("Search/chaining-and-sort.json", "_total=accurate on the combined query reports the exact total", "_total", "HealthcareService")]
+    [InlineData("Search/includes.json", "_summary=count excludes included resources from the reported total", "_summary", "Patient")]
+    [InlineData("Search/includes.json", "_total=accurate excludes included resources from the reported total", "_total", "Patient")]
+    public void BundledSearchControlTests_RequireAdvertisedControl(
+        string relativePath,
+        string testName,
+        string control,
+        string resourceType)
+    {
+        var requirement = GetStringValue(ReadBundledTest(relativePath, testName)["requiresCapability"]);
+
+        requirement.Should().Contain($"type='{resourceType}'");
+        requirement.Should().Contain($"name='{control}'");
+    }
+
+    [Fact]
+    public void BundledIterateTests_KeepBaseIncludeStrictAndIteratedHopInformational()
+    {
+        var tests = ReadBundledSuite("Search/includes.json")["test"]!.AsArray()
+            .Select(test => test!.AsObject())
+            .Where(test => GetStringValue(test["name"])!.Contains("_include:iterate", StringComparison.Ordinal))
+            .ToArray();
+
+        tests.Should().HaveCount(3);
+        GetStringValue(tests[0]["requiresCapability"]).Should().NotContain("type='Patient'");
+        GetStringValue(tests[1]["requiresCapability"]).Should().NotContain("type='Patient'");
+        foreach (var test in tests)
+        {
+            test["action"]!.AsArray()
+                .Select(action => action?["assert"])
+                .Where(assertion => GetStringValue(assertion?["description"])?.Contains(
+                    "iterat", StringComparison.OrdinalIgnoreCase) == true)
+                .Select(assertion => assertion!["warningOnly"]?.GetValue<bool>() == true)
+                .Should().OnlyContain(warningOnly => warningOnly);
+        }
+    }
+
+    [Fact]
+    public void BundledCustomSearchParameterSuite_RequiresUpdateInteraction()
+    {
+        var requirement = GetMetadataCapabilityRequirement(ReadBundledSuite("Search/custom-search-param.json"));
+
+        requirement.Should().Contain("interaction.where(code='update').exists()");
+        requirement.Should().NotContain("code='create'");
     }
 
     [Theory]

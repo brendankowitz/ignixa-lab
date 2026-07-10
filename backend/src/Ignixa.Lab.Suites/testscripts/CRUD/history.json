@@ -3,9 +3,6 @@
   "name": "CRUD/history",
   "description": "History (GET /_history, /{type}/_history, /{type}/{id}/_history) conformance tests: non-empty system/type/instance Bundles, correct default and explicit sort order, well-formed entry.response.status, and _summary=count/_since/_before/_sort parameter handling (from HistoryTests). The second version needed by the multi-entry/sort-order tests is produced via a FHIRPath Patch rather than a PUT, to guarantee an actual content change and avoid requiring the body id to match the URL.",
   "status": "active",
-  "extension": [
-    { "url": "http://ignixa.io/testscript/requiresCapability", "valueString": "rest.resource.where(type='Patient').interaction.where(code='history-instance' or code='history-type').exists()" }
-  ],
   "fixture": [
     {
       "id": "patient-hist-a",
@@ -61,6 +58,7 @@
     {
       "name": "system-level history returns a non-empty bundle",
       "description": "GET /_history must return HTTP 200 and a Bundle with at least one entry, since resources exist on the server.",
+      "requiresCapability": "rest.interaction.where(code='history-system').exists()",
       "action": [
         { "operation": { "type": { "code": "history" }, "url": "_history", "responseId": "sys-history-response", "description": "GET system-level history" } },
         { "assert": { "description": "Must return HTTP 200", "response": "okay" } },
@@ -71,6 +69,7 @@
     {
       "name": "type-level history returns a non-empty bundle",
       "description": "GET /Patient/_history must return HTTP 200 and a Bundle with at least one entry, since the Patient created in setup exists.",
+      "requiresCapability": "rest.resource.where(type='Patient').interaction.where(code='history-type').exists()",
       "action": [
         { "operation": { "type": { "code": "history" }, "url": "Patient/_history", "responseId": "type-history-response", "description": "GET type-level history for Patient" } },
         { "assert": { "description": "Must return HTTP 200", "response": "okay" } },
@@ -81,6 +80,7 @@
     {
       "name": "instance history reflects create then update, newest first by default",
       "description": "After updating the Patient created in setup, GET /Patient/{id}/_history must return at least two entries with the newest version first (default order).",
+      "requiresCapability": "rest.resource.where(type='Patient').interaction.where(code='history-instance').exists() and rest.resource.where(type='Patient').interaction.where(code='patch').exists()",
       "action": [
         { "operation": { "type": { "code": "patch" }, "url": "Patient/${histAId}", "contentType": "application/fhir+json", "sourceId": "patch-add-active", "responseId": "hista-update-response", "description": "FHIRPath Patch the Patient (add Patient.active=true) to produce a second version." } },
         { "assert": { "description": "Patch must return a 2xx success status", "response": "okay" } },
@@ -94,6 +94,7 @@
     {
       "name": "instance history with explicit ascending sort returns oldest first",
       "description": "GET /Patient/{id}/_history?_sort=_lastUpdated on the (now two-version) Patient must return entries oldest first.",
+      "requiresCapability": "rest.resource.where(type='Patient').interaction.where(code='history-instance').exists() and rest.resource.where(type='Patient').interaction.where(code='patch').exists() and (rest.resource.where(type='Patient').searchParam.where(name='_sort').exists() or rest.searchParam.where(name='_sort').exists())",
       "action": [
         { "operation": { "type": { "code": "history" }, "url": "Patient/${histAId}/_history", "params": "?_sort=_lastUpdated", "responseId": "hista-asc-response", "description": "GET instance history sorted ascending by _lastUpdated" } },
         { "assert": { "description": "Must return HTTP 200", "response": "okay" } },
@@ -104,6 +105,7 @@
     {
       "name": "instance history with explicit descending sort matches default order",
       "description": "GET /Patient/{id}/_history?_sort=-_lastUpdated on the (now two-version) Patient must return entries newest first, matching the default order.",
+      "requiresCapability": "rest.resource.where(type='Patient').interaction.where(code='history-instance').exists() and rest.resource.where(type='Patient').interaction.where(code='patch').exists() and (rest.resource.where(type='Patient').searchParam.where(name='_sort').exists() or rest.searchParam.where(name='_sort').exists())",
       "action": [
         { "operation": { "type": { "code": "history" }, "url": "Patient/${histAId}/_history", "params": "?_sort=-_lastUpdated", "responseId": "hista-desc-response", "description": "GET instance history sorted descending by _lastUpdated" } },
         { "assert": { "description": "Must return HTTP 200", "response": "okay" } },
@@ -114,6 +116,7 @@
     {
       "name": "history entries report a well-formed response.status for every version",
       "description": "A dedicated Patient is created, updated, and deleted so its instance history contains three distinct operations. Every Bundle.entry.response.status must be present and well-formed (a leading 3-digit HTTP status code).",
+      "requiresCapability": "rest.resource.where(type='Patient').interaction.where(code='history-instance').exists() and rest.resource.where(type='Patient').interaction.where(code='patch').exists()",
       "action": [
         { "operation": { "type": { "code": "create" }, "resource": "Patient", "sourceId": "patient-hist-status", "responseId": "histstatus-create-response", "description": "Create the dedicated Patient for the response.status test" } },
         { "assert": { "description": "Create must return HTTP 201", "response": "created" } },
@@ -133,6 +136,7 @@
     {
       "name": "_summary=count on history returns totals without entries",
       "description": "GET /Patient/_history?_summary=count must return HTTP 200 and a Bundle whose total is populated but which contains no entries.",
+      "requiresCapability": "rest.resource.where(type='Patient').interaction.where(code='history-type').exists() and (rest.resource.where(type='Patient').searchParam.where(name='_summary').exists() or rest.searchParam.where(name='_summary').exists())",
       "action": [
         { "operation": { "type": { "code": "history" }, "url": "Patient/_history", "params": "?_summary=count", "responseId": "summary-count-response", "description": "GET type-level history with _summary=count" } },
         { "assert": { "description": "Must return HTTP 200", "response": "okay" } },
@@ -144,6 +148,7 @@
     {
       "name": "a far-past _since does not wrongly exclude existing history",
       "description": "GET /_history?_since=2000-01-01T00:00:00Z, a date far before any resource on the server was created, must still return the existing history (non-empty Bundle).",
+      "requiresCapability": "rest.interaction.where(code='history-system').exists()",
       "action": [
         { "operation": { "type": { "code": "history" }, "url": "_history", "params": "?_since=2000-01-01T00:00:00Z", "responseId": "since-past-response", "description": "GET system-level history with a far-past _since" } },
         { "assert": { "description": "Must return HTTP 200", "response": "okay" } },
@@ -154,6 +159,7 @@
     {
       "name": "a far-future _before returns 400 Bad Request",
       "description": "GET /_history?_before=2999-01-01T00:00:00Z, a date far in the future, must be rejected with 400 Bad Request since history cannot be requested before a time that hasn't happened yet. This is a server-side validation choice rather than a base FHIR R4 mandate, so it is warningOnly.",
+      "requiresCapability": "rest.interaction.where(code='history-system').exists()",
       "action": [
         { "operation": { "type": { "code": "history" }, "url": "_history", "params": "?_before=2999-01-01T00:00:00Z", "responseId": "before-future-response", "description": "GET system-level history with a far-future _before" } },
         { "assert": { "description": "Server validation: expect 400 Bad Request for a future _before value", "response": "bad", "warningOnly": true } }
@@ -162,6 +168,7 @@
     {
       "name": "_sort=_id on history is unsupported and returns 400 Bad Request",
       "description": "GET /Patient/_history?_sort=_id must be rejected with 400 Bad Request since history only supports sorting by _lastUpdated. This is a server-side validation choice rather than a base FHIR R4 mandate, so it is warningOnly.",
+      "requiresCapability": "rest.resource.where(type='Patient').interaction.where(code='history-type').exists() and (rest.resource.where(type='Patient').searchParam.where(name='_sort').exists() or rest.searchParam.where(name='_sort').exists())",
       "action": [
         { "operation": { "type": { "code": "history" }, "url": "Patient/_history", "params": "?_sort=_id", "responseId": "badsort-response", "description": "GET type-level history with an unsupported _sort value" } },
         { "assert": { "description": "Server validation: expect 400 Bad Request for an unsupported _sort value", "response": "bad", "warningOnly": true } }

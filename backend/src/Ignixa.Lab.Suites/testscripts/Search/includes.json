@@ -213,39 +213,38 @@
     },
     {
       "name": "_include:iterate follows a second hop through the included resource",
-      "description": "Observation?_id=obs1&_include=Observation:subject&_include:iterate=Patient:organization must include pat1 (direct) and then org (iterated hop from pat1.managingOrganization).",
-      "requiresCapability": "rest.resource.where(type='Observation').searchInclude.where($this='Observation:subject' or $this='*').exists() and rest.resource.where(type='Patient').searchInclude.where($this='Patient:organization' or $this='*').exists()",
+      "description": "Observation?_id=obs1&_include=Observation:subject&_include:iterate=Patient:organization must include pat1 (direct) and then org (iterated hop from pat1.managingOrganization). Iteration itself has no precise R4 CapabilityStatement flag, so iterated-hop assertions are informational.",
+      "requiresCapability": "rest.resource.where(type='Observation').searchInclude.where($this='Observation:subject' or $this='*').exists()",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Observation", "params": "?_id=ignixa-inc-obs1&_include=Observation:subject&_include:iterate=Patient:organization", "responseId": "inc-iterate-hop", "description": "GET /Observation with _include + _include:iterate two-hop" } },
         { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
         { "assert": { "description": "Must include obs1", "expression": "entry.where(resource.id = 'ignixa-inc-obs1').exists()" } },
         { "assert": { "description": "Must include pat1 (direct include)", "expression": "entry.where(resource.id = 'ignixa-inc-pat1').exists()" } },
-        { "assert": { "description": "Must include org (iterated include via pat1.managingOrganization)", "expression": "entry.where(resource.id = 'ignixa-inc-org').exists()" } }
+        { "assert": { "description": "Must include org (iterated include via pat1.managingOrganization)", "expression": "entry.where(resource.id = 'ignixa-inc-org').exists()", "warningOnly": true } }
       ]
     },
     {
       "name": "_include:iterate wildcard target follows any reference type on the included resource",
-      "description": "Observation?_id=obs1&_include=Observation:subject&_include:iterate=Patient:general-practitioner must include pat1 (direct) and then prac1 (iterated hop from pat1.generalPractitioner).",
-      "requiresCapability": "rest.resource.where(type='Observation').searchInclude.where($this='Observation:subject' or $this='*').exists() and rest.resource.where(type='Patient').searchInclude.where($this='Patient:general-practitioner' or $this='*').exists()",
+      "description": "Observation?_id=obs1&_include=Observation:subject&_include:iterate=Patient:general-practitioner must include pat1 (direct) and then prac1 (iterated hop from pat1.generalPractitioner). Iteration itself has no precise R4 CapabilityStatement flag, so iterated-hop assertions are informational.",
+      "requiresCapability": "rest.resource.where(type='Observation').searchInclude.where($this='Observation:subject' or $this='*').exists()",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Observation", "params": "?_id=ignixa-inc-obs1&_include=Observation:subject&_include:iterate=Patient:general-practitioner", "responseId": "inc-iterate-gp", "description": "GET /Observation with _include:iterate on generalPractitioner" } },
         { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
         { "assert": { "description": "Must include pat1", "expression": "entry.where(resource.id = 'ignixa-inc-pat1').exists()" } },
-        { "assert": { "description": "Must include prac1 (iterated hop)", "expression": "entry.where(resource.id = 'ignixa-inc-prac1').exists()" } }
+        { "assert": { "description": "Must include prac1 (iterated hop)", "expression": "entry.where(resource.id = 'ignixa-inc-prac1').exists()", "warningOnly": true } }
       ]
     },
     {
       "name": "_include:iterate on a same-type chain performs a single iteration, not unbounded recursion",
-      "description": "Organization?_id=org-a&_include:iterate=Organization:partof must include org-b (one iteration) but not org-c, confirming _include:iterate performs a single additional hop rather than a full transitive closure.",
-      "requiresCapability": "rest.resource.where(type='Organization').searchInclude.where($this='Organization:partof' or $this='*').exists()",
+      "description": "Organization?_id=org-a&_include:iterate=Organization:partof must include org-b (one iteration) but not org-c, confirming _include:iterate performs a single additional hop rather than a full transitive closure. Iteration itself has no precise R4 CapabilityStatement flag, so iterated-hop assertions are informational.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Organization", "params": "?_id=ignixa-inc-org-a&_include:iterate=Organization:partof", "responseId": "inc-iterate-chain", "description": "GET /Organization?_id=ignixa-inc-org-a&_include:iterate=Organization:partof" } },
         { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
         { "assert": { "description": "Must include org-a (matched)", "expression": "entry.where(resource.id = 'ignixa-inc-org-a').exists()" } },
-        { "assert": { "description": "Must include org-b (one iteration of partof)", "expression": "entry.where(resource.id = 'ignixa-inc-org-b').exists()" } },
+        { "assert": { "description": "Must include org-b (one iteration of partof)", "expression": "entry.where(resource.id = 'ignixa-inc-org-b').exists()", "warningOnly": true } },
         { "assert": { "description": "Should NOT include org-c (would require a second iteration); behavior may vary by server", "expression": "entry.where(resource.id = 'ignixa-inc-org-c').exists()", "value": "false", "operator": "equals", "warningOnly": true } }
       ]
     },
@@ -286,7 +285,7 @@
     {
       "name": "_summary=count excludes included resources from the reported total",
       "description": "Patient?_id=pat1&_include=Patient:organization&_summary=count must return total=1 (only the matched patient counts, not the included organization) and an empty entry list.",
-      "requiresCapability": "rest.resource.where(type='Patient').searchInclude.where($this='Patient:organization' or $this='*').exists()",
+      "requiresCapability": "rest.resource.where(type='Patient').searchInclude.where($this='Patient:organization' or $this='*').exists() and (rest.resource.where(type='Patient').searchParam.where(name='_summary').exists() or rest.searchParam.where(name='_summary').exists())",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?_id=ignixa-inc-pat1&_include=Patient:organization&_summary=count", "responseId": "inc-summary-count", "description": "GET /Patient?_id=ignixa-inc-pat1&_include=Patient:organization&_summary=count" } },
@@ -298,7 +297,7 @@
     {
       "name": "_total=accurate excludes included resources from the reported total",
       "description": "Patient?_id=pat1&_include=Patient:organization&_total=accurate must return total=1 (matched patient only) while still including org in the entry list.",
-      "requiresCapability": "rest.resource.where(type='Patient').searchInclude.where($this='Patient:organization' or $this='*').exists()",
+      "requiresCapability": "rest.resource.where(type='Patient').searchInclude.where($this='Patient:organization' or $this='*').exists() and (rest.resource.where(type='Patient').searchParam.where(name='_total').exists() or rest.searchParam.where(name='_total').exists())",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?_id=ignixa-inc-pat1&_include=Patient:organization&_total=accurate", "responseId": "inc-total-accurate", "description": "GET /Patient?_id=ignixa-inc-pat1&_include=Patient:organization&_total=accurate" } },

@@ -212,7 +212,7 @@
     {
       "name": "Reverse chain: HealthcareServices linked to the target practitioner",
       "description": "HealthcareService?_has:PractitionerRole:service:practitioner=ignixa-cs-prac-target must return hs1..hs5 (all have a PractitionerRole for prac-target); hsdecoy (linked only to prac-other) must not appear.",
-      "requiresCapability": "rest.resource.searchParam.where(name='_has').exists()",
+      "requiresCapability": "(rest.resource.where(type='HealthcareService').searchParam.where(name='_has').exists() or rest.searchParam.where(name='_has').exists())",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "HealthcareService", "params": "?_has:PractitionerRole:service:practitioner=ignixa-cs-prac-target&identifier=http://ignixa.io/testscript/suite/chaining-and-sort|&_count=100", "responseId": "chain-only", "description": "GET /HealthcareService?_has:PractitionerRole:service:practitioner=ignixa-cs-prac-target" } },
@@ -229,7 +229,7 @@
     {
       "name": "Chain + active:not=false excludes the inactive service",
       "description": "Adding active:not=false to the reverse chain excludes hs3 (active=false); hs1,hs2,hs4,hs5 (all active=true) remain.",
-      "requiresCapability": "rest.resource.searchParam.where(name='_has').exists()",
+      "requiresCapability": "(rest.resource.where(type='HealthcareService').searchParam.where(name='_has').exists() or rest.searchParam.where(name='_has').exists())",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "HealthcareService", "params": "?_has:PractitionerRole:service:practitioner=ignixa-cs-prac-target&active:not=false&identifier=http://ignixa.io/testscript/suite/chaining-and-sort|&_count=100", "responseId": "chain-active-not", "description": "GET .../HealthcareService?..._has...&active:not=false" } },
@@ -245,7 +245,7 @@
     {
       "name": "Chain + name:missing=false excludes the unnamed service",
       "description": "Adding name:missing=false to the reverse chain excludes hs2 (no name); hs1,hs3,hs4,hs5 (all named) remain.",
-      "requiresCapability": "rest.resource.searchParam.where(name='_has').exists()",
+      "requiresCapability": "(rest.resource.where(type='HealthcareService').searchParam.where(name='_has').exists() or rest.searchParam.where(name='_has').exists())",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "HealthcareService", "params": "?_has:PractitionerRole:service:practitioner=ignixa-cs-prac-target&name:missing=false&identifier=http://ignixa.io/testscript/suite/chaining-and-sort|&_count=100", "responseId": "chain-name-missing", "description": "GET .../HealthcareService?..._has...&name:missing=false" } },
@@ -261,7 +261,7 @@
     {
       "name": "Chain + location:missing=false excludes the service without a location",
       "description": "Adding location:missing=false to the reverse chain excludes hs4 (no location); hs1,hs2,hs3,hs5 (all located) remain.",
-      "requiresCapability": "rest.resource.searchParam.where(name='_has').exists()",
+      "requiresCapability": "(rest.resource.where(type='HealthcareService').searchParam.where(name='_has').exists() or rest.searchParam.where(name='_has').exists())",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "HealthcareService", "params": "?_has:PractitionerRole:service:practitioner=ignixa-cs-prac-target&location:missing=false&identifier=http://ignixa.io/testscript/suite/chaining-and-sort|&_count=100", "responseId": "chain-location-missing", "description": "GET .../HealthcareService?..._has...&location:missing=false" } },
@@ -277,7 +277,7 @@
     {
       "name": "Second _has excludes the service whose only role is inactive",
       "description": "Adding a second reverse chain, _has:PractitionerRole:service:active=true, requires the linking PractitionerRole itself to be active. hs5's only role (role5) is inactive, so hs5 is excluded even though hs5.active=true; hs1..hs4 (each linked by an active role) remain.",
-      "requiresCapability": "rest.resource.searchParam.where(name='_has').exists()",
+      "requiresCapability": "(rest.resource.where(type='HealthcareService').searchParam.where(name='_has').exists() or rest.searchParam.where(name='_has').exists())",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "HealthcareService", "params": "?_has:PractitionerRole:service:practitioner=ignixa-cs-prac-target&_has:PractitionerRole:service:active=true&identifier=http://ignixa.io/testscript/suite/chaining-and-sort|&_count=100", "responseId": "chain-role-active", "description": "GET .../HealthcareService with two _has clauses (practitioner + role active=true)" } },
@@ -293,7 +293,7 @@
     {
       "name": "Combined chain + all modifiers narrows to exactly one match",
       "description": "Combining the reverse chain with active:not=false, name:missing=false, location:missing=false and the second _has:PractitionerRole:service:active=true narrows the result to exactly hs1, the only service passing every filter.",
-      "requiresCapability": "rest.resource.searchParam.where(name='_has').exists()",
+      "requiresCapability": "(rest.resource.where(type='HealthcareService').searchParam.where(name='_has').exists() or rest.searchParam.where(name='_has').exists())",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "HealthcareService", "params": "?_has:PractitionerRole:service:practitioner=ignixa-cs-prac-target&active:not=false&name:missing=false&location:missing=false&_has:PractitionerRole:service:active=true&identifier=http://ignixa.io/testscript/suite/chaining-and-sort|&_count=100", "responseId": "chain-combined", "description": "GET .../HealthcareService with the full combined filter set" } },
@@ -310,7 +310,7 @@
     {
       "name": "_sort=name orders chained results ascending (missing name last)",
       "description": "Applying _sort=name to the base reverse-chain query (hs1..hs5) should order by name ascending: hs1 (Alpha), hs4 (Delta), hs5 (Epsilon), hs3 (Gamma), then hs2 (no name) last. Position assertions are warningOnly since null-ordering conventions vary across servers.",
-      "requiresCapability": "rest.resource.searchParam.where(name='_has').exists()",
+      "requiresCapability": "(rest.resource.where(type='HealthcareService').searchParam.where(name='_has').exists() or rest.searchParam.where(name='_has').exists()) and (rest.resource.where(type='HealthcareService').searchParam.where(name='_sort').exists() or rest.searchParam.where(name='_sort').exists())",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "HealthcareService", "params": "?_has:PractitionerRole:service:practitioner=ignixa-cs-prac-target&identifier=http://ignixa.io/testscript/suite/chaining-and-sort|&_count=100&_sort=name", "responseId": "chain-sort-name", "description": "GET .../HealthcareService?..._has...&_sort=name" } },
@@ -326,7 +326,7 @@
     {
       "name": "_summary=count on the combined query reports the total without returning entries",
       "description": "Adding _summary=count to the fully-combined query (which matches exactly hs1) must return an empty entry list and Bundle.total=1.",
-      "requiresCapability": "rest.resource.searchParam.where(name='_has').exists()",
+      "requiresCapability": "(rest.resource.where(type='HealthcareService').searchParam.where(name='_has').exists() or rest.searchParam.where(name='_has').exists()) and (rest.resource.where(type='HealthcareService').searchParam.where(name='_summary').exists() or rest.searchParam.where(name='_summary').exists())",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "HealthcareService", "params": "?_has:PractitionerRole:service:practitioner=ignixa-cs-prac-target&active:not=false&name:missing=false&location:missing=false&_has:PractitionerRole:service:active=true&identifier=http://ignixa.io/testscript/suite/chaining-and-sort|&_summary=count", "responseId": "chain-summary-count", "description": "GET .../HealthcareService with the combined filter set + _summary=count" } },
@@ -339,7 +339,7 @@
     {
       "name": "_total=accurate on the combined query reports the exact total",
       "description": "Adding _total=accurate to the fully-combined query must return Bundle.total=1 alongside the single matching entry (hs1).",
-      "requiresCapability": "rest.resource.searchParam.where(name='_has').exists()",
+      "requiresCapability": "(rest.resource.where(type='HealthcareService').searchParam.where(name='_has').exists() or rest.searchParam.where(name='_has').exists()) and (rest.resource.where(type='HealthcareService').searchParam.where(name='_total').exists() or rest.searchParam.where(name='_total').exists())",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "HealthcareService", "params": "?_has:PractitionerRole:service:practitioner=ignixa-cs-prac-target&active:not=false&name:missing=false&location:missing=false&_has:PractitionerRole:service:active=true&identifier=http://ignixa.io/testscript/suite/chaining-and-sort|&_total=accurate", "responseId": "chain-total-accurate", "description": "GET .../HealthcareService with the combined filter set + _total=accurate" } },
