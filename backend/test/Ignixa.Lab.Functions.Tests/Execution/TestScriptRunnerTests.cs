@@ -77,6 +77,23 @@ public sealed class TestScriptRunnerTests
         ]
     };
 
+    private static TestScriptDefinition MetadataGatedPatchDefinition() => new()
+    {
+        Metadata = new TestScriptMetadata
+        {
+            Name = "PatchGated",
+            RequiresCapability = "rest.resource.where(type='Patient').interaction.where(code='patch').exists()",
+        },
+        Tests =
+        [
+            new TestPhaseDefinition
+            {
+                Name = "PatchPatient",
+                Actions = [new OperationExpression { Type = "patch", Resource = "Patient", Params = "/1" }],
+            },
+        ],
+    };
+
     private static TestScriptDefinition VersionGatedDefinition(params string[] fhirVersions) => new()
     {
         Metadata = new TestScriptMetadata { Name = "VersionGated" },
@@ -203,6 +220,30 @@ public sealed class TestScriptRunnerTests
         outcome.Report!.Results.Should().ContainSingle();
         outcome.Report.Results[0].Status.Should().Be(ConformanceStatus.Skipped);
         outcome.Report.CapabilityWarning.Should().BeNull();
+        provider.CallCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task GivenMetadataRequiresUndeclaredPatch_WhenRun_ThenEveryTestIsSkippedAndNoRequestIsSent()
+    {
+        var provider = new RecordingRequestProvider(new TestResponse { StatusCode = 200 });
+        var runner = new TestScriptRunner(
+            new FakeSuiteCatalog("patch-gated.json", MetadataGatedPatchDefinition()),
+            new FakeEvaluatorFactory(provider),
+            new CapabilityStatementFetcher(
+                new FixedResponseHttpClientFactory(CapabilityStatementWithoutReindex),
+                Options.Create(new IgnixaLabOptions())),
+            Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
+            NullLogger<TestScriptRunner>.Instance);
+
+        var outcome = await runner.RunAsync(
+            new RunRequest { TargetUrl = TargetUrl, SuiteIds = ["patch-gated.json"] },
+            CancellationToken.None);
+
+        outcome.IsValid.Should().BeTrue();
+        outcome.Report!.Results.Should().ContainSingle();
+        outcome.Report.Results[0].Status.Should().Be(ConformanceStatus.Skipped);
         provider.CallCount.Should().Be(0);
     }
 

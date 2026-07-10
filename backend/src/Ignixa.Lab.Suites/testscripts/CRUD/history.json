@@ -3,6 +3,9 @@
   "name": "CRUD/history",
   "description": "History (GET /_history, /{type}/_history, /{type}/{id}/_history) conformance tests: non-empty system/type/instance Bundles, correct default and explicit sort order, well-formed entry.response.status, and _summary=count/_since/_before/_sort parameter handling (from HistoryTests). The second version needed by the multi-entry/sort-order tests is produced via a FHIRPath Patch rather than a PUT, to guarantee an actual content change and avoid requiring the body id to match the URL.",
   "status": "active",
+  "extension": [
+    { "url": "http://ignixa.io/testscript/requiresCapability", "valueString": "rest.resource.where(type='Patient').interaction.where(code='history-instance' or code='history-type').exists()" }
+  ],
   "fixture": [
     {
       "id": "patient-hist-a",

@@ -3,6 +3,9 @@
   "name": "Operations/import-search-2",
   "description": "Search-parameter indexing conformance tests for reference, string, token, and uri searches, created via standard REST create/update as an $import-independent equivalent of the ImportXSearchTests suites (Part 2 of 2; see import-search.json for composite/date/number/quantity). Not requiresCapability-gated: this exercises standard resource search, which every FHIR server must support, not a conditionally-supported $-operation.",
   "status": "active",
+  "extension": [
+    { "url": "http://ignixa.io/testscript/requiresCapability", "valueString": "rest.resource.where(type='Observation').searchParam.where(name='_tag').exists() and rest.resource.where(type='Patient').searchParam.where(name='_tag').exists() and rest.resource.where(type='Organization').updateCreate = true and rest.resource.where(type='Practitioner').updateCreate = true and rest.resource.where(type='Patient').updateCreate = true and rest.resource.where(type='Observation').updateCreate = true and rest.resource.where(type='ValueSet').updateCreate = true" }
+  ],
   "fixture": [
     {
       "id": "ignixa-impsrch-ref-org",

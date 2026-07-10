@@ -3,6 +3,9 @@
   "name": "CRUD/patch-fhirpath",
   "description": "FHIRPath Patch (application/fhir+json PATCH with a Parameters resource, per http://hl7.org/fhir/fhirpatch.html) conformance tests: add/replace/delete operations, FHIRPath where() filters, choice-type handling, immutable-element protection, If-Match preconditions, and date/dateTime edge cases (from FhirPathPatchTests).",
   "status": "active",
+  "extension": [
+    { "url": "http://ignixa.io/testscript/requiresCapability", "valueString": "rest.resource.where(type='Patient').interaction.where(code='patch').exists()" }
+  ],
   "fixture": [
     {
       "id": "patient-full",

@@ -34,6 +34,7 @@
     {
       "name": "delete removes the resource; a plain read is Gone/NotFound while the original version remains vread-able",
       "description": "DELETE Patient/{id} must succeed. A subsequent plain read must return 410 Gone (or 404 Not Found as a warningOnly alternative), while a vread of the version that existed before the delete must still succeed.",
+      "requiresCapability": "rest.resource.where(type='Patient').interaction.where(code='vread').exists() and rest.resource.where(type='Patient').where(versioning.exists() and versioning != 'no-version').exists()",
       "action": [
         { "operation": { "type": { "code": "create" }, "resource": "Patient", "sourceId": "patient-delete-basic", "responseId": "create-basic-response", "description": "Create the Patient that will be deleted" } },
         { "assert": { "description": "Create must return HTTP 201", "response": "created" } },

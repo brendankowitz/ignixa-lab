@@ -3,6 +3,9 @@
   "name": "CRUD/conditional-delete",
   "description": "Conditional delete (DELETE /Patient?search-params) conformance tests: rejection with no criteria, idempotent no-op on no match, single-match delete, and 412 on multiple matches (with an optional bulk-delete extension).",
   "status": "active",
+  "extension": [
+    { "url": "http://ignixa.io/testscript/requiresCapability", "valueString": "rest.resource.where(type='Patient').where(conditionalDelete.exists() and conditionalDelete != 'not-supported').exists()" }
+  ],
   "fixture": [
     {
       "id": "patient-onematch-body",

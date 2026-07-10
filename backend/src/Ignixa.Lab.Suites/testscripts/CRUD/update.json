@@ -3,6 +3,9 @@
   "name": "CRUD/update",
   "description": "Instance update (PUT) conformance tests: version bump on content change vs. no bump on no-op updates, malformed Content-Type/If-Match rejection, client-supplied-id upsert-create, URL/body id-mismatch and missing-id rejection, and conditional-reference resolution via identifier (from UpdateTests).",
   "status": "active",
+  "extension": [
+    { "url": "http://ignixa.io/testscript/requiresCapability", "valueString": "rest.resource.where(type='Patient').updateCreate = true and rest.resource.where(type='Practitioner').updateCreate = true" }
+  ],
   "fixture": [
     {
       "id": "patient-v1",

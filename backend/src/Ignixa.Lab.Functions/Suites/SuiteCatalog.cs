@@ -58,7 +58,8 @@ public sealed class SuiteCatalog : ISuiteCatalog
         {
             try
             {
-                var parseResult = TestScriptParser.ParseFile(file);
+                var content = TestScriptContentNormalizer.Normalize(File.ReadAllText(file));
+                var parseResult = TestScriptParser.Parse(content);
                 if (!parseResult.IsSuccess || parseResult.Value is null)
                 {
                     _logger.LogWarning("Skipping {File}: not a valid TestScript.", file);

@@ -3,6 +3,9 @@
   "name": "CRUD/conditional-update",
   "description": "Conditional update (PUT /Patient?search-params) conformance tests: upsert-on-no-match, 400 on no criteria, body-id agreement/mismatch handling, and 412 on multiple matches.",
   "status": "active",
+  "extension": [
+    { "url": "http://ignixa.io/testscript/requiresCapability", "valueString": "rest.resource.where(type='Patient').updateCreate = true" }
+  ],
   "fixture": [
     {
       "id": "patient-nomatch-body",

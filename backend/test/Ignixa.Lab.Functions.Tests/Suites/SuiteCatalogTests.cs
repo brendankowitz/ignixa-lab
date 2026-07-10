@@ -438,6 +438,127 @@ public sealed class SuiteCatalogTests : IDisposable
             .Should().Be("W/\"${createdVersionId}\"");
     }
 
+    [Theory]
+    [InlineData("CRUD/patch-body.json", "interaction.where(code='patch').exists()")]
+    [InlineData("CRUD/patch-fhirpath.json", "interaction.where(code='patch').exists()")]
+    [InlineData("CRUD/patch-json.json", "interaction.where(code='patch').exists()")]
+    [InlineData("CRUD/vread.json", "interaction.where(code='vread').exists()")]
+    [InlineData("CRUD/history.json", "interaction.where(code='history-instance' or code='history-type').exists()")]
+    [InlineData("CRUD/conditional-delete.json", "conditionalDelete.exists()")]
+    [InlineData("Operations/import-search.json", "searchParam.where(name='_tag').exists()")]
+    [InlineData("Operations/import-search-2.json", "searchParam.where(name='_tag').exists()")]
+    [InlineData("Search/custom-search-param.json", "type='SearchParameter'")]
+    public void BundledOptionalBehaviorSuites_DeclareMetadataCapabilityGate(string relativePath, string expected)
+    {
+        var requirement = GetMetadataCapabilityRequirement(ReadBundledSuite(relativePath));
+        requirement.Should().Contain(expected);
+
+        CreateBundledCatalog().TryGet(relativePath, out var entry).Should().BeTrue();
+        entry.Definition.Metadata.RequiresCapability.Should().Be(requirement);
+    }
+
+    [Theory]
+    [InlineData("CRUD/update.json", "Patient", "Practitioner")]
+    [InlineData("CRUD/conditional-update.json", "Patient")]
+    [InlineData("Operations/import-search.json", "Observation", "DocumentReference", "Patient", "RiskAssessment")]
+    [InlineData("Operations/import-search-2.json", "Organization", "Practitioner", "Patient", "Observation", "ValueSet")]
+    [InlineData("Search/includes.json", "Organization", "Practitioner", "Patient", "Observation", "DiagnosticReport", "Location")]
+    [InlineData("Search/chaining.json", "Organization", "Patient", "Observation")]
+    [InlineData("Search/chaining-and-sort.json", "Location", "Practitioner", "HealthcareService", "PractitionerRole")]
+    public void BundledSuitesWithFixedIdSetup_RequireUpdateCreateBeforeSetup(string relativePath, params string[] resourceTypes)
+    {
+        var requirement = GetMetadataCapabilityRequirement(ReadBundledSuite(relativePath));
+
+        foreach (var resourceType in resourceTypes)
+        {
+            requirement.Should().Contain($"type='{resourceType}'");
+        }
+
+        requirement.Should().Contain("updateCreate = true");
+    }
+
+    [Fact]
+    public void BundledDeletedResourceVreadTest_RequiresVreadAndVersioning()
+    {
+        var test = ReadBundledTest(
+            "CRUD/delete.json",
+            "delete removes the resource; a plain read is Gone/NotFound while the original version remains vread-able");
+        var requirement = GetStringValue(test["requiresCapability"]);
+
+        requirement.Should().Contain("interaction.where(code='vread').exists()");
+        requirement.Should().Contain("versioning != 'no-version'");
+    }
+
+    [Fact]
+    public void BundledCapabilityGates_AreParsedIntoExecutableDefinitions()
+    {
+        var catalog = CreateBundledCatalog();
+
+        catalog.TryGet("CRUD/patch-json.json", out var patchSuite).Should().BeTrue();
+        patchSuite.Definition.Metadata.RequiresCapability.Should().Contain("code='patch'");
+
+        catalog.TryGet("CRUD/delete.json", out var deleteSuite).Should().BeTrue();
+        deleteSuite.Definition.Tests
+            .Single(test => test.Name.StartsWith("delete removes the resource", StringComparison.Ordinal))
+            .RequiresCapability.Should().Contain("code='vread'");
+    }
+
+    [Fact]
+    public void BundledDirectTestCapabilityGates_AreAllParsedIntoExecutableDefinitions()
+    {
+        var catalog = CreateBundledCatalog();
+
+        foreach (var descriptor in catalog.GetSuites())
+        {
+            catalog.TryGet(descriptor.Id, out var entry).Should().BeTrue();
+            var rawTests = ReadBundledSuite(descriptor.Id)["test"]!.AsArray();
+            rawTests.Should().HaveSameCount(entry.Definition.Tests);
+
+            foreach (var (rawTest, parsedTest) in rawTests.Zip(entry.Definition.Tests))
+            {
+                var requirement = GetStringValue(rawTest?["requiresCapability"]);
+                if (requirement is not null)
+                {
+                    parsedTest.RequiresCapability.Should().Be(requirement);
+                }
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData("Search/includes.json", "_include", "searchInclude")]
+    [InlineData("Search/includes.json", "_revinclude", "searchRevInclude")]
+    [InlineData("Search/chaining.json", "Forward chain", "type='reference'")]
+    [InlineData("Search/chaining.json", "_has", "name='_has'")]
+    [InlineData("Search/chaining-and-sort.json", null, "name='_has'")]
+    public void BundledOptionalSearchTests_DeclareTestLevelCapabilityGates(
+        string relativePath,
+        string? testNameFragment,
+        string expected)
+    {
+        var matchingTests = ReadBundledSuite(relativePath)["test"]!.AsArray()
+            .Select(test => test!.AsObject())
+            .Where(test => testNameFragment is null
+                || GetStringValue(test["name"])!.Contains(testNameFragment, StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        matchingTests.Should().NotBeEmpty();
+        matchingTests.Select(test =>
+                GetStringValue(test["requiresCapability"])?.Contains(expected, StringComparison.Ordinal) == true)
+            .Should().OnlyContain(hasRequirement => hasRequirement);
+    }
+
+    [Theory]
+    [InlineData("Forward _include pulls in the direct reference target", "Patient:organization")]
+    [InlineData("Wildcard _include=* pulls in every direct reference", "$this='*'")]
+    [InlineData("_revinclude pulls in resources that reference the match", "Observation:subject")]
+    [InlineData("Multiple _include params combine their targets", "Patient:general-practitioner")]
+    public void BundledIncludeTests_RequireTheAdvertisedIncludeTheyExercise(string testName, string expected)
+    {
+        GetStringValue(ReadBundledTest("Search/includes.json", testName)["requiresCapability"])
+            .Should().Contain(expected);
+    }
+
     private static JsonNode ReadBundledSuite(string relativePath)
     {
         var root = Path.Combine(AppContext.BaseDirectory, "testscripts");
@@ -451,6 +572,13 @@ public sealed class SuiteCatalogTests : IDisposable
             .Select(test => test!.AsObject())
             .Single(test => GetStringValue(test["name"]) == testName);
     }
+
+    private static string? GetMetadataCapabilityRequirement(JsonNode suite) =>
+        suite["extension"]?.AsArray()
+            .Select(extension => extension?.AsObject())
+            .Where(extension => GetStringValue(extension?["url"]) == "http://ignixa.io/testscript/requiresCapability")
+            .Select(extension => GetStringValue(extension?["valueString"]))
+            .SingleOrDefault();
 
     private static string? GetStringValue(JsonNode? node) =>
         node?.GetValueKind() == System.Text.Json.JsonValueKind.String

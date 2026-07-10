@@ -277,7 +277,8 @@ public sealed class TestScriptRunner(
                 continue;
             }
 
-            var parseResult = TestScriptParser.Parse(uploaded.Content);
+            var content = TestScriptContentNormalizer.Normalize(uploaded.Content);
+            var parseResult = TestScriptParser.Parse(content);
             if (!parseResult.IsSuccess || parseResult.Value is null)
             {
                 var reason = parseResult.Errors.Count > 0 ? parseResult.Errors[0].Message : "invalid TestScript";

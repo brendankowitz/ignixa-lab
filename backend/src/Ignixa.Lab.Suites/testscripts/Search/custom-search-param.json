@@ -3,6 +3,9 @@
   "name": "Search/custom-search-param",
   "description": "Custom SearchParameter registration conformance tests (from CustomSearchParamTests): invalid SearchParameter definitions (bad FHIRPath, non-existent target property, invalid base/type, missing required fields, type/expression mismatch) are rejected with HTTP 400 and an OperationOutcome error. The MS FHIR Server-specific 128-character SearchParameter.url length cap is covered separately in Microsoft/ms-search-parameter-url-length.json.",
   "status": "active",
+  "extension": [
+    { "url": "http://ignixa.io/testscript/requiresCapability", "valueString": "rest.resource.where(type='SearchParameter').interaction.where(code='create' or code='update').exists()" }
+  ],
   "fixture": [
     {
       "id": "sp-bad-syntax",
