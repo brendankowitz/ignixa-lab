@@ -345,6 +345,40 @@ public sealed class SuiteCatalogTests : IDisposable
     }
 
     [Fact]
+    public void BundledConditionalUpdateMultiMatch_UsesRunScopedClientIdsForCleanup()
+    {
+        var suite = ReadBundledSuite("CRUD/conditional-update.json");
+        var expectedIds = new[]
+        {
+            "ignixa-cond-upd-multi-a-${runId}",
+            "ignixa-cond-upd-multi-b-${runId}",
+        };
+        var fixtureIds = suite["fixture"]!.AsArray()
+            .Select(fixture => GetStringValue(fixture?["resource"]?["id"]))
+            .Where(id => id is not null);
+        var test = ReadBundledTest("CRUD/conditional-update.json", "Conditional update with multiple existing matches fails");
+        var teardownUrls = suite["teardown"]!["action"]!.AsArray()
+            .Select(action => GetStringValue(action?["operation"]?["url"]));
+
+        fixtureIds.Should().Contain(expectedIds);
+        GetStringValue(test["requiresCapability"]).Should().Contain("updateCreate = true");
+        teardownUrls.Should().Contain(expectedIds.Select(id => $"Patient/{id}"));
+    }
+
+    [Theory]
+    [InlineData("CRUD/update.json", "ignixa-update-newpat-${runId}")]
+    [InlineData("CRUD/update.json", "UPDATE-MISMATCH-${runId}")]
+    [InlineData("CRUD/conditional-update.json", "ignixa-cond-upd-explicit-${runId}")]
+    [InlineData("CRUD/conditional-update.json", "CU-EXPLICIT-${runId}")]
+    [InlineData("CRUD/conditional-update.json", "CU-NOMATCH-${runId}")]
+    [InlineData("CRUD/conditional-update.json", "CU-ONEMATCH-${runId}")]
+    [InlineData("CRUD/conditional-update.json", "CU-MULTI-${runId}")]
+    public void BundledRunScopedMarkers_ArePresentAcrossRelevantSuites(string relativePath, string marker)
+    {
+        ReadBundledSuite(relativePath).ToJsonString().Should().Contain(marker);
+    }
+
+    [Fact]
     public void BundledNoOpVersionAssertion_IsInformational()
     {
         var test = ReadBundledTest("CRUD/update.json", "repeating an identical update does not create a new version");
