@@ -708,11 +708,27 @@ public sealed class SuiteCatalogTests : IDisposable
             .Select(test => GetStringValue(test?["description"]))
             .Prepend(GetStringValue(suite["description"]))
             .ToArray();
-        var assertions = suite["test"]!.AsArray()
-            .SelectMany(test => test!["action"]!.AsArray())
-            .Select(action => action?["assert"])
-            .Where(assertion => assertion is not null)
-            .ToArray();
+        var assertions = FindAssertions(suite);
+        string[] expectedAssertionDescriptions = relativePath switch
+        {
+            "Foundation/cors.json" =>
+            [
+                "Informational CORS hosting check: preflight OPTIONS should return HTTP 204 No Content",
+                "Informational CORS hosting check: Access-Control-Allow-Origin should reflect the requesting origin",
+                "Informational CORS hosting check: Access-Control-Allow-Methods should include the requested method",
+                "Informational CORS hosting check: Access-Control-Allow-Headers should be present",
+                "Informational CORS hosting check: Access-Control-Allow-Headers should include 'authorization' (casing may vary)",
+                "Informational CORS hosting check: Access-Control-Allow-Headers should include 'content-type' (casing may vary)",
+                "Informational CORS hosting check: Access-Control-Max-Age should be 1440 seconds",
+            ],
+            "Foundation/health.json" =>
+            [
+                "Informational hosting check: /health/check should return HTTP 200 but is not part of base FHIR",
+                "Informational hosting check: /health/check should return HTTP 200 but is not part of base FHIR",
+                "Informational hosting check: /health/check should return JSON but is not part of base FHIR",
+            ],
+            _ => throw new InvalidOperationException($"No expected assertions configured for {relativePath}."),
+        };
 
         foreach (var description in descriptions)
         {
@@ -724,7 +740,8 @@ public sealed class SuiteCatalogTests : IDisposable
             }
         }
 
-        assertions.Should().NotBeEmpty();
+        assertions.Select(assertion => GetStringValue(assertion["description"]))
+            .Should().Equal(expectedAssertionDescriptions);
         assertions.Select(assertion => assertion!["warningOnly"]?.GetValue<bool>() == true)
             .Should().OnlyContain(warningOnly => warningOnly);
     }
@@ -735,16 +752,38 @@ public sealed class SuiteCatalogTests : IDisposable
     public void BundledXProvenanceTests_AreClearlyInformational(string testName)
     {
         var test = ReadBundledTest("CRUD/create.json", testName);
-        var assertions = test["action"]!.AsArray()
-            .Select(action => action?["assert"])
-            .Where(assertion => assertion is not null)
-            .ToArray();
+        var assertions = FindAssertions(test);
+        string[] expectedAssertionDescriptions = testName switch
+        {
+            "create with a valid X-Provenance header links a Provenance resource" =>
+            [
+                "Informational Microsoft FHIR Server X-Provenance extension check: server should return 201 Created",
+                "Informational Microsoft FHIR Server X-Provenance extension check: search should return HTTP 200",
+                "Informational Microsoft FHIR Server X-Provenance extension check: search response should be a Bundle",
+                "Informational Microsoft FHIR Server X-Provenance extension check: Bundle should contain linked Provenance",
+            ],
+            "create with a malformed X-Provenance header returns 400" =>
+            [
+                "Informational Microsoft FHIR Server X-Provenance extension check: malformed header should return 400",
+            ],
+            _ => throw new InvalidOperationException($"No expected assertions configured for {testName}."),
+        };
 
         GetStringValue(test["description"]).Should().Contain("Microsoft FHIR Server extension");
         GetStringValue(test["description"]).Should().Contain("not part of base FHIR");
-        assertions.Should().NotBeEmpty();
+        assertions.Select(assertion => GetStringValue(assertion["description"]))
+            .Should().Equal(expectedAssertionDescriptions);
         assertions.Select(assertion => assertion!["warningOnly"]?.GetValue<bool>() == true)
             .Should().OnlyContain(warningOnly => warningOnly);
+    }
+
+    [Fact]
+    public void BundledCreateSuite_SeparatesBaseConformanceFromInformationalXProvenance()
+    {
+        var description = GetStringValue(ReadBundledSuite("CRUD/create.json")["description"]);
+
+        description.Should().Contain("base FHIR create checks are conformance");
+        description.Should().Contain("X-Provenance coverage is Microsoft FHIR Server informational");
     }
 
     [Fact]
@@ -792,6 +831,19 @@ public sealed class SuiteCatalogTests : IDisposable
         node?.GetValueKind() == System.Text.Json.JsonValueKind.String
             ? node.GetValue<string>()
             : null;
+
+    private static JsonObject[] FindAssertions(JsonNode node)
+    {
+        var assertions = new List<JsonObject>();
+        VisitObjects(node, obj =>
+        {
+            if (obj["assert"] is JsonObject assertion)
+            {
+                assertions.Add(assertion);
+            }
+        });
+        return assertions.ToArray();
+    }
 
     private static IEnumerable<(string RelativePath, string Json)> ReadBundledSuiteJson()
     {

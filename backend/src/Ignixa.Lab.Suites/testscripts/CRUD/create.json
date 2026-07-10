@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "CRUD/create",
-  "description": "Conformance tests for POST /{type} create semantics: assigned id/version metadata and headers, client-supplied id/meta overriding, content-type and body validation, malicious-input handling, and the X-Provenance header (from CreateTests).",
+  "description": "Scope: base FHIR create checks are conformance tests; X-Provenance coverage is Microsoft FHIR Server informational because that header is an extension, not base FHIR.",
   "status": "active",
   "fixture": [
     {
