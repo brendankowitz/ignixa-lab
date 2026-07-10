@@ -216,7 +216,8 @@ public sealed class TestScriptRunner(
     {
         try
         {
-            var report = await evaluator.ExecuteAsync(job.Definition, cancellationToken, fhirVersion, capabilityStatement);
+            var definition = RunScopedDefinitionPreparer.Prepare(job.Definition);
+            var report = await evaluator.ExecuteAsync(definition, cancellationToken, fhirVersion, capabilityStatement);
             var results = ConformanceReportMapper.Map(report, job.Id, job.Category, job.File);
             return WarningOnlyStatusAlternativeEnforcer.Apply(results);
         }
