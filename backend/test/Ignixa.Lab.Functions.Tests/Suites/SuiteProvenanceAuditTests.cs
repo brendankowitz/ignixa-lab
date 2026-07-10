@@ -179,7 +179,11 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
           Reference = 'https://example.test/source'
           Display = 'Example source'
         }
-        New-TestScriptProvenance -RelativePath 'CRUD/basic.json' -Sources @($source) | ConvertTo-Json -Depth 20
+        New-TestScriptProvenance `
+          -RelativePath 'CRUD/basic.json' `
+          -Activity 'author-testscript' `
+          -Recorded '2026-07-10T12:34:56Z' `
+          -Sources @($source) | ConvertTo-Json -Depth 20
         """);
 
         process.Start();
@@ -194,7 +198,7 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         var provenance = document.RootElement;
 
         provenance.GetProperty("resourceType").GetString().Should().Be("Provenance");
-        provenance.GetProperty("recorded").GetString().Should().Be("2026-07-07T00:00:00Z");
+        provenance.GetProperty("recorded").GetString().Should().Be("2026-07-10T12:34:56Z");
         provenance.GetProperty("target")[0].GetProperty("identifier").GetProperty("system").GetString()
             .Should().Be("urn:ignixa-lab:testscripts:path");
         provenance.GetProperty("target")[0].GetProperty("identifier").GetProperty("value").GetString()
@@ -202,7 +206,9 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         provenance.GetProperty("activity").GetProperty("coding")[0].GetProperty("system").GetString()
             .Should().Be("http://ignixa.io/fhir/provenance-activity");
         provenance.GetProperty("activity").GetProperty("coding")[0].GetProperty("code").GetString()
-            .Should().Be("distill-testscript");
+            .Should().Be("author-testscript");
+        provenance.GetProperty("activity").GetProperty("coding")[0].GetProperty("display").GetString()
+            .Should().Be("Author TestScript");
         provenance.GetProperty("agent")[0].GetProperty("who").GetProperty("display").GetString()
             .Should().Be("Ignixa Lab maintainers");
 

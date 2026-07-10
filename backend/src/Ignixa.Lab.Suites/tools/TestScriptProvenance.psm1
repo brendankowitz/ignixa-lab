@@ -91,10 +91,20 @@ function New-TestScriptProvenance {
         [string] $RelativePath,
 
         [Parameter(Mandatory = $true)]
-        [System.Collections.IDictionary[]] $Sources,
+        [ValidateSet('author-testscript', 'distill-testscript')]
+        [string] $Activity,
 
-        [string] $Recorded = '2026-07-07T00:00:00Z'
+        [Parameter(Mandatory = $true)]
+        [string] $Recorded,
+
+        [Parameter(Mandatory = $true)]
+        [System.Collections.IDictionary[]] $Sources
     )
+
+    $activityDisplay = switch ($Activity) {
+        'author-testscript' { 'Author TestScript' }
+        'distill-testscript' { 'Distill TestScript' }
+    }
 
     [ordered] @{
         resourceType = 'Provenance'
@@ -112,8 +122,8 @@ function New-TestScriptProvenance {
             coding = @(
                 [ordered] @{
                     system = $script:ActivitySystem
-                    code = 'distill-testscript'
-                    display = 'Distill TestScript'
+                    code = $Activity
+                    display = $activityDisplay
                 }
             )
         }

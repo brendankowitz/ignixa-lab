@@ -293,7 +293,7 @@ foreach ($scriptFile in $scripts) {
     }
 
     $profileName = Get-SourceProfileName -RelativePath $relativePath
-    $provenance = New-TestScriptProvenance -RelativePath $relativePath -Sources $sourceProfiles[$profileName]
+    $provenance = New-TestScriptProvenance -RelativePath $relativePath -Activity 'distill-testscript' -Recorded '2026-07-07T00:00:00Z' -Sources $sourceProfiles[$profileName]
     $json = $provenance | ConvertTo-Json -Depth 100
     Set-Content -LiteralPath $sidecarPath -Value $json -Encoding utf8
     $created++
