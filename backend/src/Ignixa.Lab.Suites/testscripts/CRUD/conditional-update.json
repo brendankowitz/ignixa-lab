@@ -118,14 +118,33 @@
   ],
   "variable": [
     {
+      "name": "cuNoMatchId",
+      "sourceId": "cu-nomatch-response",
+      "path": "id",
+      "description": "Server-assigned id of the Patient created by the CU-NOMATCH conditional update"
+    },
+    {
       "name": "seedOneMatchId",
       "sourceId": "seed-onematch-response",
       "path": "id",
       "description": "Server-assigned id of the Patient unconditionally created in setup that carries identifier CU-ONEMATCH"
+    },
+    {
+      "name": "seedMultiAId",
+      "sourceId": "seed-multi-a-response",
+      "path": "id",
+      "description": "Server-assigned id of the first Patient created in setup with identifier CU-MULTI"
+    },
+    {
+      "name": "seedMultiBId",
+      "sourceId": "seed-multi-b-response",
+      "path": "id",
+      "description": "Server-assigned id of the second Patient created in setup with identifier CU-MULTI"
     }
   ],
   "setup": {
     "action": [
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/ignixa-cond-upd-explicit-reliable", "description": "Pre-clean the explicit-id conditional-update Patient so the strict 201 Created assertion tests a new resource" } },
       { "operation": { "type": { "code": "create" }, "resource": "Patient", "sourceId": "patient-seed-onematch-body", "responseId": "seed-onematch-response", "description": "Unconditionally create the Patient that later conditional-update attempts should match exactly once (CU-ONEMATCH)" } },
       { "assert": { "description": "Setup create for CU-ONEMATCH Patient must return 201 Created", "sourceId": "seed-onematch-response", "response": "created" } },
       { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-cond-upd-correctid", "sourceId": "patient-seed-correctid-body", "responseId": "seed-correctid-response", "description": "PUT a client-id Patient (CU-CORRECTID) so later tests can deterministically match or mismatch its id in a conditional update body" } },
@@ -202,11 +221,18 @@
   ],
   "teardown": {
     "action": [
-      { "operation": { "type": { "code": "delete" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-NOMATCH", "description": "Teardown: conditional delete the CU-NOMATCH Patient" } },
-      { "operation": { "type": { "code": "delete" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-EXPLICIT-RELIABLE", "description": "Teardown: conditional delete the CU-EXPLICIT-RELIABLE Patient" } },
-      { "operation": { "type": { "code": "delete" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-ONEMATCH", "description": "Teardown: conditional delete the CU-ONEMATCH Patient" } },
-      { "operation": { "type": { "code": "delete" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-CORRECTID", "description": "Teardown: conditional delete the CU-CORRECTID Patient" } },
-      { "operation": { "type": { "code": "delete" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-MULTI", "description": "Teardown: conditional delete both CU-MULTI Patients" } }
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/${cuNoMatchId}", "description": "Teardown: delete the current-run CU-NOMATCH Patient by server-assigned id" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/ignixa-cond-upd-explicit-reliable", "description": "Teardown: delete the current-run explicit-id conditional-update Patient" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/${seedOneMatchId}", "description": "Teardown: delete the current-run CU-ONEMATCH Patient by server-assigned id" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/ignixa-cond-upd-correctid", "description": "Teardown: delete the current-run CU-CORRECTID Patient by fixed id" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/${seedMultiAId}", "description": "Teardown: delete the first current-run CU-MULTI Patient by server-assigned id" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/${seedMultiBId}", "description": "Teardown: delete the second current-run CU-MULTI Patient by server-assigned id" } },
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/ignixa-cond-upd-wrongid", "description": "Teardown: defensively delete the mismatched-body id if a nonconforming server wrote it" } },
+      { "operation": { "type": { "code": "delete" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-NOMATCH", "description": "Teardown fallback: conditionally delete CU-NOMATCH leftovers or contamination" } },
+      { "operation": { "type": { "code": "delete" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-EXPLICIT-RELIABLE", "description": "Teardown fallback: conditionally delete CU-EXPLICIT-RELIABLE leftovers or contamination" } },
+      { "operation": { "type": { "code": "delete" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-ONEMATCH", "description": "Teardown fallback: conditionally delete CU-ONEMATCH leftovers or contamination" } },
+      { "operation": { "type": { "code": "delete" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-CORRECTID", "description": "Teardown fallback: conditionally delete CU-CORRECTID leftovers or contamination" } },
+      { "operation": { "type": { "code": "delete" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-MULTI", "description": "Teardown fallback: conditionally delete CU-MULTI leftovers or contamination" } }
     ]
   }
 }

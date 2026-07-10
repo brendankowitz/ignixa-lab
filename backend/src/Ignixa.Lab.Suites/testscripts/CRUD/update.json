@@ -94,6 +94,7 @@
   ],
   "setup": {
     "action": [
+      { "operation": { "type": { "code": "delete" }, "url": "Patient/ignixa-update-newpat-reliable", "description": "Pre-clean the upsert-create Patient id so the strict 201 Created assertion tests a new resource" } },
       { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-update-content", "sourceId": "patient-v1", "responseId": "setup-create-response", "description": "PUT Patient/ignixa-update-content (Version A) to establish the resource for the content-change/no-op/etag tests" } },
       { "assert": { "description": "Setup PUT Patient/ignixa-update-content must succeed", "sourceId": "setup-create-response", "response": "okay" } },
       { "operation": { "type": { "code": "create" }, "resource": "Patient", "sourceId": "patient-mismatch-source", "responseId": "mismatch-create-response", "description": "POST a Patient with a server-assigned id, used later to demonstrate a URL/body id mismatch" } },

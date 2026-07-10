@@ -314,6 +314,7 @@
           ]
         },
         "status": "final",
+        "code": { "coding": [{ "system": "http://loinc.org", "code": "8310-5", "display": "Body temperature" }] },
         "effectiveDateTime": "1979-06-15"
       }
     },
@@ -333,6 +334,7 @@
           ]
         },
         "status": "final",
+        "code": { "coding": [{ "system": "http://loinc.org", "code": "8310-5", "display": "Body temperature" }] },
         "effectiveDateTime": "1980"
       }
     },
@@ -352,6 +354,7 @@
           ]
         },
         "status": "final",
+        "code": { "coding": [{ "system": "http://loinc.org", "code": "8310-5", "display": "Body temperature" }] },
         "effectiveDateTime": "1980-05"
       }
     },
@@ -371,6 +374,7 @@
           ]
         },
         "status": "final",
+        "code": { "coding": [{ "system": "http://loinc.org", "code": "8310-5", "display": "Body temperature" }] },
         "effectiveDateTime": "1980-05-11"
       }
     },
@@ -390,6 +394,7 @@
           ]
         },
         "status": "final",
+        "code": { "coding": [{ "system": "http://loinc.org", "code": "8310-5", "display": "Body temperature" }] },
         "effectiveDateTime": "1980-05-11T16:32:15Z"
       }
     },
@@ -409,6 +414,7 @@
           ]
         },
         "status": "final",
+        "code": { "coding": [{ "system": "http://loinc.org", "code": "8310-5", "display": "Body temperature" }] },
         "effectiveDateTime": "1981-11-20"
       }
     },
@@ -428,6 +434,7 @@
           ]
         },
         "status": "final",
+        "code": { "coding": [{ "system": "http://loinc.org", "code": "8310-5", "display": "Body temperature" }] },
         "effectivePeriod": {
           "start": "1980-05-16T00:00:00Z",
           "end": "1980-05-17T23:59:59Z"
@@ -902,9 +909,11 @@
           },
           "url": "Observation/ignixa-impsrch-date-0",
           "sourceId": "ignixa-impsrch-date-0",
+          "responseId": "setup-date-0-response",
           "description": "PUT Observation date-0 (effectiveDateTime=1979-06-15, day precision, in 1979 (before 1980))"
         }
       },
+      { "assert": { "description": "Setup PUT Observation/ignixa-impsrch-date-0 must succeed", "sourceId": "setup-date-0-response", "response": "okay" } },
       {
         "operation": {
           "type": {
@@ -912,9 +921,11 @@
           },
           "url": "Observation/ignixa-impsrch-date-1",
           "sourceId": "ignixa-impsrch-date-1",
+          "responseId": "setup-date-1-response",
           "description": "PUT Observation date-1 (effectiveDateTime=1980, year precision, covers all of 1980)"
         }
       },
+      { "assert": { "description": "Setup PUT Observation/ignixa-impsrch-date-1 must succeed", "sourceId": "setup-date-1-response", "response": "okay" } },
       {
         "operation": {
           "type": {
@@ -922,9 +933,11 @@
           },
           "url": "Observation/ignixa-impsrch-date-2",
           "sourceId": "ignixa-impsrch-date-2",
+          "responseId": "setup-date-2-response",
           "description": "PUT Observation date-2 (effectiveDateTime=1980-05, month precision, covers May 1980)"
         }
       },
+      { "assert": { "description": "Setup PUT Observation/ignixa-impsrch-date-2 must succeed", "sourceId": "setup-date-2-response", "response": "okay" } },
       {
         "operation": {
           "type": {
@@ -932,9 +945,11 @@
           },
           "url": "Observation/ignixa-impsrch-date-3",
           "sourceId": "ignixa-impsrch-date-3",
+          "responseId": "setup-date-3-response",
           "description": "PUT Observation date-3 (effectiveDateTime=1980-05-11, day precision, a single day in May 1980)"
         }
       },
+      { "assert": { "description": "Setup PUT Observation/ignixa-impsrch-date-3 must succeed", "sourceId": "setup-date-3-response", "response": "okay" } },
       {
         "operation": {
           "type": {
@@ -942,9 +957,11 @@
           },
           "url": "Observation/ignixa-impsrch-date-4",
           "sourceId": "ignixa-impsrch-date-4",
+          "responseId": "setup-date-4-response",
           "description": "PUT Observation date-4 (effectiveDateTime=1980-05-11T16:32:15Z, datetime precision, a single second on 1980-05-11)"
         }
       },
+      { "assert": { "description": "Setup PUT Observation/ignixa-impsrch-date-4 must succeed", "sourceId": "setup-date-4-response", "response": "okay" } },
       {
         "operation": {
           "type": {
@@ -952,9 +969,11 @@
           },
           "url": "Observation/ignixa-impsrch-date-5",
           "sourceId": "ignixa-impsrch-date-5",
+          "responseId": "setup-date-5-response",
           "description": "PUT Observation date-5 (effectiveDateTime=1981-11-20, day precision, in 1981)"
         }
       },
+      { "assert": { "description": "Setup PUT Observation/ignixa-impsrch-date-5 must succeed", "sourceId": "setup-date-5-response", "response": "okay" } },
       {
         "operation": {
           "type": {
@@ -962,9 +981,11 @@
           },
           "url": "Observation/ignixa-impsrch-date-6",
           "sourceId": "ignixa-impsrch-date-6",
+          "responseId": "setup-date-6-response",
           "description": "PUT Observation date-6 (effectivePeriod 1980-05-16..1980-05-17)"
         }
       },
+      { "assert": { "description": "Setup PUT Observation/ignixa-impsrch-date-6 must succeed", "sourceId": "setup-date-6-response", "response": "okay" } },
       {
         "operation": {
           "type": {
