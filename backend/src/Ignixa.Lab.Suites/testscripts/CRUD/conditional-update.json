@@ -10,6 +10,7 @@
       "autodelete": false,
       "resource": {
         "resourceType": "Patient",
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/cond-update", "value": "CU-NOMATCH" }],
         "name": [{ "family": "CondUpdate", "given": ["NoMatch"] }],
         "gender": "unknown"
       }
@@ -43,6 +44,7 @@
       "autodelete": false,
       "resource": {
         "resourceType": "Patient",
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/cond-update", "value": "CU-ONEMATCH" }],
         "name": [{ "family": "CondUpdate", "given": ["OneMatchUpdated"] }],
         "gender": "female"
       }
