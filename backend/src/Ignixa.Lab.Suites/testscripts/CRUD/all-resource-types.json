@@ -6071,11 +6071,11 @@
     },
     {
       "name": "Can create and read MessageHeader",
-      "description": "For STU3, R4, and R4B, when the target server declares MessageHeader create and read interactions, POST /MessageHeader must create the inline version-compatible MessageHeader and GET /MessageHeader/{id} must read it back. R5 requires its version-specific MessageHeader shape.",
+      "description": "For R4 and R4B, when the target server declares MessageHeader create and read interactions, POST /MessageHeader must create the inline version-compatible MessageHeader and GET /MessageHeader/{id} must read it back. STU3 and R5 require version-specific MessageHeader shapes.",
       "extension": [
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
-          "valueString": "3.0,4.0,4.3"
+          "valueString": "4.0,4.3"
         }
       ],
       "requiresCapability": "rest.resource.where(type='MessageHeader').interaction.where(code='create').exists() and rest.resource.where(type='MessageHeader').interaction.where(code='read').exists()",
