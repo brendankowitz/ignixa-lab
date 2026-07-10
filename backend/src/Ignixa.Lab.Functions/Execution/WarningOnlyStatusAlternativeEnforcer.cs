@@ -1,24 +1,19 @@
 using Ignixa.Lab.Functions.Conformance;
-using Ignixa.TestScript.Expressions;
-using Ignixa.TestScript.Model;
 
 namespace Ignixa.Lab.Functions.Execution;
 
 internal static class WarningOnlyStatusAlternativeEnforcer
 {
-    public static IReadOnlyList<ConformanceResult> Apply(
-        IReadOnlyList<ConformanceResult> results,
-        TestScriptDefinition definition)
+    public static IReadOnlyList<ConformanceResult> Apply(IReadOnlyList<ConformanceResult> results)
     {
-        if (results.Count == 0 || definition.Tests.Count == 0)
+        if (results.Count == 0)
         {
             return results;
         }
 
         ConformanceResult[]? updated = null;
-        var resultCount = Math.Min(results.Count, definition.Tests.Count);
 
-        for (var i = 0; i < resultCount; i++)
+        for (var i = 0; i < results.Count; i++)
         {
             var result = results[i];
             if (!string.Equals(result.Status, ConformanceStatus.Pass, StringComparison.Ordinal))
@@ -26,7 +21,7 @@ internal static class WarningOnlyStatusAlternativeEnforcer
                 continue;
             }
 
-            var enforcement = FindUnexpectedStatusAlternative(definition.Tests[i], result);
+            var enforcement = FindUnexpectedStatusAlternative(result);
             if (enforcement is null)
             {
                 continue;
@@ -61,9 +56,7 @@ internal static class WarningOnlyStatusAlternativeEnforcer
         };
     }
 
-    private static StatusAlternativeFailure? FindUnexpectedStatusAlternative(
-        TestPhaseDefinition test,
-        ConformanceResult result)
+    private static StatusAlternativeFailure? FindUnexpectedStatusAlternative(ConformanceResult result)
     {
         var testSteps = result.Steps
             .Select((Step, Index) => (Step, Index))
@@ -75,35 +68,35 @@ internal static class WarningOnlyStatusAlternativeEnforcer
             return null;
         }
 
-        for (var actionIndex = 0; actionIndex < test.Actions.Count;)
+        for (var stepIndex = 0; stepIndex < testSteps.Length;)
         {
-            if (!TryGetWarningOnlyResponseStatusCode(test.Actions[actionIndex], out var firstAlternative))
+            if (!TryGetResponseStatusAlternative(testSteps[stepIndex].Step, out var firstAlternative))
             {
-                actionIndex++;
+                stepIndex++;
                 continue;
             }
 
             var alternatives = new List<StatusAlternative> { firstAlternative };
-            var groupEnd = actionIndex;
-            while (groupEnd + 1 < test.Actions.Count
-                && TryGetWarningOnlyResponseStatusCode(test.Actions[groupEnd + 1], out var nextAlternative))
+            var groupEnd = stepIndex;
+            while (groupEnd + 1 < testSteps.Length
+                && TryGetResponseStatusAlternative(testSteps[groupEnd + 1].Step, out var nextAlternative))
             {
                 alternatives.Add(nextAlternative);
                 groupEnd++;
             }
 
             if (IsDeletedResourceGoneNotFoundAlternativeGroup(alternatives)
-                && TryGetPreviousOperationStatusCode(testSteps, actionIndex, out var actualStatusCode)
+                && TryGetPreviousOperationStatusCode(testSteps, stepIndex, out var actualStatusCode)
                 && !alternatives.Any(alternative => alternative.StatusCode == actualStatusCode))
             {
-                var assertionStepIndex = testSteps[Math.Min(groupEnd, testSteps.Length - 1)].Index;
+                var assertionStepIndex = testSteps[groupEnd].Index;
                 var expected = string.Join(" or ", alternatives.Select(alternative => alternative.StatusCode));
                 return new StatusAlternativeFailure(
                     assertionStepIndex,
                     $"Expected response status {expected} for deleted-resource warningOnly alternatives, but actual status was {actualStatusCode}.");
             }
 
-            actionIndex = groupEnd + 1;
+            stepIndex = groupEnd + 1;
         }
 
         return null;
@@ -118,9 +111,9 @@ internal static class WarningOnlyStatusAlternativeEnforcer
             return false;
         }
 
-        var descriptions = alternatives.Select(alternative => alternative.Description ?? string.Empty).ToArray();
-        return descriptions.Any(description => ContainsAny(description, "deleted resource", "deleted resources"))
-            && descriptions.Any(description => ContainsAny(description, "not tracked", "does not track", "don't distinguish deleted", "doesn't distinguish deleted", "does not distinguish deleted"));
+        var text = alternatives.Select(alternative => alternative.Text).ToArray();
+        return text.Any(value => ContainsAny(value, "deleted resource", "deleted resources"))
+            && text.Any(value => ContainsAny(value, "not tracked", "does not track", "don't distinguish deleted", "doesn't distinguish deleted", "does not distinguish deleted"));
     }
 
     private static bool ContainsAny(string value, params string[] candidates) =>
@@ -128,10 +121,10 @@ internal static class WarningOnlyStatusAlternativeEnforcer
 
     private static bool TryGetPreviousOperationStatusCode(
         IReadOnlyList<(ConformanceStep Step, int Index)> testSteps,
-        int beforeActionIndex,
+        int beforeStepIndex,
         out int statusCode)
     {
-        var stepIndex = Math.Min(beforeActionIndex - 1, testSteps.Count - 1);
+        var stepIndex = Math.Min(beforeStepIndex - 1, testSteps.Count - 1);
         for (var i = stepIndex; i >= 0; i--)
         {
             var step = testSteps[i].Step;
@@ -147,54 +140,32 @@ internal static class WarningOnlyStatusAlternativeEnforcer
         return false;
     }
 
-    private static bool TryGetWarningOnlyResponseStatusCode(
-        ActionExpression action,
-        out StatusAlternative alternative)
+    private static bool TryGetResponseStatusAlternative(ConformanceStep step, out StatusAlternative alternative)
     {
-        if (action is AssertExpression { WarningOnly: true, Criteria: ResponseCodeCriteria responseCode }
-            && int.TryParse(responseCode.Code, out var responseCodeStatusCode))
+        if (!string.Equals(step.Kind, "assertion", StringComparison.Ordinal))
         {
-            alternative = new StatusAlternative(responseCodeStatusCode, action.Description);
+            alternative = default;
+            return false;
+        }
+
+        var text = string.Join(" ", step.Label, step.Description, step.Message);
+        if (ContainsAny(text, "410", "gone"))
+        {
+            alternative = new StatusAlternative(410, text);
             return true;
         }
 
-        if (action is AssertExpression { WarningOnly: true, Criteria: ResponseStatusCriteria responseStatus })
+        if (ContainsAny(text, "404", "not found", "notFound"))
         {
-            if (TryMapResponseStatus(responseStatus.Status, out var responseStatusCode))
-            {
-                alternative = new StatusAlternative(responseStatusCode, action.Description);
-                return true;
-            }
+            alternative = new StatusAlternative(404, text);
+            return true;
         }
 
         alternative = default;
         return false;
     }
 
-    private static bool TryMapResponseStatus(string status, out int statusCode)
-    {
-        statusCode = status switch
-        {
-            "okay" => 200,
-            "created" => 201,
-            "accepted" => 202,
-            "noContent" => 204,
-            "bad" => 400,
-            "unauthorized" => 401,
-            "forbidden" => 403,
-            "notFound" => 404,
-            "methodNotAllowed" => 405,
-            "conflict" => 409,
-            "gone" => 410,
-            "preconditionFailed" => 412,
-            "unprocessableEntity" => 422,
-            _ => 0,
-        };
-
-        return statusCode != 0;
-    }
-
     private readonly record struct StatusAlternativeFailure(int StepIndex, string Message);
 
-    private readonly record struct StatusAlternative(int StatusCode, string? Description);
+    private readonly record struct StatusAlternative(int StatusCode, string Text);
 }

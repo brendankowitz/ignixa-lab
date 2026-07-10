@@ -218,7 +218,7 @@ public sealed class TestScriptRunner(
         {
             var report = await evaluator.ExecuteAsync(job.Definition, cancellationToken, fhirVersion, capabilityStatement);
             var results = ConformanceReportMapper.Map(report, job.Id, job.Category, job.File);
-            return WarningOnlyStatusAlternativeEnforcer.Apply(results, job.Definition);
+            return WarningOnlyStatusAlternativeEnforcer.Apply(results);
         }
         catch (OperationCanceledException)
         {
