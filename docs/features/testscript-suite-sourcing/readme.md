@@ -34,8 +34,8 @@ the authoritative source of truth for bundled provenance. Sidecars are
 committed and packaged artifacts, ignored by `SuiteCatalog`, and excluded from
 runtime APIs.
 
-Every new or materially changed TestScript must add or update its exact
-manifest entry in that file before provenance is regenerated.
+Each bundled TestScript that is new or materially changed must add or update
+its exact manifest entry in that file before provenance is regenerated.
 
 Use `author-testscript` for locally created coverage and `distill-testscript`
 when external test behavior is transformed. Capture the most precise stable

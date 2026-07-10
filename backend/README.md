@@ -17,7 +17,7 @@ See the [API reference](../docs/api.md) and
 
 ## Run locally
 
-```bash
+```powershell
 .\backend\pack-suites.ps1                             # packs the suites package into artifacts/local-feed (see Suites below)
 cd backend\src\Ignixa.Lab.Functions
 cp local.settings.json.example local.settings.json    # first run only
@@ -208,7 +208,7 @@ type per FHIR version — too large/low-signal for a curated suite), and
 Because restore needs the package to already exist, it must be packed before
 every restore/build/test:
 
-```bash
+```powershell
 .\backend\pack-suites.ps1                        # -> artifacts/local-feed/IgnixaLab.TestScript.Suites.0.1.0-local.nupkg
 dotnet build Ignixa.Lab.sln -c Release
 dotnet test Ignixa.Lab.sln -c Release
@@ -234,7 +234,7 @@ changed TestScript must add or update its exact manifest entry. Use
 `author-testscript` for locally authored coverage and `distill-testscript` when
 external test behavior is transformed.
 
-Each distilled TestScript has a sibling FHIR R4 Provenance sidecar named
+Each bundled TestScript has a sibling FHIR R4 Provenance sidecar named
 `<suite>.provenance.json`. Sidecars are generated, committed, and packaged
 artifacts; they are not the manual source of truth. `SuiteCatalog` continues to
 ignore them, so they stay out of executable suite discovery and runtime APIs.

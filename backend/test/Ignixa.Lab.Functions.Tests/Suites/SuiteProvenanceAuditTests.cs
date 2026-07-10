@@ -1299,13 +1299,20 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         script.Should().Contain("& $provenanceAudit");
         script.Should().Contain("-ManifestPath");
         script.Should().Contain("-Strict");
+        script.Should().Contain("if (-not (Test-Path -LiteralPath $provenanceAudit -PathType Leaf))");
+        script.Should().Contain("throw \"Provenance audit script not found: $provenanceAudit\"");
         script.Should().Contain("if ($LASTEXITCODE -ne 0)");
         script.Should().Contain("exit $LASTEXITCODE");
+        script.Should().NotContain("if (Test-Path -LiteralPath $provenanceAudit -PathType Leaf) {");
+        var missingGuardIndex = script.IndexOf("if (-not (Test-Path -LiteralPath $provenanceAudit -PathType Leaf))", StringComparison.Ordinal);
+        var auditIndex = script.IndexOf("& $provenanceAudit", StringComparison.Ordinal);
         var guardIndex = script.IndexOf("if ($LASTEXITCODE -ne 0)", StringComparison.Ordinal);
         var exitIndex = script.IndexOf("exit $LASTEXITCODE", StringComparison.Ordinal);
         var packIndex = script.IndexOf("dotnet pack", StringComparison.Ordinal);
 
-        guardIndex.Should().BeGreaterThan(script.IndexOf("& $provenanceAudit", StringComparison.Ordinal));
+        missingGuardIndex.Should().BeGreaterThan(-1);
+        auditIndex.Should().BeGreaterThan(missingGuardIndex);
+        guardIndex.Should().BeGreaterThan(auditIndex);
         exitIndex.Should().BeGreaterThan(guardIndex);
         packIndex.Should().BeGreaterThan(exitIndex);
     }
