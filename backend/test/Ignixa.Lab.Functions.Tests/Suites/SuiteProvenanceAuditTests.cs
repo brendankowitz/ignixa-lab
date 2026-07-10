@@ -1291,6 +1291,24 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         result.CombinedOutput.Should().NotContain("ERROR:");
     }
 
+    [Fact]
+    public void PackSuites_InvokesProvenanceAuditInStrictMode()
+    {
+        var script = File.ReadAllText(Path.Combine(FindRepoRootDirectory(), "backend", "pack-suites.ps1"));
+
+        script.Should().Contain("& $provenanceAudit");
+        script.Should().Contain("-ManifestPath");
+        script.Should().Contain("-Strict");
+        script.Should().Contain("if ($LASTEXITCODE -ne 0)");
+        script.Should().Contain("exit $LASTEXITCODE");
+        script.IndexOf("if ($LASTEXITCODE -ne 0)", StringComparison.Ordinal)
+            .Should()
+            .BeGreaterThan(script.IndexOf("& $provenanceAudit", StringComparison.Ordinal));
+        script.IndexOf("dotnet pack", StringComparison.Ordinal)
+            .Should()
+            .BeGreaterThan(script.IndexOf("if ($LASTEXITCODE -ne 0)", StringComparison.Ordinal));
+    }
+
     private void WriteScript(string relativePath)
     {
         WriteScript(_root, relativePath);

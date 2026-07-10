@@ -24,7 +24,14 @@ New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 
 $provenanceAudit = Join-Path $repoRoot 'backend/src/Ignixa.Lab.Suites/tools/verify-provenance.ps1'
 if (Test-Path -LiteralPath $provenanceAudit -PathType Leaf) {
-    & $provenanceAudit -SuitesDirectory (Join-Path $repoRoot 'backend/src/Ignixa.Lab.Suites/testscripts')
+    & $provenanceAudit `
+        -SuitesDirectory (Join-Path $repoRoot 'backend/src/Ignixa.Lab.Suites/testscripts') `
+        -ManifestPath (Join-Path $repoRoot 'backend/src/Ignixa.Lab.Suites/tools/provenance-manifest.json') `
+        -Strict
+
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
 }
 
 dotnet pack $project -c Release -o $outputDir /nodeReuse:false

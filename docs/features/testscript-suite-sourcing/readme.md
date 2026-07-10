@@ -28,9 +28,18 @@ See [ADR-2607: TestScript suite sourcing](./adr-2607-suite-sourcing.md).
 ## Provenance sidecars
 
 Bundled TestScripts carry per-file FHIR R4 Provenance sidecars named
-`<suite>.provenance.json` beside the executable TestScript. The sidecars are
-packaged with `IgnixaLab.TestScript.Suites`, ignored by `SuiteCatalog`, and used
-for auditability rather than runtime behavior. They complement the package-level
-`source-revision.txt`: the revision identifies the ignixa-lab commit that was
-packed, while each Provenance resource records the upstream source entities that
-influenced the distilled TestScript.
+`<suite>.provenance.json` beside the executable TestScript. They are generated
+from `backend/src/Ignixa.Lab.Suites/tools/provenance-manifest.json`, which is
+the authoritative source of truth for bundled provenance. Sidecars are
+committed and packaged artifacts, ignored by `SuiteCatalog`, and excluded from
+runtime APIs.
+
+Use `author-testscript` for locally created coverage and `distill-testscript`
+when external test behavior is transformed. Capture the most precise stable
+upstream commit, tag, or release, the best stable file/class URL available, and
+an SPDX license identifier when known. Never replace an unknown historical
+revision with the upstream repository's current HEAD.
+
+`pack-suites.ps1` runs `verify-provenance.ps1 -Strict` before packaging. That
+blocks structural, classification, and stale-sidecar errors; source precision
+and license advisories remain warnings.

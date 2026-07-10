@@ -18,8 +18,8 @@ See the [API reference](../docs/api.md) and
 ## Run locally
 
 ```bash
-./backend/pack-suites.ps1                             # packs the suites package into artifacts/local-feed (see Suites below)
-cd backend/src/Ignixa.Lab.Functions
+.\backend\pack-suites.ps1                             # packs the suites package into artifacts/local-feed (see Suites below)
+cd backend\src\Ignixa.Lab.Functions
 cp local.settings.json.example local.settings.json    # first run only
 func start                                            # http://localhost:7071
 ```
@@ -209,7 +209,7 @@ Because restore needs the package to already exist, it must be packed before
 every restore/build/test:
 
 ```bash
-./backend/pack-suites.ps1                        # -> artifacts/local-feed/IgnixaLab.TestScript.Suites.0.1.0-local.nupkg
+.\backend\pack-suites.ps1                        # -> artifacts/local-feed/IgnixaLab.TestScript.Suites.0.1.0-local.nupkg
 dotnet build Ignixa.Lab.sln -c Release
 dotnet test Ignixa.Lab.sln -c Release
 ```
@@ -220,14 +220,28 @@ nuget.org) and `Directory.Packages.props` pins the version. The package ships
 consumer with the `PackageReference` — it copies the packaged JSONs to the
 consumer's output under `testscripts/`, preserving the category subfolders
 that `SuiteCatalog` reads. Bumping the suites means editing the JSON under
-`Ignixa.Lab.Suites/testscripts/` and re-running `pack-suites.ps1`.
+`Ignixa.Lab.Suites/testscripts/`, updating the manifest entry, and re-running:
 
-Each distilled TestScript should have a sibling FHIR R4 Provenance sidecar named
-`<suite>.provenance.json`. Sidecars are packaged with the suites but ignored by
-`SuiteCatalog`; they record the source repositories, specifications, or APIs
-used while distilling the executable TestScript. `pack-suites.ps1` runs the
-warning-only provenance audit so missing or invalid sidecars show up in CI logs
-without failing the build.
+```powershell
+pwsh -NoLogo -NoProfile -NonInteractive -File backend\src\Ignixa.Lab.Suites\tools\new-provenance-sidecars.ps1 -Force
+pwsh -NoLogo -NoProfile -NonInteractive -File backend\src\Ignixa.Lab.Suites\tools\verify-provenance.ps1 -Strict
+.\backend\pack-suites.ps1
+```
+
+`backend/src/Ignixa.Lab.Suites/tools/provenance-manifest.json` is the
+authoritative source for bundled TestScript provenance. Every new or materially
+changed TestScript must add or update its exact manifest entry. Use
+`author-testscript` for locally authored coverage and `distill-testscript` when
+external test behavior is transformed.
+
+Each distilled TestScript has a sibling FHIR R4 Provenance sidecar named
+`<suite>.provenance.json`. Sidecars are generated, committed, and packaged
+artifacts; they are not the manual source of truth. `SuiteCatalog` continues to
+ignore them, so they stay out of executable suite discovery and runtime APIs.
+
+`pack-suites.ps1` now runs `verify-provenance.ps1 -Strict` before `dotnet pack`.
+Structural, classification, and stale-sidecar errors block packaging; source
+precision and license advisories remain warnings.
 
 ## Deploy
 

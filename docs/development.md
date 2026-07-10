@@ -66,12 +66,27 @@ To target a remote backend from a standalone build, set `VITE_API_BASE_URL`
    `<suite>.provenance.json`. The sidecar targets the TestScript's path relative
    to `testscripts/` and lists the repositories, specifications, APIs, or prior
    tests used while distilling the suite.
-3. Run `pwsh -NoLogo -NoProfile -NonInteractive -File backend/src/Ignixa.Lab.Suites/tools/verify-provenance.ps1`
-   to check the sidecar. The audit is warning-only, but new warnings should be
-   resolved before review.
-4. Run `./backend/pack-suites.ps1` before restore/build/test so the
-   `IgnixaLab.TestScript.Suites` package in `artifacts/local-feed` includes the
-   new TestScript and its provenance sidecar.
-5. The TestScript appears in `GET /api/suites` and becomes selectable in the SPA;
-   the provenance sidecar is packaged for auditability but is not exposed through
-   runtime APIs yet.
+3. Update `backend/src/Ignixa.Lab.Suites/tools/provenance-manifest.json` for
+   every new or materially changed TestScript. That manifest is the authoritative
+   source of truth; generated `.provenance.json` files are committed artifacts,
+   not hand-authored inputs.
+4. Use `author-testscript` for locally created coverage and
+   `distill-testscript` when external test behavior is transformed.
+5. Capture the most precise stable upstream commit, tag, or release; the best
+   stable file/class URL available; and an SPDX license identifier when known.
+   Never replace an unknown historical revision with the upstream repository's
+   current HEAD.
+6. Run:
+
+   ```powershell
+   pwsh -NoLogo -NoProfile -NonInteractive -File backend\src\Ignixa.Lab.Suites\tools\new-provenance-sidecars.ps1 -Force
+   pwsh -NoLogo -NoProfile -NonInteractive -File backend\src\Ignixa.Lab.Suites\tools\verify-provenance.ps1 -Strict
+   .\backend\pack-suites.ps1
+   ```
+
+   `verify-provenance.ps1 -Strict` only exits non-zero for blocking structural,
+   classification, or stale-sidecar errors. Source precision and license
+   advisories remain warnings.
+7. The TestScript appears in `GET /api/suites` and becomes selectable in the SPA;
+   provenance sidecars stay excluded from executable suite discovery and runtime
+   APIs.
