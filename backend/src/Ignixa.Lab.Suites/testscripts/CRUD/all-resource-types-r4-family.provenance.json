@@ -1,0 +1,85 @@
+{
+  "resourceType": "Provenance",
+  "target": [
+    {
+      "identifier": {
+        "system": "urn:ignixa-lab:testscripts:path",
+        "value": "CRUD/all-resource-types-r4-family.json"
+      },
+      "display": "CRUD/all-resource-types-r4-family.json"
+    }
+  ],
+  "recorded": "2026-07-07T00:00:00Z",
+  "activity": {
+    "coding": [
+      {
+        "system": "http://ignixa.io/fhir/provenance-activity",
+        "code": "author-testscript",
+        "display": "Author TestScript"
+      }
+    ]
+  },
+  "agent": [
+    {
+      "who": {
+        "identifier": {
+          "system": "https://github.com/brendankowitz/ignixa-lab",
+          "value": "maintainers"
+        },
+        "display": "Ignixa Lab maintainers"
+      }
+    }
+  ],
+  "entity": [
+    {
+      "role": "source",
+      "what": {
+        "reference": "https://github.com/brendankowitz/ignixa-lab",
+        "display": "Ignixa Lab all resource type TestScripts"
+      },
+      "extension": [
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-relationship",
+          "valueCode": "authored-in"
+        },
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-license",
+          "valueString": "repository license"
+        },
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-distillation-notes",
+          "valueString": "Authored in Ignixa Lab to exercise create/read coverage across every concrete resource type using generated fhirfakes fixtures and CapabilityStatement gates."
+        },
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-version",
+          "valueString": "current repository revision"
+        }
+      ]
+    },
+    {
+      "role": "source",
+      "what": {
+        "reference": "https://hl7.org/fhir/R4/resourcelist.html",
+        "display": "FHIR R4 resource list"
+      },
+      "extension": [
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-relationship",
+          "valueCode": "spec-reference"
+        },
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-license",
+          "valueString": "FHIR specification license"
+        },
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-distillation-notes",
+          "valueString": "Used as normative resource taxonomy context for the generated all-resource-type suites."
+        },
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-version",
+          "valueString": "FHIR R4"
+        }
+      ]
+    }
+  ]
+}

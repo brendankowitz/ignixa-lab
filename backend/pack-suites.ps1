@@ -22,6 +22,20 @@ $outputDir = Join-Path $repoRoot 'artifacts/local-feed'
 # so it must exist before the pack command below triggers its own restore.
 New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 
+$provenanceAudit = Join-Path $repoRoot 'backend/src/Ignixa.Lab.Suites/tools/verify-provenance.ps1'
+if (-not (Test-Path -LiteralPath $provenanceAudit -PathType Leaf)) {
+    throw "Provenance audit script not found: $provenanceAudit"
+}
+
+& $provenanceAudit `
+    -SuitesDirectory (Join-Path $repoRoot 'backend/src/Ignixa.Lab.Suites/testscripts') `
+    -ManifestPath (Join-Path $repoRoot 'backend/src/Ignixa.Lab.Suites/tools/provenance-manifest.json') `
+    -Strict
+
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}
+
 dotnet pack $project -c Release -o $outputDir /nodeReuse:false
 
 # MSBuild's node-reuse server can cache glob/directory-enumeration results

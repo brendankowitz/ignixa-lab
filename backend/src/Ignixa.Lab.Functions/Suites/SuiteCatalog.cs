@@ -52,7 +52,8 @@ public sealed class SuiteCatalog : ISuiteCatalog
         }
 
         var entries = new ConcurrentBag<CatalogEntry>();
-        var files = Directory.EnumerateFiles(directory, "*.json", SearchOption.AllDirectories);
+        var files = Directory.EnumerateFiles(directory, "*.json", SearchOption.AllDirectories)
+            .Where(file => !file.EndsWith(".provenance.json", StringComparison.OrdinalIgnoreCase));
 
         foreach (var file in files)
         {

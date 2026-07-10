@@ -1,0 +1,60 @@
+{
+  "resourceType": "Provenance",
+  "target": [
+    {
+      "identifier": {
+        "system": "urn:ignixa-lab:testscripts:path",
+        "value": "Microsoft/ms-export-anonymized.json"
+      },
+      "display": "Microsoft/ms-export-anonymized.json"
+    }
+  ],
+  "recorded": "2026-07-07T00:00:00Z",
+  "activity": {
+    "coding": [
+      {
+        "system": "http://ignixa.io/fhir/provenance-activity",
+        "code": "distill-testscript",
+        "display": "Distill TestScript"
+      }
+    ]
+  },
+  "agent": [
+    {
+      "who": {
+        "identifier": {
+          "system": "https://github.com/brendankowitz/ignixa-lab",
+          "value": "maintainers"
+        },
+        "display": "Ignixa Lab maintainers"
+      }
+    }
+  ],
+  "entity": [
+    {
+      "role": "source",
+      "what": {
+        "reference": "https://github.com/microsoft/fhir-server",
+        "display": "Microsoft FHIR Server test coverage"
+      },
+      "extension": [
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-relationship",
+          "valueCode": "distilled-from"
+        },
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-license",
+          "valueString": "MIT"
+        },
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-distillation-notes",
+          "valueString": "Converted Microsoft FHIR Server behavior into black-box FHIR TestScript assertions and kept Microsoft-specific operations in the Microsoft category."
+        },
+        {
+          "url": "http://ignixa.io/fhir/StructureDefinition/provenance-source-version",
+          "valueString": "not recorded during original distillation"
+        }
+      ]
+    }
+  ]
+}

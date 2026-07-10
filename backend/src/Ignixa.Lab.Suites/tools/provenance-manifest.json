@@ -1,0 +1,630 @@
+{
+  "schemaVersion": 1,
+  "profiles": {
+    "bundles": {
+      "sources": [
+        {
+          "reference": "https://hl7.org/fhir/R4/http.html",
+          "display": "FHIR R4 RESTful API batch and transaction interactions",
+          "relationship": "spec-reference",
+          "license": "FHIR specification license",
+          "version": "FHIR R4",
+          "notes": "Used FHIR REST semantics as the normative source for bundle interaction expectations."
+        },
+        {
+          "reference": "https://github.com/microsoft/fhir-server",
+          "display": "Microsoft FHIR Server bundle test coverage",
+          "relationship": "distilled-from",
+          "license": "MIT",
+          "version": "not recorded during original distillation",
+          "notes": "Converted server-specific e2e bundle behavior into black-box TestScript assertions."
+        }
+      ]
+    },
+    "fhir262-http": {
+      "sources": [
+        {
+          "reference": "https://github.com/fhir-fi/fhir262",
+          "display": "fhir262 HTTP conformance tests",
+          "relationship": "distilled-from",
+          "license": "source-declared open-source license",
+          "version": "not recorded during original distillation",
+          "notes": "Ported fhir262 client-supplied id behavior into black-box FHIR TestScript assertions."
+        },
+        {
+          "reference": "https://hl7.org/fhir/R4/http.html",
+          "display": "FHIR R4 RESTful API",
+          "relationship": "spec-reference",
+          "license": "FHIR specification license",
+          "version": "FHIR R4",
+          "notes": "Used as normative REST interaction context for fhir262-derived HTTP assertions."
+        }
+      ]
+    },
+    "fhir262-search": {
+      "sources": [
+        {
+          "reference": "https://github.com/fhir-fi/fhir262",
+          "display": "fhir262 search tests",
+          "relationship": "distilled-from",
+          "license": "source-declared open-source license",
+          "version": "not recorded during original distillation",
+          "notes": "Ported fhir262 search modifier, sort, and paging coverage into black-box FHIR TestScript assertions."
+        },
+        {
+          "reference": "https://hl7.org/fhir/R4/search.html",
+          "display": "FHIR R4 search",
+          "relationship": "spec-reference",
+          "license": "FHIR specification license",
+          "version": "FHIR R4",
+          "notes": "Used as normative search semantics context for fhir262-derived search assertions."
+        }
+      ]
+    },
+    "fhir262-validation": {
+      "sources": [
+        {
+          "reference": "https://github.com/fhir-fi/fhir262",
+          "display": "fhir262 validation tests",
+          "relationship": "distilled-from",
+          "license": "source-declared open-source license",
+          "version": "not recorded during original distillation",
+          "notes": "Ported fhir262 validation/$validation-op coverage into black-box FHIR TestScript assertions for $validate behavior."
+        },
+        {
+          "reference": "https://hl7.org/fhir/R4/resource-operation-validate.html",
+          "display": "FHIR R4 $validate operation",
+          "relationship": "spec-reference",
+          "license": "FHIR specification license",
+          "version": "FHIR R4",
+          "notes": "Used as normative operation context for validation assertions."
+        }
+      ]
+    },
+    "ignixa-all-resource-types": {
+      "sources": [
+        {
+          "reference": "https://github.com/brendankowitz/ignixa-lab",
+          "display": "Ignixa Lab all resource type TestScripts",
+          "relationship": "authored-in",
+          "license": "repository license",
+          "version": "current repository revision",
+          "notes": "Authored in Ignixa Lab to exercise create/read coverage across every concrete resource type using generated fhirfakes fixtures and CapabilityStatement gates."
+        },
+        {
+          "reference": "https://hl7.org/fhir/R4/resourcelist.html",
+          "display": "FHIR R4 resource list",
+          "relationship": "spec-reference",
+          "license": "FHIR specification license",
+          "version": "FHIR R4",
+          "notes": "Used as normative resource taxonomy context for the generated all-resource-type suites."
+        }
+      ]
+    },
+    "microsoft": {
+      "sources": [
+        {
+          "reference": "https://github.com/microsoft/fhir-server",
+          "display": "Microsoft FHIR Server test coverage",
+          "relationship": "distilled-from",
+          "license": "MIT",
+          "version": "not recorded during original distillation",
+          "notes": "Converted Microsoft FHIR Server behavior into black-box FHIR TestScript assertions and kept Microsoft-specific operations in the Microsoft category."
+        }
+      ]
+    },
+    "operations-expand": {
+      "sources": [
+        {
+          "reference": "https://hl7.org/fhir/R4/terminology-service.html",
+          "display": "FHIR R4 terminology service operations",
+          "relationship": "spec-reference",
+          "license": "FHIR specification license",
+          "version": "FHIR R4",
+          "notes": "Used the FHIR operation definitions as the normative source for ValueSet expansion behavior."
+        },
+        {
+          "reference": "https://github.com/hapifhir/hapi-fhir",
+          "display": "HAPI FHIR terminology test coverage",
+          "relationship": "inspired-by",
+          "license": "Apache-2.0",
+          "version": "not recorded during original distillation",
+          "notes": "Used as comparative open-source coverage while distilling black-box TestScript terminology scenarios."
+        },
+        {
+          "reference": "https://github.com/microsoft/fhir-server",
+          "display": "Microsoft FHIR Server ExpandOperationTests coverage",
+          "relationship": "distilled-from",
+          "license": "MIT",
+          "version": "not recorded during original distillation",
+          "notes": "Converted Microsoft FHIR Server ValueSet $expand e2e behavior into black-box FHIR TestScript assertions, while preserving FHIR terminology-service context."
+        }
+      ]
+    },
+    "operations-terminology": {
+      "sources": [
+        {
+          "reference": "https://hl7.org/fhir/R4/terminology-service.html",
+          "display": "FHIR R4 terminology service operations",
+          "relationship": "spec-reference",
+          "license": "FHIR specification license",
+          "version": "FHIR R4",
+          "notes": "Used the FHIR operation definitions as the normative source for terminology-operation behavior."
+        },
+        {
+          "reference": "https://github.com/hapifhir/hapi-fhir",
+          "display": "HAPI FHIR terminology test coverage",
+          "relationship": "inspired-by",
+          "license": "Apache-2.0",
+          "version": "not recorded during original distillation",
+          "notes": "Used as comparative open-source coverage while distilling black-box TestScript terminology scenarios."
+        }
+      ]
+    },
+    "subscriptions": {
+      "sources": [
+        {
+          "reference": "https://hl7.org/fhir/R4/subscription.html",
+          "display": "FHIR R4 Subscription resource",
+          "relationship": "spec-reference",
+          "license": "FHIR specification license",
+          "version": "FHIR R4",
+          "notes": "Used the FHIR Subscription definition for basic create/read/search/update/delete expectations."
+        },
+        {
+          "reference": "https://github.com/medplum/fhir-candle",
+          "display": "fhir-candle Subscription coverage",
+          "relationship": "inspired-by",
+          "license": "source-declared open-source license",
+          "version": "not recorded during original distillation",
+          "notes": "Used as comparative open-source coverage for Subscription round-tripping."
+        },
+        {
+          "reference": "https://github.com/LinuxForHealth/FHIR",
+          "display": "LinuxForHealth FHIR Subscription coverage",
+          "relationship": "inspired-by",
+          "license": "Apache-2.0",
+          "version": "not recorded during original distillation",
+          "notes": "Used as comparative open-source coverage for Subscription resource behavior."
+        }
+      ]
+    }
+  },
+  "suites": {
+    "Bundles/batch.json": {
+      "profile": "bundles",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Bundles/edge-cases.json": {
+      "profile": "bundles",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Bundles/transaction.json": {
+      "profile": "bundles",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "CRUD/all-resource-types.json": {
+      "profile": "ignixa-all-resource-types",
+      "activity": "author-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "CRUD/all-resource-types-post-stu3.json": {
+      "profile": "ignixa-all-resource-types",
+      "activity": "author-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "CRUD/all-resource-types-pre-r5.json": {
+      "profile": "ignixa-all-resource-types",
+      "activity": "author-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "CRUD/all-resource-types-r4-and-r5.json": {
+      "profile": "ignixa-all-resource-types",
+      "activity": "author-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "CRUD/all-resource-types-r4-family.json": {
+      "profile": "ignixa-all-resource-types",
+      "activity": "author-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "CRUD/all-resource-types-r4-only.json": {
+      "profile": "ignixa-all-resource-types",
+      "activity": "author-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "CRUD/all-resource-types-r4b-plus.json": {
+      "profile": "ignixa-all-resource-types",
+      "activity": "author-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "CRUD/all-resource-types-r5-only.json": {
+      "profile": "ignixa-all-resource-types",
+      "activity": "author-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "CRUD/all-resource-types-stu3-only.json": {
+      "profile": "ignixa-all-resource-types",
+      "activity": "author-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "CRUD/client-id-handling.json": {
+      "profile": "fhir262-http",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Search/array-joins.json": {
+      "profile": "fhir262-search",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Search/basic.json": {
+      "profile": "fhir262-search",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Search/chaining.json": {
+      "profile": "fhir262-search",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Search/intervals.json": {
+      "profile": "fhir262-search",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Search/joins.json": {
+      "profile": "fhir262-search",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Search/pagination.json": {
+      "profile": "fhir262-search",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Search/sort.json": {
+      "profile": "fhir262-search",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Search/string-modifiers.json": {
+      "profile": "fhir262-search",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Validation/validate-op.json": {
+      "profile": "fhir262-validation",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Operations/expand-operation.json": {
+      "profile": "operations-expand",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Operations/lookup-operation.json": {
+      "profile": "operations-terminology",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Operations/subsumes-operation.json": {
+      "profile": "operations-terminology",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Operations/translate-operation.json": {
+      "profile": "operations-terminology",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Operations/validate-code-operation.json": {
+      "profile": "operations-terminology",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Subscriptions/basic.json": {
+      "profile": "subscriptions",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "CRUD/basic.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "CRUD/conditional-create.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "CRUD/conditional-delete.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "CRUD/conditional-patch.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "CRUD/conditional-update.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "CRUD/create.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "CRUD/delete.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "CRUD/history.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "CRUD/patch-body.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "CRUD/patch-fhirpath.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "CRUD/patch-json.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "CRUD/read.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "CRUD/resource-type-case-sensitivity.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "CRUD/update.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "CRUD/vread.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Foundation/cors.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Foundation/health.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Foundation/metadata.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Microsoft/ms-bulk-delete.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Microsoft/ms-bulk-update.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Microsoft/ms-convert-data.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Microsoft/ms-custom-headers.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Microsoft/ms-export-anonymized.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Microsoft/ms-hard-delete-purge-history.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Microsoft/ms-import-basic.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Microsoft/ms-import-history-soft-delete.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Microsoft/ms-import-rebuild-indexes.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Microsoft/ms-includes-operation.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Microsoft/ms-not-expression.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Microsoft/ms-not-referenced.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Microsoft/ms-operation-versions.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Microsoft/ms-reindex.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Microsoft/ms-search-parameter-url-length.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Microsoft/ms-search-parameter.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Operations/docref-operation.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Operations/everything-operation.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Operations/export-data.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Operations/import-search-2.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Operations/import-search.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Operations/member-match.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Regression/capability-statement-version.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Regression/exception-handling.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Regression/observation-resolve-reference.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Search/canonical.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Search/chaining-and-sort.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Search/compartments.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Search/composite.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Search/custom-search-param.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Search/date.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Search/escape-characters.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Search/id.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Search/includes.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Search/number.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Search/quantity.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Search/reference.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Search/token-overflow.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Search/token.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Search/uri.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    },
+    "Validation/validate-modes.json": {
+      "profile": "microsoft",
+      "activity": "distill-testscript",
+      "recorded": "2026-07-07T00:00:00Z"
+    }
+  }
+}

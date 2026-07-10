@@ -17,9 +17,9 @@ See the [API reference](../docs/api.md) and
 
 ## Run locally
 
-```bash
-./backend/pack-suites.ps1                             # packs the suites package into artifacts/local-feed (see Suites below)
-cd backend/src/Ignixa.Lab.Functions
+```powershell
+.\backend\pack-suites.ps1                             # packs the suites package into artifacts/local-feed (see Suites below)
+cd backend\src\Ignixa.Lab.Functions
 cp local.settings.json.example local.settings.json    # first run only
 func start                                            # http://localhost:7071
 ```
@@ -41,7 +41,7 @@ src/Ignixa.Lab.Functions/
   Program.cs       Host + DI wiring
 
 src/Ignixa.Lab.Suites/
-  testscripts/     The 78 canonical TestScript suites (Bundles/CRUD/Foundation/
+  testscripts/     The 87 executable, non-sidecar TestScript suites (Bundles/CRUD/Foundation/
                    Microsoft/Operations/Regression/Search/Subscriptions/Validation),
                    packed into the IgnixaLab.TestScript.Suites content
                    package (ADR-2607)
@@ -149,10 +149,13 @@ Phase 2 shared-store counter, which is not implemented here.
 
 ## Suites
 
-The 78 canonical FHIR TestScript suites (`backend/src/Ignixa.Lab.Suites/testscripts/{Bundles,CRUD,Foundation,Microsoft,Operations,Regression,Search,Subscriptions,Validation}/*.json`)
+The 87 executable, non-sidecar FHIR TestScript JSON files
+(`backend/src/Ignixa.Lab.Suites/testscripts/{Bundles,CRUD,Foundation,Microsoft,Operations,Regression,Search,Subscriptions,Validation}/*.json`)
 are packed into a local NuGet content package, `IgnixaLab.TestScript.Suites`, by
 the `Ignixa.Lab.Suites` project and consumed by `Ignixa.Lab.Functions` (and
-its test project) via `PackageReference`. This is an interim step —
+its test project) via `PackageReference`.
+
+This is an interim step —
 see [ADR-2607](../docs/features/testscript-suite-sourcing/adr-2607-suite-sourcing.md)
 — for the upstream `ignixa-fhir` suites artifact; the `PackageReference`
 will be repointed there once it ships, and the local feed retired.
@@ -205,8 +208,8 @@ type per FHIR version — too large/low-signal for a curated suite), and
 Because restore needs the package to already exist, it must be packed before
 every restore/build/test:
 
-```bash
-./backend/pack-suites.ps1                        # -> artifacts/local-feed/IgnixaLab.TestScript.Suites.0.1.0-local.nupkg
+```powershell
+.\backend\pack-suites.ps1                        # -> artifacts/local-feed/IgnixaLab.TestScript.Suites.0.1.0-local.nupkg
 dotnet build Ignixa.Lab.sln -c Release
 dotnet test Ignixa.Lab.sln -c Release
 ```
@@ -217,7 +220,28 @@ nuget.org) and `Directory.Packages.props` pins the version. The package ships
 consumer with the `PackageReference` — it copies the packaged JSONs to the
 consumer's output under `testscripts/`, preserving the category subfolders
 that `SuiteCatalog` reads. Bumping the suites means editing the JSON under
-`Ignixa.Lab.Suites/testscripts/` and re-running `pack-suites.ps1`.
+`Ignixa.Lab.Suites/testscripts/`, updating the manifest entry, and re-running:
+
+```powershell
+pwsh -NoLogo -NoProfile -NonInteractive -File backend\src\Ignixa.Lab.Suites\tools\new-provenance-sidecars.ps1 -Force
+pwsh -NoLogo -NoProfile -NonInteractive -File backend\src\Ignixa.Lab.Suites\tools\verify-provenance.ps1 -Strict
+.\backend\pack-suites.ps1
+```
+
+`backend/src/Ignixa.Lab.Suites/tools/provenance-manifest.json` is the
+authoritative source for bundled TestScript provenance. Every new or materially
+changed TestScript must add or update its exact manifest entry. Use
+`author-testscript` for locally authored coverage and `distill-testscript` when
+external test behavior is transformed.
+
+Each bundled TestScript has a sibling FHIR R4 Provenance sidecar named
+`<suite>.provenance.json`. Sidecars are generated, committed, and packaged
+artifacts; they are not the manual source of truth. `SuiteCatalog` continues to
+ignore them, so they stay out of executable suite discovery and runtime APIs.
+
+`pack-suites.ps1` now runs `verify-provenance.ps1 -Strict` before `dotnet pack`.
+Structural, classification, and stale-sidecar errors block packaging; source
+precision and license advisories remain warnings.
 
 ## Deploy
 
