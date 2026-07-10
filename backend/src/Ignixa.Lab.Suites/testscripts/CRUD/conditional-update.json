@@ -21,6 +21,7 @@
       "resource": {
         "resourceType": "Patient",
         "id": "ignixa-cond-upd-explicit-reliable",
+        "identifier": [{ "system": "http://ignixa.io/testscript/suite/cond-update", "value": "CU-EXPLICIT-RELIABLE" }],
         "name": [{ "family": "CondUpdate", "given": ["Explicit"] }],
         "gender": "male"
       }
