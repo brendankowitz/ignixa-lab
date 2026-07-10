@@ -34,6 +34,9 @@ the authoritative source of truth for bundled provenance. Sidecars are
 committed and packaged artifacts, ignored by `SuiteCatalog`, and excluded from
 runtime APIs.
 
+Every new or materially changed TestScript must add or update its exact
+manifest entry in that file before provenance is regenerated.
+
 Use `author-testscript` for locally created coverage and `distill-testscript`
 when external test behavior is transformed. Capture the most precise stable
 upstream commit, tag, or release, the best stable file/class URL available, and
@@ -43,3 +46,11 @@ revision with the upstream repository's current HEAD.
 `pack-suites.ps1` runs `verify-provenance.ps1 -Strict` before packaging. That
 blocks structural, classification, and stale-sidecar errors; source precision
 and license advisories remain warnings.
+
+Maintainer sequence:
+
+```powershell
+pwsh -NoLogo -NoProfile -NonInteractive -File backend\src\Ignixa.Lab.Suites\tools\new-provenance-sidecars.ps1 -Force
+pwsh -NoLogo -NoProfile -NonInteractive -File backend\src\Ignixa.Lab.Suites\tools\verify-provenance.ps1 -Strict
+.\backend\pack-suites.ps1
+```

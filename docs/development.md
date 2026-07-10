@@ -62,21 +62,28 @@ To target a remote backend from a standalone build, set `VITE_API_BASE_URL`
 1. Drop a FHIR TestScript JSON file under
    `backend/src/Ignixa.Lab.Suites/testscripts/<category>/`.
    The `<category>` folder name becomes the suite's category.
-2. Add or update the sibling FHIR R4 Provenance sidecar named
+2. Update `backend/src/Ignixa.Lab.Suites/tools/provenance-manifest.json` for
+   every new or materially changed TestScript. That manifest is the authoritative
+   source of truth.
+3. Run
+
+   ```powershell
+   pwsh -NoLogo -NoProfile -NonInteractive -File backend\src\Ignixa.Lab.Suites\tools\new-provenance-sidecars.ps1 -Force
+   ```
+
+   to regenerate the sibling FHIR R4 Provenance sidecar named
    `<suite>.provenance.json`. The sidecar targets the TestScript's path relative
    to `testscripts/` and lists the repositories, specifications, APIs, or prior
    tests used while distilling the suite.
-3. Update `backend/src/Ignixa.Lab.Suites/tools/provenance-manifest.json` for
-   every new or materially changed TestScript. That manifest is the authoritative
-   source of truth; generated `.provenance.json` files are committed artifacts,
-   not hand-authored inputs.
-4. Use `author-testscript` for locally created coverage and
+4. Commit the generated `.provenance.json` file alongside the TestScript. These
+   sidecars are committed artifacts, not hand-authored inputs.
+5. Use `author-testscript` for locally created coverage and
    `distill-testscript` when external test behavior is transformed.
-5. Capture the most precise stable upstream commit, tag, or release; the best
+6. Capture the most precise stable upstream commit, tag, or release; the best
    stable file/class URL available; and an SPDX license identifier when known.
    Never replace an unknown historical revision with the upstream repository's
    current HEAD.
-6. Run:
+7. Run:
 
    ```powershell
    pwsh -NoLogo -NoProfile -NonInteractive -File backend\src\Ignixa.Lab.Suites\tools\new-provenance-sidecars.ps1 -Force
@@ -87,6 +94,6 @@ To target a remote backend from a standalone build, set `VITE_API_BASE_URL`
    `verify-provenance.ps1 -Strict` only exits non-zero for blocking structural,
    classification, or stale-sidecar errors. Source precision and license
    advisories remain warnings.
-7. The TestScript appears in `GET /api/suites` and becomes selectable in the SPA;
+8. The TestScript appears in `GET /api/suites` and becomes selectable in the SPA;
    provenance sidecars stay excluded from executable suite discovery and runtime
    APIs.

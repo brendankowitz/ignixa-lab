@@ -1301,12 +1301,13 @@ public sealed class SuiteProvenanceAuditTests : IDisposable
         script.Should().Contain("-Strict");
         script.Should().Contain("if ($LASTEXITCODE -ne 0)");
         script.Should().Contain("exit $LASTEXITCODE");
-        script.IndexOf("if ($LASTEXITCODE -ne 0)", StringComparison.Ordinal)
-            .Should()
-            .BeGreaterThan(script.IndexOf("& $provenanceAudit", StringComparison.Ordinal));
-        script.IndexOf("dotnet pack", StringComparison.Ordinal)
-            .Should()
-            .BeGreaterThan(script.IndexOf("if ($LASTEXITCODE -ne 0)", StringComparison.Ordinal));
+        var guardIndex = script.IndexOf("if ($LASTEXITCODE -ne 0)", StringComparison.Ordinal);
+        var exitIndex = script.IndexOf("exit $LASTEXITCODE", StringComparison.Ordinal);
+        var packIndex = script.IndexOf("dotnet pack", StringComparison.Ordinal);
+
+        guardIndex.Should().BeGreaterThan(script.IndexOf("& $provenanceAudit", StringComparison.Ordinal));
+        exitIndex.Should().BeGreaterThan(guardIndex);
+        packIndex.Should().BeGreaterThan(exitIndex);
     }
 
     private void WriteScript(string relativePath)
