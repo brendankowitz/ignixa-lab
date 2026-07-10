@@ -3,6 +3,9 @@
   "name": "CRUD/history",
   "description": "History (GET /_history, /{type}/_history, /{type}/{id}/_history) conformance tests: non-empty system/type/instance Bundles, correct default and explicit sort order, well-formed entry.response.status, and _summary=count/_since/_before/_sort parameter handling (from HistoryTests). The second version needed by the multi-entry/sort-order tests is produced via a FHIRPath Patch rather than a PUT, to guarantee an actual content change and avoid requiring the body id to match the URL.",
   "status": "active",
+  "extension": [
+    { "url": "http://ignixa.io/testscript/requiresCapability", "valueString": "rest.interaction.where(code='history-system').exists() or rest.resource.where(type='Patient').interaction.where(code='history-type' or code='history-instance').exists()" }
+  ],
   "fixture": [
     {
       "id": "patient-hist-a",
@@ -116,7 +119,7 @@
     {
       "name": "history entries report a well-formed response.status for every version",
       "description": "A dedicated Patient is created, updated, and deleted so its instance history contains three distinct operations. Every Bundle.entry.response.status must be present and well-formed (a leading 3-digit HTTP status code).",
-      "requiresCapability": "rest.resource.where(type='Patient').interaction.where(code='history-instance').exists() and rest.resource.where(type='Patient').interaction.where(code='patch').exists()",
+      "requiresCapability": "rest.resource.where(type='Patient').interaction.where(code='history-instance').exists() and rest.resource.where(type='Patient').interaction.where(code='patch').exists() and rest.resource.where(type='Patient').interaction.where(code='delete').exists()",
       "action": [
         { "operation": { "type": { "code": "create" }, "resource": "Patient", "sourceId": "patient-hist-status", "responseId": "histstatus-create-response", "description": "Create the dedicated Patient for the response.status test" } },
         { "assert": { "description": "Create must return HTTP 201", "response": "created" } },

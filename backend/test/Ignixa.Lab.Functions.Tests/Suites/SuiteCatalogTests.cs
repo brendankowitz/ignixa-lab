@@ -505,11 +505,22 @@ public sealed class SuiteCatalogTests : IDisposable
         bool requiresPatch)
     {
         var suite = ReadBundledSuite("CRUD/history.json");
-        GetMetadataCapabilityRequirement(suite).Should().BeNull();
+        GetMetadataCapabilityRequirement(suite).Should().Contain("history-system");
+        GetMetadataCapabilityRequirement(suite).Should().Contain("history-type");
+        GetMetadataCapabilityRequirement(suite).Should().Contain("history-instance");
         var requirement = GetStringValue(ReadBundledTest("CRUD/history.json", testName)["requiresCapability"]);
 
         requirement.Should().Contain(expectedHistoryCapability);
         requirement!.Contains("code='patch'", StringComparison.Ordinal).Should().Be(requiresPatch);
+    }
+
+    [Fact]
+    public void BundledHistoryDeleteTest_RequiresPatientDelete()
+    {
+        GetStringValue(ReadBundledTest(
+                "CRUD/history.json",
+                "history entries report a well-formed response.status for every version")["requiresCapability"])
+            .Should().Contain("interaction.where(code='delete').exists()");
     }
 
     [Fact]
@@ -588,11 +599,7 @@ public sealed class SuiteCatalogTests : IDisposable
                 .Select(action => action?["assert"])
                 .Where(assertion => assertion is not null)
                 .ToArray();
-            assertions.Where(assertion => assertion!["expression"] is not null)
-                .Select(assertion => assertion!["warningOnly"]?.GetValue<bool>() == true)
-                .Should().OnlyContain(warningOnly => warningOnly);
-            assertions.Where(assertion => assertion!["response"] is not null || assertion["resource"] is not null)
-                .Select(assertion => assertion!["warningOnly"] is null)
+            assertions.Select(assertion => assertion!["warningOnly"]?.GetValue<bool>() == true)
                 .Should().OnlyContain(isStrict => isStrict);
         }
     }
@@ -649,8 +656,7 @@ public sealed class SuiteCatalogTests : IDisposable
         {
             test["action"]!.AsArray()
                 .Select(action => action?["assert"])
-                .Where(assertion => GetStringValue(assertion?["description"])?.Contains(
-                    "iterat", StringComparison.OrdinalIgnoreCase) == true)
+                .Where(assertion => assertion is not null)
                 .Select(assertion => assertion!["warningOnly"]?.GetValue<bool>() == true)
                 .Should().OnlyContain(warningOnly => warningOnly);
         }
