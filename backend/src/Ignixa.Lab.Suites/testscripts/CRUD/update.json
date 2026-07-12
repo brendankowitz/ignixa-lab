@@ -114,7 +114,6 @@
     {
       "name": "update with changed content assigns a new version and preserves the id",
       "description": "PUT Patient/ignixa-update-content with different content (Version B) must return 200 OK, keep the same id, and assign a new meta.versionId different from the one assigned at setup.",
-      "requiresCapability": "rest.resource.where(type='Patient').versioning = 'versioned-update'",
       "action": [
         { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-update-content", "sourceId": "patient-v2", "responseId": "content-update-response", "requestHeader": [{ "field": "If-Match", "value": "W/\"${createdVersionId}\"" }], "description": "PUT Patient/ignixa-update-content with Version B content and the observed current version" } },
         { "assert": { "description": "Update must return HTTP 200 OK", "response": "okay" } },
@@ -123,18 +122,29 @@
         { "assert": { "description": "Updated Patient must be readable", "sourceId": "content-read-response", "response": "okay" } },
         { "assert": { "description": "id must be unchanged", "sourceId": "content-read-response", "expression": "Patient.id", "value": "ignixa-update-content", "operator": "equals" } },
         { "assert": { "description": "meta.versionId must differ from the version assigned at setup", "sourceId": "content-read-response", "expression": "Patient.meta.versionId", "value": "${createdVersionId}", "operator": "notEquals" } }
+      ],
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='Patient').versioning = 'versioned-update'"
+        }
       ]
     },
     {
       "name": "repeating an identical update does not create a new version",
       "description": "PUT Patient/ignixa-update-content again with the exact same content (Version B) must return 200 OK and must NOT bump meta.versionId, since there is no actual data change.",
-      "requiresCapability": "rest.resource.where(type='Patient').versioning = 'versioned-update'",
       "action": [
         { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-update-content", "sourceId": "patient-v2", "responseId": "noop-update-response", "requestHeader": [{ "field": "If-Match", "value": "W/\"${versionAfterContentChange}\"" }], "description": "PUT Patient/ignixa-update-content again with identical Version B content and the observed current version" } },
         { "assert": { "description": "Update must return HTTP 200 OK", "response": "okay" } },
         { "operation": { "type": { "code": "read" }, "url": "Patient/ignixa-update-content", "responseId": "noop-read-response", "description": "Read back the Patient because an update response body is optional" } },
         { "assert": { "description": "Patient must remain readable", "sourceId": "noop-read-response", "response": "okay" } },
         { "assert": { "description": "Informational: meta.versionId is unchanged when no data changed", "sourceId": "noop-read-response", "expression": "Patient.meta.versionId", "value": "${versionAfterContentChange}", "operator": "equals", "warningOnly": true } }
+      ],
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='Patient').versioning = 'versioned-update'"
+        }
       ]
     },
     {
@@ -148,7 +158,6 @@
     {
       "name": "update with a client-supplied id for a non-existent resource performs an upsert-create",
       "description": "PUT Patient/ignixa-update-newpat-${runId}, which does not yet exist, must return 201 Created, assign the client-supplied id, and override the client-supplied meta.versionId ('9999') and lastUpdated with server-assigned values (FHIR R4 upsert-create semantics).",
-      "requiresCapability": "rest.resource.where(type='Patient').updateCreate = true",
       "action": [
         { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-update-newpat-${runId}", "sourceId": "patient-new-upsert", "responseId": "upsert-response", "description": "PUT Patient/ignixa-update-newpat-${runId} with client-supplied meta.versionId=9999" } },
         { "assert": { "description": "Server must return 201 Created", "response": "created" } },
@@ -160,6 +169,12 @@
         { "assert": { "description": "id must match the client-supplied id", "sourceId": "upsert-read-response", "expression": "Patient.id", "value": "ignixa-update-newpat-${runId}", "operator": "equals" } },
         { "assert": { "description": "Server must have assigned a meta.versionId", "sourceId": "upsert-read-response", "expression": "Patient.meta.versionId.exists()" } },
         { "assert": { "description": "Server must override the client-supplied meta.versionId of '9999'", "sourceId": "upsert-read-response", "expression": "Patient.meta.versionId", "value": "9999", "operator": "notEquals" } }
+      ],
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='Patient').updateCreate = true"
+        }
       ]
     },
     {
@@ -183,7 +198,6 @@
     {
       "name": "update with a correct If-Match version precondition succeeds",
       "description": "PUT Patient/ignixa-update-content with an If-Match header matching the resource's current meta.versionId must succeed with 200 OK.",
-      "requiresCapability": "rest.resource.where(type='Patient').versioning = 'versioned-update'",
       "action": [
         {
           "operation": {
@@ -196,12 +210,17 @@
           }
         },
         { "assert": { "description": "Update must return HTTP 200 OK", "response": "okay" } }
+      ],
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='Patient').versioning = 'versioned-update'"
+        }
       ]
     },
     {
       "name": "update with nonmatching If-Match entity-tags returns 412",
       "description": "PUT Patient/ignixa-update-content with the previously observed but now stale version must return 412 Precondition Failed.",
-      "requiresCapability": "rest.resource.where(type='Patient').versioning = 'versioned-update'",
       "action": [
         {
           "operation": {
@@ -214,6 +233,12 @@
           }
         },
         { "assert": { "description": "Server must return 412 Precondition Failed", "response": "preconditionFailed" } }
+      ],
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='Patient').versioning = 'versioned-update'"
+        }
       ]
     },
     {

@@ -113,9 +113,12 @@
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
           "valueString": "4.0,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='SubstanceNucleicAcid').interaction.where(code='create').exists() and rest.resource.where(type='SubstanceNucleicAcid').interaction.where(code='read').exists()"
         }
       ],
-      "requiresCapability": "rest.resource.where(type='SubstanceNucleicAcid').interaction.where(code='create').exists() and rest.resource.where(type='SubstanceNucleicAcid').interaction.where(code='read').exists()",
       "action": [
         {
           "operation": {
@@ -191,9 +194,12 @@
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
           "valueString": "4.0,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='SubstancePolymer').interaction.where(code='create').exists() and rest.resource.where(type='SubstancePolymer').interaction.where(code='read').exists()"
         }
       ],
-      "requiresCapability": "rest.resource.where(type='SubstancePolymer').interaction.where(code='create').exists() and rest.resource.where(type='SubstancePolymer').interaction.where(code='read').exists()",
       "action": [
         {
           "operation": {
@@ -269,9 +275,12 @@
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
           "valueString": "4.0,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='SubstanceProtein').interaction.where(code='create').exists() and rest.resource.where(type='SubstanceProtein').interaction.where(code='read').exists()"
         }
       ],
-      "requiresCapability": "rest.resource.where(type='SubstanceProtein').interaction.where(code='create').exists() and rest.resource.where(type='SubstanceProtein').interaction.where(code='read').exists()",
       "action": [
         {
           "operation": {
@@ -347,9 +356,12 @@
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
           "valueString": "4.0,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='SubstanceReferenceInformation').interaction.where(code='create').exists() and rest.resource.where(type='SubstanceReferenceInformation').interaction.where(code='read').exists()"
         }
       ],
-      "requiresCapability": "rest.resource.where(type='SubstanceReferenceInformation').interaction.where(code='create').exists() and rest.resource.where(type='SubstanceReferenceInformation').interaction.where(code='read').exists()",
       "action": [
         {
           "operation": {
@@ -425,9 +437,12 @@
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
           "valueString": "4.0,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='SubstanceSourceMaterial').interaction.where(code='create').exists() and rest.resource.where(type='SubstanceSourceMaterial').interaction.where(code='read').exists()"
         }
       ],
-      "requiresCapability": "rest.resource.where(type='SubstanceSourceMaterial').interaction.where(code='create').exists() and rest.resource.where(type='SubstanceSourceMaterial').interaction.where(code='read').exists()",
       "action": [
         {
           "operation": {

@@ -320,7 +320,7 @@ public sealed class SuiteCatalogTests : IDisposable
     public void BundledConditionalUpdateCreateTest_RequiresConditionalAndCreateCapabilities()
     {
         var test = ReadBundledTest("CRUD/conditional-update.json", "Conditional update with a client-supplied id and no existing match creates that id");
-        var requirement = GetStringValue(test["requiresCapability"]);
+        var requirement = GetMetadataCapabilityRequirement(test);
 
         requirement.Should().Contain("conditionalUpdate = true");
         requirement.Should().Contain("updateCreate = true");
@@ -374,7 +374,7 @@ public sealed class SuiteCatalogTests : IDisposable
             .Select(action => GetStringValue(action?["operation"]?["url"]));
 
         fixtureIds.Should().Contain(expectedIds);
-        GetStringValue(test["requiresCapability"]).Should().Contain("updateCreate = true");
+        GetMetadataCapabilityRequirement(test).Should().Contain("updateCreate = true");
         teardownUrls.Should().Contain(expectedIds.Select(id => $"Patient/{id}"));
     }
 
@@ -427,7 +427,7 @@ public sealed class SuiteCatalogTests : IDisposable
             .ToArray();
 
         tests.Select(test =>
-                GetStringValue(test["requiresCapability"])?.Contains("versioning = 'versioned-update'", StringComparison.Ordinal) == true)
+                GetMetadataCapabilityRequirement(test)?.Contains("versioning = 'versioned-update'", StringComparison.Ordinal) == true)
             .Should().OnlyContain(isVersionAware => isVersionAware);
 
         var contentChange = tests.Single(test =>
@@ -495,7 +495,7 @@ public sealed class SuiteCatalogTests : IDisposable
         var test = ReadBundledTest(
             "CRUD/delete.json",
             "delete removes the resource; a plain read is Gone/NotFound while the original version remains vread-able");
-        var requirement = GetStringValue(test["requiresCapability"]);
+        var requirement = GetMetadataCapabilityRequirement(test);
 
         requirement.Should().Contain("interaction.where(code='vread').exists()");
         requirement.Should().Contain("versioning != 'no-version'");
@@ -521,7 +521,7 @@ public sealed class SuiteCatalogTests : IDisposable
         GetMetadataCapabilityRequirement(suite).Should().Contain("history-system");
         GetMetadataCapabilityRequirement(suite).Should().Contain("history-type");
         GetMetadataCapabilityRequirement(suite).Should().Contain("history-instance");
-        var requirement = GetStringValue(ReadBundledTest("CRUD/history.json", testName)["requiresCapability"]);
+        var requirement = GetMetadataCapabilityRequirement(ReadBundledTest("CRUD/history.json", testName));
 
         requirement.Should().Contain(expectedHistoryCapability);
         requirement!.Contains("code='patch'", StringComparison.Ordinal).Should().Be(requiresPatch);
@@ -530,9 +530,9 @@ public sealed class SuiteCatalogTests : IDisposable
     [Fact]
     public void BundledHistoryDeleteTest_RequiresPatientDelete()
     {
-        GetStringValue(ReadBundledTest(
+        GetMetadataCapabilityRequirement(ReadBundledTest(
                 "CRUD/history.json",
-                "history entries report a well-formed response.status for every version")["requiresCapability"])
+                "history entries report a well-formed response.status for every version"))
             .Should().Contain("interaction.where(code='delete').exists()");
     }
 
@@ -563,7 +563,7 @@ public sealed class SuiteCatalogTests : IDisposable
 
             foreach (var (rawTest, parsedTest) in rawTests.Zip(entry.Definition.Tests))
             {
-                var requirement = GetStringValue(rawTest?["requiresCapability"]);
+                var requirement = rawTest is null ? null : GetMetadataCapabilityRequirement(rawTest);
                 if (requirement is not null)
                 {
                     parsedTest.RequiresCapability.Should().Be(requirement);
@@ -592,7 +592,7 @@ public sealed class SuiteCatalogTests : IDisposable
 
         matchingTests.Should().NotBeEmpty();
         matchingTests.Select(test =>
-                GetStringValue(test["requiresCapability"])?.Contains(expected, StringComparison.Ordinal) == true)
+                GetMetadataCapabilityRequirement(test)?.Contains(expected, StringComparison.Ordinal) == true)
             .Should().OnlyContain(hasRequirement => hasRequirement);
     }
 
@@ -607,7 +607,7 @@ public sealed class SuiteCatalogTests : IDisposable
         tests.Should().HaveCount(2);
         foreach (var test in tests)
         {
-            GetStringValue(test["requiresCapability"]).Should().BeNull();
+            GetMetadataCapabilityRequirement(test).Should().BeNull();
             var assertions = test["action"]!.AsArray()
                 .Select(action => action?["assert"])
                 .Where(assertion => assertion is not null)
@@ -630,7 +630,7 @@ public sealed class SuiteCatalogTests : IDisposable
             .Where(test => testNameFragment is null
                 || GetStringValue(test["name"])!.Contains(testNameFragment, StringComparison.OrdinalIgnoreCase));
 
-        tests.Select(test => GetStringValue(test["requiresCapability"]))
+        tests.Select(test => GetMetadataCapabilityRequirement(test))
             .Should().OnlyContain(requirement =>
                 requirement!.Contains($"type='{resourceType}'", StringComparison.Ordinal)
                 && !requirement.Contains("rest.resource.searchParam", StringComparison.Ordinal));
@@ -648,7 +648,7 @@ public sealed class SuiteCatalogTests : IDisposable
         string control,
         string resourceType)
     {
-        var requirement = GetStringValue(ReadBundledTest(relativePath, testName)["requiresCapability"]);
+        var requirement = GetMetadataCapabilityRequirement(ReadBundledTest(relativePath, testName));
 
         requirement.Should().Contain($"type='{resourceType}'");
         requirement.Should().Contain($"name='{control}'");
@@ -663,8 +663,8 @@ public sealed class SuiteCatalogTests : IDisposable
             .ToArray();
 
         tests.Should().HaveCount(3);
-        GetStringValue(tests[0]["requiresCapability"]).Should().NotContain("type='Patient'");
-        GetStringValue(tests[1]["requiresCapability"]).Should().NotContain("type='Patient'");
+        GetMetadataCapabilityRequirement(tests[0]).Should().NotContain("type='Patient'");
+        GetMetadataCapabilityRequirement(tests[1]).Should().NotContain("type='Patient'");
         foreach (var test in tests)
         {
             test["action"]!.AsArray()
@@ -846,7 +846,7 @@ public sealed class SuiteCatalogTests : IDisposable
     [InlineData("Multiple _include params combine their targets", "Patient:general-practitioner")]
     public void BundledIncludeTests_RequireTheAdvertisedIncludeTheyExercise(string testName, string expected)
     {
-        GetStringValue(ReadBundledTest("Search/includes.json", testName)["requiresCapability"])
+        GetMetadataCapabilityRequirement(ReadBundledTest("Search/includes.json", testName))
             .Should().Contain(expected);
     }
 

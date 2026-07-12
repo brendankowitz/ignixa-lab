@@ -154,52 +154,71 @@
     {
       "name": "Conditional update with no existing match upserts a new resource",
       "description": "PUT /Patient?identifier=... matching no existing resource with an id-less body; the server must upsert (create) it and return 201 Created.",
-      "requiresCapability": "rest.resource.where(type='Patient').conditionalUpdate = true",
       "action": [
         { "operation": { "type": { "code": "update" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-NOMATCH-${runId}", "sourceId": "patient-nomatch-body", "responseId": "cu-nomatch-response", "description": "Conditional PUT for the current-run CU-NOMATCH identifier, matching nothing" } },
         { "assert": { "description": "Must return HTTP 201 Created", "response": "created" } },
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-NOMATCH-${runId}", "responseId": "cu-nomatch-search-response", "description": "Find the current-run created Patient because a conditional update response body is optional" } },
         { "assert": { "description": "Search must return exactly one created Patient entry", "sourceId": "cu-nomatch-search-response", "expression": "Bundle.entry.resource.ofType(Patient).count()", "value": "1", "operator": "equals" } },
         { "assert": { "description": "Server must have assigned an id", "sourceId": "cu-nomatch-search-response", "expression": "Bundle.entry.resource.ofType(Patient).first().id.exists()" } }
+      ],
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='Patient').conditionalUpdate = true"
+        }
       ]
     },
     {
       "name": "Conditional update with no search criteria is rejected",
       "description": "PUT /Patient with no search criteria; the server must reject the request with 400 Bad Request.",
-      "requiresCapability": "rest.resource.where(type='Patient').conditionalUpdate = true",
       "action": [
         { "operation": { "type": { "code": "update" }, "resource": "Patient", "sourceId": "patient-nomatch-body", "responseId": "cu-nocriteria-response", "description": "Conditional PUT /Patient with no query string" } },
         { "assert": { "description": "Must return HTTP 400 Bad Request", "response": "bad" } }
+      ],
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='Patient').conditionalUpdate = true"
+        }
       ]
     },
     {
       "name": "Conditional update with a client-supplied id and no existing match creates that id",
       "description": "PUT /Patient?identifier=... matching no existing resource with a body carrying a client-supplied id; the server must create the resource using that id and return 201 Created.",
-      "requiresCapability": "rest.resource.where(type='Patient').conditionalUpdate = true and rest.resource.where(type='Patient').updateCreate = true",
       "action": [
         { "operation": { "type": { "code": "update" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-EXPLICIT-${runId}", "sourceId": "patient-explicit-id-body", "responseId": "cu-explicit-response", "description": "Conditional PUT /Patient?identifier=...CU-EXPLICIT-${runId}, body carries id=ignixa-cond-upd-explicit-${runId}" } },
         { "assert": { "description": "Must return HTTP 201 Created", "response": "created" } },
         { "operation": { "type": { "code": "read" }, "url": "Patient/ignixa-cond-upd-explicit-${runId}", "responseId": "cu-explicit-read-response", "description": "Read back the created Patient because a conditional update response body is optional" } },
         { "assert": { "description": "Created Patient must be readable at the client-supplied id", "sourceId": "cu-explicit-read-response", "response": "okay" } },
         { "assert": { "description": "Server must have used the client-supplied id", "sourceId": "cu-explicit-read-response", "expression": "Patient.id", "value": "ignixa-cond-upd-explicit-${runId}", "operator": "equals" } }
+      ],
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='Patient').conditionalUpdate = true and rest.resource.where(type='Patient').updateCreate = true"
+        }
       ]
     },
     {
       "name": "Conditional update with no id in body and one match updates the existing resource",
       "description": "PUT /Patient?identifier=... matching exactly one existing Patient with an id-less body; the server must update it in place and return 200 OK with the same id.",
-      "requiresCapability": "rest.resource.where(type='Patient').conditionalUpdate = true",
       "action": [
         { "operation": { "type": { "code": "update" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-ONEMATCH-${runId}", "sourceId": "patient-update-onematch-body", "responseId": "cu-onematch-response", "description": "Conditional PUT matching the single current-run CU-ONEMATCH Patient" } },
         { "assert": { "description": "Must return HTTP 200 OK (updated, not created)", "response": "okay" } },
         { "operation": { "type": { "code": "read" }, "url": "Patient/${seedOneMatchId}", "responseId": "cu-onematch-read-response", "description": "Read back the matched Patient because a conditional update response body is optional" } },
         { "assert": { "description": "Updated Patient must be readable", "sourceId": "cu-onematch-read-response", "response": "okay" } },
         { "assert": { "description": "Updated id must match the existing seeded resource's id", "sourceId": "cu-onematch-read-response", "expression": "Patient.id", "value": "${seedOneMatchId}", "operator": "equals" } }
+      ],
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='Patient').conditionalUpdate = true"
+        }
       ]
     },
     {
       "name": "Conditional update with a body id matching the resolved resource updates its content",
       "description": "PUT /Patient?identifier=... matching one existing Patient whose id agrees with the body's id; the server must accept the update and return 200 OK with the updated content.",
-      "requiresCapability": "rest.resource.where(type='Patient').conditionalUpdate = true",
       "action": [
         { "operation": { "type": { "code": "update" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-CORRECTID", "sourceId": "patient-update-correctid-body", "responseId": "cu-correctid-response", "description": "Conditional PUT /Patient?identifier=...CU-CORRECTID, body id matches the resolved resource's id" } },
         { "assert": { "description": "Must return HTTP 200 OK", "response": "okay" } },
@@ -207,21 +226,31 @@
         { "assert": { "description": "Updated Patient must be readable", "sourceId": "cu-correctid-read-response", "response": "okay" } },
         { "assert": { "description": "Id must remain ignixa-cond-upd-correctid", "sourceId": "cu-correctid-read-response", "expression": "Patient.id", "value": "ignixa-cond-upd-correctid", "operator": "equals" } },
         { "assert": { "description": "Content must reflect the update (gender changed to female)", "sourceId": "cu-correctid-read-response", "expression": "Patient.gender", "value": "female", "operator": "equals" } }
+      ],
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='Patient').conditionalUpdate = true"
+        }
       ]
     },
     {
       "name": "Conditional update with a mismatched body id is rejected",
       "description": "PUT /Patient?identifier=... matching one existing Patient whose id disagrees with the body's id; the server must reject the request with 400 Bad Request.",
-      "requiresCapability": "rest.resource.where(type='Patient').conditionalUpdate = true",
       "action": [
         { "operation": { "type": { "code": "update" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-CORRECTID", "sourceId": "patient-update-wrongid-body", "responseId": "cu-mismatch-response", "description": "Conditional PUT /Patient?identifier=...CU-CORRECTID, body id deliberately disagrees with the resolved resource's id" } },
         { "assert": { "description": "Must return HTTP 400 Bad Request", "response": "bad" } }
+      ],
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='Patient').conditionalUpdate = true"
+        }
       ]
     },
     {
       "name": "Conditional update with multiple existing matches fails",
       "description": "PUT /Patient?identifier=... matching two existing Patients; the server must return 412 Precondition Failed since the criteria isn't selective enough.",
-      "requiresCapability": "rest.resource.where(type='Patient').conditionalUpdate = true and rest.resource.where(type='Patient').updateCreate = true",
       "action": [
         { "operation": { "type": { "code": "update" }, "url": "Patient/ignixa-cond-upd-multi-a-${runId}", "sourceId": "patient-seed-multi-a-body", "responseId": "seed-multi-a-response", "description": "PUT the first current-run Patient sharing the CU-MULTI identifier" } },
         { "assert": { "description": "First CU-MULTI setup PUT must return 201 Created", "sourceId": "seed-multi-a-response", "response": "created" } },
@@ -229,6 +258,12 @@
         { "assert": { "description": "Second CU-MULTI setup PUT must return 201 Created", "sourceId": "seed-multi-b-response", "response": "created" } },
         { "operation": { "type": { "code": "update" }, "resource": "Patient", "params": "?identifier=http://ignixa.io/testscript/suite/cond-update|CU-MULTI-${runId}", "sourceId": "patient-update-multi-body", "responseId": "cu-multi-response", "description": "Conditional PUT matching both current-run CU-MULTI Patients" } },
         { "assert": { "description": "Must return HTTP 412 Precondition Failed", "response": "preconditionFailed" } }
+      ],
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='Patient').conditionalUpdate = true and rest.resource.where(type='Patient').updateCreate = true"
+        }
       ]
     }
   ],

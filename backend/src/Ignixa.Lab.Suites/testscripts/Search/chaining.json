@@ -111,8 +111,16 @@
     {
       "name": "_has reverse chain: patients with a heart rate observation",
       "description": "Patient?_has:Observation:subject:code=8867-4 returns patients that are the subject of an Observation with code 8867-4. fhir262-chain-pa (has obs1) must match; fhir262-chain-pb (no observations) must not.",
-      "requiresCapability": "(rest.resource.where(type='Patient').searchParam.where(name='_has').exists() or rest.searchParam.where(name='_has').exists())",
-      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/fhirVersions",
+          "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "(rest.resource.where(type='Patient').searchParam.where(name='_has').exists() or rest.searchParam.where(name='_has').exists())"
+        }
+      ],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?_has:Observation:subject:code=8867-4", "responseId": "has-heartrate", "description": "GET /Patient?_has:Observation:subject:code=8867-4" } },
         { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
@@ -124,8 +132,16 @@
     {
       "name": "_has reverse chain: patients with a body weight observation",
       "description": "Patient?_has:Observation:subject:code=29463-7 returns patients that are the subject of an Observation with code 29463-7. fhir262-chain-pa (has obs2) must match; fhir262-chain-pb must not.",
-      "requiresCapability": "(rest.resource.where(type='Patient').searchParam.where(name='_has').exists() or rest.searchParam.where(name='_has').exists())",
-      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/fhirVersions",
+          "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "(rest.resource.where(type='Patient').searchParam.where(name='_has').exists() or rest.searchParam.where(name='_has').exists())"
+        }
+      ],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?_has:Observation:subject:code=29463-7", "responseId": "has-weight", "description": "GET /Patient?_has:Observation:subject:code=29463-7" } },
         { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
@@ -150,9 +166,15 @@
     {
       "name": "GET/POST search equivalence for _has",
       "description": "The same _has search via GET and POST _search must return identical results. Tests that servers correctly handle application/x-www-form-urlencoded _search bodies.",
-      "requiresCapability": "(rest.resource.where(type='Patient').searchParam.where(name='_has').exists() or rest.searchParam.where(name='_has').exists())",
       "extension": [
-        { "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }
+        {
+          "url": "http://ignixa.io/testscript/fhirVersions",
+          "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "(rest.resource.where(type='Patient').searchParam.where(name='_has').exists() or rest.searchParam.where(name='_has').exists())"
+        }
       ],
       "action": [
         {

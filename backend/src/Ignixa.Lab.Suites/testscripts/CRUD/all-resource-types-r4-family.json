@@ -75,9 +75,12 @@
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
           "valueString": "4.0,4.3"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='CatalogEntry').interaction.where(code='create').exists() and rest.resource.where(type='CatalogEntry').interaction.where(code='read').exists()"
         }
       ],
-      "requiresCapability": "rest.resource.where(type='CatalogEntry').interaction.where(code='create').exists() and rest.resource.where(type='CatalogEntry').interaction.where(code='read').exists()",
       "action": [
         {
           "operation": {
@@ -153,9 +156,12 @@
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
           "valueString": "4.0,4.3"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='ResearchDefinition').interaction.where(code='create').exists() and rest.resource.where(type='ResearchDefinition').interaction.where(code='read').exists()"
         }
       ],
-      "requiresCapability": "rest.resource.where(type='ResearchDefinition').interaction.where(code='create').exists() and rest.resource.where(type='ResearchDefinition').interaction.where(code='read').exists()",
       "action": [
         {
           "operation": {
@@ -231,9 +237,12 @@
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
           "valueString": "4.0,4.3"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='ResearchElementDefinition').interaction.where(code='create').exists() and rest.resource.where(type='ResearchElementDefinition').interaction.where(code='read').exists()"
         }
       ],
-      "requiresCapability": "rest.resource.where(type='ResearchElementDefinition').interaction.where(code='create').exists() and rest.resource.where(type='ResearchElementDefinition').interaction.where(code='read').exists()",
       "action": [
         {
           "operation": {

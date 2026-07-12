@@ -138,8 +138,16 @@
     {
       "name": "Forward _include pulls in the direct reference target",
       "description": "Patient?_id=pat1&_include=Patient:organization must return pat1 plus its managingOrganization (org) as an included resource.",
-      "requiresCapability": "rest.resource.where(type='Patient').searchInclude.where($this='Patient:organization' or $this='*').exists()",
-      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/fhirVersions",
+          "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='Patient').searchInclude.where($this='Patient:organization' or $this='*').exists()"
+        }
+      ],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?_id=ignixa-inc-pat1&_include=Patient:organization", "responseId": "inc-forward", "description": "GET /Patient?_id=ignixa-inc-pat1&_include=Patient:organization" } },
         { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
@@ -152,8 +160,16 @@
     {
       "name": "_include with no target type resolves references of any type",
       "description": "Observation?_id=obs1&_include=Observation:performer (no target type restriction) must include both performer types: Practitioner (prac1) and Organization (org).",
-      "requiresCapability": "rest.resource.where(type='Observation').searchInclude.where($this='Observation:performer' or $this='*').exists()",
-      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/fhirVersions",
+          "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='Observation').searchInclude.where($this='Observation:performer' or $this='*').exists()"
+        }
+      ],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Observation", "params": "?_id=ignixa-inc-obs1&_include=Observation:performer", "responseId": "inc-performer", "description": "GET /Observation?_id=ignixa-inc-obs1&_include=Observation:performer" } },
         { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
@@ -165,8 +181,16 @@
     {
       "name": "Wildcard _include=* pulls in every direct reference",
       "description": "Patient?_id=pat1&_include=* must include both managingOrganization (org) and generalPractitioner (prac1).",
-      "requiresCapability": "rest.resource.where(type='Patient').searchInclude.where($this='*').exists()",
-      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/fhirVersions",
+          "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='Patient').searchInclude.where($this='*').exists()"
+        }
+      ],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?_id=ignixa-inc-pat1&_include=*", "responseId": "inc-wildcard", "description": "GET /Patient?_id=ignixa-inc-pat1&_include=*" } },
         { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
@@ -177,8 +201,16 @@
     {
       "name": "Multiple _include params combine their targets",
       "description": "Patient?_id=pat1&_include=Patient:organization&_include=Patient:general-practitioner must include both org and prac1 in a single response.",
-      "requiresCapability": "rest.resource.where(type='Patient').searchInclude.where($this='Patient:organization' or $this='*').exists() and rest.resource.where(type='Patient').searchInclude.where($this='Patient:general-practitioner' or $this='*').exists()",
-      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/fhirVersions",
+          "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='Patient').searchInclude.where($this='Patient:organization' or $this='*').exists() and rest.resource.where(type='Patient').searchInclude.where($this='Patient:general-practitioner' or $this='*').exists()"
+        }
+      ],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?_id=ignixa-inc-pat1&_include=Patient:organization&_include=Patient:general-practitioner", "responseId": "inc-multi", "description": "GET /Patient with two _include params" } },
         { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
@@ -189,8 +221,16 @@
     {
       "name": "_revinclude pulls in resources that reference the match",
       "description": "Patient?_id=pat1&_revinclude=Observation:subject must return pat1 plus obs1 (which references pat1 as subject) as an included resource.",
-      "requiresCapability": "rest.resource.where(type='Patient').searchRevInclude.where($this='Observation:subject' or $this='*').exists()",
-      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/fhirVersions",
+          "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='Patient').searchRevInclude.where($this='Observation:subject' or $this='*').exists()"
+        }
+      ],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?_id=ignixa-inc-pat1&_revinclude=Observation:subject", "responseId": "inc-revinclude", "description": "GET /Patient?_id=ignixa-inc-pat1&_revinclude=Observation:subject" } },
         { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
@@ -202,8 +242,16 @@
     {
       "name": "Wildcard _revinclude=* pulls in every referencing resource type",
       "description": "Patient?_id=pat1&_revinclude=* must include both obs1 (Observation.subject) and dr1 (DiagnosticReport.subject).",
-      "requiresCapability": "rest.resource.where(type='Patient').searchRevInclude.where($this='*').exists()",
-      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/fhirVersions",
+          "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='Patient').searchRevInclude.where($this='*').exists()"
+        }
+      ],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?_id=ignixa-inc-pat1&_revinclude=*", "responseId": "inc-revinclude-wildcard", "description": "GET /Patient?_id=ignixa-inc-pat1&_revinclude=*" } },
         { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
@@ -214,8 +262,16 @@
     {
       "name": "_include:iterate follows a second hop through the included resource",
       "description": "Observation?_id=obs1&_include=Observation:subject&_include:iterate=Patient:organization must include pat1 (direct) and then org (iterated hop from pat1.managingOrganization). Iteration itself has no precise R4 CapabilityStatement flag, so iterated-hop assertions are informational.",
-      "requiresCapability": "rest.resource.where(type='Observation').searchInclude.where($this='Observation:subject' or $this='*').exists()",
-      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/fhirVersions",
+          "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='Observation').searchInclude.where($this='Observation:subject' or $this='*').exists()"
+        }
+      ],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Observation", "params": "?_id=ignixa-inc-obs1&_include=Observation:subject&_include:iterate=Patient:organization", "responseId": "inc-iterate-hop", "description": "GET /Observation with _include + _include:iterate two-hop" } },
         { "assert": { "description": "Search must return HTTP 200", "response": "okay", "warningOnly": true } },
@@ -227,8 +283,16 @@
     {
       "name": "_include:iterate wildcard target follows any reference type on the included resource",
       "description": "Observation?_id=obs1&_include=Observation:subject&_include:iterate=Patient:general-practitioner must include pat1 (direct) and then prac1 (iterated hop from pat1.generalPractitioner). Iteration itself has no precise R4 CapabilityStatement flag, so iterated-hop assertions are informational.",
-      "requiresCapability": "rest.resource.where(type='Observation').searchInclude.where($this='Observation:subject' or $this='*').exists()",
-      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/fhirVersions",
+          "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='Observation').searchInclude.where($this='Observation:subject' or $this='*').exists()"
+        }
+      ],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Observation", "params": "?_id=ignixa-inc-obs1&_include=Observation:subject&_include:iterate=Patient:general-practitioner", "responseId": "inc-iterate-gp", "description": "GET /Observation with _include:iterate on generalPractitioner" } },
         { "assert": { "description": "Search must return HTTP 200", "response": "okay", "warningOnly": true } },
@@ -251,8 +315,16 @@
     {
       "name": "Matched-resource filters (_id) are not applied to the included resources",
       "description": "Patient?_id=pat1&_include=Patient:organization must still include org even though org itself does not satisfy the _id=pat1 predicate -- the predicate only restricts the matched set, not the included set.",
-      "requiresCapability": "rest.resource.where(type='Patient').searchInclude.where($this='Patient:organization' or $this='*').exists()",
-      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/fhirVersions",
+          "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='Patient').searchInclude.where($this='Patient:organization' or $this='*').exists()"
+        }
+      ],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?_id=ignixa-inc-pat1&_include=Patient:organization", "responseId": "inc-id-not-applied", "description": "GET /Patient?_id=ignixa-inc-pat1&_include=Patient:organization" } },
         { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
@@ -262,8 +334,16 @@
     {
       "name": "specimen:missing=true combined with _include still includes the referenced resource",
       "description": "DiagnosticReport?specimen:missing=true&_id=dr1&_include=DiagnosticReport:result must match dr1 (no specimen) and include obs1 (result reference).",
-      "requiresCapability": "rest.resource.where(type='DiagnosticReport').searchInclude.where($this='DiagnosticReport:result' or $this='*').exists()",
-      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/fhirVersions",
+          "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='DiagnosticReport').searchInclude.where($this='DiagnosticReport:result' or $this='*').exists()"
+        }
+      ],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "DiagnosticReport", "params": "?specimen:missing=true&_id=ignixa-inc-dr1&_include=DiagnosticReport:result", "responseId": "inc-specimen-missing", "description": "GET /DiagnosticReport?specimen:missing=true&_id=ignixa-inc-dr1&_include=DiagnosticReport:result" } },
         { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
@@ -274,8 +354,16 @@
     {
       "name": "A self-referencing partOf does not duplicate the matched resource as its own include",
       "description": "Location?_id=loc-self&_include=Location:partof matches loc-self, whose partOf points at itself; the response must contain exactly one entry for loc-self (not a separate 'matched' entry plus a duplicate 'include' entry).",
-      "requiresCapability": "rest.resource.where(type='Location').searchInclude.where($this='Location:partof' or $this='*').exists()",
-      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/fhirVersions",
+          "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='Location').searchInclude.where($this='Location:partof' or $this='*').exists()"
+        }
+      ],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Location", "params": "?_id=ignixa-inc-loc-self&_include=Location:partof", "responseId": "inc-self-ref", "description": "GET /Location?_id=ignixa-inc-loc-self&_include=Location:partof" } },
         { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
@@ -285,8 +373,16 @@
     {
       "name": "_summary=count excludes included resources from the reported total",
       "description": "Patient?_id=pat1&_include=Patient:organization&_summary=count must return total=1 (only the matched patient counts, not the included organization) and an empty entry list.",
-      "requiresCapability": "rest.resource.where(type='Patient').searchInclude.where($this='Patient:organization' or $this='*').exists() and (rest.resource.where(type='Patient').searchParam.where(name='_summary').exists() or rest.searchParam.where(name='_summary').exists())",
-      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/fhirVersions",
+          "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='Patient').searchInclude.where($this='Patient:organization' or $this='*').exists() and (rest.resource.where(type='Patient').searchParam.where(name='_summary').exists() or rest.searchParam.where(name='_summary').exists())"
+        }
+      ],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?_id=ignixa-inc-pat1&_include=Patient:organization&_summary=count", "responseId": "inc-summary-count", "description": "GET /Patient?_id=ignixa-inc-pat1&_include=Patient:organization&_summary=count" } },
         { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
@@ -297,8 +393,16 @@
     {
       "name": "_total=accurate excludes included resources from the reported total",
       "description": "Patient?_id=pat1&_include=Patient:organization&_total=accurate must return total=1 (matched patient only) while still including org in the entry list.",
-      "requiresCapability": "rest.resource.where(type='Patient').searchInclude.where($this='Patient:organization' or $this='*').exists() and (rest.resource.where(type='Patient').searchParam.where(name='_total').exists() or rest.searchParam.where(name='_total').exists())",
-      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/fhirVersions",
+          "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='Patient').searchInclude.where($this='Patient:organization' or $this='*').exists() and (rest.resource.where(type='Patient').searchParam.where(name='_total').exists() or rest.searchParam.where(name='_total').exists())"
+        }
+      ],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?_id=ignixa-inc-pat1&_include=Patient:organization&_total=accurate", "responseId": "inc-total-accurate", "description": "GET /Patient?_id=ignixa-inc-pat1&_include=Patient:organization&_total=accurate" } },
         { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
@@ -309,8 +413,16 @@
     {
       "name": "Invalid target resource type on _include returns a Bad Request",
       "description": "Informational handling check: without Prefer: handling=strict, base FHIR does not universally require rejection of an invalid _include target resource type.",
-      "requiresCapability": "rest.resource.where(type='Patient').searchInclude.where($this='Patient:organization' or $this='*').exists()",
-      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/fhirVersions",
+          "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='Patient').searchInclude.where($this='Patient:organization' or $this='*').exists()"
+        }
+      ],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?_id=ignixa-inc-pat1&_include=Patient:organization:NotAResourceType", "responseId": "inc-invalid-target", "description": "GET /Patient?_id=ignixa-inc-pat1&_include=Patient:organization:NotAResourceType" } },
         { "assert": { "description": "Informational invalid-_include handling check: search should return HTTP 400 Bad Request", "response": "bad", "warningOnly": true } },
@@ -320,8 +432,16 @@
     {
       "name": "_include and _revinclude combine in a single request",
       "description": "Patient?_id=pat1&_include=Patient:organization&_revinclude=Observation:subject must include both org (forward include) and obs1 (reverse include) alongside the matched patient.",
-      "requiresCapability": "rest.resource.where(type='Patient').searchInclude.where($this='Patient:organization' or $this='*').exists() and rest.resource.where(type='Patient').searchRevInclude.where($this='Observation:subject' or $this='*').exists()",
-      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/fhirVersions",
+          "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='Patient').searchInclude.where($this='Patient:organization' or $this='*').exists() and rest.resource.where(type='Patient').searchRevInclude.where($this='Observation:subject' or $this='*').exists()"
+        }
+      ],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?_id=ignixa-inc-pat1&_include=Patient:organization&_revinclude=Observation:subject", "responseId": "inc-combined", "description": "GET /Patient with both _include and _revinclude" } },
         { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
