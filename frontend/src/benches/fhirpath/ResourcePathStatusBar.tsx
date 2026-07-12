@@ -71,11 +71,7 @@ export function ResourcePathStatusBar({ path, invalid }: ResourcePathStatusBarPr
         aria-label="Copy FHIRPath"
         title="Copy FHIRPath"
         disabled={!path}
-        onClick={() => {
-          if (path) {
-            copy();
-          }
-        }}
+        onClick={copy}
         style={{
           flex: '0 0 auto',
           width: 26,

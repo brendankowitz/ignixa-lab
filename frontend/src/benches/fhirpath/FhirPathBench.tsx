@@ -190,7 +190,8 @@ export function FhirPathBench({ onOpenFakes, fakesSeed, onSeedConsumed, initialS
   };
 
   const handleResourcePointerSelection = (textarea: HTMLTextAreaElement) => {
-    const resolution = resolveJsonPathAtOffset(resourceText, textarea.selectionStart);
+    const source = textarea.value;
+    const resolution = resolveJsonPathAtOffset(source, textarea.selectionStart);
     if (resolution.kind === 'invalid') {
       setResourcePathSelection(null);
       setResourceInspectionInvalid(true);

@@ -364,13 +364,28 @@ async function assertFhirPathResourceSelection(page) {
   }
   await assertNoHorizontalOverflow(page, 'Benches FHIRPath selected resource path');
   await page.evaluate(() => {
-    Object.defineProperty(navigator, 'clipboard', {
-      configurable: true,
-      value: { writeText: () => Promise.reject(new Error('Responsive check rejection')) },
-    });
+    window.__responsiveCheckClipboardDescriptor = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
   });
-  await page.getByRole('button', { name: 'Copy FHIRPath' }).click();
-  await expectVisible(page.getByText('Copy failed', { exact: true }), 'FHIRPath copy failure status');
+  try {
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: { writeText: () => Promise.reject(new Error('Responsive check rejection')) },
+      });
+    });
+    await page.getByRole('button', { name: 'Copy FHIRPath' }).click();
+    await expectVisible(page.getByText('Copy failed', { exact: true }), 'FHIRPath copy failure status');
+  } finally {
+    await page.evaluate(() => {
+      const descriptor = window.__responsiveCheckClipboardDescriptor;
+      if (descriptor) {
+        Object.defineProperty(navigator, 'clipboard', descriptor);
+      } else {
+        delete navigator.clipboard;
+      }
+      delete window.__responsiveCheckClipboardDescriptor;
+    });
+  }
   await expectVisible(page.getByText('name[0].given[0]', { exact: true }), 'FHIRPath path during copy failure');
 
   await resourceTextarea.fill(`${originalSource}\n`);
