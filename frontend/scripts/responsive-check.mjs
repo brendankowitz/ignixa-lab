@@ -67,6 +67,7 @@ const routes = [
       await mockFakesApi(page);
       await page.reload({ waitUntil: 'networkidle' });
       await page.getByRole('tab', { name: 'FHIRPath' }).waitFor();
+      await assertFhirPathResourceSelection(page);
       await assertNoHorizontalOverflow(page, 'Benches FHIRPath');
       await page.getByRole('tab', { name: 'Validation' }).click();
       await assertNoHorizontalOverflow(page, 'Benches Validation');
@@ -337,6 +338,53 @@ async function expectCount(locator, label, minimum = 1) {
     const bodyText = await page.locator('body').innerText().catch(() => '');
     throw new Error(`${label} count ${count} is below ${minimum}\n\nPage text:\n${bodyText.slice(0, 1200)}`);
   }
+}
+
+async function assertFhirPathResourceSelection(page) {
+  const resourceTextarea = page.getByRole('textbox', { name: 'Test resource JSON' });
+  await expectVisible(resourceTextarea, 'FHIRPath test resource JSON editor');
+  const originalSource = await resourceTextarea.inputValue();
+  const peterOffset = originalSource.indexOf('"Peter"');
+  if (peterOffset < 0) {
+    throw new Error('FHIRPath test resource fixture does not contain a "Peter" token.');
+  }
+
+  await resourceTextarea.evaluate((textarea, offset) => {
+    textarea.focus();
+    textarea.setSelectionRange(offset, offset);
+    textarea.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+  }, peterOffset + 2);
+  await expectVisible(page.getByText('name[0].given[0]', { exact: true }), 'FHIRPath selected resource path');
+  await expectVisible(page.getByRole('button', { name: 'Copy FHIRPath' }), 'FHIRPath copy path action');
+  const selectedToken = await resourceTextarea.evaluate((textarea) =>
+    textarea.value.slice(textarea.selectionStart, textarea.selectionEnd),
+  );
+  if (selectedToken !== '"Peter"') {
+    throw new Error(`FHIRPath resource selection did not select the exact token: ${selectedToken}`);
+  }
+  await assertNoHorizontalOverflow(page, 'Benches FHIRPath selected resource path');
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: () => Promise.reject(new Error('Responsive check rejection')) },
+    });
+  });
+  await page.getByRole('button', { name: 'Copy FHIRPath' }).click();
+  await expectVisible(page.getByText('Copy failed', { exact: true }), 'FHIRPath copy failure status');
+  await expectVisible(page.getByText('name[0].given[0]', { exact: true }), 'FHIRPath path during copy failure');
+
+  await resourceTextarea.fill(`${originalSource}\n`);
+  await expectVisible(page.getByText('Click a JSON key or value', { exact: true }), 'FHIRPath idle resource path');
+
+  await resourceTextarea.fill('{');
+  await resourceTextarea.evaluate((textarea) => {
+    textarea.focus();
+    textarea.setSelectionRange(0, 0);
+    textarea.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+  });
+  await expectVisible(page.getByText('Fix JSON to inspect a path', { exact: true }), 'FHIRPath invalid resource path');
+
+  await resourceTextarea.fill(originalSource);
 }
 
 async function assertLandingDemoFormatting(page) {

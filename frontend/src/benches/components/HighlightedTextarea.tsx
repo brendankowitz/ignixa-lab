@@ -16,6 +16,8 @@ export interface HighlightedTextareaProps {
   lines: HighlightLine[];
   style?: CSSProperties;
   spellCheck?: boolean;
+  ariaLabel?: string;
+  onPointerSelection?: (textarea: HTMLTextAreaElement) => void;
   /**
    * When set, the box grows with `lines` — starting from `style.height` as a
    * floor — up to this height in px, then scrolls instead of growing further.
@@ -50,7 +52,7 @@ const layerBaseStyle: CSSProperties = {
 
 /** An editable textarea with a live syntax-highlighted backdrop layered behind it, scroll-synced so the two stay pixel-aligned. Forwards a ref to the underlying `<textarea>` so callers can imperatively focus/select (e.g. highlighting a parse-tree node's source span). */
 export const HighlightedTextarea = forwardRef(function HighlightedTextarea(
-  { value, onChange, lines, style, spellCheck = false, autoGrowMaxHeight }: HighlightedTextareaProps,
+  { value, onChange, lines, style, spellCheck = false, ariaLabel, onPointerSelection, autoGrowMaxHeight }: HighlightedTextareaProps,
   ref: Ref<HTMLTextAreaElement>,
 ) {
   const preRef = useRef<HTMLPreElement>(null);
@@ -97,7 +99,9 @@ export const HighlightedTextarea = forwardRef(function HighlightedTextarea(
       <textarea
         ref={ref}
         value={value}
+        aria-label={ariaLabel}
         onChange={(event) => onChange(event.target.value)}
+        onPointerUp={(event) => onPointerSelection?.(event.currentTarget)}
         onScroll={(event) => {
           if (preRef.current) {
             preRef.current.scrollTop = event.currentTarget.scrollTop;
