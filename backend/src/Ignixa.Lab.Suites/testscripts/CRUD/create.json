@@ -222,37 +222,19 @@
     {
       "name": "create with an invalid (incomplete) resource body returns 400",
       "description": "POST an Observation missing required elements (status, code) must return either 400 Bad Request or 422 Unprocessable Entity; R4 does not tightly require differentiation between these validation statuses.",
-      "extension": [{
-        "url": "http://ignixa.io/testscript/statusAlternativePolicy",
-        "extension": [
-          { "url": "policy", "valueCode": "response-status-set-v1" },
-          { "url": "method", "valueCode": "POST" },
-          { "url": "status", "valueInteger": 400 },
-          { "url": "status", "valueInteger": 422 }
-        ]
-      }],
       "action": [
         { "operation": { "type": { "code": "create" }, "resource": "Observation", "sourceId": "observation-empty-invalid", "responseId": "create-invalid-response", "description": "POST an empty Observation" } },
-        { "assert": { "description": "Accepted validation status: 400 Bad Request", "responseCode": "400", "warningOnly": true } },
-        { "assert": { "description": "Accepted validation status: 422 Unprocessable Entity", "responseCode": "422", "warningOnly": true } }
+        { "assert": { "sourceId": "create-invalid-response", "extension": [{ "url": "http://ignixa.io/testscript/assertionAnyOfGroup", "valueString": "create-invalid-status" }], "description": "Accepted validation status: 400 Bad Request", "responseCode": "400", "warningOnly": true } },
+        { "assert": { "sourceId": "create-invalid-response", "extension": [{ "url": "http://ignixa.io/testscript/assertionAnyOfGroup", "valueString": "create-invalid-status" }], "description": "Accepted validation status: 422 Unprocessable Entity", "responseCode": "422", "warningOnly": true } }
       ]
     },
     {
       "name": "create with a malformed dateTime returns 400",
       "description": "POST an Observation with an invalid effectiveDateTime (date + timezone offset but no time) must return either 400 Bad Request or 422 Unprocessable Entity; R4 does not tightly require differentiation between these validation statuses.",
-      "extension": [{
-        "url": "http://ignixa.io/testscript/statusAlternativePolicy",
-        "extension": [
-          { "url": "policy", "valueCode": "response-status-set-v1" },
-          { "url": "method", "valueCode": "POST" },
-          { "url": "status", "valueInteger": 400 },
-          { "url": "status", "valueInteger": 422 }
-        ]
-      }],
       "action": [
         { "operation": { "type": { "code": "create" }, "resource": "Observation", "sourceId": "observation-invalid-date", "responseId": "create-baddate-response", "description": "POST Observation with malformed effectiveDateTime" } },
-        { "assert": { "description": "Accepted validation status: 400 Bad Request", "responseCode": "400", "warningOnly": true } },
-        { "assert": { "description": "Accepted validation status: 422 Unprocessable Entity", "responseCode": "422", "warningOnly": true } }
+        { "assert": { "sourceId": "create-baddate-response", "extension": [{ "url": "http://ignixa.io/testscript/assertionAnyOfGroup", "valueString": "create-baddate-status" }], "description": "Accepted validation status: 400 Bad Request", "responseCode": "400", "warningOnly": true } },
+        { "assert": { "sourceId": "create-baddate-response", "extension": [{ "url": "http://ignixa.io/testscript/assertionAnyOfGroup", "valueString": "create-baddate-status" }], "description": "Accepted validation status: 422 Unprocessable Entity", "responseCode": "422", "warningOnly": true } }
       ]
     },
     {
@@ -290,19 +272,10 @@
     {
       "name": "update with an illegal id format returns 400",
       "description": "PUT with an id containing an underscore (illegal in the FHIR id format) must return either 400 Bad Request or 422 Unprocessable Entity; R4 does not tightly require differentiation between these validation statuses.",
-      "extension": [{
-        "url": "http://ignixa.io/testscript/statusAlternativePolicy",
-        "extension": [
-          { "url": "policy", "valueCode": "response-status-set-v1" },
-          { "url": "method", "valueCode": "PUT" },
-          { "url": "status", "valueInteger": 400 },
-          { "url": "status", "valueInteger": 422 }
-        ]
-      }],
       "action": [
         { "operation": { "type": { "code": "update" }, "url": "Observation/ignixa-illegal_id", "sourceId": "observation-illegal-id", "responseId": "create-illegalid-response", "description": "PUT Observation/ignixa-illegal_id (underscore makes the id illegal)" } },
-        { "assert": { "description": "Accepted validation status: 400 Bad Request", "responseCode": "400", "warningOnly": true } },
-        { "assert": { "description": "Accepted validation status: 422 Unprocessable Entity", "responseCode": "422", "warningOnly": true } }
+        { "assert": { "sourceId": "create-illegalid-response", "extension": [{ "url": "http://ignixa.io/testscript/assertionAnyOfGroup", "valueString": "update-illegalid-status" }], "description": "Accepted validation status: 400 Bad Request", "responseCode": "400", "warningOnly": true } },
+        { "assert": { "sourceId": "create-illegalid-response", "extension": [{ "url": "http://ignixa.io/testscript/assertionAnyOfGroup", "valueString": "update-illegalid-status" }], "description": "Accepted validation status: 422 Unprocessable Entity", "responseCode": "422", "warningOnly": true } }
       ]
     },
     {
