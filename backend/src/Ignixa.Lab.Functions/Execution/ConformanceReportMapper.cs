@@ -1,4 +1,5 @@
 using Ignixa.Lab.Functions.Conformance;
+using Ignixa.Serialization.SourceNodes;
 using Ignixa.TestScript.Client;
 using Ignixa.TestScript.Reporting;
 
@@ -159,7 +160,7 @@ public static class ConformanceReportMapper
             Method: request.Method.Method,
             Url: request.Url,
             Headers: Redact(request.Headers),
-            Body: request.FormBody ?? request.Body?.MutableNode.ToJsonString());
+            Body: request.FormBody ?? ((IMutableJsonNode?)request.Body)?.MutableNode.ToJsonString());
     }
 
     private static ConformanceHttpResponse? ToResponse(TestResponse? response)

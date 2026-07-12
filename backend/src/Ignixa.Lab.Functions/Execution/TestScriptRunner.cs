@@ -135,7 +135,7 @@ public sealed class TestScriptRunner(
     /// </summary>
     private static string ResolveFhirVersion(ResourceJsonNode? capabilityStatement, string fallbackFhirVersion)
     {
-        var declaredVersion = capabilityStatement?.MutableNode["fhirVersion"] is JsonValue value && value.TryGetValue<string>(out var declared)
+        var declaredVersion = ((IMutableJsonNode?)capabilityStatement)?.MutableNode["fhirVersion"] is JsonValue value && value.TryGetValue<string>(out var declared)
             ? declared
             : null;
 

@@ -37,7 +37,7 @@ public sealed partial class RunScopedDefinitionPreparerTests
         var prepared = RunScopedDefinitionPreparer.Prepare(definition);
 
         var runId = prepared.Variables.Single(variable => variable.Name == "runId").DefaultValue;
-        var resource = prepared.Fixtures.Single().Resource!.MutableNode;
+        var resource = ((IMutableJsonNode)prepared.Fixtures.Single().Resource!).MutableNode;
         resource["id"]!.GetValue<string>().Should().Be($"patient-{runId}");
         resource["identifier"]![0]!["value"]!.GetValue<string>().Should().Be($"marker-{runId}");
     }
@@ -51,8 +51,8 @@ public sealed partial class RunScopedDefinitionPreparerTests
 
         prepared.Should().NotBeSameAs(definition);
         definition.Variables.Single(variable => variable.Name == "runId").DefaultValue.Should().Be("unscoped");
-        definition.Fixtures.Single().Resource!.MutableNode["id"]!.GetValue<string>().Should().Be("patient-${runId}");
-        definition.Fixtures.Single().Resource!.MutableNode["identifier"]![0]!["value"]!.GetValue<string>()
+        ((IMutableJsonNode)definition.Fixtures.Single().Resource!).MutableNode["id"]!.GetValue<string>().Should().Be("patient-${runId}");
+        ((IMutableJsonNode)definition.Fixtures.Single().Resource!).MutableNode["identifier"]![0]!["value"]!.GetValue<string>()
             .Should().Be("marker-${runId}");
     }
 

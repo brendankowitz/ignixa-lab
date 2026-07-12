@@ -38,7 +38,7 @@ internal static class RunScopedDefinitionPreparer
 
     private static ResourceJsonNode ExpandFixture(ResourceJsonNode resource, string runId)
     {
-        var json = JsonNode.Parse(resource.MutableNode.ToJsonString())!;
+        var json = JsonNode.Parse(((IMutableJsonNode)resource).MutableNode.ToJsonString())!;
         ExpandStringValues(json, runId);
         return ResourceJsonNode.Parse(json.ToJsonString());
     }

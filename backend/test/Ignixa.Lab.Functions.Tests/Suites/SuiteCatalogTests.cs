@@ -2,6 +2,7 @@ using FluentAssertions;
 using Ignixa.Lab.Functions.Configuration;
 using Ignixa.Lab.Functions.Execution;
 using Ignixa.Lab.Functions.Suites;
+using Ignixa.Serialization.SourceNodes;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using System.Text.Json.Nodes;
@@ -906,7 +907,7 @@ public sealed class SuiteCatalogTests : IDisposable
         var prepared = RunScopedDefinitionPreparer.Prepare(entry.Definition);
         var expandedRunId = prepared.Variables.Single(variable => variable.Name == "runId").DefaultValue;
         expandedRunId.Should().MatchRegex("^[0-9a-f]{32}$");
-        prepared.Fixtures.Select(fixture => fixture.Resource!.MutableNode["id"]!.GetValue<string>())
+        prepared.Fixtures.Select(fixture => ((IMutableJsonNode)fixture.Resource!).MutableNode["id"]!.GetValue<string>())
             .Should().OnlyContain(id => id.Contains(expandedRunId!, StringComparison.Ordinal)
                 && !id.Contains("${runId}", StringComparison.Ordinal));
     }
