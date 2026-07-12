@@ -47,7 +47,7 @@
       "action": [
         { "operation": { "type": { "code": "$export" }, "method": "GET", "url": "$export", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "completion-export-kickoff", "description": "GET /$export with Accept: application/fhir+json and Prefer: respond-async" } },
         { "assert": { "description": "Kick-off must return 202 Accepted", "sourceId": "completion-export-kickoff", "responseCode": "202" } },
-        { "operation": { "type": { "code": "read" }, "url": "${completionExportLocation}", "responseId": "completion-export-poll", "description": "Poll the Content-Location until the job leaves 202", "extension": [{
+        { "operation": { "type": { "code": "read" }, "method": "GET", "url": "${completionExportLocation}", "responseId": "completion-export-poll", "description": "Poll the Content-Location until the job leaves 202", "extension": [{
           "url": "http://ignixa.io/testscript/waitFor",
           "extension": [
             { "url": "pollingStatusCode", "valueInteger": 202 },
