@@ -401,11 +401,13 @@ public sealed class ResultFormatter
 
     private static void AddExtensionToParam(ParameterJsonNode param, string url, string value)
     {
+        var paramMutableNode = ((IMutableJsonNode)param).MutableNode;
+
         // Get or create extension array
-        if (((IMutableJsonNode)param).MutableNode["extension"] is not JsonArray extensionArray)
+        if (paramMutableNode["extension"] is not JsonArray extensionArray)
         {
             extensionArray = new JsonArray();
-            ((IMutableJsonNode)param).MutableNode["extension"] = extensionArray;
+            paramMutableNode["extension"] = extensionArray;
         }
 
         // Add new extension
