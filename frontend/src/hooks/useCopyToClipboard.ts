@@ -1,30 +1,89 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useReducer, useRef } from 'react';
 
-/** Copies `text` to the clipboard and reports success as `copied` for `durationMs`, then resets. */
-export function useCopyToClipboard(text: string, durationMs: number): { copied: boolean; copy: () => void } {
-  const [copied, setCopied] = useState(false);
-  const timeoutRef = useRef<number | null>(null);
+export type CopyStatus = 'idle' | 'copied' | 'failed';
+
+export type CopyStatusEvent = { type: 'copied' } | { type: 'failed' } | { type: 'reset' };
+
+export function copyStatusReducer(_status: CopyStatus, event: CopyStatusEvent): CopyStatus {
+  switch (event.type) {
+    case 'copied':
+      return 'copied';
+    case 'failed':
+      return 'failed';
+    case 'reset':
+      return 'idle';
+  }
+}
+
+function clearCopyFeedbackTimer(timeoutRef: { current: ReturnType<typeof setTimeout> | null }) {
+  if (timeoutRef.current !== null) {
+    clearTimeout(timeoutRef.current);
+    timeoutRef.current = null;
+  }
+}
+
+function useCopyFeedback(text: string, durationMs: number) {
+  const [status, dispatch] = useReducer(copyStatusReducer, 'idle' as CopyStatus);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previousTextRef = useRef(text);
+
+  const resetFeedback = () => {
+    clearCopyFeedbackTimer(timeoutRef);
+    dispatch({ type: 'reset' });
+  };
+
+  const showFeedback = (event: Exclude<CopyStatusEvent, { type: 'reset' }>) => {
+    clearCopyFeedbackTimer(timeoutRef);
+    dispatch(event);
+    timeoutRef.current = setTimeout(() => {
+      timeoutRef.current = null;
+      dispatch({ type: 'reset' });
+    }, durationMs);
+  };
 
   useEffect(() => {
     return () => {
-      if (timeoutRef.current !== null) {
-        window.clearTimeout(timeoutRef.current);
-      }
+      clearCopyFeedbackTimer(timeoutRef);
     };
   }, []);
 
+  useEffect(() => {
+    if (previousTextRef.current !== text) {
+      previousTextRef.current = text;
+      resetFeedback();
+    }
+  }, [text]);
+
+  return { status, showFeedback };
+}
+
+/** Copies `text` to the clipboard and reports success or failure temporarily. */
+export function useCopyToClipboard(
+  text: string,
+  durationMs: number,
+): { copied: boolean; failed: boolean; copy: () => void } {
+  const { status, showFeedback } = useCopyFeedback(text, durationMs);
+
   const copy = () => {
-    navigator.clipboard?.writeText(text).then(
+    const writeText = globalThis.navigator?.clipboard?.writeText;
+    if (!writeText) {
+      showFeedback({ type: 'failed' });
+      return;
+    }
+
+    writeText.call(globalThis.navigator.clipboard, text).then(
       () => {
-        setCopied(true);
-        if (timeoutRef.current !== null) {
-          window.clearTimeout(timeoutRef.current);
-        }
-        timeoutRef.current = window.setTimeout(() => setCopied(false), durationMs);
+        showFeedback({ type: 'copied' });
       },
-      () => undefined,
+      () => {
+        showFeedback({ type: 'failed' });
+      },
     );
   };
 
-  return { copied, copy };
+  return {
+    copied: status === 'copied',
+    failed: status === 'failed',
+    copy,
+  };
 }
