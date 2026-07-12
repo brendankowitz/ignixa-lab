@@ -220,9 +220,8 @@ public sealed class TestScriptRunnerTests
     }
 
     [Theory]
-    [InlineData("""{"resourceType":"TestScript","name":"Bad","status":"active","test":[{"name":"bad","requiresCapability":"direct","extension":{"url":"http://ignixa.io/testscript/requiresCapability","valueString":"direct"},"action":[]}]}""")]
-    [InlineData("""{"resourceType":"TestScript","name":"Bad","status":"active","test":[{"name":"bad","requiresCapability":"direct","extension":[{"url":"http://ignixa.io/testscript/requiresCapability","valueString":"different"}],"action":[]}]}""")]
-    public async Task GivenUploadedMalformedOrConflictingCapabilityMetadata_WhenRun_ThenRequestIsInvalid(string content)
+    [InlineData("""{"resourceType":"TestScript","name":"Bad","status":"active","test":[{"name":"bad","extension":{"url":"http://ignixa.io/testscript/requiresCapability","valueString":"direct"},"action":[]}]}""")]
+    public async Task GivenUploadedMalformedCapabilityExtension_WhenRun_ThenRequestIsInvalid(string content)
     {
         var provider = new RecordingRequestProvider(new TestResponse { StatusCode = 200 });
         var runner = new TestScriptRunner(

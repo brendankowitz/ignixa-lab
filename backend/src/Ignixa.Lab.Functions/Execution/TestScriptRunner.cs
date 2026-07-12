@@ -284,8 +284,7 @@ public sealed class TestScriptRunner(
             ParseResult<TestScriptDefinition> parseResult;
             try
             {
-                var content = TestScriptContentNormalizer.Normalize(uploaded.Content);
-                parseResult = TestScriptParser.Parse(content);
+                parseResult = TestScriptParser.Parse(uploaded.Content);
             }
             catch (Exception ex) when (ex is InvalidDataException or InvalidOperationException or JsonException)
             {

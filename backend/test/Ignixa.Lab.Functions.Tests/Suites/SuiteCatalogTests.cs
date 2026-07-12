@@ -119,9 +119,8 @@ public sealed class SuiteCatalogTests : IDisposable
     }
 
     [Theory]
-    [InlineData("""{"resourceType":"TestScript","name":"Bad","status":"active","test":[{"name":"bad","requiresCapability":"direct","extension":{"url":"http://ignixa.io/testscript/requiresCapability","valueString":"direct"},"action":[]}]}""")]
-    [InlineData("""{"resourceType":"TestScript","name":"Bad","status":"active","test":[{"name":"bad","requiresCapability":"direct","extension":[{"url":"http://ignixa.io/testscript/requiresCapability","valueString":"different"}],"action":[]}]}""")]
-    public void GetSuites_SkipsMalformedOrConflictingCapabilityMetadata(string content)
+    [InlineData("""{"resourceType":"TestScript","name":"Bad","status":"active","test":[{"name":"bad","extension":{"url":"http://ignixa.io/testscript/requiresCapability","valueString":"direct"},"action":[]}]}""")]
+    public void GetSuites_SkipsMalformedCapabilityExtension(string content)
     {
         var file = Path.Combine(_root, "bad.json");
         File.WriteAllText(file, content);
