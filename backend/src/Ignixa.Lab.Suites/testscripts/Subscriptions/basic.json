@@ -107,18 +107,27 @@
       "name": "delete accepts valid outcomes and checks immediate readback",
       "description": "DELETE Subscription/{id} must return exactly 200, 202, or 204. The immediate readback must return 404 or 410 after completed deletion, while 200 is accepted only when the correlated DELETE returned 202 for asynchronous processing.",
       "extension": [
-        { "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3" },
-        { "url": "http://ignixa.io/testscript/statusAlternativePolicy", "valueCode": "subscription-delete-readback-v1" }
+        { "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3" }
       ],
       "action": [
         { "operation": { "type": { "code": "delete" }, "url": "Subscription/ignixa-sub-basic-${runId}", "responseId": "delete-response", "description": "DELETE the run-scoped Subscription" } },
-        { "assert": { "description": "Accepted DELETE response: 200 OK for completed deletion", "responseCode": "200", "warningOnly": true } },
-        { "assert": { "description": "Accepted DELETE response: 202 Accepted for asynchronous deletion", "responseCode": "202", "warningOnly": true } },
-        { "assert": { "description": "Accepted DELETE response: 204 No Content for completed deletion", "responseCode": "204", "warningOnly": true } },
+        { "assert": { "sourceId": "delete-response", "extension": [{ "url": "http://ignixa.io/testscript/assertionAnyOfGroup", "valueString": "delete-status" }], "description": "Accepted DELETE response: 200 OK for completed deletion", "responseCode": "200", "warningOnly": true } },
+        { "assert": { "sourceId": "delete-response", "extension": [{ "url": "http://ignixa.io/testscript/assertionAnyOfGroup", "valueString": "delete-status" }], "description": "Accepted DELETE response: 202 Accepted for asynchronous deletion", "responseCode": "202", "warningOnly": true } },
+        { "assert": { "sourceId": "delete-response", "extension": [{ "url": "http://ignixa.io/testscript/assertionAnyOfGroup", "valueString": "delete-status" }], "description": "Accepted DELETE response: 204 No Content for completed deletion", "responseCode": "204", "warningOnly": true } },
         { "operation": { "type": { "code": "read" }, "url": "Subscription/ignixa-sub-basic-${runId}", "responseId": "after-delete-read", "description": "Immediately read the run-scoped Subscription after the accepted delete" } },
-        { "assert": { "description": "Accepted alternative: 200 OK while an asynchronous delete is still pending", "responseCode": "200", "warningOnly": true } },
-        { "assert": { "description": "Accepted alternative: 410 Gone when the server tracks the deleted resource", "response": "gone", "warningOnly": true } },
-        { "assert": { "description": "Accepted alternative: 404 Not Found when deleted resources are not tracked", "response": "notFound", "warningOnly": true } }
+        { "assert": {
+            "sourceId": "after-delete-read",
+            "extension": [
+              { "url": "http://ignixa.io/testscript/assertionAnyOfGroup", "valueString": "readback" },
+              { "url": "http://ignixa.io/testscript/assertionWhenResponseStatus", "extension": [
+                { "url": "sourceId", "valueString": "delete-response" },
+                { "url": "status", "valueInteger": 202 }
+              ] }
+            ],
+            "description": "Accepted alternative: 200 OK while an asynchronous delete is still pending",
+            "responseCode": "200", "warningOnly": true } },
+        { "assert": { "sourceId": "after-delete-read", "extension": [{ "url": "http://ignixa.io/testscript/assertionAnyOfGroup", "valueString": "readback" }], "description": "Accepted alternative: 410 Gone when the server tracks the deleted resource", "response": "gone", "warningOnly": true } },
+        { "assert": { "sourceId": "after-delete-read", "extension": [{ "url": "http://ignixa.io/testscript/assertionAnyOfGroup", "valueString": "readback" }], "description": "Accepted alternative: 404 Not Found when deleted resources are not tracked", "response": "notFound", "warningOnly": true } }
       ]
     }
   ],
