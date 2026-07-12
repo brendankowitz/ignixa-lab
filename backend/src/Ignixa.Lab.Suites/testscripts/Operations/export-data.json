@@ -1,7 +1,7 @@
 {
   "resourceType": "TestScript",
   "name": "Operations/export-data",
-  "description": "System/Patient/Group $export conformance tests: kick-off (202 + Content-Location), request validation (400 for bad resource type/query params/_since/_till/headers/path traversal), status checks, and the cancel lifecycle. Scenarios requiring actual export completion and blob content verification are not covered (from ExportTests, ExportDataTests, ExportDataValidationTests). Gated on the target advertising the system-level $export operation.",
+  "description": "System/Patient/Group $export conformance tests: kick-off (202 + Content-Location), request validation (400 for bad resource type/query params/_since/_till/headers/path traversal), status checks, job completion, and the cancel lifecycle. Blob content verification is not covered (would require access to the target's storage account) (from ExportTests, ExportDataTests, ExportDataValidationTests). Gated on the target advertising the system-level $export operation.",
   "status": "active",
   "extension": [
     {
@@ -17,7 +17,8 @@
     { "name": "supportedParamsPatientLocation", "sourceId": "supported-params-patient-kickoff", "headerField": "Content-Location", "description": "Content-Location for the Patient-level export kicked off with _since/_type/_container" },
     { "name": "supportedParamsGroupLocation", "sourceId": "supported-params-group-kickoff", "headerField": "Content-Location", "description": "Content-Location for the Group-level export kicked off with _since/_type/_container" },
     { "name": "statusCheckLocation", "sourceId": "status-check-kickoff", "headerField": "Content-Location", "description": "Content-Location used for the immediate status-check test" },
-    { "name": "cancelLifecycleLocation", "sourceId": "cancel-lifecycle-kickoff", "headerField": "Content-Location", "description": "Content-Location used for the cancel-then-status-then-cancel-again lifecycle test" }
+    { "name": "cancelLifecycleLocation", "sourceId": "cancel-lifecycle-kickoff", "headerField": "Content-Location", "description": "Content-Location used for the cancel-then-status-then-cancel-again lifecycle test" },
+    { "name": "completionExportLocation", "sourceId": "completion-export-kickoff", "headerField": "Content-Location", "description": "Content-Location returned by the completion-verification $export kickoff" }
   ],
   "test": [
     {
@@ -38,6 +39,23 @@
         { "assert": { "description": "System-level export kick-off must return 202 Accepted", "sourceId": "system-export-kickoff", "responseCode": "202" } },
         { "assert": { "description": "Content-Location header must be present and non-empty", "sourceId": "system-export-kickoff", "headerField": "Content-Location" } },
         { "operation": { "type": { "code": "delete" }, "method": "DELETE", "url": "${systemExportLocation}", "description": "Best-effort cancel so the job doesn't run to completion" } }
+      ]
+    },
+    {
+      "name": "system-level $export runs to completion and returns a manifest",
+      "description": "Polling the Content-Location status endpoint to completion (via waitFor) must eventually return 200 with a completed export manifest, closing the gap this suite's own description previously called out as uncovered.",
+      "action": [
+        { "operation": { "type": { "code": "$export" }, "method": "GET", "url": "$export", "accept": "application/fhir+json", "requestHeader": [ { "field": "Prefer", "value": "respond-async" } ], "responseId": "completion-export-kickoff", "description": "GET /$export with Accept: application/fhir+json and Prefer: respond-async" } },
+        { "assert": { "description": "Kick-off must return 202 Accepted", "sourceId": "completion-export-kickoff", "responseCode": "202" } },
+        { "operation": { "type": { "code": "read" }, "url": "${completionExportLocation}", "responseId": "completion-export-poll", "description": "Poll the Content-Location until the job leaves 202", "extension": [{
+          "url": "http://ignixa.io/testscript/waitFor",
+          "extension": [
+            { "url": "pollingStatusCode", "valueInteger": 202 },
+            { "url": "maxAttempts", "valueInteger": 60 },
+            { "url": "intervalMs", "valueInteger": 2000 }
+          ]
+        }] } },
+        { "assert": { "description": "Completed export status check must return 200 OK with the manifest", "sourceId": "completion-export-poll", "response": "okay" } }
       ]
     },
     {
