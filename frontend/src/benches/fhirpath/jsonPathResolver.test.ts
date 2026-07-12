@@ -50,7 +50,7 @@ test('second primitive array value James resolves to name[0].given[1]', () => {
   assert.equal(source.slice(result.selection.start, result.selection.end), '"James"');
 });
 
-test('object-valued name key resolves to name', () => {
+test('array-valued name key resolves to name', () => {
   const result = resolveJsonPathAtOffset(source, source.indexOf('"name"') + 2);
 
   assert.equal(result.kind, 'match');
@@ -59,6 +59,18 @@ test('object-valued name key resolves to name', () => {
   }
   assert.equal(result.selection.path, 'name');
   assert.equal(source.slice(result.selection.start, result.selection.end), '"name"');
+});
+
+test('object-valued value-set key resolves to `value-set`', () => {
+  const source = '{"value-set":{"a`b":true}}';
+  const result = resolveJsonPathAtOffset(source, source.indexOf('"value-set"') + 2);
+
+  assert.equal(result.kind, 'match');
+  if (result.kind !== 'match') {
+    return;
+  }
+  assert.equal(result.selection.path, '`value-set`');
+  assert.equal(source.slice(result.selection.start, result.selection.end), '"value-set"');
 });
 
 test('non-bare names and backticks resolve with escaping', () => {
