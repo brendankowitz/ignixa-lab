@@ -219,8 +219,7 @@ public sealed class TestScriptRunner(
         {
             var definition = RunScopedDefinitionPreparer.Prepare(job.Definition);
             var report = await evaluator.ExecuteAsync(definition, cancellationToken, fhirVersion, capabilityStatement);
-            var results = ConformanceReportMapper.Map(report, job.Id, job.Category, job.File);
-            return WarningOnlyStatusAlternativeEnforcer.Apply(results, job.StatusAlternativePlan);
+            return ConformanceReportMapper.Map(report, job.Id, job.Category, job.File);
         }
         catch (OperationCanceledException)
         {
@@ -272,8 +271,7 @@ public sealed class TestScriptRunner(
                 entry.Descriptor.Id,
                 entry.Descriptor.Category,
                 entry.Descriptor.File,
-                entry.Definition,
-                entry.StatusAlternativePlan));
+                entry.Definition));
         }
 
         foreach (var uploaded in request.UploadedTestScripts ?? Array.Empty<UploadedTestScript>())
@@ -284,12 +282,10 @@ public sealed class TestScriptRunner(
             }
 
             ParseResult<TestScriptDefinition> parseResult;
-            StatusAlternativeEnforcementPlan statusAlternativePlan;
             try
             {
                 var content = TestScriptContentNormalizer.Normalize(uploaded.Content);
                 parseResult = TestScriptParser.Parse(content);
-                statusAlternativePlan = StatusAlternativeEnforcementPlan.Parse(content);
             }
             catch (Exception ex) when (ex is InvalidDataException or InvalidOperationException or JsonException)
             {
@@ -305,7 +301,7 @@ public sealed class TestScriptRunner(
             }
 
             var fileName = string.IsNullOrWhiteSpace(uploaded.FileName) ? "uploaded.json" : uploaded.FileName!;
-            jobs.Add(new SuiteJob(fileName, "uploaded", fileName, parseResult.Value, statusAlternativePlan));
+            jobs.Add(new SuiteJob(fileName, "uploaded", fileName, parseResult.Value));
         }
 
         return jobs;
@@ -315,6 +311,5 @@ public sealed class TestScriptRunner(
         string Id,
         string Category,
         string File,
-        TestScriptDefinition Definition,
-        StatusAlternativeEnforcementPlan StatusAlternativePlan);
+        TestScriptDefinition Definition);
 }

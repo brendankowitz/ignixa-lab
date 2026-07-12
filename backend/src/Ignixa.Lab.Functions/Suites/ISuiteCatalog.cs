@@ -1,4 +1,3 @@
-using Ignixa.Lab.Functions.Execution;
 using Ignixa.Lab.Functions.Models;
 using Ignixa.TestScript.Model;
 
@@ -8,8 +7,7 @@ namespace Ignixa.Lab.Functions.Suites;
 public sealed record CatalogEntry(
     SuiteDescriptor Descriptor,
     string FilePath,
-    TestScriptDefinition Definition,
-    StatusAlternativeEnforcementPlan StatusAlternativePlan);
+    TestScriptDefinition Definition);
 
 /// <summary>Provides access to the bundled TestScript suite catalog.</summary>
 public interface ISuiteCatalog
