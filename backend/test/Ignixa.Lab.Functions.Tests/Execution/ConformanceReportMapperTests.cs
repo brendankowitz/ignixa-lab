@@ -266,4 +266,33 @@ public sealed class ConformanceReportMapperTests
 
         result.Id.Should().Be("Solo Script");
     }
+
+    [Fact]
+    public void Map_SurfacesGroupIdAndMembersOnGroupedActions()
+    {
+        var groupedAction = new ActionResult(
+            Label: "grp",
+            Description: "Deleted resource readback",
+            Outcome: TestScriptOutcome.Pass,
+            Message: "assertionAnyOfGroup 'grp': matched alternative 'Alternative: 404 Not Found'",
+            GroupId: "grp",
+            Members:
+            [
+                new AssertionGroupMemberResult("Preferred: 410 Gone", true, false, "Expected response 'gone' but got status 404"),
+                new AssertionGroupMemberResult("Alternative: 404 Not Found", true, true, null),
+            ]);
+
+        var report = Report("GroupedTest", tests:
+        [
+            new TestCaseResult("case", null, [groupedAction], TestScriptOutcome.Pass),
+        ]);
+
+        var results = ConformanceReportMapper.Map(report, "suite-id", "category", "file.json");
+
+        var step = results[0].Steps.Single(s => s.Label == "grp");
+        step.GroupId.Should().Be("grp");
+        step.Members.Should().NotBeNull();
+        step.Members!.Should().HaveCount(2);
+        step.Members![1].Passed.Should().BeTrue();
+    }
 }

@@ -15,4 +15,6 @@ public sealed record ConformanceStep(
     [property: JsonPropertyName("description")] string? Description,
     [property: JsonPropertyName("message")] string? Message,
     [property: JsonPropertyName("request")] ConformanceHttpRequest? Request,
-    [property: JsonPropertyName("response")] ConformanceHttpResponse? Response);
+    [property: JsonPropertyName("response")] ConformanceHttpResponse? Response,
+    [property: JsonPropertyName("group_id")] string? GroupId = null,
+    [property: JsonPropertyName("members")] IReadOnlyList<ConformanceGroupMember>? Members = null);

@@ -39,6 +39,14 @@ export interface ConformanceError {
   received: string | null;
 }
 
+/** One alternative's outcome within a grouped (assertionAnyOfGroup) step. */
+export interface ConformanceGroupMember {
+  description: string | null;
+  applicable: boolean;
+  passed: boolean;
+  message: string | null;
+}
+
 /** A single phase/action within a test case (setup, test, or teardown step). */
 export interface ConformanceStep {
   phase: ConformancePhase;
@@ -50,6 +58,8 @@ export interface ConformanceStep {
   message: string | null;
   request: ConformanceHttpRequest | null;
   response: ConformanceHttpResponse | null;
+  group_id: string | null;
+  members: ConformanceGroupMember[] | null;
 }
 
 /** Result of executing a single TestScript (test case) within a suite. */

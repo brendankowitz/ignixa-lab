@@ -87,6 +87,8 @@ One result per TestScript test case within a suite.
 | `message` | string \| null | Engine message (assertion detail, error text). |
 | `request` | `ConformanceHttpRequest \| null` | Captured request (best-effort). |
 | `response` | `ConformanceHttpResponse \| null` | Captured response (best-effort). |
+| `group_id` | string \| null | Set when this step is an aggregate result for an `assertionAnyOfGroup` — the group identifier from the TestScript. |
+| `members` | `ConformanceGroupMember[] \| null` | Present alongside `group_id`: each alternative's own applicability/pass/fail, for diagnostic display. |
 
 ## `ConformanceError`
 
@@ -94,6 +96,15 @@ One result per TestScript test case within a suite.
 | ----- | ---- | ----------- |
 | `assertion` | string \| null | The assertion (or operation) that failed. |
 | `received` | string \| null | What the server returned. |
+
+## `ConformanceGroupMember`
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `description` | string \| null | The alternative's own description text. |
+| `applicable` | boolean | Whether this alternative's condition matched (always `true` for unconditional members). |
+| `passed` | boolean | Whether this alternative's own criterion passed. |
+| `message` | string \| null | Failure detail for this specific alternative, when applicable and not passed. |
 
 ## `ConformanceHttpRequest` / `ConformanceHttpResponse`
 

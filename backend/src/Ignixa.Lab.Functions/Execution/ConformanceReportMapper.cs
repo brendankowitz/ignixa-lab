@@ -143,7 +143,9 @@ public static class ConformanceReportMapper
                 Description: NullIfEmpty(action.Description),
                 Message: NullIfEmpty(action.Message),
                 Request: ToRequest(action.Exchange?.Request),
-                Response: ToResponse(action.Exchange?.Response));
+                Response: ToResponse(action.Exchange?.Response),
+                GroupId: action.GroupId,
+                Members: action.Members?.Select(m => new ConformanceGroupMember(m.Description, m.Applicable, m.Passed, m.Message)).ToList());
         }
 
         return steps;
