@@ -30,11 +30,13 @@ Each member row shows:
 ```
 {!step.request && !step.response && step.message ? <p className="step__message">{step.message}</p> : null}
 ```
-to showing the message whenever it's present **and** `step.status !== 'pass'`, regardless of whether a request/response was also captured:
+to:
 ```
-{step.message && step.status !== 'pass' ? <p className="step__message">{step.message}</p> : null}
+{step.message && (!hasExchange || step.status !== 'pass') ? <p className="step__message">{step.message}</p> : null}
 ```
-placed alongside (not instead of) the existing request/response rendering. The actual `ConformanceStatus` union is `'pass' | 'fail' | 'error' | 'skipped'` — there is no separate `'warning'` value (warnings already roll up to `'pass'` server-side), so this one condition correctly covers every non-happy-path case without extra branching, and doesn't add clutter to passing steps that happen to carry an incidental message.
+where `hasExchange = step.request !== null || step.response !== null`, placed alongside (not instead of) the existing request/response rendering.
+
+**Why not just `step.message && step.status !== 'pass'`:** assertion-kind steps never have a captured request/response, so the *old* condition was already unconditionally true for them regardless of pass/fail — a passing `assertionAnyOfGroup` aggregate's "matched alternative" message is exactly this case, and it already renders correctly today. Simplifying to a bare `status !== 'pass'` check would regress that (hiding the matched-alternative message on the common, happy-path case). The fix only needs to change behavior for steps that *do* have a captured exchange (operations) — assertion-only steps keep their existing always-show-when-present behavior. The actual `ConformanceStatus` union is `'pass' | 'fail' | 'error' | 'skipped'` — no separate `'warning'` value (warnings already roll up to `'pass'` server-side).
 
 ## Testing
 
