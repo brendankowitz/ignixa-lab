@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using Ignixa.Lab.Functions.Configuration;
 using Microsoft.Extensions.Options;
@@ -17,8 +18,23 @@ public sealed class CapabilityStatementFetcher(
 {
     private static readonly MediaTypeWithQualityHeaderValue FhirJsonAccept = new("application/fhir+json");
 
+    /// <summary>Total attempts (including the first) for a transient failure before giving up.</summary>
+    private const int MaxAttempts = 3;
+
+    private static readonly TimeSpan RetryDelay = TimeSpan.FromMilliseconds(200);
+
     private readonly IgnixaLabOptions _options = options.Value;
 
+    /// <summary>
+    /// Fetches the target's CapabilityStatement, retrying transient failures
+    /// (connection errors, timeouts, HTTP 429/408, and 5xx responses) up to
+    /// <see cref="MaxAttempts"/> times before returning the last failure. A
+    /// single flaky <c>/metadata</c> call used to fail open for the entire run
+    /// (every <c>requiresCapability</c>-gated test running ungated); retrying
+    /// here means that only happens when the target is genuinely down or
+    /// misconfigured, not on a one-off network blip. Non-transient failures
+    /// (e.g. 404, 401) return immediately — retrying them cannot help.
+    /// </summary>
     public async Task<CapabilityStatementFetchResult> FetchAsync(Uri target, CancellationToken cancellationToken)
     {
         var metadataUri = new Uri(target.ToString().TrimEnd('/') + "/metadata");
@@ -26,6 +42,27 @@ public sealed class CapabilityStatementFetcher(
         using var client = httpClientFactory.CreateClient(HttpEvaluatorFactory.HttpClientName);
         client.Timeout = TimeSpan.FromSeconds(_options.HttpTimeoutSeconds);
 
+        (CapabilityStatementFetchResult Result, bool IsTransient) attempt;
+        var attemptNumber = 0;
+        do
+        {
+            attemptNumber++;
+            attempt = await TryFetchOnceAsync(client, target, metadataUri, cancellationToken);
+            if (attempt.Result.Success || !attempt.IsTransient || attemptNumber >= MaxAttempts)
+            {
+                break;
+            }
+
+            await Task.Delay(RetryDelay, cancellationToken);
+        }
+        while (true);
+
+        return attempt.Result;
+    }
+
+    private static async Task<(CapabilityStatementFetchResult Result, bool IsTransient)> TryFetchOnceAsync(
+        HttpClient client, Uri target, Uri metadataUri, CancellationToken cancellationToken)
+    {
         using var request = new HttpRequestMessage(HttpMethod.Get, metadataUri);
         request.Headers.Accept.Add(FhirJsonAccept);
 
@@ -36,30 +73,33 @@ public sealed class CapabilityStatementFetcher(
         }
         catch (HttpRequestException ex)
         {
-            return CapabilityStatementFetchResult.Failed(
+            return (CapabilityStatementFetchResult.Failed(
                 $"Could not reach {target} for capability metadata: {ex.Message}",
-                CapabilityStatementFetchFailureKind.Unreachable);
+                CapabilityStatementFetchFailureKind.Unreachable), IsTransient: true);
         }
         catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return CapabilityStatementFetchResult.Failed(
+            return (CapabilityStatementFetchResult.Failed(
                 $"Request to {target} timed out while fetching capability metadata.",
-                CapabilityStatementFetchFailureKind.Timeout);
+                CapabilityStatementFetchFailureKind.Timeout), IsTransient: true);
         }
 
         using (response)
         {
             if (!response.IsSuccessStatusCode)
             {
-                return CapabilityStatementFetchResult.Failed(
+                return (CapabilityStatementFetchResult.Failed(
                     $"{target} returned HTTP {(int)response.StatusCode} for /metadata.",
-                    CapabilityStatementFetchFailureKind.NonSuccessStatus);
+                    CapabilityStatementFetchFailureKind.NonSuccessStatus), IsTransient: IsTransientStatus(response.StatusCode));
             }
 
             var body = await response.Content.ReadAsStringAsync(cancellationToken);
-            return CapabilityStatementFetchResult.Succeeded(body);
+            return (CapabilityStatementFetchResult.Succeeded(body), IsTransient: false);
         }
     }
+
+    private static bool IsTransientStatus(HttpStatusCode statusCode) =>
+        statusCode is HttpStatusCode.RequestTimeout or HttpStatusCode.TooManyRequests || (int)statusCode >= 500;
 }
 
 public enum CapabilityStatementFetchFailureKind

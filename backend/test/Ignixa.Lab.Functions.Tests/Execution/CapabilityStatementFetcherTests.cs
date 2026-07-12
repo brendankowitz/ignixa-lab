@@ -58,6 +58,72 @@ public sealed class CapabilityStatementFetcherTests
         result.FailureKind.Should().Be(CapabilityStatementFetchFailureKind.Timeout);
     }
 
+    [Fact]
+    public async Task GivenTransientConnectionFailuresThenSuccess_WhenFetching_ThenRetriesAndReturnsSuccess()
+    {
+        const string body = """{"resourceType":"CapabilityStatement","status":"active"}""";
+        var factory = new SequencedResponseHttpClientFactory(
+            _ => throw new HttpRequestException("simulated transient connection failure"),
+            _ => throw new HttpRequestException("simulated transient connection failure"),
+            _ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body) });
+        var fetcher = new CapabilityStatementFetcher(factory, Options.Create(new IgnixaLabOptions()));
+
+        var result = await fetcher.FetchAsync(Target, CancellationToken.None);
+
+        result.Success.Should().BeTrue();
+        result.Json.Should().Be(body);
+        factory.CallCount.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task GivenPersistentServerError_WhenFetching_ThenRetriesUpToLimitThenFails()
+    {
+        var factory = new SequencedResponseHttpClientFactory(
+            _ => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable),
+            _ => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable),
+            _ => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
+        var fetcher = new CapabilityStatementFetcher(factory, Options.Create(new IgnixaLabOptions()));
+
+        var result = await fetcher.FetchAsync(Target, CancellationToken.None);
+
+        result.Success.Should().BeFalse();
+        result.FailureKind.Should().Be(CapabilityStatementFetchFailureKind.NonSuccessStatus);
+        factory.CallCount.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task GivenNonTransientClientError_WhenFetching_ThenDoesNotRetry()
+    {
+        var factory = new SequencedResponseHttpClientFactory(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
+        var fetcher = new CapabilityStatementFetcher(factory, Options.Create(new IgnixaLabOptions()));
+
+        var result = await fetcher.FetchAsync(Target, CancellationToken.None);
+
+        result.Success.Should().BeFalse();
+        result.FailureKind.Should().Be(CapabilityStatementFetchFailureKind.NonSuccessStatus);
+        factory.CallCount.Should().Be(1);
+    }
+
+    private sealed class SequencedResponseHttpClientFactory(params Func<HttpRequestMessage, HttpResponseMessage>[] responses)
+        : IHttpClientFactory
+    {
+        private readonly Func<HttpRequestMessage, HttpResponseMessage>[] _responses = responses;
+
+        public int CallCount { get; private set; }
+
+        public HttpClient CreateClient(string name) => new(new SequencedHandler(this));
+
+        private sealed class SequencedHandler(SequencedResponseHttpClientFactory owner) : HttpMessageHandler
+        {
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                var index = owner.CallCount;
+                owner.CallCount++;
+                return Task.FromResult(owner._responses[index](request));
+            }
+        }
+    }
+
     private sealed class FixedResponseHttpClientFactory(HttpStatusCode statusCode, string body) : IHttpClientFactory
     {
         public HttpClient CreateClient(string name) => new(new FixedResponseHandler(statusCode, body));
