@@ -58,7 +58,7 @@ public sealed class SuiteCatalog : ISuiteCatalog
         {
             try
             {
-                var parseResult = TestScriptParser.ParseFile(file);
+                var parseResult = TestScriptParser.Parse(File.ReadAllText(file));
                 if (!parseResult.IsSuccess || parseResult.Value is null)
                 {
                     _logger.LogWarning("Skipping {File}: not a valid TestScript.", file);
@@ -66,7 +66,10 @@ public sealed class SuiteCatalog : ISuiteCatalog
                 }
 
                 var descriptor = BuildDescriptor(directory, file, parseResult.Value);
-                entries.Add(new CatalogEntry(descriptor, file, parseResult.Value));
+                entries.Add(new CatalogEntry(
+                    descriptor,
+                    file,
+                    parseResult.Value));
             }
             catch (Exception ex)
             {

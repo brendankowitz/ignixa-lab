@@ -40,12 +40,18 @@
         { "operation": { "type": { "code": "delete" }, "url": "Patient/${deleteBasicId}", "responseId": "delete-basic-response", "description": "Delete the Patient" } },
         { "assert": { "description": "Delete must return a 2xx success status", "response": "okay" } },
         { "operation": { "type": { "code": "read" }, "url": "Patient/${deleteBasicId}", "responseId": "after-delete-read-response", "description": "Attempt to read the deleted Patient" } },
-        { "assert": { "description": "Primary: expect 410 Gone", "response": "gone", "warningOnly": false } },
-        { "assert": { "description": "Alternative: 404 Not Found is also accepted", "response": "notFound", "warningOnly": true } },
+        { "assert": { "sourceId": "after-delete-read-response", "extension": [{ "url": "http://ignixa.io/testscript/assertionAnyOfGroup", "valueString": "deleted-resource-readback" }], "description": "Preferred: 410 Gone for a deleted resource (warningOnly: FHIR also permits 404 when deleted resources are not tracked)", "response": "gone", "warningOnly": true } },
+        { "assert": { "sourceId": "after-delete-read-response", "extension": [{ "url": "http://ignixa.io/testscript/assertionAnyOfGroup", "valueString": "deleted-resource-readback" }], "description": "Alternative: 404 Not Found is accepted when the server does not track deleted resources", "response": "notFound", "warningOnly": true } },
         { "operation": { "type": { "code": "vread" }, "url": "Patient/${deleteBasicId}/_history/${deleteBasicVersion}", "responseId": "vread-original-response", "description": "vread the pre-delete version of the Patient" } },
         { "assert": { "description": "vread of the pre-delete version must still return HTTP 200", "response": "okay" } },
         { "assert": { "description": "Response body must be a Patient", "resource": "Patient" } },
         { "assert": { "description": "Returned id must match the deleted Patient's id", "expression": "Patient.id", "value": "${deleteBasicId}", "operator": "equals" } }
+      ],
+      "extension": [
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='Patient').interaction.where(code='vread').exists() and rest.resource.where(type='Patient').where(versioning.exists() and versioning != 'no-version').exists()"
+        }
       ]
     },
     {

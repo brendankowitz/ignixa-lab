@@ -1,8 +1,11 @@
 {
   "resourceType": "TestScript",
   "name": "Search/custom-search-param",
-  "description": "Custom SearchParameter registration conformance tests (from CustomSearchParamTests): invalid SearchParameter definitions (bad FHIRPath, non-existent target property, invalid base/type, missing required fields, type/expression mismatch) are rejected with HTTP 400 and an OperationOutcome error. The MS FHIR Server-specific 128-character SearchParameter.url length cap is covered separately in Microsoft/ms-search-parameter-url-length.json.",
+  "description": "Informational SearchParameter persistence checks: semantic rejection at write time is server validation policy, not universally required base-FHIR persistence behavior. The MS FHIR Server-specific 128-character SearchParameter.url length cap is covered separately in Microsoft/ms-search-parameter-url-length.json.",
   "status": "active",
+  "extension": [
+    { "url": "http://ignixa.io/testscript/requiresCapability", "valueString": "rest.resource.where(type='SearchParameter').interaction.where(code='update').exists() and rest.resource.where(type='SearchParameter').updateCreate = true" }
+  ],
   "fixture": [
     {
       "id": "sp-bad-syntax",
@@ -144,98 +147,98 @@
   "test": [
     {
       "name": "invalid SearchParameter: bad FHIRPath expression syntax is rejected",
-      "description": "A SearchParameter whose expression is not valid FHIRPath ('bad syntax') must be rejected with HTTP 400 and an OperationOutcome error/fatal issue.",
+      "description": "Informational persistence-policy check for a SearchParameter whose expression is not valid FHIRPath ('bad syntax').",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "update" }, "url": "SearchParameter/ignixa-sp-badsyntax", "sourceId": "sp-bad-syntax", "description": "PUT SearchParameter/ignixa-sp-badsyntax (bad FHIRPath syntax)" } },
-        { "assert": { "description": "Must return HTTP 400 Bad Request", "response": "bad" } },
-        { "assert": { "description": "Response body must be an OperationOutcome", "resource": "OperationOutcome" } },
-        { "assert": { "description": "OperationOutcome must contain an error or fatal issue", "expression": "OperationOutcome.issue.where(severity = 'error' or severity = 'fatal').exists()" } },
-        { "assert": { "description": "Diagnostics should mention the invalid search parameter definition (warningOnly: exact wording is MS FHIR Server-specific)", "expression": "OperationOutcome.issue.where(diagnostics.contains('invalid')).exists()", "warningOnly": true } }
+        { "assert": { "description": "Informational persistence-policy check: server should return HTTP 400 Bad Request", "response": "bad", "warningOnly": true } },
+        { "assert": { "description": "Informational persistence-policy check: response should be an OperationOutcome", "resource": "OperationOutcome", "warningOnly": true } },
+        { "assert": { "description": "Informational persistence-policy check: OperationOutcome should contain an error or fatal issue", "expression": "OperationOutcome.issue.where(severity = 'error' or severity = 'fatal').exists()", "warningOnly": true } },
+        { "assert": { "description": "Informational persistence-policy check: diagnostics should mention the invalid search parameter definition", "expression": "OperationOutcome.issue.where(diagnostics.contains('invalid')).exists()", "warningOnly": true } }
       ]
     },
     {
       "name": "invalid SearchParameter: expression references a non-existent property",
-      "description": "A SearchParameter whose expression is Encounter.diagnosis.foo ('foo' does not exist on Encounter.diagnosis) must be rejected with HTTP 400 and an OperationOutcome error/fatal issue.",
+      "description": "Informational persistence-policy check for a SearchParameter whose expression references the non-existent Encounter.diagnosis.foo property.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "update" }, "url": "SearchParameter/ignixa-sp-wrongproperty", "sourceId": "sp-wrong-property", "description": "PUT SearchParameter/ignixa-sp-wrongproperty (Encounter.diagnosis.foo)" } },
-        { "assert": { "description": "Must return HTTP 400 Bad Request", "response": "bad" } },
-        { "assert": { "description": "Response body must be an OperationOutcome", "resource": "OperationOutcome" } },
-        { "assert": { "description": "OperationOutcome must contain an error or fatal issue", "expression": "OperationOutcome.issue.where(severity = 'error' or severity = 'fatal').exists()" } },
-        { "assert": { "description": "Diagnostics should mention Encounter.diagnosis.foo (warningOnly: exact wording is MS FHIR Server-specific)", "expression": "OperationOutcome.issue.where(diagnostics.contains('Encounter.diagnosis.foo')).exists()", "warningOnly": true } }
+        { "assert": { "description": "Informational persistence-policy check: server should return HTTP 400 Bad Request", "response": "bad", "warningOnly": true } },
+        { "assert": { "description": "Informational persistence-policy check: response should be an OperationOutcome", "resource": "OperationOutcome", "warningOnly": true } },
+        { "assert": { "description": "Informational persistence-policy check: OperationOutcome should contain an error or fatal issue", "expression": "OperationOutcome.issue.where(severity = 'error' or severity = 'fatal').exists()", "warningOnly": true } },
+        { "assert": { "description": "Informational persistence-policy check: diagnostics should mention Encounter.diagnosis.foo", "expression": "OperationOutcome.issue.where(diagnostics.contains('Encounter.diagnosis.foo')).exists()", "warningOnly": true } }
       ]
     },
     {
       "name": "invalid SearchParameter: invalid base resource type",
-      "description": "A SearchParameter with base=['foo'] ('foo' is not a valid resource type) must be rejected with HTTP 400 and an OperationOutcome error/fatal issue.",
+      "description": "Informational persistence-policy check for a SearchParameter whose base contains the invalid resource type 'foo'.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "update" }, "url": "SearchParameter/ignixa-sp-invalidbase", "sourceId": "sp-invalid-base", "description": "PUT SearchParameter/ignixa-sp-invalidbase (base=['foo'])" } },
-        { "assert": { "description": "Must return HTTP 400 Bad Request", "response": "bad" } },
-        { "assert": { "description": "Response body must be an OperationOutcome", "resource": "OperationOutcome" } },
-        { "assert": { "description": "OperationOutcome must contain an error or fatal issue", "expression": "OperationOutcome.issue.where(severity = 'error' or severity = 'fatal').exists()" } },
-        { "assert": { "description": "Diagnostics should mention 'foo' is not a valid resource type (warningOnly: exact wording is MS FHIR Server-specific)", "expression": "OperationOutcome.issue.where(diagnostics.contains('foo')).exists()", "warningOnly": true } }
+        { "assert": { "description": "Informational persistence-policy check: server should return HTTP 400 Bad Request", "response": "bad", "warningOnly": true } },
+        { "assert": { "description": "Informational persistence-policy check: response should be an OperationOutcome", "resource": "OperationOutcome", "warningOnly": true } },
+        { "assert": { "description": "Informational persistence-policy check: OperationOutcome should contain an error or fatal issue", "expression": "OperationOutcome.issue.where(severity = 'error' or severity = 'fatal').exists()", "warningOnly": true } },
+        { "assert": { "description": "Informational persistence-policy check: diagnostics should mention the invalid resource type", "expression": "OperationOutcome.issue.where(diagnostics.contains('foo')).exists()", "warningOnly": true } }
       ]
     },
     {
       "name": "invalid SearchParameter: invalid search parameter type",
-      "description": "A SearchParameter with type='foo' ('foo' is not a valid SearchParamType) must be rejected with HTTP 400 and an OperationOutcome error/fatal issue.",
+      "description": "Informational persistence-policy check for a SearchParameter whose type is the invalid code 'foo'.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "update" }, "url": "SearchParameter/ignixa-sp-invalidtype", "sourceId": "sp-invalid-type", "description": "PUT SearchParameter/ignixa-sp-invalidtype (type='foo')" } },
-        { "assert": { "description": "Must return HTTP 400 Bad Request", "response": "bad" } },
-        { "assert": { "description": "Response body must be an OperationOutcome", "resource": "OperationOutcome" } },
-        { "assert": { "description": "OperationOutcome must contain an error or fatal issue", "expression": "OperationOutcome.issue.where(severity = 'error' or severity = 'fatal').exists()" } },
-        { "assert": { "description": "Diagnostics should mention 'foo' is not a valid SearchParamType (warningOnly: exact wording is MS FHIR Server-specific)", "expression": "OperationOutcome.issue.where(diagnostics.contains('foo')).exists()", "warningOnly": true } }
+        { "assert": { "description": "Informational persistence-policy check: server should return HTTP 400 Bad Request", "response": "bad", "warningOnly": true } },
+        { "assert": { "description": "Informational persistence-policy check: response should be an OperationOutcome", "resource": "OperationOutcome", "warningOnly": true } },
+        { "assert": { "description": "Informational persistence-policy check: OperationOutcome should contain an error or fatal issue", "expression": "OperationOutcome.issue.where(severity = 'error' or severity = 'fatal').exists()", "warningOnly": true } },
+        { "assert": { "description": "Informational persistence-policy check: diagnostics should mention the invalid SearchParamType", "expression": "OperationOutcome.issue.where(diagnostics.contains('foo')).exists()", "warningOnly": true } }
       ]
     },
     {
       "name": "invalid SearchParameter: missing base (empty array)",
-      "description": "A SearchParameter with base=[] (base has cardinality 1..*) must be rejected with HTTP 400 and an OperationOutcome error/fatal issue.",
+      "description": "Informational persistence-policy check for a SearchParameter whose base is empty.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "update" }, "url": "SearchParameter/ignixa-sp-missingbase", "sourceId": "sp-missing-base", "description": "PUT SearchParameter/ignixa-sp-missingbase (base=[])" } },
-        { "assert": { "description": "Must return HTTP 400 Bad Request", "response": "bad" } },
-        { "assert": { "description": "Response body must be an OperationOutcome", "resource": "OperationOutcome" } },
-        { "assert": { "description": "OperationOutcome must contain an error or fatal issue", "expression": "OperationOutcome.issue.where(severity = 'error' or severity = 'fatal').exists()" } },
-        { "assert": { "description": "Diagnostics should mention cardinality (warningOnly: exact wording is MS FHIR Server-specific)", "expression": "OperationOutcome.issue.where(diagnostics.contains('cardinality')).exists()", "warningOnly": true } }
+        { "assert": { "description": "Informational persistence-policy check: server should return HTTP 400 Bad Request", "response": "bad", "warningOnly": true } },
+        { "assert": { "description": "Informational persistence-policy check: response should be an OperationOutcome", "resource": "OperationOutcome", "warningOnly": true } },
+        { "assert": { "description": "Informational persistence-policy check: OperationOutcome should contain an error or fatal issue", "expression": "OperationOutcome.issue.where(severity = 'error' or severity = 'fatal').exists()", "warningOnly": true } },
+        { "assert": { "description": "Informational persistence-policy check: diagnostics should mention cardinality", "expression": "OperationOutcome.issue.where(diagnostics.contains('cardinality')).exists()", "warningOnly": true } }
       ]
     },
     {
       "name": "invalid SearchParameter: missing expression (empty string)",
-      "description": "A SearchParameter with expression='' must be rejected with HTTP 400 and an OperationOutcome error/fatal issue.",
+      "description": "Informational persistence-policy check for a SearchParameter whose expression is empty.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "update" }, "url": "SearchParameter/ignixa-sp-missingexpression", "sourceId": "sp-missing-expression", "description": "PUT SearchParameter/ignixa-sp-missingexpression (expression='')" } },
-        { "assert": { "description": "Must return HTTP 400 Bad Request", "response": "bad" } },
-        { "assert": { "description": "Response body must be an OperationOutcome", "resource": "OperationOutcome" } },
-        { "assert": { "description": "OperationOutcome must contain an error or fatal issue", "expression": "OperationOutcome.issue.where(severity = 'error' or severity = 'fatal').exists()" } },
-        { "assert": { "description": "Diagnostics should mention the expression is not supported (warningOnly: exact wording is MS FHIR Server-specific)", "expression": "OperationOutcome.issue.where(diagnostics.contains('not supported')).exists()", "warningOnly": true } }
+        { "assert": { "description": "Informational persistence-policy check: server should return HTTP 400 Bad Request", "response": "bad", "warningOnly": true } },
+        { "assert": { "description": "Informational persistence-policy check: response should be an OperationOutcome", "resource": "OperationOutcome", "warningOnly": true } },
+        { "assert": { "description": "Informational persistence-policy check: OperationOutcome should contain an error or fatal issue", "expression": "OperationOutcome.issue.where(severity = 'error' or severity = 'fatal').exists()", "warningOnly": true } },
+        { "assert": { "description": "Informational persistence-policy check: diagnostics should mention unsupported expression handling", "expression": "OperationOutcome.issue.where(diagnostics.contains('not supported')).exists()", "warningOnly": true } }
       ]
     },
     {
       "name": "invalid SearchParameter: missing type (empty string)",
-      "description": "A SearchParameter with type='' (type has cardinality 1..1) must be rejected with HTTP 400 and an OperationOutcome error/fatal issue.",
+      "description": "Informational persistence-policy check for a SearchParameter whose type is empty.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "update" }, "url": "SearchParameter/ignixa-sp-missingtype", "sourceId": "sp-missing-type", "description": "PUT SearchParameter/ignixa-sp-missingtype (type='')" } },
-        { "assert": { "description": "Must return HTTP 400 Bad Request", "response": "bad" } },
-        { "assert": { "description": "Response body must be an OperationOutcome", "resource": "OperationOutcome" } },
-        { "assert": { "description": "OperationOutcome must contain an error or fatal issue", "expression": "OperationOutcome.issue.where(severity = 'error' or severity = 'fatal').exists()" } },
-        { "assert": { "description": "Diagnostics should mention cardinality (warningOnly: exact wording is MS FHIR Server-specific)", "expression": "OperationOutcome.issue.where(diagnostics.contains('cardinality')).exists()", "warningOnly": true } }
+        { "assert": { "description": "Informational persistence-policy check: server should return HTTP 400 Bad Request", "response": "bad", "warningOnly": true } },
+        { "assert": { "description": "Informational persistence-policy check: response should be an OperationOutcome", "resource": "OperationOutcome", "warningOnly": true } },
+        { "assert": { "description": "Informational persistence-policy check: OperationOutcome should contain an error or fatal issue", "expression": "OperationOutcome.issue.where(severity = 'error' or severity = 'fatal').exists()", "warningOnly": true } },
+        { "assert": { "description": "Informational persistence-policy check: diagnostics should mention cardinality", "expression": "OperationOutcome.issue.where(diagnostics.contains('cardinality')).exists()", "warningOnly": true } }
       ]
     },
     {
       "name": "invalid SearchParameter: type incompatible with the expression's target (unsupported type)",
-      "description": "A SearchParameter with type='quantity' but an expression (Encounter.diagnosis.condition) that resolves to a reference, not a quantity, must be rejected with HTTP 400 and an OperationOutcome error/fatal issue.",
+      "description": "Informational persistence-policy check for a SearchParameter whose quantity type is incompatible with a reference-valued expression.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
         { "operation": { "type": { "code": "update" }, "url": "SearchParameter/ignixa-sp-unsupportedtype", "sourceId": "sp-unsupported-type", "description": "PUT SearchParameter/ignixa-sp-unsupportedtype (type='quantity' on a reference expression)" } },
-        { "assert": { "description": "Must return HTTP 400 Bad Request", "response": "bad" } },
-        { "assert": { "description": "Response body must be an OperationOutcome", "resource": "OperationOutcome" } },
-        { "assert": { "description": "OperationOutcome must contain an error or fatal issue", "expression": "OperationOutcome.issue.where(severity = 'error' or severity = 'fatal').exists()" } },
-        { "assert": { "description": "Diagnostics should mention the type is not supported (warningOnly: exact wording is MS FHIR Server-specific)", "expression": "OperationOutcome.issue.where(diagnostics.contains('not supported')).exists()", "warningOnly": true } }
+        { "assert": { "description": "Informational persistence-policy check: server should return HTTP 400 Bad Request", "response": "bad", "warningOnly": true } },
+        { "assert": { "description": "Informational persistence-policy check: response should be an OperationOutcome", "resource": "OperationOutcome", "warningOnly": true } },
+        { "assert": { "description": "Informational persistence-policy check: OperationOutcome should contain an error or fatal issue", "expression": "OperationOutcome.issue.where(severity = 'error' or severity = 'fatal').exists()", "warningOnly": true } },
+        { "assert": { "description": "Informational persistence-policy check: diagnostics should mention unsupported type handling", "expression": "OperationOutcome.issue.where(diagnostics.contains('not supported')).exists()", "warningOnly": true } }
       ]
     }
   ],

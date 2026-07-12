@@ -83,7 +83,7 @@ function StatusChip({ statusCode }: { statusCode: number }) {
   );
 }
 
-function statusVariant(statusCode: number): 'success' | 'redirect' | 'warn' | 'fail' | 'neutral' {
+export function statusVariant(statusCode: number): 'success' | 'redirect' | 'warn' | 'fail' | 'neutral' {
   if (statusCode >= 200 && statusCode < 300) return 'success';
   if (statusCode >= 300 && statusCode < 400) return 'redirect';
   if (statusCode >= 400 && statusCode < 500) return 'warn';

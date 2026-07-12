@@ -218,7 +218,7 @@ public sealed class ResultFormatter
         }
 
         var outcomePart = new ParameterJsonNode { Name = "debugOutcome" };
-        outcomePart.MutableNode["resource"] = JsonNode.Parse(outcome.SerializeToString());
+        ((IMutableJsonNode)outcomePart).MutableNode["resource"] = JsonNode.Parse(outcome.SerializeToString());
         configParam.Part.Add(outcomePart);
     }
 
@@ -276,7 +276,7 @@ public sealed class ResultFormatter
             {
                 // For complex types, serialize using Children() to get proper FHIR structure
                 var json = SerializeElementToJson(outputValue);
-                resultPart.MutableNode[$"value{outputValue.InstanceType}"] = JsonNode.Parse(json);
+                ((IMutableJsonNode)resultPart).MutableNode[$"value{outputValue.InstanceType}"] = JsonNode.Parse(json);
             }
         }
 
@@ -305,7 +305,7 @@ public sealed class ResultFormatter
                 {
                     // For complex types, serialize using Children() to get proper FHIR structure
                     var json = SerializeElementToJson(element);
-                    elementPart.MutableNode[$"value{element.InstanceType}"] = JsonNode.Parse(json);
+                    ((IMutableJsonNode)elementPart).MutableNode[$"value{element.InstanceType}"] = JsonNode.Parse(json);
                 }
             }
         }
@@ -378,7 +378,7 @@ public sealed class ResultFormatter
     private static void AddResourcePart(ParameterJsonNode parent, string name, ResourceJsonNode resource)
     {
         var part = new ParameterJsonNode { Name = name };
-        part.MutableNode["resource"] = JsonNode.Parse(resource.SerializeToString());
+        ((IMutableJsonNode)part).MutableNode["resource"] = JsonNode.Parse(resource.SerializeToString());
         parent.Part.Add(part);
     }
 
@@ -401,11 +401,13 @@ public sealed class ResultFormatter
 
     private static void AddExtensionToParam(ParameterJsonNode param, string url, string value)
     {
+        var paramMutableNode = ((IMutableJsonNode)param).MutableNode;
+
         // Get or create extension array
-        if (param.MutableNode["extension"] is not JsonArray extensionArray)
+        if (paramMutableNode["extension"] is not JsonArray extensionArray)
         {
             extensionArray = new JsonArray();
-            param.MutableNode["extension"] = extensionArray;
+            paramMutableNode["extension"] = extensionArray;
         }
 
         // Add new extension

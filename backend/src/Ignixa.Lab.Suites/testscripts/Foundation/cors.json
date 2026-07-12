@@ -1,12 +1,12 @@
 {
   "resourceType": "TestScript",
   "name": "Foundation/cors",
-  "description": "CORS preflight conformance tests (from CorsTests): an OPTIONS request to Patient with Origin/Access-Control-Request-* headers must return 204 No Content with the appropriate Access-Control-Allow-Origin/Methods/Headers and Max-Age response headers. The Allow-Headers value checks are warningOnly since header casing may vary by server.",
+  "description": "Informational CORS preflight checks (from CorsTests). CORS is HTTP hosting behavior, not universal FHIR conformance, so every assertion is warningOnly.",
   "status": "active",
   "test": [
     {
       "name": "OPTIONS preflight for Patient returns 204 with the appropriate CORS response headers",
-      "description": "An OPTIONS request with Origin, Access-Control-Request-Method: PUT, and Access-Control-Request-Headers: authorization,content-type must return HTTP 204 No Content and echo back the allowed origin/methods/headers plus a max-age of 1440 seconds.",
+      "description": "Informational only: CORS is HTTP hosting behavior, not universal FHIR conformance. This OPTIONS request checks the configured origin, methods, headers, and max-age.",
       "action": [
         {
           "operation": {
@@ -19,44 +19,48 @@
               { "field": "Access-Control-Request-Headers", "value": "authorization,content-type" }
             ],
             "responseId": "cors-response",
-            "description": "Send a CORS preflight OPTIONS request to Patient with Origin and Access-Control-Request-* headers"
+            "description": "Send an informational CORS preflight request; CORS is HTTP hosting behavior, not universal FHIR conformance"
           }
         },
         {
           "assert": {
-            "description": "Preflight OPTIONS request must return HTTP 204 No Content",
+            "description": "Informational CORS hosting check: preflight OPTIONS should return HTTP 204 No Content",
             "sourceId": "cors-response",
-            "response": "noContent"
+            "response": "noContent",
+            "warningOnly": true
           }
         },
         {
           "assert": {
-            "description": "Access-Control-Allow-Origin must reflect the requesting origin",
+            "description": "Informational CORS hosting check: Access-Control-Allow-Origin should reflect the requesting origin",
             "sourceId": "cors-response",
             "headerField": "Access-Control-Allow-Origin",
             "operator": "contains",
-            "value": "https://localhost:6001"
+            "value": "https://localhost:6001",
+            "warningOnly": true
           }
         },
         {
           "assert": {
-            "description": "Access-Control-Allow-Methods must be present and include the requested method",
+            "description": "Informational CORS hosting check: Access-Control-Allow-Methods should include the requested method",
             "sourceId": "cors-response",
             "headerField": "Access-Control-Allow-Methods",
             "operator": "contains",
-            "value": "PUT"
+            "value": "PUT",
+            "warningOnly": true
           }
         },
         {
           "assert": {
-            "description": "Access-Control-Allow-Headers must be present",
+            "description": "Informational CORS hosting check: Access-Control-Allow-Headers should be present",
             "sourceId": "cors-response",
-            "headerField": "Access-Control-Allow-Headers"
+            "headerField": "Access-Control-Allow-Headers",
+            "warningOnly": true
           }
         },
         {
           "assert": {
-            "description": "Access-Control-Allow-Headers should include 'authorization' (warningOnly: casing may vary by server)",
+            "description": "Informational CORS hosting check: Access-Control-Allow-Headers should include 'authorization' (casing may vary)",
             "sourceId": "cors-response",
             "headerField": "Access-Control-Allow-Headers",
             "operator": "contains",
@@ -66,7 +70,7 @@
         },
         {
           "assert": {
-            "description": "Access-Control-Allow-Headers should include 'content-type' (warningOnly: casing may vary by server)",
+            "description": "Informational CORS hosting check: Access-Control-Allow-Headers should include 'content-type' (casing may vary)",
             "sourceId": "cors-response",
             "headerField": "Access-Control-Allow-Headers",
             "operator": "contains",
@@ -76,11 +80,12 @@
         },
         {
           "assert": {
-            "description": "Access-Control-Max-Age must be 1440 seconds",
+            "description": "Informational CORS hosting check: Access-Control-Max-Age should be 1440 seconds",
             "sourceId": "cors-response",
             "headerField": "Access-Control-Max-Age",
             "operator": "equals",
-            "value": "1440"
+            "value": "1440",
+            "warningOnly": true
           }
         }
       ]

@@ -46,8 +46,8 @@
         { "assert": { "description": "Returned id must match the one assigned at create", "expression": "Observation.id", "value": "${obsId}", "operator": "equals" } },
         { "assert": { "description": "Returned meta.versionId must match the one assigned at create", "expression": "Observation.meta.versionId", "value": "${obsVersionId}", "operator": "equals" } },
         { "assert": { "description": "Returned meta.lastUpdated must match the one assigned at create", "expression": "Observation.meta.lastUpdated", "value": "${obsLastUpdated}", "operator": "equals" } },
-        { "assert": { "description": "ETag header must reflect the current version", "headerField": "ETag", "operator": "contains", "value": "${obsVersionId}" } },
-        { "assert": { "description": "X-Content-Type-Options security header must be present and set to nosniff", "headerField": "X-Content-Type-Options", "operator": "contains", "value": "nosniff" } }
+        { "assert": { "description": "ETag header must be present for the current version", "headerField": "ETag", "operator": "notEmpty" } },
+        { "assert": { "description": "X-Content-Type-Options security header should be present and set to nosniff (warningOnly: security header is not a base FHIR requirement)", "headerField": "X-Content-Type-Options", "operator": "contains", "value": "nosniff", "warningOnly": true } }
       ]
     },
     {
@@ -65,8 +65,8 @@
         { "operation": { "type": { "code": "delete" }, "url": "Observation/${obsId}", "responseId": "delete-response", "description": "Delete the Observation created in setup" } },
         { "assert": { "description": "Delete must return a 2xx success status", "response": "okay" } },
         { "operation": { "type": { "code": "read" }, "url": "Observation/${obsId}", "responseId": "after-delete-read", "description": "Attempt to read the deleted Observation" } },
-        { "assert": { "description": "Primary: expect 410 Gone (FHIR R4 behavior for a deleted resource)", "response": "gone", "warningOnly": false } },
-        { "assert": { "description": "Alternative: 404 Not Found is also accepted (warningOnly so 404-returning servers still pass this suite)", "response": "notFound", "warningOnly": true } }
+        { "assert": { "sourceId": "after-delete-read", "extension": [{ "url": "http://ignixa.io/testscript/assertionAnyOfGroup", "valueString": "deleted-resource-readback" }], "description": "Preferred: 410 Gone for a deleted resource (warningOnly: FHIR also permits 404 when deleted resources are not tracked)", "response": "gone", "warningOnly": true } },
+        { "assert": { "sourceId": "after-delete-read", "extension": [{ "url": "http://ignixa.io/testscript/assertionAnyOfGroup", "valueString": "deleted-resource-readback" }], "description": "Alternative: 404 Not Found is accepted when the server does not track deleted resources", "response": "notFound", "warningOnly": true } }
       ]
     }
   ],

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using Ignixa.Abstractions;
 using Ignixa.Lab.Functions.Conformance;
@@ -134,7 +135,7 @@ public sealed class TestScriptRunner(
     /// </summary>
     private static string ResolveFhirVersion(ResourceJsonNode? capabilityStatement, string fallbackFhirVersion)
     {
-        var declaredVersion = capabilityStatement?.MutableNode["fhirVersion"] is JsonValue value && value.TryGetValue<string>(out var declared)
+        var declaredVersion = ((IMutableJsonNode?)capabilityStatement)?.MutableNode["fhirVersion"] is JsonValue value && value.TryGetValue<string>(out var declared)
             ? declared
             : null;
 
@@ -216,7 +217,8 @@ public sealed class TestScriptRunner(
     {
         try
         {
-            var report = await evaluator.ExecuteAsync(job.Definition, cancellationToken, fhirVersion, capabilityStatement);
+            var definition = RunScopedDefinitionPreparer.Prepare(job.Definition);
+            var report = await evaluator.ExecuteAsync(definition, cancellationToken, fhirVersion, capabilityStatement);
             return ConformanceReportMapper.Map(report, job.Id, job.Category, job.File);
         }
         catch (OperationCanceledException)
@@ -265,7 +267,11 @@ public sealed class TestScriptRunner(
                 return Array.Empty<SuiteJob>();
             }
 
-            jobs.Add(new SuiteJob(entry.Descriptor.Id, entry.Descriptor.Category, entry.Descriptor.File, entry.Definition));
+            jobs.Add(new SuiteJob(
+                entry.Descriptor.Id,
+                entry.Descriptor.Category,
+                entry.Descriptor.File,
+                entry.Definition));
         }
 
         foreach (var uploaded in request.UploadedTestScripts ?? Array.Empty<UploadedTestScript>())
@@ -275,7 +281,17 @@ public sealed class TestScriptRunner(
                 continue;
             }
 
-            var parseResult = TestScriptParser.Parse(uploaded.Content);
+            ParseResult<TestScriptDefinition> parseResult;
+            try
+            {
+                parseResult = TestScriptParser.Parse(uploaded.Content);
+            }
+            catch (Exception ex) when (ex is InvalidDataException or InvalidOperationException or JsonException)
+            {
+                error = $"Uploaded TestScript '{uploaded.FileName ?? "(unnamed)"}' could not be parsed: {ex.Message}";
+                return Array.Empty<SuiteJob>();
+            }
+
             if (!parseResult.IsSuccess || parseResult.Value is null)
             {
                 var reason = parseResult.Errors.Count > 0 ? parseResult.Errors[0].Message : "invalid TestScript";
@@ -290,5 +306,9 @@ public sealed class TestScriptRunner(
         return jobs;
     }
 
-    private sealed record SuiteJob(string Id, string Category, string File, TestScriptDefinition Definition);
+    private sealed record SuiteJob(
+        string Id,
+        string Category,
+        string File,
+        TestScriptDefinition Definition);
 }

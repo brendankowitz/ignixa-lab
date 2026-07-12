@@ -3,6 +3,9 @@
   "name": "CRUD/patch-json",
   "description": "PATCH conformance tests adapted from JsonPatchTests, covering JSON-Patch-style edits (replace/remove/add), error handling, immutability, and If-Match preconditions. Since raw JSON Patch array bodies aren't supported here, each test submits an equivalent FHIRPath Patch body producing the same edit or error class; see CRUD/patch-body for body-shape-only scenarios.",
   "status": "active",
+  "extension": [
+    { "url": "http://ignixa.io/testscript/requiresCapability", "valueString": "rest.resource.where(type='Patient').interaction.where(code='patch').exists()" }
+  ],
   "fixture": [
     {
       "id": "patient-full",

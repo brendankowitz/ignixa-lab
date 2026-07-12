@@ -1,4 +1,5 @@
 using Ignixa.Lab.Functions.Conformance;
+using Ignixa.Serialization.SourceNodes;
 using Ignixa.TestScript.Client;
 using Ignixa.TestScript.Reporting;
 
@@ -142,7 +143,9 @@ public static class ConformanceReportMapper
                 Description: NullIfEmpty(action.Description),
                 Message: NullIfEmpty(action.Message),
                 Request: ToRequest(action.Exchange?.Request),
-                Response: ToResponse(action.Exchange?.Response));
+                Response: ToResponse(action.Exchange?.Response),
+                GroupId: action.GroupId,
+                Members: action.Members?.Select(m => new ConformanceGroupMember(m.Description, m.Applicable, m.Passed, m.Message)).ToList());
         }
 
         return steps;
@@ -159,7 +162,7 @@ public static class ConformanceReportMapper
             Method: request.Method.Method,
             Url: request.Url,
             Headers: Redact(request.Headers),
-            Body: request.FormBody ?? request.Body?.MutableNode.ToJsonString());
+            Body: request.FormBody ?? ((IMutableJsonNode?)request.Body)?.MutableNode.ToJsonString());
     }
 
     private static ConformanceHttpResponse? ToResponse(TestResponse? response)

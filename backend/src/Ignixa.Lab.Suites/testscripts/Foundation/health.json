@@ -1,12 +1,12 @@
 {
   "resourceType": "TestScript",
   "name": "Foundation/health",
-  "description": "Health check endpoint (/health/check) conformance tests: a healthy server returns HTTP 200 with a JSON health report (from HealthTests). Body-content checks on the non-FHIR report aren't expressible with this engine, so the 'contains description' check is approximated via Content-Type.",
+  "description": "Informational hosting checks for /health/check, which is not part of base FHIR. Every assertion is warningOnly because this endpoint is server-specific hosting behavior.",
   "status": "active",
   "test": [
     {
       "name": "health/check returns 200 OK",
-      "description": "GET /health/check must return HTTP 200 when the FHIR server has started successfully.",
+      "description": "Informational only: /health/check is not part of base FHIR; this checks that a configured health endpoint returns HTTP 200.",
       "action": [
         {
           "operation": {
@@ -14,21 +14,22 @@
             "method": "GET",
             "url": "health/check",
             "responseId": "health-response",
-            "description": "Request the health check endpoint"
+            "description": "Request /health/check, a server-specific endpoint that is not part of base FHIR"
           }
         },
         {
           "assert": {
-            "description": "Health check must return HTTP 200",
+            "description": "Informational hosting check: /health/check should return HTTP 200 but is not part of base FHIR",
             "sourceId": "health-response",
-            "response": "okay"
+            "response": "okay",
+            "warningOnly": true
           }
         }
       ]
     },
     {
       "name": "health/check returns a JSON body (approximates the 'contains description' check)",
-      "description": "Approximates the source test's body-text check: asserts the health check returns HTTP 200 with a JSON Content-Type, since raw body-text assertions aren't supported by this engine.",
+      "description": "Informational only: /health/check is not part of base FHIR. Its server-specific JSON body check is approximated with Content-Type because raw body-text assertions are unsupported.",
       "action": [
         {
           "operation": {
@@ -36,21 +37,23 @@
             "method": "GET",
             "url": "health/check",
             "responseId": "health-response-2",
-            "description": "Request the health check endpoint again for an independent content-type check"
+            "description": "Request /health/check again; this server-specific endpoint is not part of base FHIR"
           }
         },
         {
           "assert": {
-            "description": "Health check must return HTTP 200",
+            "description": "Informational hosting check: /health/check should return HTTP 200 but is not part of base FHIR",
             "sourceId": "health-response-2",
-            "response": "okay"
+            "response": "okay",
+            "warningOnly": true
           }
         },
         {
           "assert": {
-            "description": "Health check response must be JSON (approximation for the unassertable 'description' substring check)",
+            "description": "Informational hosting check: /health/check should return JSON but is not part of base FHIR",
             "sourceId": "health-response-2",
-            "contentType": "application/json"
+            "contentType": "application/json",
+            "warningOnly": true
           }
         }
       ]

@@ -27,7 +27,7 @@ public sealed class FhirPathServiceTests
         // previously propagated out of FhirPathService.Evaluate unhandled
         // instead of becoming a structured error result.
         var resource = JsonSourceNodeFactory.Parse<ResourceJsonNode>("""{"resourceType":"Patient","id":"example"}""");
-        resource.MutableNode["resourceType"] = System.Text.Json.Nodes.JsonValue.Create(123);
+        ((IMutableJsonNode)resource).MutableNode["resourceType"] = System.Text.Json.Nodes.JsonValue.Create(123);
 
         var request = new FhirPathRequest
         {

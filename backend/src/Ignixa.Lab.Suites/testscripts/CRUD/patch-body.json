@@ -3,6 +3,9 @@
   "name": "CRUD/patch-body",
   "description": "PATCH request-body-shape conformance tests (from PatchBodyTests): malformed bodies are rejected with 400 for both application/json-patch+json and application/fhir+json, while populated bodies succeed. Empty-body cases are approximated with a wrong-shaped non-empty body, since a bodyless request can't be sent here.",
   "status": "active",
+  "extension": [
+    { "url": "http://ignixa.io/testscript/requiresCapability", "valueString": "rest.resource.where(type='Patient').interaction.where(code='patch').exists()" }
+  ],
   "fixture": [
     {
       "id": "patient-full",

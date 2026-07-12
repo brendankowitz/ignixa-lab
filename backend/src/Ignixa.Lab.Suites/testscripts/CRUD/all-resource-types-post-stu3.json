@@ -398,9 +398,12 @@
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
           "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='BiologicallyDerivedProduct').interaction.where(code='create').exists() and rest.resource.where(type='BiologicallyDerivedProduct').interaction.where(code='read').exists()"
         }
       ],
-      "requiresCapability": "rest.resource.where(type='BiologicallyDerivedProduct').interaction.where(code='create').exists() and rest.resource.where(type='BiologicallyDerivedProduct').interaction.where(code='read').exists()",
       "action": [
         {
           "operation": {
@@ -476,9 +479,12 @@
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
           "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='BodyStructure').interaction.where(code='create').exists() and rest.resource.where(type='BodyStructure').interaction.where(code='read').exists()"
         }
       ],
-      "requiresCapability": "rest.resource.where(type='BodyStructure').interaction.where(code='create').exists() and rest.resource.where(type='BodyStructure').interaction.where(code='read').exists()",
       "action": [
         {
           "operation": {
@@ -554,9 +560,12 @@
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
           "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='ChargeItemDefinition').interaction.where(code='create').exists() and rest.resource.where(type='ChargeItemDefinition').interaction.where(code='read').exists()"
         }
       ],
-      "requiresCapability": "rest.resource.where(type='ChargeItemDefinition').interaction.where(code='create').exists() and rest.resource.where(type='ChargeItemDefinition').interaction.where(code='read').exists()",
       "action": [
         {
           "operation": {
@@ -632,9 +641,12 @@
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
           "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='CoverageEligibilityRequest').interaction.where(code='create').exists() and rest.resource.where(type='CoverageEligibilityRequest').interaction.where(code='read').exists()"
         }
       ],
-      "requiresCapability": "rest.resource.where(type='CoverageEligibilityRequest').interaction.where(code='create').exists() and rest.resource.where(type='CoverageEligibilityRequest').interaction.where(code='read').exists()",
       "action": [
         {
           "operation": {
@@ -710,9 +722,12 @@
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
           "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='CoverageEligibilityResponse').interaction.where(code='create').exists() and rest.resource.where(type='CoverageEligibilityResponse').interaction.where(code='read').exists()"
         }
       ],
-      "requiresCapability": "rest.resource.where(type='CoverageEligibilityResponse').interaction.where(code='create').exists() and rest.resource.where(type='CoverageEligibilityResponse').interaction.where(code='read').exists()",
       "action": [
         {
           "operation": {
@@ -788,9 +803,12 @@
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
           "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='DeviceDefinition').interaction.where(code='create').exists() and rest.resource.where(type='DeviceDefinition').interaction.where(code='read').exists()"
         }
       ],
-      "requiresCapability": "rest.resource.where(type='DeviceDefinition').interaction.where(code='create').exists() and rest.resource.where(type='DeviceDefinition').interaction.where(code='read').exists()",
       "action": [
         {
           "operation": {
@@ -866,9 +884,12 @@
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
           "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='EventDefinition').interaction.where(code='create').exists() and rest.resource.where(type='EventDefinition').interaction.where(code='read').exists()"
         }
       ],
-      "requiresCapability": "rest.resource.where(type='EventDefinition').interaction.where(code='create').exists() and rest.resource.where(type='EventDefinition').interaction.where(code='read').exists()",
       "action": [
         {
           "operation": {
@@ -950,9 +971,12 @@
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
           "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='Evidence').interaction.where(code='create').exists() and rest.resource.where(type='Evidence').interaction.where(code='read').exists()"
         }
       ],
-      "requiresCapability": "rest.resource.where(type='Evidence').interaction.where(code='create').exists() and rest.resource.where(type='Evidence').interaction.where(code='read').exists()",
       "action": [
         {
           "operation": {
@@ -1028,9 +1052,12 @@
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
           "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='EvidenceVariable').interaction.where(code='create').exists() and rest.resource.where(type='EvidenceVariable').interaction.where(code='read').exists()"
         }
       ],
-      "requiresCapability": "rest.resource.where(type='EvidenceVariable').interaction.where(code='create').exists() and rest.resource.where(type='EvidenceVariable').interaction.where(code='read').exists()",
       "action": [
         {
           "operation": {
@@ -1112,9 +1139,12 @@
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
           "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='ExampleScenario').interaction.where(code='create').exists() and rest.resource.where(type='ExampleScenario').interaction.where(code='read').exists()"
         }
       ],
-      "requiresCapability": "rest.resource.where(type='ExampleScenario').interaction.where(code='create').exists() and rest.resource.where(type='ExampleScenario').interaction.where(code='read').exists()",
       "action": [
         {
           "operation": {
@@ -1190,9 +1220,12 @@
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
           "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='ImmunizationEvaluation').interaction.where(code='create').exists() and rest.resource.where(type='ImmunizationEvaluation').interaction.where(code='read').exists()"
         }
       ],
-      "requiresCapability": "rest.resource.where(type='ImmunizationEvaluation').interaction.where(code='create').exists() and rest.resource.where(type='ImmunizationEvaluation').interaction.where(code='read').exists()",
       "action": [
         {
           "operation": {
@@ -1268,9 +1301,12 @@
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
           "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='InsurancePlan').interaction.where(code='create').exists() and rest.resource.where(type='InsurancePlan').interaction.where(code='read').exists()"
         }
       ],
-      "requiresCapability": "rest.resource.where(type='InsurancePlan').interaction.where(code='create').exists() and rest.resource.where(type='InsurancePlan').interaction.where(code='read').exists()",
       "action": [
         {
           "operation": {
@@ -1346,9 +1382,12 @@
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
           "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='Invoice').interaction.where(code='create').exists() and rest.resource.where(type='Invoice').interaction.where(code='read').exists()"
         }
       ],
-      "requiresCapability": "rest.resource.where(type='Invoice').interaction.where(code='create').exists() and rest.resource.where(type='Invoice').interaction.where(code='read').exists()",
       "action": [
         {
           "operation": {
@@ -1424,9 +1463,12 @@
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
           "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='MedicationKnowledge').interaction.where(code='create').exists() and rest.resource.where(type='MedicationKnowledge').interaction.where(code='read').exists()"
         }
       ],
-      "requiresCapability": "rest.resource.where(type='MedicationKnowledge').interaction.where(code='create').exists() and rest.resource.where(type='MedicationKnowledge').interaction.where(code='read').exists()",
       "action": [
         {
           "operation": {
@@ -1502,9 +1544,12 @@
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
           "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='MolecularSequence').interaction.where(code='create').exists() and rest.resource.where(type='MolecularSequence').interaction.where(code='read').exists()"
         }
       ],
-      "requiresCapability": "rest.resource.where(type='MolecularSequence').interaction.where(code='create').exists() and rest.resource.where(type='MolecularSequence').interaction.where(code='read').exists()",
       "action": [
         {
           "operation": {
@@ -1580,9 +1625,12 @@
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
           "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='ObservationDefinition').interaction.where(code='create').exists() and rest.resource.where(type='ObservationDefinition').interaction.where(code='read').exists()"
         }
       ],
-      "requiresCapability": "rest.resource.where(type='ObservationDefinition').interaction.where(code='create').exists() and rest.resource.where(type='ObservationDefinition').interaction.where(code='read').exists()",
       "action": [
         {
           "operation": {
@@ -1658,9 +1706,12 @@
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
           "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='OrganizationAffiliation').interaction.where(code='create').exists() and rest.resource.where(type='OrganizationAffiliation').interaction.where(code='read').exists()"
         }
       ],
-      "requiresCapability": "rest.resource.where(type='OrganizationAffiliation').interaction.where(code='create').exists() and rest.resource.where(type='OrganizationAffiliation').interaction.where(code='read').exists()",
       "action": [
         {
           "operation": {
@@ -1736,9 +1787,12 @@
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
           "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='ServiceRequest').interaction.where(code='create').exists() and rest.resource.where(type='ServiceRequest').interaction.where(code='read').exists()"
         }
       ],
-      "requiresCapability": "rest.resource.where(type='ServiceRequest').interaction.where(code='create').exists() and rest.resource.where(type='ServiceRequest').interaction.where(code='read').exists()",
       "action": [
         {
           "operation": {
@@ -1814,9 +1868,12 @@
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
           "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='SpecimenDefinition').interaction.where(code='create').exists() and rest.resource.where(type='SpecimenDefinition').interaction.where(code='read').exists()"
         }
       ],
-      "requiresCapability": "rest.resource.where(type='SpecimenDefinition').interaction.where(code='create').exists() and rest.resource.where(type='SpecimenDefinition').interaction.where(code='read').exists()",
       "action": [
         {
           "operation": {
@@ -1892,9 +1949,12 @@
         {
           "url": "http://ignixa.io/testscript/fhirVersions",
           "valueString": "4.0,4.3,5.0"
+        },
+        {
+          "url": "http://ignixa.io/testscript/requiresCapability",
+          "valueString": "rest.resource.where(type='VerificationResult').interaction.where(code='create').exists() and rest.resource.where(type='VerificationResult').interaction.where(code='read').exists()"
         }
       ],
-      "requiresCapability": "rest.resource.where(type='VerificationResult').interaction.where(code='create').exists() and rest.resource.where(type='VerificationResult').interaction.where(code='read').exists()",
       "action": [
         {
           "operation": {

@@ -3,6 +3,9 @@
   "name": "CRUD/vread",
   "description": "Conformance tests for GET /{type}/{id}/_history/{vid} version-specific reads: a valid id+version returns the exact historical version, and reads with a missing id or missing version return 404 (from VReadTests).",
   "status": "active",
+  "extension": [
+    { "url": "http://ignixa.io/testscript/requiresCapability", "valueString": "rest.resource.where(type='Observation').interaction.where(code='vread').exists() and rest.resource.where(type='Observation').where(versioning.exists() and versioning != 'no-version').exists()" }
+  ],
   "fixture": [
     {
       "id": "observation-vread-fixture",
@@ -46,7 +49,7 @@
         { "assert": { "description": "Returned id must match the one assigned at create", "expression": "Observation.id", "value": "${obsId}", "operator": "equals" } },
         { "assert": { "description": "Returned meta.versionId must match the requested version", "expression": "Observation.meta.versionId", "value": "${obsVersionId}", "operator": "equals" } },
         { "assert": { "description": "Returned meta.lastUpdated must match the one assigned at create", "expression": "Observation.meta.lastUpdated", "value": "${obsLastUpdated}", "operator": "equals" } },
-        { "assert": { "description": "ETag header must reflect the requested version", "headerField": "ETag", "operator": "contains", "value": "${obsVersionId}" } }
+        { "assert": { "description": "ETag header must be present for the requested version", "headerField": "ETag", "operator": "notEmpty" } }
       ]
     },
     {

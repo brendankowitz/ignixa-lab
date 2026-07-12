@@ -61,7 +61,7 @@
         "status": "final",
         "code": { "coding": [{ "system": "http://ignixa.io/testscript/suite/date", "code": "ignixa-date-test" }] },
         "identifier": [{ "system": "http://ignixa.io/testscript/suite/date", "value": "DATE-OBS-4" }],
-        "effectiveDateTime": "1980-05-11T16:32:15"
+        "effectiveDateTime": "1980-05-11T16:32:15Z"
       }
     },
     {
@@ -73,7 +73,7 @@
         "status": "final",
         "code": { "coding": [{ "system": "http://ignixa.io/testscript/suite/date", "code": "ignixa-date-test" }] },
         "identifier": [{ "system": "http://ignixa.io/testscript/suite/date", "value": "DATE-OBS-5" }],
-        "effectiveDateTime": "1980-05-11T16:32:15.500"
+        "effectiveDateTime": "1980-05-11T16:32:15.500Z"
       }
     },
     {
@@ -146,8 +146,8 @@
     { "name": "obs1Id", "sourceId": "create-obs-1", "path": "id", "description": "Id for obs-1 (1980)" },
     { "name": "obs2Id", "sourceId": "create-obs-2", "path": "id", "description": "Id for obs-2 (1980-05)" },
     { "name": "obs3Id", "sourceId": "create-obs-3", "path": "id", "description": "Id for obs-3 (1980-05-11)" },
-    { "name": "obs4Id", "sourceId": "create-obs-4", "path": "id", "description": "Id for obs-4 (1980-05-11T16:32:15)" },
-    { "name": "obs5Id", "sourceId": "create-obs-5", "path": "id", "description": "Id for obs-5 (1980-05-11T16:32:15.500)" },
+    { "name": "obs4Id", "sourceId": "create-obs-4", "path": "id", "description": "Id for obs-4 (1980-05-11T16:32:15Z)" },
+    { "name": "obs5Id", "sourceId": "create-obs-5", "path": "id", "description": "Id for obs-5 (1980-05-11T16:32:15.500Z)" },
     { "name": "obs6Id", "sourceId": "create-obs-6", "path": "id", "description": "Id for obs-6 (1981-01-01)" },
     { "name": "obs7Id", "sourceId": "create-obs-7", "path": "id", "description": "Id for obs-7 (period 1980-05-16 to 1980-05-17)" },
     { "name": "birthYearId", "sourceId": "create-patient-birth-year", "path": "id", "description": "Id for patient born 2000 (year precision)" },
@@ -163,8 +163,8 @@
       { "operation": { "type": { "code": "create" }, "resource": "Observation", "sourceId": "obs-1", "responseId": "create-obs-1", "description": "Create obs-1 (1980)" } },
       { "operation": { "type": { "code": "create" }, "resource": "Observation", "sourceId": "obs-2", "responseId": "create-obs-2", "description": "Create obs-2 (1980-05)" } },
       { "operation": { "type": { "code": "create" }, "resource": "Observation", "sourceId": "obs-3", "responseId": "create-obs-3", "description": "Create obs-3 (1980-05-11)" } },
-      { "operation": { "type": { "code": "create" }, "resource": "Observation", "sourceId": "obs-4", "responseId": "create-obs-4", "description": "Create obs-4 (1980-05-11T16:32:15)" } },
-      { "operation": { "type": { "code": "create" }, "resource": "Observation", "sourceId": "obs-5", "responseId": "create-obs-5", "description": "Create obs-5 (1980-05-11T16:32:15.500)" } },
+      { "operation": { "type": { "code": "create" }, "resource": "Observation", "sourceId": "obs-4", "responseId": "create-obs-4", "description": "Create obs-4 (1980-05-11T16:32:15Z)" } },
+      { "operation": { "type": { "code": "create" }, "resource": "Observation", "sourceId": "obs-5", "responseId": "create-obs-5", "description": "Create obs-5 (1980-05-11T16:32:15.500Z)" } },
       { "operation": { "type": { "code": "create" }, "resource": "Observation", "sourceId": "obs-6", "responseId": "create-obs-6", "description": "Create obs-6 (1981-01-01)" } },
       { "operation": { "type": { "code": "create" }, "resource": "Observation", "sourceId": "obs-7", "responseId": "create-obs-7", "description": "Create obs-7 (period 1980-05-16 to 1980-05-17)" } },
       { "operation": { "type": { "code": "create" }, "resource": "Patient", "sourceId": "patient-birth-year", "responseId": "create-patient-birth-year", "description": "Create patient born 2000" } },
@@ -185,8 +185,8 @@
         { "assert": { "description": "Must include obs-1 (1980)", "expression": "entry.where(resource.id = '${obs1Id}').exists()" } },
         { "assert": { "description": "Must include obs-2 (1980-05)", "expression": "entry.where(resource.id = '${obs2Id}').exists()" } },
         { "assert": { "description": "Must include obs-3 (1980-05-11)", "expression": "entry.where(resource.id = '${obs3Id}').exists()" } },
-        { "assert": { "description": "Must include obs-4 (1980-05-11T16:32:15)", "expression": "entry.where(resource.id = '${obs4Id}').exists()" } },
-        { "assert": { "description": "Must include obs-5 (1980-05-11T16:32:15.500)", "expression": "entry.where(resource.id = '${obs5Id}').exists()" } },
+        { "assert": { "description": "Must include obs-4 (1980-05-11T16:32:15Z)", "expression": "entry.where(resource.id = '${obs4Id}').exists()" } },
+        { "assert": { "description": "Must include obs-5 (1980-05-11T16:32:15.500Z)", "expression": "entry.where(resource.id = '${obs5Id}').exists()" } },
         { "assert": { "description": "Must NOT include obs-0 (1979-12-31)", "expression": "entry.where(resource.id = '${obs0Id}').exists()", "value": "false", "operator": "equals", "warningOnly": true } },
         { "assert": { "description": "Must NOT include obs-6 (1981-01-01)", "expression": "entry.where(resource.id = '${obs6Id}').exists()", "value": "false", "operator": "equals", "warningOnly": true } },
         { "assert": { "description": "Must NOT include obs-7 (period 1980-05-16..17)", "expression": "entry.where(resource.id = '${obs7Id}').exists()", "value": "false", "operator": "equals", "warningOnly": true } }
@@ -197,21 +197,21 @@
       "description": "An instant-precision date search must match any Observation whose date/period contains that instant, including a Period-valued effectivePeriod (obs-7), not just single dateTime values.",
       "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
       "action": [
-        { "operation": { "type": { "code": "search" }, "resource": "Observation", "params": "?code=ignixa-date-test&date=1980-05-16T16:32:15.500", "responseId": "period-match-response", "description": "GET /Observation?date=1980-05-16T16:32:15.500" } },
+        { "operation": { "type": { "code": "search" }, "resource": "Observation", "params": "?code=ignixa-date-test&date=1980-05-16T16:32:15.500Z", "responseId": "period-match-response", "description": "GET /Observation?date=1980-05-16T16:32:15.500Z" } },
         { "assert": { "description": "Search must return HTTP 200", "response": "okay" } },
         { "assert": { "description": "Response must be a Bundle", "resource": "Bundle" } },
         { "assert": { "description": "Must include obs-1 (year 1980 contains the instant)", "expression": "entry.where(resource.id = '${obs1Id}').exists()" } },
         { "assert": { "description": "Must include obs-2 (month 1980-05 contains the instant)", "expression": "entry.where(resource.id = '${obs2Id}').exists()" } },
         { "assert": { "description": "Must include obs-7 (period directly contains the instant)", "expression": "entry.where(resource.id = '${obs7Id}').exists()" } },
         { "assert": { "description": "Must NOT include obs-3 (1980-05-11, a different day)", "expression": "entry.where(resource.id = '${obs3Id}').exists()", "value": "false", "operator": "equals", "warningOnly": true } },
-        { "assert": { "description": "Must NOT include obs-4 (1980-05-11T16:32:15, a different instant)", "expression": "entry.where(resource.id = '${obs4Id}').exists()", "value": "false", "operator": "equals", "warningOnly": true } },
+        { "assert": { "description": "Must NOT include obs-4 (1980-05-11T16:32:15Z, a different instant)", "expression": "entry.where(resource.id = '${obs4Id}').exists()", "value": "false", "operator": "equals", "warningOnly": true } },
         { "assert": { "description": "Must NOT include obs-0 (1979-12-31)", "expression": "entry.where(resource.id = '${obs0Id}').exists()", "value": "false", "operator": "equals", "warningOnly": true } },
         { "assert": { "description": "Must NOT include obs-6 (1981-01-01)", "expression": "entry.where(resource.id = '${obs6Id}').exists()", "value": "false", "operator": "equals", "warningOnly": true } }
       ]
     },
     {
       "name": "Invalid date search value returns 400",
-      "description": "A syntactically invalid birthdate value must be rejected with HTTP 400.",
+      "description": "Informational SHOULD-level check: R4 says a server SHOULD reject a syntactically invalid birthdate search value, so HTTP 400 is not a base-conformance SHALL.",
       "extension": [
         { "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" },
         {
@@ -224,12 +224,12 @@
       ],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?birthdate=${invalidDate}", "description": "GET /Patient?birthdate=${invalidDate}" } },
-        { "assert": { "description": "Server must return 400 Bad Request for a syntactically invalid date", "response": "bad" } }
+        { "assert": { "description": "Informational SHOULD-level check: server should return 400 Bad Request for a syntactically invalid date", "response": "bad", "warningOnly": true } }
       ]
     },
     {
       "name": "Out-of-range date value returns 400",
-      "description": "A calendar-invalid date (Feb 30) or a dateTime with excessive fractional-second digits must be rejected with HTTP 400.",
+      "description": "Informational SHOULD-level check: R4 says a server SHOULD reject a calendar-invalid or malformed date search value, so HTTP 400 is not a base-conformance SHALL.",
       "extension": [
         { "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" },
         {
@@ -242,7 +242,7 @@
       ],
       "action": [
         { "operation": { "type": { "code": "search" }, "resource": "Patient", "params": "?birthdate=${outOfRangeDate}", "description": "GET /Patient?birthdate=${outOfRangeDate}" } },
-        { "assert": { "description": "Server must return 400 Bad Request for an out-of-range/malformed date", "response": "bad" } }
+        { "assert": { "description": "Informational SHOULD-level check: server should return 400 Bad Request for an out-of-range/malformed date", "response": "bad", "warningOnly": true } }
       ]
     },
     {

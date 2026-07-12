@@ -77,6 +77,23 @@ public sealed class TestScriptRunnerTests
         ]
     };
 
+    private static TestScriptDefinition MetadataGatedPatchDefinition() => new()
+    {
+        Metadata = new TestScriptMetadata
+        {
+            Name = "PatchGated",
+            RequiresCapability = "rest.resource.where(type='Patient').interaction.where(code='patch').exists()",
+        },
+        Tests =
+        [
+            new TestPhaseDefinition
+            {
+                Name = "PatchPatient",
+                Actions = [new OperationExpression { Type = "patch", Resource = "Patient", Params = "/1" }],
+            },
+        ],
+    };
+
     private static TestScriptDefinition VersionGatedDefinition(params string[] fhirVersions) => new()
     {
         Metadata = new TestScriptMetadata { Name = "VersionGated" },
@@ -125,6 +142,34 @@ public sealed class TestScriptRunnerTests
         ],
     };
 
+    private static TestScriptDefinition UnrelatedWarningOnlyStatusAlternativesDefinition() => new()
+    {
+        Metadata = new TestScriptMetadata { Name = "UnrelatedStatusAlternatives" },
+        Tests =
+        [
+            new TestPhaseDefinition
+            {
+                Name = "InformationalHeadBehavior",
+                Actions =
+                [
+                    new OperationExpression { Type = "read", Url = "metadata" },
+                    new AssertExpression
+                    {
+                        Description = "Alternative A: server aliases HEAD to GET and returns 200 (informational: not a FHIR spec requirement)",
+                        Criteria = new ResponseStatusCriteria("okay"),
+                        WarningOnly = true,
+                    },
+                    new AssertExpression
+                    {
+                        Description = "Alternative B: server rejects HEAD with 405 Method Not Allowed (informational: also acceptable)",
+                        Criteria = new ResponseCodeCriteria("405"),
+                        WarningOnly = true,
+                    },
+                ],
+            },
+        ],
+    };
+
     [Fact]
     public async Task GivenSuiteRequiringUndeclaredCapability_WhenRun_ThenTestIsSkippedAndNoRequestIsSent()
     {
@@ -147,6 +192,57 @@ public sealed class TestScriptRunnerTests
         outcome.Report!.Results.Should().ContainSingle();
         outcome.Report.Results[0].Status.Should().Be(ConformanceStatus.Skipped);
         outcome.Report.CapabilityWarning.Should().BeNull();
+        provider.CallCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task GivenMetadataRequiresUndeclaredPatch_WhenRun_ThenEveryTestIsSkippedAndNoRequestIsSent()
+    {
+        var provider = new RecordingRequestProvider(new TestResponse { StatusCode = 200 });
+        var runner = new TestScriptRunner(
+            new FakeSuiteCatalog("patch-gated.json", MetadataGatedPatchDefinition()),
+            new FakeEvaluatorFactory(provider),
+            new CapabilityStatementFetcher(
+                new FixedResponseHttpClientFactory(CapabilityStatementWithoutReindex),
+                Options.Create(new IgnixaLabOptions())),
+            Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
+            NullLogger<TestScriptRunner>.Instance);
+
+        var outcome = await runner.RunAsync(
+            new RunRequest { TargetUrl = TargetUrl, SuiteIds = ["patch-gated.json"] },
+            CancellationToken.None);
+
+        outcome.IsValid.Should().BeTrue();
+        outcome.Report!.Results.Should().ContainSingle();
+        outcome.Report.Results[0].Status.Should().Be(ConformanceStatus.Skipped);
+        provider.CallCount.Should().Be(0);
+    }
+
+    [Theory]
+    [InlineData("""{"resourceType":"TestScript","name":"Bad","status":"active","test":[{"name":"bad","extension":{"url":"http://ignixa.io/testscript/requiresCapability","valueString":"direct"},"action":[]}]}""")]
+    public async Task GivenUploadedMalformedCapabilityExtension_WhenRun_ThenRequestIsInvalid(string content)
+    {
+        var provider = new RecordingRequestProvider(new TestResponse { StatusCode = 200 });
+        var runner = new TestScriptRunner(
+            new FakeSuiteCatalog("unused.json", GatedDefinition("true")),
+            new FakeEvaluatorFactory(provider),
+            new CapabilityStatementFetcher(
+                new FixedResponseHttpClientFactory(CapabilityStatementWithoutReindex),
+                Options.Create(new IgnixaLabOptions())),
+            Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
+            NullLogger<TestScriptRunner>.Instance);
+
+        var outcome = await runner.RunAsync(
+            new RunRequest
+            {
+                TargetUrl = TargetUrl,
+                UploadedTestScripts = [new UploadedTestScript { FileName = "bad.json", Content = content }],
+            },
+            CancellationToken.None);
+
+        outcome.IsValid.Should().BeFalse();
         provider.CallCount.Should().Be(0);
     }
 
@@ -453,6 +549,28 @@ public sealed class TestScriptRunnerTests
         setupStep.Message.Should().Contain("not valid for FHIR version R4");
     }
 
+    [Fact]
+    public async Task GivenUnrelatedWarningOnlyStatusAlternatives_WhenTargetReturnsOutsideAlternatives_ThenRunStillPasses()
+    {
+        var provider = new RecordingRequestProvider(new TestResponse { StatusCode = 202 });
+        var runner = new TestScriptRunner(
+            new FakeSuiteCatalog("unrelated-status.json", UnrelatedWarningOnlyStatusAlternativesDefinition()),
+            new FakeEvaluatorFactory(provider),
+            new CapabilityStatementFetcher(
+                new FixedResponseHttpClientFactory(CapabilityStatementWithoutReindex),
+                Options.Create(new IgnixaLabOptions())),
+            Options.Create(new IgnixaLabOptions()),
+            new SchemaProviderFactory(),
+            NullLogger<TestScriptRunner>.Instance);
+
+        var outcome = await runner.RunAsync(
+            new RunRequest { TargetUrl = TargetUrl, SuiteIds = ["unrelated-status.json"] },
+            CancellationToken.None);
+
+        outcome.IsValid.Should().BeTrue();
+        outcome.Report!.Results.Should().ContainSingle().Which.Status.Should().Be(ConformanceStatus.Pass);
+    }
+
     private sealed class FakeSuiteCatalog(string id, TestScriptDefinition definition) : ISuiteCatalog
     {
         public IReadOnlyList<SuiteDescriptor> GetSuites() => [];
@@ -478,8 +596,16 @@ public sealed class TestScriptRunnerTests
         public RequestProviderScope CreateRequestProvider(Uri target) => new(provider, null);
     }
 
-    private sealed class RecordingRequestProvider(TestResponse response) : ITestRequestProvider
+    private sealed class RecordingRequestProvider : ITestRequestProvider
     {
+        private readonly Queue<TestResponse> _responses;
+
+        public RecordingRequestProvider(params TestResponse[] responses)
+        {
+            responses.Should().NotBeEmpty();
+            _responses = new Queue<TestResponse>(responses);
+        }
+
         public List<TestRequest> Requests { get; } = [];
 
         public int CallCount { get; private set; }
@@ -488,6 +614,7 @@ public sealed class TestScriptRunnerTests
         {
             CallCount++;
             Requests.Add(request);
+            var response = _responses.Count > 1 ? _responses.Dequeue() : _responses.Peek();
             return Task.FromResult(response);
         }
     }
