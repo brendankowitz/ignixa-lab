@@ -125,7 +125,9 @@ function TabButton({ label, active, onClick }: { label: string; active: boolean;
  */
 function StepRow({ step, index }: { step: ConformanceStep; index: number }) {
   const [open, setOpen] = useState(false);
-  const hasDetail = step.request !== null || step.response !== null || Boolean(step.message);
+  const hasExchange = step.request !== null || step.response !== null;
+  const hasMembers = Boolean(step.members?.length);
+  const hasDetail = hasExchange || Boolean(step.message) || hasMembers;
 
   const title =
     step.kind === 'operation' && step.request
@@ -168,8 +170,27 @@ function StepRow({ step, index }: { step: ConformanceStep; index: number }) {
         <div className="step__body">
           {step.request ? <HttpRequestView request={step.request} /> : null}
           {step.response ? <HttpResponseView response={step.response} /> : null}
-          {!step.request && !step.response && step.message ? (
+          {step.message && (!hasExchange || step.status !== 'pass') ? (
             <p className="step__message">{step.message}</p>
+          ) : null}
+          {hasMembers ? (
+            <div className="step__members">
+              {step.members!.map((member, memberIndex) => (
+                <div key={memberIndex} className="step__member">
+                  <div className="step__member-header">
+                    <span
+                      className={`step__member-chip${
+                        member.applicable ? (member.passed ? ' step__member-chip--pass' : ' step__member-chip--fail') : ''
+                      }`}
+                    >
+                      {member.applicable ? (member.passed ? 'PASS' : 'FAIL') : 'N/A'}
+                    </span>
+                    <span className="step__member-label">{member.description ?? 'Alternative'}</span>
+                  </div>
+                  {member.message ? <span className="step__member-message">{member.message}</span> : null}
+                </div>
+              ))}
+            </div>
           ) : null}
         </div>
       ) : null}
