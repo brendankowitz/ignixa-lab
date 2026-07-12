@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { extractAssertions, STATUS_LABELS } from '../lib/conformance';
 import type { ConformanceResult, ConformanceStep } from '../types/conformance';
-import { HttpRequestView, HttpResponseView } from './HttpMessage';
+import { HttpRequestView, HttpResponseView, statusVariant } from './HttpMessage';
 
 /** Props for {@link TestRow}. */
 export interface TestRowProps {
@@ -139,12 +139,15 @@ function StepRow({ step, index }: { step: ConformanceStep; index: number }) {
     <>
       <span className={`step__chip step__chip--${step.status}`}>{STATUS_LABELS[step.status]}</span>
       <div className="step__text">
-        <span className="step__title-row">
-          <span className="step__title">{title}</span>
-          {statusCode != null ? <span className="step__status-code">{statusCode}</span> : null}
-        </span>
+        <span className="step__title">{title}</span>
         <span className="step__meta">
           {step.phase} · {step.kind} · {step.duration_ms}ms
+          {statusCode != null ? (
+            <>
+              {' '}
+              · <span className={`step__meta-status step__meta-status--${statusVariant(statusCode)}`}>{statusCode}</span>
+            </>
+          ) : null}
         </span>
       </div>
       {hasDetail ? (
