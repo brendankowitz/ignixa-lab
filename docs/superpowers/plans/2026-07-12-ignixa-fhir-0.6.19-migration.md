@@ -662,6 +662,13 @@ git commit -m "test: migrate CRUD/create and CRUD/conditional-delete response-st
 - Modify: `backend/src/Ignixa.Lab.Functions/Execution/TestScriptRunner.cs`
 - Modify: `backend/src/Ignixa.Lab.Functions/Suites/ISuiteCatalog.cs`
 - Modify: `backend/src/Ignixa.Lab.Functions/Suites/SuiteCatalog.cs`
+- Modify: `backend/test/Ignixa.Lab.Functions.Tests/Suites/SuiteCatalogTests.cs` — **discovered during Task 6, added to scope**: this file contains 4 "guard rail" characterization test methods (8 parameterized cases total) that explicitly assert the OLD `statusAlternativePolicy`/`StatusAlternativeEnforcementPlan.ExtensionUrl` marker is present on the exact tests migrated in Tasks 4-6, with assertions like `policyMarkers.Should().ContainSingle()` and comments like `"deleting either accepted readback status must break the guard"`. These are now failing (correctly — the marker is gone, that's the point) and must be **deleted**, not rewritten, since the new `assertionAnyOfGroup` behavior is already covered by the ignixa-fhir engine's own test suite; re-testing it here would be redundant, not a gap. Delete these 4 methods entirely:
+  - `BundledSubscriptionSuite_DeletedReadUsesNarrowEnforcedWarningAlternatives` (around line 929)
+  - `BundledCrudDeletedReadbacks_UseExplicitEnforcementMarker` (a `[Theory]` with 2 `[InlineData]` cases, around line 989)
+  - `BundledCreateValidationTests_AcceptOnly400Or422WithStructuredPolicy` (a `[Theory]` with 3 `[InlineData]` cases, around line 1125)
+  - `BundledConditionalDeleteAlternatives_UseMethodCorrelatedStructuredPolicy` (a `[Theory]` with 2 `[InlineData]` cases, around line 1173)
+
+  Read the file first to confirm exact line ranges before deleting — other unrelated tests sit before/after/between these in the same file (126 total tests, only these 8 test cases are affected), so this must be a surgical removal of exactly these 4 methods, not a broader edit.
 
 **Interfaces:**
 - Consumes: Tasks 4-6 having migrated every suite off `statusAlternativePolicy` markers.
