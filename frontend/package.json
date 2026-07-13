@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "test": "node --experimental-strip-types --test src/benches/fhirpath/jsonPathResolver.test.ts src/hooks/useCopyToClipboard.test.ts",
     "preview": "vite preview",
     "responsive:check": "npm run build && playwright install chromium && node scripts/responsive-check.mjs"
   },
