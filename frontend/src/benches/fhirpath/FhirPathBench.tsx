@@ -10,8 +10,8 @@ import { DEFAULT_EXPRESSION, EXAMPLE_EXPRESSIONS, SAMPLE_RESOURCES, type SampleI
 import { useFhirPathEval } from './useFhirPathEval';
 import type { FhirVersion, FpAstNode, FpVariable } from './fhirPathTypes';
 import type { FhirPathShareState } from '../../lib/shareLinks';
-import { ResourcePathStatusBar } from './ResourcePathStatusBar';
-import { resolveJsonPathAtOffset, type JsonPathSelection } from './jsonPathResolver';
+import { ResourcePathStatusBar, type ResourcePathStatus } from './ResourcePathStatusBar';
+import { resolveJsonPathAtOffset } from './jsonPathResolver';
 
 const VERSION_ITEMS: PillItem<FhirVersion>[] = [
   { id: 'stu3', label: 'STU3' },
@@ -141,8 +141,7 @@ export function FhirPathBench({ onOpenFakes, fakesSeed, onSeedConsumed, initialS
   const [variables, setVariables] = useState<FpVariable[]>(initialState?.variables ?? []);
   const [resultTab, setResultTab] = useState<ResultTab>('results');
   const [astInverted, setAstInverted] = useState(false);
-  const [resourcePathSelection, setResourcePathSelection] = useState<JsonPathSelection | null>(null);
-  const [resourceInspectionInvalid, setResourceInspectionInvalid] = useState(false);
+  const [resourcePathStatus, setResourcePathStatus] = useState<ResourcePathStatus>({ kind: 'idle' });
   const expressionRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -151,8 +150,7 @@ export function FhirPathBench({ onOpenFakes, fakesSeed, onSeedConsumed, initialS
 
   useEffect(() => {
     if (fakesSeed) {
-      setResourcePathSelection(null);
-      setResourceInspectionInvalid(false);
+      setResourcePathStatus({ kind: 'idle' });
       setSampleId('custom');
       setResourceText(fakesSeed.text);
       onSeedConsumed?.();
@@ -179,10 +177,7 @@ export function FhirPathBench({ onOpenFakes, fakesSeed, onSeedConsumed, initialS
     textarea.setSelectionRange(node.position, node.position + node.length);
   };
 
-  const clearResourceInspection = () => {
-    setResourcePathSelection(null);
-    setResourceInspectionInvalid(false);
-  };
+  const clearResourceInspection = () => setResourcePathStatus({ kind: 'idle' });
 
   const handleResourceChange = (value: string) => {
     clearResourceInspection();
@@ -192,19 +187,22 @@ export function FhirPathBench({ onOpenFakes, fakesSeed, onSeedConsumed, initialS
   const handleResourcePointerSelection = (textarea: HTMLTextAreaElement) => {
     const source = textarea.value;
     const resolution = resolveJsonPathAtOffset(source, textarea.selectionStart);
-    if (resolution.kind === 'invalid') {
-      setResourcePathSelection(null);
-      setResourceInspectionInvalid(true);
-      return;
+    switch (resolution.kind) {
+      case 'invalid':
+        setResourcePathStatus({ kind: 'invalid' });
+        return;
+      case 'none':
+        return;
+      case 'match':
+        setResourcePathStatus({ kind: 'selected', path: resolution.selection.path });
+        textarea.focus();
+        textarea.setSelectionRange(resolution.selection.start, resolution.selection.end);
+        return;
+      default: {
+        const exhaustive: never = resolution;
+        throw new Error(`Unhandled JsonPathResolution: ${JSON.stringify(exhaustive)}`);
+      }
     }
-    if (resolution.kind === 'none') {
-      return;
-    }
-
-    setResourceInspectionInvalid(false);
-    setResourcePathSelection(resolution.selection);
-    textarea.focus();
-    textarea.setSelectionRange(resolution.selection.start, resolution.selection.end);
   };
 
   const invertedAstRoots = useMemo(
@@ -398,7 +396,7 @@ export function FhirPathBench({ onOpenFakes, fakesSeed, onSeedConsumed, initialS
               onPointerSelection={handleResourcePointerSelection}
               style={{ minHeight: 520, fontSize: 11.5, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }}
             />
-            <ResourcePathStatusBar path={resourcePathSelection?.path ?? null} invalid={resourceInspectionInvalid} />
+            <ResourcePathStatusBar status={resourcePathStatus} />
           </div>
         </Card>
 

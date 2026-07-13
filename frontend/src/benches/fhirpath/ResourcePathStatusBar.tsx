@@ -3,9 +3,10 @@ import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 import { COPY_FEEDBACK_DURATION_MS } from '../../lib/shareLinks';
 import { monoFont, sectionLabelStyle } from '../components/styles';
 
+export type ResourcePathStatus = { kind: 'idle' } | { kind: 'invalid' } | { kind: 'selected'; path: string };
+
 export interface ResourcePathStatusBarProps {
-  path: string | null;
-  invalid: boolean;
+  status: ResourcePathStatus;
 }
 
 const iconStyle: CSSProperties = {
@@ -14,7 +15,9 @@ const iconStyle: CSSProperties = {
   display: 'block',
 };
 
-export function ResourcePathStatusBar({ path, invalid }: ResourcePathStatusBarProps) {
+export function ResourcePathStatusBar({ status }: ResourcePathStatusBarProps) {
+  const path = status.kind === 'selected' ? status.path : null;
+  const invalid = status.kind === 'invalid';
   const { copied, failed, copy } = useCopyToClipboard(path ?? '', COPY_FEEDBACK_DURATION_MS);
 
   return (
