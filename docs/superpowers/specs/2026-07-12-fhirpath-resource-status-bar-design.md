@@ -87,10 +87,15 @@ The source-position resolver has automated coverage for:
 - malformed and incomplete JSON; and
 - offsets at token boundaries.
 
-Component-level checks cover clearing a stale path after editing or changing
-samples, copy success/failure feedback, and the empty/invalid states. The
-frontend lint and production build remain clean, and the resource card is
-visually checked at desktop and narrow widths.
+The frontend has no component-rendering test harness (no jsdom/testing-library
+in this repo), so clearing a stale path after editing or changing samples,
+copy success/failure feedback, and the empty/invalid states are exercised
+end-to-end instead, by `frontend/scripts/responsive-check.mjs`
+(`assertFhirPathResourceSelection`) against a real built preview in a
+headless browser. That script runs on demand via `npm run responsive:check`,
+not as part of `npm test` or CI — treat it as a manual pre-release check, not
+a regression gate. `npm test` (unit tests), lint, and the production build
+run in CI.
 
 ## Out of Scope
 
