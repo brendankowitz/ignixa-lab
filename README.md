@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="frontend/public/ignixa-logo.png" alt="Ignixa Lab logo" width="220"/>
+  <img src="frontend/public/favicon.svg" alt="Ignixa Lab logo" width="96"/>
   <h1>Ignixa Lab</h1>
   <p>
     <b>A FHIR conformance runner and interactive expression toolkit, built on the Ignixa engines</b>
