@@ -1,6 +1,7 @@
 import type { HighlightLine } from '../components/HighlightedTextarea';
 
-const KEYWORD_PATTERN = /^(and|or|xor|implies|not|as|is|in|contains|div|mod|true|false)$/;
+/** FHIRPath reserved words — also used by jsonPathResolver to force backtick-escaping so a clicked element like `Narrative.div` doesn't produce the unparseable bare path `text.div`. */
+export const KEYWORD_PATTERN = /^(and|or|xor|implies|not|as|is|in|contains|div|mod|true|false)$/;
 
 const TOKEN_PATTERN = /('(?:\\.|[^'\\])*')|(%[A-Za-z_][\w]*)|(\d+(?:\.\d+)?)|([A-Za-z_][\w]*)|(!=|<=|>=)|(\s+)|(.)/g;
 

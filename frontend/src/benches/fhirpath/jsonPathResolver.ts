@@ -1,3 +1,5 @@
+import { KEYWORD_PATTERN } from './fhirPathHighlight.ts';
+
 export interface JsonPathSelection {
   path: string;
   start: number;
@@ -45,7 +47,12 @@ export function resolveJsonPathAtOffset(source: string, offset: number): JsonPat
         end: match.end,
       },
     };
-  } catch {
+  } catch (error) {
+    // JSON.parse already accepted this source above, so a throw here means the
+    // hand-rolled span parser disagrees with the platform grammar (a bug or a
+    // stack-depth limit) rather than genuinely malformed input — log it so that
+    // divergence isn't silently indistinguishable from the user's own typo.
+    console.error('jsonPathResolver: span parser failed on JSON.parse-valid source', error);
     return { kind: 'invalid' };
   }
 }
@@ -269,6 +276,12 @@ class JsonSpanParser {
   }
 
   private addSelection(path: PathSegment[], start: number, end: number): void {
+    if (path.length === 0) {
+      // A root-level scalar (e.g. source is just `"x"`) has no element to name —
+      // formatPath([]) would yield an empty string, which the status bar can't
+      // distinguish from "nothing selected".
+      return;
+    }
     this.selections.push({
       path: formatPath(path),
       start,
@@ -316,7 +329,7 @@ function formatPath(path: PathSegment[]): string {
 }
 
 function formatPropertyName(name: string): string {
-  if (/^[A-Za-z_][A-Za-z0-9_]*$/u.test(name)) {
+  if (/^[A-Za-z_][A-Za-z0-9_]*$/u.test(name) && !KEYWORD_PATTERN.test(name)) {
     return name;
   }
 

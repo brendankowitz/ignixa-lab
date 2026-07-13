@@ -80,6 +80,7 @@ export function useCopyToClipboard(
     requestIdRef.current = requestId;
     const writeText = globalThis.navigator?.clipboard?.writeText;
     if (!writeText) {
+      console.warn('useCopyToClipboard: Clipboard API is unavailable in this context');
       showFeedback({ type: 'failed' }, requestId);
       return;
     }
@@ -88,7 +89,8 @@ export function useCopyToClipboard(
       () => {
         showFeedback({ type: 'copied' }, requestId);
       },
-      () => {
+      (error) => {
+        console.warn('useCopyToClipboard: clipboard.writeText rejected', error);
         showFeedback({ type: 'failed' }, requestId);
       },
     );

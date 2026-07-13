@@ -84,6 +84,22 @@ test('non-bare names and backticks resolve with escaping', () => {
   assert.equal(source.slice(result.selection.start, result.selection.end), '"a`b"');
 });
 
+test('a FHIRPath keyword used as a property name is backtick-escaped', () => {
+  const source = JSON.stringify({ text: { div: '<div>note</div>' } });
+  const result = resolveJsonPathAtOffset(source, source.indexOf('"div"') + 2);
+
+  assert.equal(result.kind, 'match');
+  if (result.kind !== 'match') {
+    return;
+  }
+  assert.equal(result.selection.path, 'text.`div`');
+});
+
+test('a root-level scalar returns none rather than an empty path', () => {
+  const source = '"hello"';
+  assert.deepEqual(resolveJsonPathAtOffset(source, 2), { kind: 'none' });
+});
+
 test('whitespace, punctuation, and exact token end return none', () => {
   const whitespaceOffset = source.indexOf('"Chalmers"') - 1;
   assert.deepEqual(resolveJsonPathAtOffset(source, whitespaceOffset), { kind: 'none' });
