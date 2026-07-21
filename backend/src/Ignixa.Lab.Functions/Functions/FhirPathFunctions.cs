@@ -4,8 +4,8 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Ignixa.Lab.Functions.Models;
 using Ignixa.Lab.Functions.Services.FhirPath;
+using Ignixa.Models;
 using Ignixa.Serialization;
-using Ignixa.Serialization.Models;
 using Ignixa.Serialization.SourceNodes;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -130,14 +130,14 @@ public sealed class FhirPathFunctions(ILogger<FhirPathFunctions> logger, FhirPat
         };
     }
 
-    private static async Task<(ParametersJsonNode? Parameters, string? Error)> ParseOperationParameters(HttpRequest request, CancellationToken cancellationToken)
+    private static async Task<(Parameters? Parameters, string? Error)> ParseOperationParameters(HttpRequest request, CancellationToken cancellationToken)
     {
         if (request.Method != "POST")
         {
-            var parameters = new ParametersJsonNode();
+            var parameters = new Parameters();
             foreach (var key in request.Query.Keys)
             {
-                var param = new ParameterJsonNode { Name = key };
+                var param = new ParametersParameter { Name = key };
                 param.SetValue("valueString", request.Query[key].ToString());
                 parameters.Parameter.Add(param);
             }
@@ -146,7 +146,7 @@ public sealed class FhirPathFunctions(ILogger<FhirPathFunctions> logger, FhirPat
 
         try
         {
-            return (await JsonSourceNodeFactory.ParseAsync<ParametersJsonNode>(request.Body, cancellationToken), null);
+            return (await JsonSourceNodeFactory.ParseAsync<Parameters>(request.Body, cancellationToken), null);
         }
         catch (JsonException ex)
         {
@@ -155,7 +155,7 @@ public sealed class FhirPathFunctions(ILogger<FhirPathFunctions> logger, FhirPat
     }
 
     private async Task<(FhirPathRequest? Request, string? Error, string? ErrorDiagnostics)> BuildFhirPathRequestAsync(
-        ParametersJsonNode operationParameters,
+        Parameters operationParameters,
         string fhirVersion,
         CancellationToken cancellationToken)
     {
@@ -171,10 +171,18 @@ public sealed class FhirPathFunctions(ILogger<FhirPathFunctions> logger, FhirPat
         // plausible malformed shape on this fully attacker-controlled request
         // body. Guard it here so it becomes a structured 400 response instead
         // of an unhandled exception.
+        //
+        // Ignixa.Serialization 0.6.23 made ".Resource" access lazy: the
+        // conversion (and thus the throw) no longer happens until a property
+        // like ".ResourceType" is actually read. Touch it here so the guard
+        // still fires eagerly instead of leaking the exception into
+        // FhirPathService.Evaluate's unrelated catch block later (which would
+        // turn this into a 200 with an error body instead of a 400).
         ResourceJsonNode? resource;
         try
         {
             resource = resourceParam?.Resource;
+            _ = resource?.ResourceType;
         }
         catch (Exception ex)
         {

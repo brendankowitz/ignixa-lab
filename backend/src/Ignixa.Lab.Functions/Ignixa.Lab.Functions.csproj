@@ -20,6 +20,8 @@
     <PackageReference Include="Ignixa.Validation" />
     <PackageReference Include="Ignixa.PackageManagement" />
     <PackageReference Include="Ignixa.FhirFakes" />
+    <PackageReference Include="Ignixa.Search" />
+    <PackageReference Include="Ignixa.Search.Sql" />
     <PackageReference Include="NuGet.Versioning" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" />

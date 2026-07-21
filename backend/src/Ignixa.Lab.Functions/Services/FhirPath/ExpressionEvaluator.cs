@@ -3,10 +3,14 @@ using System.Text.Json.Nodes;
 using Ignixa.Abstractions;
 using Ignixa.FhirPath.Evaluation;
 using Ignixa.FhirPath.Expressions;
+using Ignixa.Models;
 using Ignixa.Serialization;
-using Ignixa.Serialization.Models;
 using Ignixa.Serialization.SourceNodes;
 using Ignixa.Lab.Functions.Models;
+// Ignixa.Models (FHIR "Expression" datatype) and Ignixa.FhirPath.Expressions (the FHIRPath
+// AST "Expression" type) both declare a type named Expression; this file only ever means
+// the FHIRPath AST type, so alias it explicitly to resolve the CS0104 ambiguity.
+using Expression = Ignixa.FhirPath.Expressions.Expression;
 
 namespace Ignixa.Lab.Functions.Services.FhirPath;
 
@@ -35,7 +39,7 @@ public sealed class ExpressionEvaluator
     public Dictionary<string, IElement?> GetEvaluationContexts(
         IElement? inputElement,
         Expression? contextExpression,
-        ParameterJsonNode? variables,
+        ParametersParameter? variables,
         ResourceJsonNode? resource,
         ISchema schema)
     {
@@ -71,7 +75,7 @@ public sealed class ExpressionEvaluator
         ParsedExpression parsedExpression,
         Expression? contextExpression,
         ResourceJsonNode? resource,
-        ParameterJsonNode? variables,
+        ParametersParameter? variables,
         string fhirVersion,
         bool debugTrace = false)
     {
@@ -119,7 +123,7 @@ public sealed class ExpressionEvaluator
     /// </summary>
     [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Instance method by design so it can be consumed via DI and mocked in tests.")]
     public EvaluationContext CreateEvaluationContext(
-        ParameterJsonNode? pcVariables,
+        ParametersParameter? pcVariables,
         ResourceJsonNode? resource,
         ISchema schema,
         List<TraceEntry>? traceOutput)
@@ -189,7 +193,7 @@ public sealed class ExpressionEvaluator
                 .SelectMany(ext => ext.Children("value"))
                 .ToList();
 
-            if (valueElements.Count > 0)
+            if (valueElements.Count > 0 && varParam.Name != null)
             {
                 evalContext = evalContext.WithEnvironmentVariable(varParam.Name, valueElements);
             }
