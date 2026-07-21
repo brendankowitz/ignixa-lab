@@ -10,13 +10,15 @@ import { FmlBench } from './fml/FmlBench';
 import { SofBench } from './sof/SofBench';
 import { FakesBench } from './fakes/FakesBench';
 import { ValidationBench } from './validation/ValidationBench';
+import { SearchBench } from './search/SearchBench';
 
-type BenchId = 'fhirpath' | 'validation' | 'fml' | 'sqlonfhir' | 'fakes';
+type BenchId = 'fhirpath' | 'validation' | 'fml' | 'sqlonfhir' | 'fakes' | 'search';
 
 const BENCH_TABS: PillItem<BenchId>[] = [
   { id: 'fhirpath', label: 'FHIRPath' },
   { id: 'validation', label: 'Validation' },
   { id: 'fakes', label: 'Fakes' },
+  { id: 'search', label: 'Search' },
   { id: 'sqlonfhir', label: 'SQL on FHIR', disabled: true, title: 'Not yet implemented' },
   { id: 'fml', label: 'FML', disabled: true, title: 'Not yet implemented' },
 ];
@@ -50,7 +52,7 @@ export function BenchesApp() {
   const theme = useTheme();
   const compactHeader = useIsNarrowViewport(680);
   const [bench, setBench] = useState<BenchId>(initialLink.bench ?? 'fhirpath');
-  const [fakesReturnTo, setFakesReturnTo] = useState<Exclude<BenchId, 'fakes'> | null>(null);
+  const [fakesReturnTo, setFakesReturnTo] = useState<Exclude<BenchId, 'fakes' | 'search'> | null>(null);
   const [sentToast, setSentToast] = useState<{ bench: BenchId; label: string } | null>(null);
   const [fhirpathSeed, setFhirpathSeed] = useState<{ text: string } | null>(null);
   const [validationSeed, setValidationSeed] = useState<{ text: string } | null>(null);
@@ -67,7 +69,7 @@ export function BenchesApp() {
 
   const { copied, copy: copyShareLink } = useCopyToClipboard(shareUrl, COPY_FEEDBACK_DURATION_MS);
 
-  const openFakesFrom = (fromBench: Exclude<BenchId, 'fakes'>) => {
+  const openFakesFrom = (fromBench: Exclude<BenchId, 'fakes' | 'search'>) => {
     setBench('fakes');
     setFakesReturnTo(fromBench);
   };
@@ -120,7 +122,7 @@ export function BenchesApp() {
         <div style={{ flex: compactHeader ? '0 0 0' : 1, display: compactHeader ? 'none' : 'block' }} />
 
         <span style={{ fontFamily: monoFont, fontSize: 11, color: 'var(--text3)', display: compactHeader ? 'none' : 'inline' }}>
-          {bench === 'fhirpath' || bench === 'validation' || bench === 'fakes' ? 'live engine' : 'mock engine · exploration'}
+          {bench === 'fhirpath' || bench === 'validation' || bench === 'fakes' || bench === 'search' ? 'live engine' : 'mock engine · exploration'}
         </span>
 
         <button
@@ -180,6 +182,7 @@ export function BenchesApp() {
             onShareStateChange={setFakesShare}
           />
         ) : null}
+        {bench === 'search' ? <SearchBench /> : null}
       </main>
 
       {sentToast ? (
