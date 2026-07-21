@@ -4,6 +4,7 @@ import { benchHeaderStyle, benchPageStyle, chipStyle, engineBadgeStyle, monoFont
 import { useIsNarrowViewport } from '../../hooks/useIsNarrowViewport';
 import { useSearchTrace } from './useSearchTrace';
 import { spanSegments, type Segment } from './searchSpans';
+import { tokenizeSql } from './sqlHighlight';
 import { SearchQueryBuilder } from './SearchQueryBuilder';
 import {
   buildPlanRowTree,
@@ -630,28 +631,28 @@ export function SearchBench() {
               // (e.g. "orderBy"/"assembly", SqlBuilder-internal glue), which stays unclickable — but every
               // range now carries a `kind`, so even those get a tooltip instead of being unlabeled text.
               const clickable = plan !== null && label !== null && canonicalLabel(plan, label) !== null;
-              if (!clickable || label === null) {
-                const title = segment.kind ? SQL_RANGE_KIND_TITLES[segment.kind] : undefined;
-                return (
-                  <span key={index} title={title}>
-                    {text}
-                  </span>
-                );
-              }
-              const selected = isRangeSelected(label, selection, plan);
+              const selected = clickable && label !== null && isRangeSelected(label, selection, plan);
+              const title = clickable ? (label ?? undefined) : segment.kind ? SQL_RANGE_KIND_TITLES[segment.kind] : undefined;
+              // Syntax color lives per-token (see tokenizeSql) rather than being overridden to a flat accent
+              // color on selection — a segment is often a whole multi-line CTE body now, and a solid-color
+              // block of that size would read worse than keeping keywords/strings/numbers distinguishable
+              // under the selection background.
               return (
                 <span
                   key={index}
-                  onClick={() => selectCteLabel(label)}
-                  title={label}
+                  onClick={clickable && label !== null ? () => selectCteLabel(label) : undefined}
+                  title={title}
                   style={{
-                    cursor: 'pointer',
+                    cursor: clickable ? 'pointer' : undefined,
                     borderRadius: 3,
                     background: selected ? 'var(--accent-border)' : 'transparent',
-                    color: selected ? 'var(--accent)' : 'var(--text)',
                   }}
                 >
-                  {text}
+                  {tokenizeSql(text).map((token, tokenIndex) => (
+                    <span key={tokenIndex} style={{ color: token.color }}>
+                      {token.text}
+                    </span>
+                  ))}
                 </span>
               );
             })}
