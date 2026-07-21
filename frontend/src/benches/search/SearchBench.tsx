@@ -301,17 +301,22 @@ export function SearchBench() {
   const [selectedOrdinal, setSelectedOrdinal] = useState<number | null>(null);
   const [sqlTab, setSqlTab] = useState<SqlTab>('sql');
 
-  // Clicking a span sets `selectedOrdinal` to trace a parameter across columns, but that ordinal is only
-  // meaningful for the trace `result` it was clicked in — resourceType/query changes trigger useSearchTrace to
-  // swap in a fresh result (see useSearchTrace's own [resourceType, query] effect), so without this reset a
-  // stale ordinal would silently re-target whichever parameter now happens to occupy that same slot.
-  useEffect(() => {
-    setSelectedOrdinal(null);
-  }, [resourceType, query]);
-
   const { result, error, isLoading } = useSearchTrace(resourceType, query);
   const plan = result?.plan ?? null;
   const emittedSql = result?.sql ?? null;
+
+  // Clicking a span sets `selectedOrdinal` to trace a parameter across columns, but that ordinal is only
+  // meaningful for the trace `result` it was clicked in. Two moments can invalidate it:
+  //  - the user edits resourceType/query (a new request is about to be debounced/fetched), and
+  //  - `result` itself swaps to a new reference once that debounced fetch actually resolves — which can land
+  //    well after the reset above already fired, if the user clicks a span from the still-displayed *previous*
+  //    result during the debounce/network window.
+  // `useSearchTrace` only replaces `result` with a new object on a state update (fresh success, or cleared to
+  // null on error) — it never mutates it in place and leaves it referentially untouched while a request is
+  // merely in flight — so `result` is a safe, stable-until-changed effect dependency here.
+  useEffect(() => {
+    setSelectedOrdinal(null);
+  }, [resourceType, query, result]);
 
   const traceGridStyle: CSSProperties = {
     display: 'grid',
