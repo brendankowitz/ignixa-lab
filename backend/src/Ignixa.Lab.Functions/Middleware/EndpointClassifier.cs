@@ -38,6 +38,11 @@ public static class EndpointClassifier
             // was never meant for this and was only hit because these endpoints
             // fell through to the fail-safe default below.
             "FakesMetadata" or "FakesPopulation" or "FakesScenario" or "FakesResource" => EndpointClass.Capability,
+            // Search tracing is likewise a single in-process compile call with no
+            // outbound HTTP — same tier as FhirPath/Fakes, not the Run tier's
+            // fail-safe default (which a debounced auto-run UI would exhaust in
+            // seconds).
+            "SearchTrace" => EndpointClass.Capability,
             // Fail safe: an unrecognized (e.g. newly added) endpoint gets the
             // strictest tier rather than silently running unlimited.
             _ => EndpointClass.Run,

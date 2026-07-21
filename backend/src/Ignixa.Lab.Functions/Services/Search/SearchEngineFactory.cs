@@ -19,17 +19,34 @@ public sealed record SearchEngine(
 
 /// <summary>
 /// Builds and caches the Search engine dependencies per FHIR version, mirroring
-/// <see cref="SchemaProviderFactory"/>'s lazy-singleton-per-version shape. Only R4 is wired today; the
-/// per-version cache keeps adding R4B/R5/STU3 later a non-event. The build is expensive (loads the full
-/// base search-parameter set), so it runs at most once.
+/// <see cref="SchemaProviderFactory"/>'s lazy-singleton-per-version shape and supported version set
+/// (STU3, R4, R4B, R5, R6) exactly, so the two factories never silently disagree about which versions this
+/// app offers. Each version's build is expensive (loads the full base search-parameter set), so it runs at
+/// most once per version.
 /// </summary>
 public sealed class SearchEngineFactory(SchemaProviderFactory schemaProviderFactory)
 {
+    private readonly Lazy<SearchEngine> _stu3 = new(() => Build(schemaProviderFactory, "STU3", FhirVersion.Stu3));
     private readonly Lazy<SearchEngine> _r4 = new(() => Build(schemaProviderFactory, "R4", FhirVersion.R4));
+    private readonly Lazy<SearchEngine> _r4B = new(() => Build(schemaProviderFactory, "R4B", FhirVersion.R4B));
+    private readonly Lazy<SearchEngine> _r5 = new(() => Build(schemaProviderFactory, "R5", FhirVersion.R5));
+    private readonly Lazy<SearchEngine> _r6 = new(() => Build(schemaProviderFactory, "R6", FhirVersion.R6));
 
-    /// <summary>Gets the cached R4 Search engine dependencies.</summary>
+    /// <summary>
+    /// Gets the cached Search engine dependencies for the given FHIR version (case-insensitive; "STU3" and
+    /// "R3" are synonyms, matching <see cref="SchemaProviderFactory"/>). Defaults to R4 for an unrecognized
+    /// value, same fallback <see cref="SchemaProviderFactory"/> uses.
+    /// </summary>
     [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Instance method by design so it can be consumed via DI and mocked in tests.")]
-    public SearchEngine GetR4() => _r4.Value;
+    public SearchEngine Get(string fhirVersion) => fhirVersion.ToUpperInvariant() switch
+    {
+        "STU3" or "R3" => _stu3.Value,
+        "R4" => _r4.Value,
+        "R4B" => _r4B.Value,
+        "R5" => _r5.Value,
+        "R6" => _r6.Value,
+        _ => _r4.Value,
+    };
 
     private static SearchEngine Build(SchemaProviderFactory schemaProviderFactory, string version, FhirVersion fhirVersion)
     {

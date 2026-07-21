@@ -13,9 +13,9 @@ export interface SearchTraceState {
 
 const EMPTY: SearchTraceState = { result: null, error: null, isLoading: false };
 
-/** Debounced, abortable search-trace runner: re-GETs ~450ms after the last change to resourceType/query,
- * cancelling any still-in-flight request first. */
-export function useSearchTrace(resourceType: string, query: string): SearchTraceState {
+/** Debounced, abortable search-trace runner: re-GETs ~450ms after the last change to fhirVersion/
+ * resourceType/query, cancelling any still-in-flight request first. */
+export function useSearchTrace(fhirVersion: string, resourceType: string, query: string): SearchTraceState {
   const [state, setState] = useState<SearchTraceState>(EMPTY);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -26,7 +26,7 @@ export function useSearchTrace(resourceType: string, query: string): SearchTrace
       abortRef.current = controller;
       setState((prev) => ({ ...prev, isLoading: true }));
 
-      runSearch(resourceType, query, controller.signal)
+      runSearch(fhirVersion, resourceType, query, controller.signal)
         .then((result) => setState({ result, error: null, isLoading: false }))
         .catch((error: unknown) => {
           if (error instanceof DOMException && error.name === 'AbortError') {
@@ -40,7 +40,7 @@ export function useSearchTrace(resourceType: string, query: string): SearchTrace
       clearTimeout(timer);
       abortRef.current?.abort();
     };
-  }, [resourceType, query]);
+  }, [fhirVersion, resourceType, query]);
 
   return state;
 }

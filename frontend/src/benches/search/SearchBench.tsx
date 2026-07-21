@@ -4,12 +4,26 @@ import { benchHeaderStyle, benchPageStyle, chipStyle, engineBadgeStyle, monoFont
 import { useIsNarrowViewport } from '../../hooks/useIsNarrowViewport';
 import { useSearchTrace } from './useSearchTrace';
 import { spanSegments, type Segment } from './searchSpans';
-import { isRangeSelected, isRowSelected, ordinalForCteLabel } from './searchLineage';
+import { SearchQueryBuilder } from './SearchQueryBuilder';
 import {
+  buildPlanRowTree,
+  canonicalLabel,
+  CLEARED_SELECTION,
+  isRangeSelected,
+  isRowSelected,
+  ordinalForCteLabel,
+  selectionForCteLabel,
+  selectionForOrdinal,
+  type PlanRowNode,
+  type Selection,
+} from './searchLineage';
+import {
+  DEFAULT_FHIR_VERSION,
   DEFAULT_QUERY,
   DEFAULT_RESOURCE_TYPE,
-  EXAMPLE_QUERIES,
+  FHIR_VERSIONS,
   RESOURCE_TYPES,
+  type FhirVersion,
   type ParameterTrace,
   type PlanExplainRow,
   type QueryPlan,
@@ -21,6 +35,8 @@ const RESOURCE_TYPE_ITEMS: PillItem<ResourceType>[] = RESOURCE_TYPES.map((resour
   id: resourceType,
   label: resourceType,
 }));
+
+const FHIR_VERSION_ITEMS: PillItem<FhirVersion>[] = FHIR_VERSIONS.map((version) => ({ id: version, label: version }));
 
 type SqlTab = 'sql' | 'explain';
 
@@ -98,16 +114,16 @@ function SegmentRun({
   text,
   segments,
   ordinal,
-  selectedOrdinal,
+  selection,
   onSelect,
 }: {
   text: string;
   segments: Segment[];
   ordinal: number;
-  selectedOrdinal: number | null;
+  selection: Selection;
   onSelect: (ordinal: number) => void;
 }) {
-  const selected = selectedOrdinal === ordinal;
+  const selected = selection.ordinal === ordinal;
   return (
     <>
       {segments.map((segment, index) => {
@@ -145,20 +161,23 @@ function SegmentRun({
   );
 }
 
-/** One "Search" column block: the parameter's key=value string rendered as clickable syntax spans, plus an
- * inline warning for `Ignored`/`Failed` outcomes (a per-parameter note, not a page-level error). */
+/** One "Search" column block: the parameter's detected search data type (mirrors the mock's per-span `cat`
+ * category label — one per parameter block here rather than per token, since this column groups by
+ * parameter, not by a single continuous flowing line), the key=value string rendered as clickable syntax
+ * spans, plus an inline warning for `Ignored`/`Failed` outcomes (a per-parameter note, not a page-level
+ * error). */
 function SearchParamBlock({
   param,
-  selectedOrdinal,
+  selection,
   onSelect,
 }: {
   param: ParameterTrace;
-  selectedOrdinal: number | null;
+  selection: Selection;
   onSelect: (ordinal: number) => void;
 }) {
   const keySegments = spanSegments(param.key, param.keySyntax, 'Key');
   const valueSegments = spanSegments(param.value, param.valueSyntax, 'Value');
-  const selected = selectedOrdinal === param.ordinal;
+  const selected = selection.ordinal === param.ordinal;
   const muted = param.outcome.kind === 'Ignored';
   const failed = param.outcome.kind === 'Failed';
 
@@ -175,10 +194,24 @@ function SearchParamBlock({
         gap: 4,
       }}
     >
+      {param.dataType ? (
+        <span
+          style={{
+            fontFamily: monoFont,
+            fontSize: 8.5,
+            letterSpacing: '.12em',
+            textTransform: 'uppercase',
+            fontWeight: 700,
+            color: kindChipColors(param.dataType).fg,
+          }}
+        >
+          {param.dataType}
+        </span>
+      ) : null}
       <div style={{ fontFamily: monoFont, fontSize: 12.5, display: 'flex', flexWrap: 'wrap' }}>
-        <SegmentRun text={param.key} segments={keySegments} ordinal={param.ordinal} selectedOrdinal={selectedOrdinal} onSelect={onSelect} />
+        <SegmentRun text={param.key} segments={keySegments} ordinal={param.ordinal} selection={selection} onSelect={onSelect} />
         <span style={{ color: 'var(--text4)' }}>=</span>
-        <SegmentRun text={param.value} segments={valueSegments} ordinal={param.ordinal} selectedOrdinal={selectedOrdinal} onSelect={onSelect} />
+        <SegmentRun text={param.value} segments={valueSegments} ordinal={param.ordinal} selection={selection} onSelect={onSelect} />
       </div>
       {muted ? <span style={{ fontSize: 11, color: 'var(--text4)' }}>⚠ ignored — {param.outcome.reason}</span> : null}
       {failed ? (
@@ -194,16 +227,16 @@ function SearchParamBlock({
  * (not the block as a whole) is the click target, but the whole block highlights when its ordinal is selected. */
 function ExpressionParamBlock({
   param,
-  selectedOrdinal,
+  selection,
   onSelect,
   compact,
 }: {
   param: ParameterTrace;
-  selectedOrdinal: number | null;
+  selection: Selection;
   onSelect: (ordinal: number) => void;
   compact: boolean;
 }) {
-  const selected = selectedOrdinal === param.ordinal;
+  const selected = selection.ordinal === param.ordinal;
   return (
     <div
       style={{
@@ -244,70 +277,130 @@ function ExpressionParamBlock({
   );
 }
 
-/** One "Lowered AST" column row: `Plan.Rows[]` is flat (no `depth` field, unlike `IrRow`), so rows render as a
- * single indented list rather than a recursive tree — clickable only when its label resolves to a CTE's owning
- * parameter ordinal (root/sort/page/countOnly/inc{i} rows are informational only). */
+/** One "SQL AST" column card, rendered once per node of the tree `buildPlanRowTree` produces (see
+ * `PlanRowTree` below) — a chain's leaf and its `ChainJoin`, or an `Intersect`'s two operands, are nested
+ * under their composing row rather than appearing as unrelated flat siblings, matching the mock's
+ * `sqAstBlocksData` (each block carries multiple related lines, not one flat list). Card treatment matches
+ * `ExpressionParamBlock`'s so the two columns read as the same visual language.
+ *
+ * Every row is clickable — CTE rows and non-CTE result-shape rows alike (`inc0`/`sort`/`page`/`countOnly`
+ * all have their own real, labelled range in the emitted SQL, same as any CTE). A row with no resolvable
+ * owning parameter (a genuine multi-parameter `Intersect`, a `ResourceSource` base set, or any non-CTE row
+ * — none of those ever had one to begin with) still selects and highlights itself and its own generated SQL
+ * (see `Selection.label` in `searchLineage.ts`), rendered with a dashed border — the same "system added, not
+ * directly from one search parameter" treatment the Implicit chips use. Solid border means "this is exactly
+ * one parameter's expression." */
 function PlanRowView({
   row,
   plan,
-  selectedOrdinal,
+  selection,
   onSelect,
 }: {
   row: PlanExplainRow;
   plan: QueryPlan;
-  selectedOrdinal: number | null;
-  onSelect: (ordinal: number) => void;
+  selection: Selection;
+  onSelect: (label: string) => void;
 }) {
-  const ordinal = ordinalForCteLabel(plan, row.label);
-  const clickable = ordinal !== null;
-  const selected = isRowSelected(row.label, selectedOrdinal, plan);
+  const attributable = ordinalForCteLabel(plan, row.label) !== null;
+  const selected = isRowSelected(row.label, selection, plan);
   return (
     <div
-      onClick={
-        clickable
-          ? (event: MouseEvent) => {
-              event.stopPropagation();
-              onSelect(ordinal);
-            }
-          : undefined
-      }
-      title={clickable ? `Select parameter #${ordinal}` : undefined}
+      onClick={(event: MouseEvent) => {
+        event.stopPropagation();
+        onSelect(row.label);
+      }}
+      title={attributable ? 'Select this parameter' : 'Select this SQL block (no single owning parameter)'}
       style={{
         display: 'flex',
         gap: 8,
         alignItems: 'baseline',
-        padding: '4px 6px',
-        borderRadius: 6,
-        cursor: clickable ? 'pointer' : 'default',
-        background: selected ? 'var(--chip-vio-bg)' : 'transparent',
+        flexWrap: 'wrap',
+        padding: '6px 8px',
+        borderRadius: 8,
+        border: `1px ${attributable ? 'solid' : 'dashed'} ${selected ? 'var(--accent-border)' : 'var(--border2)'}`,
+        background: selected ? 'var(--chip-vio-bg)' : 'var(--code)',
+        opacity: attributable ? 1 : 0.85,
+        cursor: 'pointer',
       }}
     >
-      <span style={chipStyle(clickable ? 'var(--chip-teal-bg)' : 'var(--chip-gray-bg)', clickable ? 'var(--chip-teal-fg)' : 'var(--chip-gray2-fg)')}>
+      <span style={chipStyle(attributable ? 'var(--chip-teal-bg)' : 'var(--chip-gray-bg)', attributable ? 'var(--chip-teal-fg)' : 'var(--chip-gray2-fg)')}>
         {row.label}
       </span>
+      <span style={chipStyle(kindChipColors(row.kind).bg, kindChipColors(row.kind).fg)}>{row.kind}</span>
       <span style={{ fontFamily: monoFont, fontSize: 11.5, color: 'var(--text)' }}>{row.body}</span>
     </div>
   );
 }
 
+/** Renders one `PlanRowNode` and, indented beneath it behind a guide line, every CTE it directly composes
+ * — recursively, so a multi-level composition (e.g. a chain nested inside an `Intersect`) nests all the
+ * way down. Each node keeps its own independent click/selected/dashed state (a chain's leaf and its
+ * `ChainJoin` both solid and highlighting together; an `Intersect`'s two differently-owned operands each
+ * on their own) — nesting only changes layout, not the click-to-trace semantics `PlanRowView` already has. */
+function PlanRowTree({
+  node,
+  plan,
+  selection,
+  onSelect,
+  compact,
+}: {
+  node: PlanRowNode;
+  plan: QueryPlan;
+  selection: Selection;
+  onSelect: (label: string) => void;
+  compact: boolean;
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <PlanRowView row={node.row} plan={plan} selection={selection} onSelect={onSelect} />
+      {node.children.length > 0 ? (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6,
+            marginLeft: compact ? 10 : 16,
+            paddingLeft: 10,
+            borderLeft: '2px solid var(--border2)',
+          }}
+        >
+          {node.children.map((child, index) => (
+            <PlanRowTree key={index} node={child} plan={plan} selection={selection} onSelect={onSelect} compact={compact} />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 /** Traces a FHIR search query (`GET /{resourceType}?{query}`) from parse through the lowered SQL plan to
- * generated SQL, with click-to-trace lineage across all views via a single `selectedOrdinal`. */
+ * generated SQL, with click-to-trace lineage across all views via a single `Selection`. */
 export function SearchBench() {
   const stackedGrid = useIsNarrowViewport(900);
   const compact = useIsNarrowViewport(560);
 
+  const [fhirVersion, setFhirVersion] = useState<FhirVersion>(DEFAULT_FHIR_VERSION);
   const [resourceType, setResourceType] = useState<ResourceType>(DEFAULT_RESOURCE_TYPE);
   const [query, setQuery] = useState(DEFAULT_QUERY);
-  const [selectedOrdinal, setSelectedOrdinal] = useState<number | null>(null);
+  const [selection, setSelection] = useState<Selection>(CLEARED_SELECTION);
   const [sqlTab, setSqlTab] = useState<SqlTab>('sql');
 
-  const { result, error, isLoading } = useSearchTrace(resourceType, query);
+  const { result, error, isLoading } = useSearchTrace(fhirVersion, resourceType, query);
   const plan = result?.plan ?? null;
   const emittedSql = result?.sql ?? null;
+  const planRowTree = plan ? buildPlanRowTree(plan) : null;
 
-  // Clicking a span sets `selectedOrdinal` to trace a parameter across columns, but that ordinal is only
-  // meaningful for the trace `result` it was clicked in. Two moments can invalidate it:
-  //  - the user edits resourceType/query (a new request is about to be debounced/fetched), and
+  const selectOrdinal = (ordinal: number) => setSelection(selectionForOrdinal(ordinal));
+  const selectCteLabel = (label: string) => {
+    if (plan) {
+      setSelection(selectionForCteLabel(plan, label));
+    }
+  };
+
+  // Clicking a span sets `selection` to trace a parameter (or a self-contained structural CTE) across
+  // columns, but that selection is only meaningful for the trace `result` it was clicked in. Two moments
+  // can invalidate it:
+  //  - the user edits fhirVersion/resourceType/query (a new request is about to be debounced/fetched), and
   //  - `result` itself swaps to a new reference once that debounced fetch actually resolves — which can land
   //    well after the reset above already fired, if the user clicks a span from the still-displayed *previous*
   //    result during the debounce/network window.
@@ -315,8 +408,8 @@ export function SearchBench() {
   // null on error) — it never mutates it in place and leaves it referentially untouched while a request is
   // merely in flight — so `result` is a safe, stable-until-changed effect dependency here.
   useEffect(() => {
-    setSelectedOrdinal(null);
-  }, [resourceType, query, result]);
+    setSelection(CLEARED_SELECTION);
+  }, [fhirVersion, resourceType, query, result]);
 
   const traceGridStyle: CSSProperties = {
     display: 'grid',
@@ -325,11 +418,15 @@ export function SearchBench() {
     alignItems: 'start',
   };
 
+  const hasSelection = selection.ordinal !== null || selection.label !== null;
+
   return (
     <div style={benchPageStyle(1440, compact)}>
       <div style={benchHeaderStyle(compact)}>
         <h1 style={{ margin: 0, fontSize: 21, fontWeight: 700, letterSpacing: '-.02em' }}>Search</h1>
-        <span style={{ fontSize: 12.5, color: 'var(--text3)' }}>Trace a FHIR search query from parse to generated SQL.</span>
+        <span style={{ fontSize: 12.5, color: 'var(--text3)' }}>
+          Trace a FHIR search query from parse to generated SQL, targeting the Microsoft FHIR Server-compatible schema.
+        </span>
         <div style={{ flex: 1 }} />
         {plan ? <span style={chipStyle('var(--chip-vio-bg)', 'var(--chip-vio-fg)')}>{`${plan.ctes.length} CTEs`}</span> : null}
         <span style={engineBadgeStyle}>{isLoading ? 'tracing…' : 'ignixa-search'}</span>
@@ -337,6 +434,9 @@ export function SearchBench() {
 
       <Card>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={sectionLabelStyle}>FHIR version</span>
+          <Pills items={FHIR_VERSION_ITEMS} activeId={fhirVersion} onChange={setFhirVersion} />
+          <div style={{ width: 1, height: 18, background: 'var(--border2)' }} />
           <span style={sectionLabelStyle}>Resource type</span>
           <Pills items={RESOURCE_TYPE_ITEMS} activeId={resourceType} onChange={setResourceType} />
         </div>
@@ -388,27 +488,9 @@ export function SearchBench() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-          <span style={{ fontSize: 11, color: 'var(--text4)' }}>Examples</span>
-          {EXAMPLE_QUERIES[resourceType].map((example) => (
-            <button
-              key={example}
-              type="button"
-              onClick={() => setQuery(example)}
-              style={{
-                fontFamily: monoFont,
-                fontSize: 10.5,
-                padding: '5px 10px',
-                borderRadius: 99,
-                border: '1px solid var(--border)',
-                color: 'var(--text2)',
-                cursor: 'pointer',
-                background: 'var(--panel)',
-              }}
-            >
-              {example.length > 44 ? `${example.slice(0, 44)}…` : example}
-            </button>
-          ))}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={sectionLabelStyle}>Builder</span>
+          <SearchQueryBuilder resourceType={resourceType} query={query} onQueryChange={setQuery} />
         </div>
 
         {result && result.implicit.length > 0 ? (
@@ -426,13 +508,29 @@ export function SearchBench() {
       {error !== null ? <ErrorBanner message={error} /> : null}
       {result?.failure ? <ErrorBanner message={`${result.failure.stage}: ${result.failure.message}`} /> : null}
 
-      <div style={traceGridStyle} onClick={() => setSelectedOrdinal(null)}>
+      {result ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <span style={{ fontFamily: monoFont, fontSize: 10.5, color: 'var(--text3)' }}>
+            {result.parameters.length} {result.parameters.length === 1 ? 'param' : 'params'}
+          </span>
+          {hasSelection ? (
+            <span
+              onClick={() => setSelection(CLEARED_SELECTION)}
+              style={{ fontFamily: monoFont, fontSize: 11, fontWeight: 600, color: 'var(--accent)', cursor: 'pointer' }}
+            >
+              ✕ clear lineage highlight
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div style={traceGridStyle} onClick={() => setSelection(CLEARED_SELECTION)}>
         <Card style={{ minWidth: 0 }}>
           <span style={sectionLabelStyle}>Search</span>
           {result && result.parameters.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {result.parameters.map((param) => (
-                <SearchParamBlock key={param.ordinal} param={param} selectedOrdinal={selectedOrdinal} onSelect={setSelectedOrdinal} />
+                <SearchParamBlock key={param.ordinal} param={param} selection={selection} onSelect={selectOrdinal} />
               ))}
             </div>
           ) : (
@@ -445,13 +543,7 @@ export function SearchBench() {
           {result && result.parameters.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {result.parameters.map((param) => (
-                <ExpressionParamBlock
-                  key={param.ordinal}
-                  param={param}
-                  selectedOrdinal={selectedOrdinal}
-                  onSelect={setSelectedOrdinal}
-                  compact={compact}
-                />
+                <ExpressionParamBlock key={param.ordinal} param={param} selection={selection} onSelect={selectOrdinal} compact={compact} />
               ))}
             </div>
           ) : (
@@ -460,11 +552,14 @@ export function SearchBench() {
         </Card>
 
         <Card style={{ minWidth: 0 }}>
-          <span style={sectionLabelStyle}>Lowered AST</span>
-          {plan ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '2px 0' }}>
-              {plan.rows.map((row, index) => (
-                <PlanRowView key={index} row={row} plan={plan} selectedOrdinal={selectedOrdinal} onSelect={setSelectedOrdinal} />
+          <span style={sectionLabelStyle}>SQL AST</span>
+          {plan && planRowTree ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {planRowTree.tree.map((node, index) => (
+                <PlanRowTree key={index} node={node} plan={plan} selection={selection} onSelect={selectCteLabel} compact={compact} />
+              ))}
+              {planRowTree.extras.map((row, index) => (
+                <PlanRowView key={`extra-${index}`} row={row} plan={plan} selection={selection} onSelect={selectCteLabel} />
               ))}
             </div>
           ) : (
@@ -493,16 +588,21 @@ export function SearchBench() {
             {sqlSegments(emittedSql.sql, emittedSql.ranges).map((segment, index) => {
               const text = emittedSql.sql.slice(segment.start, segment.start + segment.length);
               const label = segment.label;
-              const ordinal = label ? ordinalForCteLabel(plan, label) : null;
-              if (ordinal === null || label === null) {
+              // Clickable whenever this SQL range resolves to a real canonical identity — covers every row
+              // kind (cte0/root/inc0/sort/page/countOnly) and an include stage's "lim" companion range, not
+              // just CTEs. `canonicalLabel` returns null for a range with no plan-row counterpart at all
+              // (e.g. "orderBy"/"cteMatchPage", SqlBuilder-internal glue), which stays plain text rather
+              // than a click that would select nothing else.
+              const clickable = plan !== null && label !== null && canonicalLabel(plan, label) !== null;
+              if (!clickable || label === null) {
                 return <span key={index}>{text}</span>;
               }
-              const selected = isRangeSelected(label, selectedOrdinal, plan);
+              const selected = isRangeSelected(label, selection, plan);
               return (
                 <span
                   key={index}
-                  onClick={() => setSelectedOrdinal(ordinal)}
-                  title={`${label} → parameter #${ordinal}`}
+                  onClick={() => selectCteLabel(label)}
+                  title={label}
                   style={{
                     cursor: 'pointer',
                     borderRadius: 3,

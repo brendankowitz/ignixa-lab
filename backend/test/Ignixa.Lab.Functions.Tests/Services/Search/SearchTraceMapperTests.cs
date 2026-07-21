@@ -79,8 +79,38 @@ public sealed class SearchTraceMapperTests
 
         response.Plan!.Ctes.Single().ParameterOrdinal.Should().Be(7);
         response.Plan.Rows.Single().Label.Should().Be("cte0");
+        response.Plan.Rows.Single().CteIndex.Should().Be(0);
         response.Sql!.Ranges.Single().Label.Should().Be("cte0");
         response.Implicit.Single().Name.Should().Be("_count");
+    }
+
+    [Fact]
+    public void ToResponse_RowPositionMapsToCteIndex_EvenForTheRelabelledRootRow()
+    {
+        // PlanExplainer relabels whichever CTE is the plan's match/output as "root" instead of "cte{i}" --
+        // CteIndex must still reflect its real position (1 here, the second CTE), not be null or 0, so the
+        // frontend can look it up in Ctes and inherit an ordinal from what it references (a structural
+        // ChainJoin has no ParameterOrdinal of its own -- see the classifier/lineage design notes).
+        var plan = new QueryPlanTrace(
+            Explain: "cte0 = ...\nroot = ...",
+            Ctes:
+            [
+                new CteProvenance(0, ParameterOrdinal: 0, Span: null),
+                new CteProvenance(1, ParameterOrdinal: null, Span: null),
+            ],
+            Rows:
+            [
+                new PlanExplainRow("cte0", "StringSearchParam[2,2]  Text LIKE @p0"),
+                new PlanExplainRow("root", "ChainJoin(cte0, ref=1, inner=2, output=[1], Forward)"),
+                new PlanExplainRow("sort", "SortSpec([], Valued)"),
+            ]);
+        var trace = new SearchTrace("Patient", [Trace(0, "general-practitioner.name", "Smith", new ParameterOutcome.Compiled())], plan, Sql: null);
+
+        var rows = SearchTraceMapper.ToResponse(trace).Plan!.Rows;
+
+        rows[0].CteIndex.Should().Be(0);
+        rows[1].CteIndex.Should().Be(1, "the 'root' row is still the second CTE positionally");
+        rows[2].CteIndex.Should().BeNull("sort is not a CTE row at all");
     }
 
     [Fact]

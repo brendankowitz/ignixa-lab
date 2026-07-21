@@ -33,7 +33,28 @@ public static class SearchTraceMapper
         p.KeySyntax is null ? null : ToSyntaxDto(p.KeySyntax),
         p.ValueSyntax is null ? null : ToSyntaxDto(p.ValueSyntax),
         DescribeIr(p.Ir),
+        FindDataType(p.Ir),
         ToOutcomeDto(p.Outcome));
+
+    /// <summary>Finds the parameter's own declared <c>SearchParamType</c> by walking to the first
+    /// search-parameter-bearing node — the same four node kinds <c>SearchCompiler.ParametersOf</c> (in
+    /// <c>Ignixa.Search.Sql.Tracing</c>) recognizes as naming a search parameter, checked at the OUTERMOST
+    /// level first so a composite reports its own "Composite" type rather than one component's, and a
+    /// union/AND wrapper (comma-separated OR values, or a `:not`) recurses to the first branch that has
+    /// one — every branch of a union for the same parameter key shares the same type by construction.</summary>
+    private static string? FindDataType(Expression? ir) => ir switch
+    {
+        null => null,
+        SearchParameterExpression sp => sp.Parameter.Type.ToString(),
+        SearchParameterPredicateExpression p => p.Parameter.Type.ToString(),
+        ChainedExpression c => c.ReferenceSearchParameter.Type.ToString(),
+        MissingSearchParameterExpression m => m.Parameter.Type.ToString(),
+        CompositeComponentExpression cc => cc.ComponentSearchParameter.Type.ToString(),
+        MultiaryExpression m => m.Expressions.Select(FindDataType).FirstOrDefault(t => t is not null),
+        UnionExpression u => u.Expressions.Select(FindDataType).FirstOrDefault(t => t is not null),
+        NotExpression n => FindDataType(n.Expression),
+        _ => null,
+    };
 
     // IrProjector.Describe is documented to throw NotSupportedException loudly on a node kind it does not
     // model. In a bench that would turn one exotic parameter into a 500 for the whole request, so degrade to
@@ -68,9 +89,16 @@ public static class SearchTraceMapper
         _ => throw new NotSupportedException($"Unknown ParameterOutcome: {outcome.GetType().Name}."),
     };
 
+    // PlanExplainer.Describe emits exactly one row per CTE, in cteIndex order (0..Ctes.Count-1), before
+    // appending any non-CTE rows (inc{i}/sort/page/countOnly) -- so a row's position IS its cteIndex for
+    // every row within that prefix, regardless of whether PlanExplainer labelled it "cte{i}" or "root".
     private static QueryPlanDto ToPlanDto(QueryPlanTrace plan) => new(
         plan.Explain,
-        plan.Rows.Select(r => new PlanExplainRowDto(r.Label, r.Body)).ToList(),
+        plan.Rows.Select((r, i) => new PlanExplainRowDto(
+            r.Label,
+            PlanRowKindClassifier.Classify(r.Label, r.Body),
+            i < plan.Ctes.Count ? i : null,
+            r.Body)).ToList(),
         plan.Ctes.Select(c => new CteProvenanceDto(c.CteIndex, c.ParameterOrdinal, ToSpanDto(c.Span))).ToList());
 
     private static SpanDto ToSpanDto(SourceSpan span) => new(span.Origin.ToString(), span.Start, span.Length);

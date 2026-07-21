@@ -27,7 +27,7 @@ public sealed class SearchFunctionsTests
     {
         var functions = CreateFunctions();
 
-        var result = await functions.Trace(BuildGetRequest("?name=Smith"), "Patient", CancellationToken.None);
+        var result = await functions.Trace(BuildGetRequest("?name=Smith"), "R4", "Patient", CancellationToken.None);
 
         var response = result.Should().BeOfType<OkObjectResult>().Subject.Value
             .Should().BeOfType<SearchTraceResponse>().Subject;
@@ -47,7 +47,7 @@ public sealed class SearchFunctionsTests
     {
         var functions = CreateFunctions();
 
-        var result = await functions.Trace(BuildGetRequest("?totally-bogus-param=x"), "Patient", CancellationToken.None);
+        var result = await functions.Trace(BuildGetRequest("?totally-bogus-param=x"), "R4", "Patient", CancellationToken.None);
 
         var response = result.Should().BeOfType<OkObjectResult>().Subject.Value
             .Should().BeOfType<SearchTraceResponse>().Subject;
@@ -66,7 +66,7 @@ public sealed class SearchFunctionsTests
         var functions = CreateFunctions();
 
         var result = await functions.Trace(
-            BuildGetRequest("?general-practitioner:Practitioner.name=Smith"), "Patient", CancellationToken.None);
+            BuildGetRequest("?general-practitioner:Practitioner.name=Smith"), "R4", "Patient", CancellationToken.None);
 
         var response = result.Should().BeOfType<OkObjectResult>().Subject.Value
             .Should().BeOfType<SearchTraceResponse>().Subject;
@@ -75,6 +75,50 @@ public sealed class SearchFunctionsTests
         parameter.KeySyntax.Should().NotBeNull("the chain structure lives on the key syntax");
         parameter.KeySyntax!.Kind.Should().Be("ForwardChain");
         parameter.ValueSyntax.Should().NotBeNull("the terminal value has its own syntax projection");
+        parameter.DataType.Should().Be("Reference", "a chain is always over a Reference-typed search parameter");
+    }
+
+    [Fact]
+    public async Task Trace_MixedParameterTypes_ReportsEachParametersOwnDataType()
+    {
+        var functions = CreateFunctions();
+
+        var result = await functions.Trace(
+            BuildGetRequest("?name=Smith&gender=male&birthdate=gt2000-01-01"), "R4", "Patient", CancellationToken.None);
+
+        var response = result.Should().BeOfType<OkObjectResult>().Subject.Value
+            .Should().BeOfType<SearchTraceResponse>().Subject;
+        response.Parameters.Should().HaveCount(3).And.OnlyContain(p => p.Outcome.Kind == "Compiled");
+        response.Parameters.Single(p => p.Key == "name").DataType.Should().Be("String");
+        response.Parameters.Single(p => p.Key == "gender").DataType.Should().Be("Token");
+        response.Parameters.Single(p => p.Key == "birthdate").DataType.Should().Be("Date");
+    }
+
+    [Fact]
+    public async Task Trace_CompositeParameter_ReportsItsOwnCompositeDataType_NotOneComponents()
+    {
+        var functions = CreateFunctions();
+
+        var result = await functions.Trace(
+            BuildGetRequest("?code-value-quantity=8480-6$gt90"), "R4", "Observation", CancellationToken.None);
+
+        var response = result.Should().BeOfType<OkObjectResult>().Subject.Value
+            .Should().BeOfType<SearchTraceResponse>().Subject;
+        var parameter = response.Parameters.Should().ContainSingle().Subject;
+        parameter.Outcome.Kind.Should().Be("Compiled");
+        parameter.DataType.Should().Be("Composite", "a composite parameter reports its own declared type, not its first component's (Token)");
+    }
+
+    [Fact]
+    public async Task Trace_UnknownParameter_HasNoDataType()
+    {
+        var functions = CreateFunctions();
+
+        var result = await functions.Trace(BuildGetRequest("?totally-bogus-param=x"), "R4", "Patient", CancellationToken.None);
+
+        var response = result.Should().BeOfType<OkObjectResult>().Subject.Value
+            .Should().BeOfType<SearchTraceResponse>().Subject;
+        response.Parameters.Should().ContainSingle().Which.DataType.Should().BeNull("an Ignored parameter never reached a successful parse, so it has no Ir to read a type from");
     }
 
     [Fact]
@@ -82,8 +126,43 @@ public sealed class SearchFunctionsTests
     {
         var functions = CreateFunctions();
 
-        var result = await functions.Trace(BuildGetRequest("?name=Smith"), "  ", CancellationToken.None);
+        var result = await functions.Trace(BuildGetRequest("?name=Smith"), "R4", "  ", CancellationToken.None);
 
         result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Theory]
+    [InlineData("STU3")]
+    [InlineData("R4B")]
+    [InlineData("R5")]
+    [InlineData("R6")]
+    public async Task Trace_NonR4Version_CompilesAgainstThatVersionsOwnSchema(string fhirVersion)
+    {
+        // Proves SearchEngineFactory.Get actually builds a distinct, working engine per version (not just
+        // that the parameter is accepted) -- each of these runs the real compiler for that FHIR version.
+        var functions = CreateFunctions();
+
+        var result = await functions.Trace(BuildGetRequest("?name=Smith"), fhirVersion, "Patient", CancellationToken.None);
+
+        var response = result.Should().BeOfType<OkObjectResult>().Subject.Value
+            .Should().BeOfType<SearchTraceResponse>().Subject;
+        response.Failure.Should().BeNull();
+        response.Parameters.Should().ContainSingle().Which.Outcome.Kind.Should().Be("Compiled");
+        response.Plan.Should().NotBeNull();
+        response.Sql.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task Trace_UnrecognizedFhirVersion_FallsBackToR4RatherThanErroring()
+    {
+        // Matches SchemaProviderFactory's own fallback behavior elsewhere in this app -- an unrecognized
+        // version string is not a 400, it silently resolves to R4.
+        var functions = CreateFunctions();
+
+        var result = await functions.Trace(BuildGetRequest("?name=Smith"), "not-a-real-version", "Patient", CancellationToken.None);
+
+        var response = result.Should().BeOfType<OkObjectResult>().Subject.Value
+            .Should().BeOfType<SearchTraceResponse>().Subject;
+        response.Parameters.Should().ContainSingle().Which.Outcome.Kind.Should().Be("Compiled");
     }
 }
