@@ -12,11 +12,11 @@ public sealed record SearchTraceResponse(
     IReadOnlyList<ImplicitParameterDto> Implicit,
     TraceFailureDto? Failure);
 
-/// <summary><see cref="DataType"/> is the parameter's own resolved <c>Ignixa.Search.Models.SearchParameterInfo.Type</c>
-/// (e.g. "String", "Token", "Date", "Reference", "Quantity", "Composite") — null when <see cref="Ir"/> has
-/// no search-parameter-bearing node to read it from (an `Ignored`/`Failed` outcome with no successful
-/// parse). A chain reports its reference parameter's type ("Reference"); a composite reports its own
-/// declared type ("Composite"), not one component's.</summary>
+/// <summary><see cref="DataType"/> is the parameter's own resolved <c>Ignixa.Search.Models.SearchParamType</c>
+/// (e.g. "String", "Token", "Date", "Reference", "Quantity", "Composite") — mirrors
+/// <see cref="Ignixa.Search.Parsing.ParameterTrace.DataType"/> directly. Null when the parameter never
+/// bound a value (an `Ignored`/`Failed` outcome). A chain reports its reference parameter's type
+/// ("Reference"); a composite reports its own declared type ("Composite"), not one component's.</summary>
 public sealed record ParameterTraceDto(
     int Ordinal,
     string Key,
@@ -43,26 +43,31 @@ public sealed record ParameterOutcomeDto(string Kind, string? Reason, string? St
 
 public sealed record QueryPlanDto(string Explain, IReadOnlyList<PlanExplainRowDto> Rows, IReadOnlyList<CteProvenanceDto> Ctes);
 
-/// <summary><see cref="Kind"/> is the row's <c>Ignixa.Search.Sql.Ast.CteDefinition</c> case name for a
-/// CTE row (ParamSource/Intersect/Union/Except/ChainJoin/CompartmentSource/ResourceSource), or a
-/// result-shape modifier's own name (Sort/Page/Include/CountOnly) for a non-CTE row — see
-/// <see cref="Ignixa.Lab.Functions.Services.Search.PlanRowKindClassifier"/>, which derives it from
-/// <see cref="Label"/>/<see cref="Body"/>
-/// since the engine's own <c>PlanExplainRow</c> does not carry it as a separate field.</summary>
-/// <summary><see cref="CteIndex"/> is this row's real 0-based index into <see cref="QueryPlanDto.Ctes"/>,
-/// or null for a non-CTE row (Sort/Page/Include/CountOnly). It exists because the engine's own
-/// <c>PlanExplainer</c> relabels whichever CTE is the plan's match/output as <c>"root"</c> instead of
-/// <c>"cte{i}"</c> — <see cref="Label"/> alone is therefore not always enough to look this row up in
-/// <see cref="QueryPlanDto.Ctes"/> (needed for click-to-trace and for a structural row like ChainJoin,
-/// whose own <see cref="CteProvenanceDto.ParameterOrdinal"/> is null, to inherit an ordinal from the CTEs
-/// it references).</summary>
-public sealed record PlanExplainRowDto(string Label, string Kind, int? CteIndex, string Body);
+/// <summary>Mirrors <see cref="Ignixa.Search.Sql.Ast.PlanExplainRow"/> field-for-field. <see cref="Label"/>
+/// is display text only (e.g. the match/output CTE prints as <c>"root"</c>); <see cref="CanonicalLabel"/>
+/// is the identifier this row shares with its <see cref="SqlTextRangeDto"/> and
+/// <see cref="CteProvenanceDto"/> — join on that, never on <see cref="Label"/>. <see cref="Kind"/> is the
+/// row's <c>Ignixa.Search.Sql.Ast.PlanRowKind</c> token. <see cref="ReferencedCteIndexes"/> lists the CTEs
+/// a structural row (Intersect/Union/Except/ChainJoin) composes, in the order it names them.</summary>
+public sealed record PlanExplainRowDto(
+    string Label,
+    string CanonicalLabel,
+    string Kind,
+    string Body,
+    IReadOnlyList<int> ReferencedCteIndexes);
 
-public sealed record CteProvenanceDto(int CteIndex, int? ParameterOrdinal, SpanDto? Span);
+/// <summary><see cref="ContributingOrdinals"/> is every parameter ordinal this CTE draws from — itself
+/// alone when <see cref="ParameterOrdinal"/> is set, or the closed-over union of its children's sets for a
+/// structural CTE (Intersect/Union/Except/ChainJoin), or empty where nothing is attributable.</summary>
+public sealed record CteProvenanceDto(int CteIndex, int? ParameterOrdinal, IReadOnlyList<int> ContributingOrdinals, SpanDto? Span);
 
 public sealed record EmittedSqlDto(string Sql, IReadOnlyList<SqlTextRangeDto> Ranges);
 
-public sealed record SqlTextRangeDto(string Label, int Start, int Length);
+/// <summary><see cref="Label"/> says which section this is (unique within one emitted statement) and,
+/// where a <see cref="PlanExplainRowDto"/> exists for it, equals that row's <see cref="PlanExplainRowDto.CanonicalLabel"/>.
+/// <see cref="Kind"/> is the row's <c>Ignixa.Search.Sql.Builders.SqlRangeKind</c> token — set for every
+/// range, including the structural ones with no row at all (matchPage/where/seek/orderBy/assembly).</summary>
+public sealed record SqlTextRangeDto(string Label, string Kind, int Start, int Length);
 
 public sealed record ImplicitParameterDto(string Name, string Value, string Reason);
 

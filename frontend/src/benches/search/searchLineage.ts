@@ -15,104 +15,65 @@ export interface Selection {
 
 export const CLEARED_SELECTION: Selection = { ordinal: null, label: null };
 
-/** Extracts every `cte{i}` reference a structural row's body text names (e.g. `"ChainJoin(cte0, ref=1, ...)"`
- * -> `[0]`, `"Intersect(cte0, cte1)"` -> `[0, 1]`). These are the CTEs the row directly composes. */
-function referencedCteIndexes(body: string): number[] {
-  return [...body.matchAll(/cte(\d+)/g)].map((m) => Number(m[1]));
-}
-
-/** Resolves a row/range's own real CTE index: directly from a `"cte{i}"` label (SQL ranges are always this
- * shape), or — for the plan's relabelled `"root"` row — from the matching `PlanExplainRow.cteIndex` the
- * backend already computed. Null for a non-CTE label (inc{i}/sort/page/countOnly/orderBy/...). */
-export function cteIndexForLabel(plan: QueryPlan, label: string): number | null {
-  const match = /^cte(\d+)$/.exec(label);
-  if (match) {
-    return Number(match[1]);
-  }
-  return plan.rows.find((r) => r.label === label)?.cteIndex ?? null;
+/**
+ * Finds the plan row addressed by `label`, whichever of its three possible forms `label` is:
+ * - a row's own display `label` (e.g. `"root"`, the match/output CTE's display name), or
+ * - a row's `canonicalLabel` (e.g. `"cte2"`), which is what a SQL range is always labelled, or
+ * - for an `_include` stage's second SQL range specifically, `"{canonicalLabel}lim"` — the engine documents
+ *   that range as the stage's limit-applying companion, sharing its stage's one plan row rather than
+ *   getting a row of its own (see `Ignixa.Search.Sql.Builders.SqlLabels.IncludeLimitLabel`).
+ *
+ * Returns null when `label` matches none of those — a SqlBuilder-internal section with no plan row at all
+ * (`orderBy`/`matchPage`/`where`/`seek`/`assembly`), self-describing only via its own `SqlTextRange.kind`.
+ */
+function findRow(plan: QueryPlan, label: string): PlanExplainRow | null {
+  return (
+    plan.rows.find((r) => r.canonicalLabel === label || r.label === label) ??
+    plan.rows.find((r) => r.kind === 'includeStage' && `${r.canonicalLabel}lim` === label) ??
+    null
+  );
 }
 
 /**
  * The label identity to use when comparing two rows/ranges for "same underlying thing", or null when
- * `label` doesn't correspond to any real row/CTE at all (e.g. `"orderBy"` or `"cteMatchPage"` — SqlBuilder-
- * internal glue with nothing in `plan.rows[]` to highlight alongside). Most labels are already their own
- * stable identity, but two cases need normalizing to a shared one first:
- *
- * - `"root"` vs `"cte{i}"`: `PlanExplainer` relabels the plan's match/output CTE as `"root"` for the plan
- *   row, but the matching SQL range keeps that CTE's real `"cte{i}"` label — same CTE, different strings.
- *   Both canonicalize to `"cte{i}"`. Critically, `"cte{i}"` itself is *never* a literal `plan.rows[]` label
- *   in this case (that row is called `"root"`), so a caller checking "is this a real row?" must check the
- *   canonical *cte identity*, not do a naive `plan.rows.some(r => r.label === canonicalLabel(...))`.
- * - `"{base}lim"` vs `"{base}"`: `SqlBuilder` emits a second, unlabelled-in-the-plan CTE for an `_include`
- *   stage's page-limit check (e.g. `inc1lim`, alongside `inc1`) — two SQL ranges for the one plan row
- *   labelled `"inc1"`. Stripping a trailing `"lim"` and checking it against a real plan-row label folds
- *   that second range back into the same identity as its stage, rather than leaving it permanently
- *   unmatchable (it has no plan row of its own to canonicalize *to* otherwise).
+ * `label` doesn't correspond to any real row at all (see {@link findRow}).
  */
 export function canonicalLabel(plan: QueryPlan, label: string): string | null {
-  const index = cteIndexForLabel(plan, label);
-  if (index !== null) {
-    return `cte${index}`;
-  }
-  if (label.endsWith('lim')) {
-    const base = label.slice(0, -'lim'.length);
-    if (plan.rows.some((r) => r.label === base)) {
-      return base;
-    }
-  }
-  return plan.rows.some((r) => r.label === label) ? label : null;
+  return findRow(plan, label)?.canonicalLabel ?? null;
+}
+
+/** A CTE row's own real 0-based index, parsed from its canonical label — null for a non-CTE row
+ * (sort/page/countOnly/includeStage), whose canonical label never has this shape. */
+function cteIndexOf(canonical: string): number | null {
+  const match = /^cte(\d+)$/.exec(canonical);
+  return match ? Number(match[1]) : null;
 }
 
 /**
  * Resolves a plan-row / SQL-range label to the parameter ordinal that produced it, or null when it has no
- * single owning parameter (a non-CTE row, or a CTE this can't confidently attribute to one parameter).
- *
- * A leaf CTE (e.g. a `ParamSource`) carries its own `CteProvenance.parameterOrdinal` directly. A structural
- * CTE (`Intersect`/`Union`/`Except`/`ChainJoin`/`CompartmentSource`/`ResourceSource`) never does — the
- * engine only attributes a structural CTE to a single parameter when there plainly is one to attribute to,
- * and otherwise leaves it null (see `Ignixa.Search.Sql.Tracing.SearchCompiler.BuildPlanTrace`). For a
- * `ChainJoin`, that's a real gap for a lineage-highlighting UI: the whole chain is still one parameter's
- * expression, just lowered into two linked CTEs. So when a row's own ordinal is null, this inherits one
- * from the CTEs its body references — but only when every reference agrees on the exact same ordinal.
- * `Intersect`/`Union`/`Except` typically combine two genuinely different parameters, so they correctly stay
- * unresolved (null) here rather than arbitrarily highlighting as "one" parameter — see `Selection.label`
- * for how such a row (or a non-CTE row like `inc0`/`sort`, which never had an ordinal to begin with) still
- * gets to highlight itself.
+ * single owning parameter (a non-CTE row, or a CTE whose `CteProvenance.contributingOrdinals` draws from
+ * more than one parameter — `Intersect`/`Union`/`Except` typically combine two genuinely different
+ * parameters, so they correctly stay unresolved here rather than arbitrarily highlighting as "one"
+ * parameter — see `Selection.label` for how such a row, or a non-CTE row like `inc0`/`sort` that never had
+ * an ordinal to begin with, still gets to highlight itself).
  */
 export function ordinalForCteLabel(plan: QueryPlan | null, label: string): number | null {
   if (!plan) {
     return null;
   }
 
-  const index = cteIndexForLabel(plan, label);
-  if (index === null) {
-    return null;
-  }
-
-  const cte = plan.ctes.find((c) => c.cteIndex === index);
-  if (cte && cte.parameterOrdinal !== null) {
-    return cte.parameterOrdinal;
-  }
-
-  const row = plan.rows.find((r): r is PlanExplainRow => r.cteIndex === index);
+  const row = findRow(plan, label);
   if (!row) {
     return null;
   }
 
-  const referenced = referencedCteIndexes(row.body);
-  if (referenced.length === 0) {
+  const cteIndex = cteIndexOf(row.canonicalLabel);
+  if (cteIndex === null) {
     return null;
   }
 
-  const ordinals = new Set<number>();
-  for (const refIndex of referenced) {
-    const child = plan.ctes.find((c) => c.cteIndex === refIndex);
-    if (!child || child.parameterOrdinal === null) {
-      return null;
-    }
-    ordinals.add(child.parameterOrdinal);
-  }
-  return ordinals.size === 1 ? [...ordinals][0] : null;
+  const cte = plan.ctes.find((c) => c.cteIndex === cteIndex);
+  return cte && cte.contributingOrdinals.length === 1 ? cte.contributingOrdinals[0] : null;
 }
 
 /** The `Selection` a click on a parameter (Search / Search Expression column) produces — always ordinal-
@@ -121,13 +82,12 @@ export function selectionForOrdinal(ordinal: number): Selection {
   return { ordinal, label: null };
 }
 
-/** The `Selection` a click on a plan row / SQL range labelled `label` produces: its inherited/own ordinal
- * when resolvable (so it still groups with the rest of its parameter's family), plus its own canonical
- * label unconditionally (so a row with no owning parameter at all — a structural CTE, or a non-CTE
- * result-shape row like `inc0`/`sort`/`page`/`countOnly` — still selects and highlights itself and its own
- * generated SQL). The label is canonicalized (see {@link canonicalLabel}) so clicking `"root"` or its real
- * `"cte{i}"` SQL range, or an include stage's main range or its `"lim"` companion, all produce the same
- * selection. Works for every row kind, not just CTEs — see {@link Selection}. */
+/** The `Selection` a click on a plan row / SQL range labelled `label` produces: its owning ordinal when
+ * resolvable (so it still groups with the rest of its parameter's family), plus its own canonical label
+ * unconditionally (so a row with no owning parameter at all — a structural CTE, or a non-CTE result-shape
+ * row like `inc0`/`sort`/`page`/`countOnly` — still selects and highlights itself and its own generated
+ * SQL). The label is canonicalized (see {@link canonicalLabel}) so clicking `"root"` or its real `"cte{i}"`
+ * SQL range, or an include stage's main range or its `"lim"` companion, all produce the same selection. */
 export function selectionForCteLabel(plan: QueryPlan, label: string): Selection {
   return { ordinal: ordinalForCteLabel(plan, label), label: canonicalLabel(plan, label) };
 }
@@ -160,20 +120,20 @@ export interface PlanRowNode {
  * referenced by another CTE's body — normally just the plan's single match/output CTE) plus the non-CTE
  * rows (sort/page/inc{i}/countOnly) unchanged, since those aren't part of the CTE graph at all. */
 export function buildPlanRowTree(plan: QueryPlan): { tree: PlanRowNode[]; extras: PlanExplainRow[] } {
-  const cteRows = plan.rows.filter((r): r is PlanExplainRow & { cteIndex: number } => r.cteIndex !== null);
-  const extras = plan.rows.filter((r) => r.cteIndex === null);
-  const byIndex = new Map(cteRows.map((r) => [r.cteIndex, r]));
+  const cteRows = plan.rows.filter((r) => cteIndexOf(r.canonicalLabel) !== null);
+  const extras = plan.rows.filter((r) => cteIndexOf(r.canonicalLabel) === null);
+  const byIndex = new Map(cteRows.map((r) => [cteIndexOf(r.canonicalLabel) as number, r]));
 
   const referencedAsChild = new Set<number>();
   for (const row of cteRows) {
-    for (const childIndex of referencedCteIndexes(row.body)) {
+    for (const childIndex of row.referencedCteIndexes) {
       referencedAsChild.add(childIndex);
     }
   }
 
-  function buildNode(row: PlanExplainRow & { cteIndex: number }, ancestors: ReadonlySet<number>): PlanRowNode {
+  function buildNode(row: PlanExplainRow, ancestors: ReadonlySet<number>): PlanRowNode {
     const children: PlanRowNode[] = [];
-    for (const childIndex of referencedCteIndexes(row.body)) {
+    for (const childIndex of row.referencedCteIndexes) {
       // A reference cycle shouldn't occur in a real query plan (it's a DAG by construction), but guard
       // against infinite recursion rather than trust that invariant blindly.
       if (ancestors.has(childIndex)) {
@@ -187,13 +147,13 @@ export function buildPlanRowTree(plan: QueryPlan): { tree: PlanRowNode[]; extras
     return { row, children };
   }
 
-  const unreferenced = cteRows.filter((r) => !referencedAsChild.has(r.cteIndex));
+  const unreferenced = cteRows.filter((r) => !referencedAsChild.has(cteIndexOf(r.canonicalLabel) as number));
   // A real compiler output always has exactly one CTE nothing else references (the plan's Match/output),
   // so `unreferenced` is normally non-empty. A genuine reference cycle among every CTE (shouldn't happen —
   // QueryPlan is documented as a DAG — but this is display code, not a place to silently drop rows on a
   // malformed input) would leave it empty; fall back to every CTE row as its own top-level entry rather
   // than rendering nothing.
   const topLevel = unreferenced.length > 0 ? unreferenced : cteRows;
-  const tree = topLevel.map((r) => buildNode(r, new Set([r.cteIndex])));
+  const tree = topLevel.map((r) => buildNode(r, new Set([cteIndexOf(r.canonicalLabel) as number])));
   return { tree, extras };
 }

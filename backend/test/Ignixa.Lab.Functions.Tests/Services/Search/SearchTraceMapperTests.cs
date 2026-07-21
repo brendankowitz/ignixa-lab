@@ -6,13 +6,14 @@ using Ignixa.Search.Parsing;
 using Ignixa.Search.Sql.Ast;
 using Ignixa.Search.Sql.Builders;
 using Ignixa.Search.Sql.Tracing;
+using Ignixa.Specification.ValueSets.Normative;
 
 namespace Ignixa.Lab.Functions.Tests.Services.Search;
 
 public sealed class SearchTraceMapperTests
 {
     private static ParameterTrace Trace(int ordinal, string key, string value, ParameterOutcome outcome) =>
-        new(ordinal, key, value, KeySyntax: null, ValueSyntax: null, Ir: null, outcome);
+        new(ordinal, key, keySyntax: null, value, valueSyntax: null, ir: null, outcome, dataType: null);
 
     [Fact]
     public void ToResponse_CompiledOutcome_MapsKindOnly()
@@ -61,15 +62,16 @@ public sealed class SearchTraceMapperTests
     }
 
     [Fact]
-    public void ToResponse_PreservesCteParameterOrdinalUnchanged()
+    public void ToResponse_PreservesCteParameterOrdinalAndKindData()
     {
-        // The frontend joins plan rows / SQL ranges to parameters through CteProvenance.ParameterOrdinal —
-        // this asserts that join key survives the mapping so the UI's lineage highlighting is trustworthy.
+        // The frontend joins plan rows / SQL ranges to parameters through CteProvenance.ParameterOrdinal,
+        // and rows/ranges to each other through CanonicalLabel/Kind -- this asserts those all survive the
+        // mapping unchanged so the UI's lineage highlighting is trustworthy.
         var plan = new QueryPlanTrace(
             Explain: "root = ...",
-            Ctes: [new CteProvenance(0, ParameterOrdinal: 7, new SourceSpan(SourceOrigin.Value, 0, 5))],
-            Rows: [new PlanExplainRow("cte0", "ParamSource name")]);
-        var sql = new EmittedSqlTrace("SELECT 1", [new SqlTextRange("cte0", 0, 6)]);
+            Ctes: [new CteProvenance(0, parameterOrdinal: 7, new SourceSpan(SourceOrigin.Value, 0, 5))],
+            Rows: [new PlanExplainRow("root", "cte0", PlanRowKind.ParamSource, "ParamSource name", referencedCteIndexes: [])]);
+        var sql = new EmittedSqlTrace("SELECT 1", [new SqlTextRange("cte0", SqlRangeKind.Cte, 0, 6)]);
         var trace = new SearchTrace("Patient", [Trace(0, "name", "Smith", new ParameterOutcome.Compiled())], plan, sql)
         {
             Implicit = [new ImplicitParameter("_count", "10", "server default")],
@@ -78,39 +80,59 @@ public sealed class SearchTraceMapperTests
         var response = SearchTraceMapper.ToResponse(trace);
 
         response.Plan!.Ctes.Single().ParameterOrdinal.Should().Be(7);
-        response.Plan.Rows.Single().Label.Should().Be("cte0");
-        response.Plan.Rows.Single().CteIndex.Should().Be(0);
-        response.Sql!.Ranges.Single().Label.Should().Be("cte0");
+        response.Plan.Ctes.Single().ContributingOrdinals.Should().Equal(7);
+        var row = response.Plan.Rows.Single();
+        row.Label.Should().Be("root");
+        row.CanonicalLabel.Should().Be("cte0");
+        row.Kind.Should().Be(PlanRowKind.ParamSource);
+        var range = response.Sql!.Ranges.Single();
+        range.Label.Should().Be("cte0");
+        range.Kind.Should().Be(SqlRangeKind.Cte);
         response.Implicit.Single().Name.Should().Be("_count");
     }
 
     [Fact]
-    public void ToResponse_RowPositionMapsToCteIndex_EvenForTheRelabelledRootRow()
+    public void ToResponse_ChainJoinRow_CarriesReferencedCteIndexesAndContributingOrdinals()
     {
-        // PlanExplainer relabels whichever CTE is the plan's match/output as "root" instead of "cte{i}" --
-        // CteIndex must still reflect its real position (1 here, the second CTE), not be null or 0, so the
-        // frontend can look it up in Ctes and inherit an ordinal from what it references (a structural
-        // ChainJoin has no ParameterOrdinal of its own -- see the classifier/lineage design notes).
+        // A structural ChainJoin row has no ParameterOrdinal of its own, but composes cte0 -- the frontend
+        // needs both ReferencedCteIndexes (to nest it under the CTE it joins) and the closed-over
+        // ContributingOrdinals (to still highlight it alongside cte0's owning parameter).
         var plan = new QueryPlanTrace(
             Explain: "cte0 = ...\nroot = ...",
             Ctes:
             [
-                new CteProvenance(0, ParameterOrdinal: 0, Span: null),
-                new CteProvenance(1, ParameterOrdinal: null, Span: null),
+                new CteProvenance(0, parameterOrdinal: 0, span: null),
+                new CteProvenance(1, parameterOrdinal: null, span: null, contributingOrdinals: [0]),
             ],
             Rows:
             [
-                new PlanExplainRow("cte0", "StringSearchParam[2,2]  Text LIKE @p0"),
-                new PlanExplainRow("root", "ChainJoin(cte0, ref=1, inner=2, output=[1], Forward)"),
-                new PlanExplainRow("sort", "SortSpec([], Valued)"),
+                new PlanExplainRow("cte0", "cte0", PlanRowKind.ParamSource, "StringSearchParam[2,2]  Text LIKE @p0", referencedCteIndexes: []),
+                new PlanExplainRow("root", "cte1", PlanRowKind.ChainJoin, "ChainJoin(cte0, ref=1, inner=2, output=[1], Forward)", referencedCteIndexes: [0]),
+                new PlanExplainRow("sort", "sort", PlanRowKind.SortSpec, "SortSpec([], Valued)", referencedCteIndexes: []),
             ]);
         var trace = new SearchTrace("Patient", [Trace(0, "general-practitioner.name", "Smith", new ParameterOutcome.Compiled())], plan, Sql: null);
 
-        var rows = SearchTraceMapper.ToResponse(trace).Plan!.Rows;
+        var response = SearchTraceMapper.ToResponse(trace);
 
-        rows[0].CteIndex.Should().Be(0);
-        rows[1].CteIndex.Should().Be(1, "the 'root' row is still the second CTE positionally");
-        rows[2].CteIndex.Should().BeNull("sort is not a CTE row at all");
+        response.Plan!.Rows[1].Kind.Should().Be(PlanRowKind.ChainJoin);
+        response.Plan.Rows[1].ReferencedCteIndexes.Should().Equal(0);
+        response.Plan.Ctes[1].ParameterOrdinal.Should().BeNull();
+        response.Plan.Ctes[1].ContributingOrdinals.Should().Equal(0);
+        response.Plan.Rows[2].Kind.Should().Be(PlanRowKind.SortSpec);
+        response.Plan.Rows[2].ReferencedCteIndexes.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ToResponse_DataType_MapsFromParameterTraceDirectly()
+    {
+        // ParameterTrace.DataType is now resolved by the library at parse time -- this is a straight
+        // passthrough, no expression-tree walking left on this side.
+        var trace = new ParameterTrace(
+            0, "name", keySyntax: null, "Smith", valueSyntax: null, ir: null,
+            new ParameterOutcome.Compiled(), dataType: SearchParamType.String);
+        var response = SearchTraceMapper.ToResponse(new SearchTrace("Patient", [trace], Plan: null, Sql: null));
+
+        response.Parameters.Single().DataType.Should().Be("String");
     }
 
     [Fact]

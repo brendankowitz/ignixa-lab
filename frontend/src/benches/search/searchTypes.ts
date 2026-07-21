@@ -43,22 +43,26 @@ export interface ParameterTrace {
   outcome: ParameterOutcome;
 }
 
-/** `kind` is the row's underlying `Ignixa.Search.Sql.Ast.CteDefinition` case name (ParamSource,
- * Intersect, Union, Except, ChainJoin, CompartmentSource, ResourceSource) for a CTE row, or a
- * result-shape modifier's own name (Sort, Page, Include, CountOnly) for a non-CTE row. `cteIndex` is
- * this row's real position in `QueryPlan.ctes` (null for a non-CTE row) — the backend's own `PlanExplainer`
- * relabels the plan's match/output CTE as `"root"` instead of `"cte{i}"`, so `label` alone can't always
- * find this row's provenance entry. */
+/** Mirrors `Ignixa.Search.Sql.Ast.PlanExplainRow`. `label` is display text only (the match/output CTE
+ * prints as `"root"`); `canonicalLabel` is the identifier this row shares with its `SqlTextRange` and
+ * `CteProvenance` — join on that, never on `label`. `kind` is the row's `PlanRowKind` token (e.g.
+ * `"intersect"`, `"chainJoin"`, `"includeStage"`, `"sortSpec"`). `referencedCteIndexes` lists the CTEs a
+ * structural row (Intersect/Union/Except/ChainJoin) composes, in the order it names them. */
 export interface PlanExplainRow {
   label: string;
+  canonicalLabel: string;
   kind: string;
-  cteIndex: number | null;
   body: string;
+  referencedCteIndexes: number[];
 }
 
+/** `contributingOrdinals` is every parameter ordinal this CTE draws from — itself alone when
+ * `parameterOrdinal` is set, or the closed-over union of its children's sets for a structural CTE
+ * (Intersect/Union/Except/ChainJoin), or empty where nothing is attributable. */
 export interface CteProvenance {
   cteIndex: number;
   parameterOrdinal: number | null;
+  contributingOrdinals: number[];
   span: Span | null;
 }
 
@@ -68,8 +72,13 @@ export interface QueryPlan {
   ctes: CteProvenance[];
 }
 
+/** `label` says which section this is (unique within one emitted statement) and, where a `PlanExplainRow`
+ * exists for it, equals that row's `canonicalLabel`. `kind` is the row's `SqlRangeKind` token — set for
+ * every range, including the structural ones with no row at all (`matchPage`/`where`/`seek`/`orderBy`/
+ * `assembly`), so those spans are self-describing even though they can't be joined to a plan row. */
 export interface SqlTextRange {
   label: string;
+  kind: string;
   start: number;
   length: number;
 }

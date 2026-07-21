@@ -63,24 +63,60 @@ function kindChipColors(kind: string): { bg: string; fg: string } {
   return KIND_CHIP_COLORS[hash % KIND_CHIP_COLORS.length];
 }
 
+/** Display text for a `PlanExplainRow.kind`/`PlanRowKind` token — the engine's tokens are camelCase wire
+ * identifiers (`"chainJoin"`, `"includeStage"`), not display text. */
+const PLAN_ROW_KIND_LABELS: Record<string, string> = {
+  paramSource: 'ParamSource',
+  intersect: 'Intersect',
+  union: 'Union',
+  resourceSource: 'ResourceSource',
+  except: 'Except',
+  chainJoin: 'ChainJoin',
+  compartmentSource: 'CompartmentSource',
+  includeStage: 'Include',
+  sortSpec: 'Sort',
+  pageSpec: 'Page',
+  countOnly: 'CountOnly',
+};
+
+function planRowKindLabel(kind: string): string {
+  return PLAN_ROW_KIND_LABELS[kind] ?? kind;
+}
+
+/** Hover text for a `SqlTextRange.kind`/`SqlRangeKind` token — every SQL segment carries one now, including
+ * the structural sections with no plan row to join to (matchPage/where/seek/orderBy/assembly), so a segment
+ * that isn't part of the click-to-trace lineage can still say what it is instead of being unlabeled glue. */
+const SQL_RANGE_KIND_TITLES: Record<string, string> = {
+  cte: 'CTE definition',
+  matchPage: 'Match page (applies paging to the match set)',
+  where: 'WHERE clause',
+  seek: 'Keyset-seek predicate',
+  orderBy: 'ORDER BY clause',
+  include: 'Include stage',
+  includeLimit: 'Include stage (limit-applying companion)',
+  assembly: 'Final assembly (UNION ALL of match page + every include stage)',
+};
+
 /** Same left-to-right cut approach as `spanSegments`, but over the emitted SQL text and `SqlTextRange[]`
- * (start/length/label, no tree — ranges don't nest for this DTO, but the algorithm tolerates it either way). */
+ * (start/length/label/kind, no tree — ranges don't nest for this DTO, but the algorithm tolerates it either
+ * way). */
 interface SqlSegment {
   start: number;
   length: number;
   label: string | null;
+  kind: string | null;
 }
 
 function sqlSegments(sql: string, ranges: SqlTextRange[]): SqlSegment[] {
   const cuts = new Set<number>([0, sql.length]);
-  const covering: { start: number; end: number; label: string }[] = [];
+  const covering: { start: number; end: number; label: string; kind: string }[] = [];
   for (const range of ranges) {
     const start = Math.max(0, range.start);
     const end = Math.min(sql.length, range.start + range.length);
     if (end > start) {
       cuts.add(start);
       cuts.add(end);
-      covering.push({ start, end, label: range.label });
+      covering.push({ start, end, label: range.label, kind: range.kind });
     }
   }
 
@@ -92,18 +128,18 @@ function sqlSegments(sql: string, ranges: SqlTextRange[]): SqlSegment[] {
     if (end <= start) {
       continue;
     }
-    let best: string | null = null;
+    let best: { label: string; kind: string } | null = null;
     let bestWidth = Infinity;
     for (const candidate of covering) {
       if (candidate.start <= start && candidate.end >= end) {
         const width = candidate.end - candidate.start;
         if (width < bestWidth) {
-          best = candidate.label;
+          best = candidate;
           bestWidth = width;
         }
       }
     }
-    segments.push({ start, length: end - start, label: best });
+    segments.push({ start, length: end - start, label: best?.label ?? null, kind: best?.kind ?? null });
   }
   return segments;
 }
@@ -326,7 +362,7 @@ function PlanRowView({
       <span style={chipStyle(attributable ? 'var(--chip-teal-bg)' : 'var(--chip-gray-bg)', attributable ? 'var(--chip-teal-fg)' : 'var(--chip-gray2-fg)')}>
         {row.label}
       </span>
-      <span style={chipStyle(kindChipColors(row.kind).bg, kindChipColors(row.kind).fg)}>{row.kind}</span>
+      <span style={chipStyle(kindChipColors(row.kind).bg, kindChipColors(row.kind).fg)}>{planRowKindLabel(row.kind)}</span>
       <span style={{ fontFamily: monoFont, fontSize: 11.5, color: 'var(--text)' }}>{row.body}</span>
     </div>
   );
@@ -591,11 +627,16 @@ export function SearchBench() {
               // Clickable whenever this SQL range resolves to a real canonical identity — covers every row
               // kind (cte0/root/inc0/sort/page/countOnly) and an include stage's "lim" companion range, not
               // just CTEs. `canonicalLabel` returns null for a range with no plan-row counterpart at all
-              // (e.g. "orderBy"/"cteMatchPage", SqlBuilder-internal glue), which stays plain text rather
-              // than a click that would select nothing else.
+              // (e.g. "orderBy"/"assembly", SqlBuilder-internal glue), which stays unclickable — but every
+              // range now carries a `kind`, so even those get a tooltip instead of being unlabeled text.
               const clickable = plan !== null && label !== null && canonicalLabel(plan, label) !== null;
               if (!clickable || label === null) {
-                return <span key={index}>{text}</span>;
+                const title = segment.kind ? SQL_RANGE_KIND_TITLES[segment.kind] : undefined;
+                return (
+                  <span key={index} title={title}>
+                    {text}
+                  </span>
+                );
               }
               const selected = isRangeSelected(label, selection, plan);
               return (

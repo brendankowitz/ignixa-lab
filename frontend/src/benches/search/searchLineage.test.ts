@@ -4,7 +4,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   ordinalForCteLabel,
-  cteIndexForLabel,
   canonicalLabel,
   selectionForOrdinal,
   selectionForCteLabel,
@@ -18,29 +17,30 @@ import type { QueryPlan } from './searchTypes.ts';
 const plan: QueryPlan = {
   explain: '',
   rows: [
-    { label: 'cte0', kind: 'ParamSource', cteIndex: 0, body: 'ParamSource name' },
-    { label: 'cte1', kind: 'ParamSource', cteIndex: 1, body: 'ParamSource gender' },
-    { label: 'sort', kind: 'Sort', cteIndex: null, body: 'SortSpec([], Valued)' },
+    { label: 'cte0', canonicalLabel: 'cte0', kind: 'paramSource', body: 'ParamSource name', referencedCteIndexes: [] },
+    { label: 'cte1', canonicalLabel: 'cte1', kind: 'paramSource', body: 'ParamSource gender', referencedCteIndexes: [] },
+    { label: 'sort', canonicalLabel: 'sort', kind: 'sortSpec', body: 'SortSpec([], Valued)', referencedCteIndexes: [] },
   ],
   ctes: [
-    { cteIndex: 0, parameterOrdinal: 0, span: null },
-    { cteIndex: 1, parameterOrdinal: 1, span: null },
+    { cteIndex: 0, parameterOrdinal: 0, contributingOrdinals: [0], span: null },
+    { cteIndex: 1, parameterOrdinal: 1, contributingOrdinals: [1], span: null },
   ],
 };
 
 // A single-parameter chain: cte0 is the leaf ParamSource (ordinal 0), "root" is the ChainJoin wrapping it.
 // PlanExplainer relabels the plan's match/output CTE as "root" -- here that's cteIndex 1, and its own
 // CteProvenance.parameterOrdinal is null (the engine never attributes a structural CTE to one parameter
-// directly), which is exactly the gap ordinalForCteLabel's inheritance step exists to close.
+// directly). ContributingOrdinals is what the engine now closes this gap with -- read directly, not
+// recomputed by walking referencedCteIndexes ourselves.
 const chainPlan: QueryPlan = {
   explain: '',
   rows: [
-    { label: 'cte0', kind: 'ParamSource', cteIndex: 0, body: 'StringSearchParam[2,2]  Text LIKE @p0' },
-    { label: 'root', kind: 'ChainJoin', cteIndex: 1, body: 'ChainJoin(cte0, ref=1, inner=2, output=[1], Forward)' },
+    { label: 'cte0', canonicalLabel: 'cte0', kind: 'paramSource', body: 'StringSearchParam[2,2]  Text LIKE @p0', referencedCteIndexes: [] },
+    { label: 'root', canonicalLabel: 'cte1', kind: 'chainJoin', body: 'ChainJoin(cte0, ref=1, inner=2, output=[1], Forward)', referencedCteIndexes: [0] },
   ],
   ctes: [
-    { cteIndex: 0, parameterOrdinal: 0, span: null },
-    { cteIndex: 1, parameterOrdinal: null, span: null },
+    { cteIndex: 0, parameterOrdinal: 0, contributingOrdinals: [0], span: null },
+    { cteIndex: 1, parameterOrdinal: null, contributingOrdinals: [0], span: null },
   ],
 };
 
@@ -49,14 +49,14 @@ const chainPlan: QueryPlan = {
 const intersectPlan: QueryPlan = {
   explain: '',
   rows: [
-    { label: 'cte0', kind: 'ParamSource', cteIndex: 0, body: 'StringSearchParam[1,1]  Text LIKE @p0' },
-    { label: 'cte1', kind: 'ParamSource', cteIndex: 1, body: 'TokenSearchParam[1,2]  Code = @p1' },
-    { label: 'root', kind: 'Intersect', cteIndex: 2, body: 'Intersect(cte0, cte1)' },
+    { label: 'cte0', canonicalLabel: 'cte0', kind: 'paramSource', body: 'StringSearchParam[1,1]  Text LIKE @p0', referencedCteIndexes: [] },
+    { label: 'cte1', canonicalLabel: 'cte1', kind: 'paramSource', body: 'TokenSearchParam[1,2]  Code = @p1', referencedCteIndexes: [] },
+    { label: 'root', canonicalLabel: 'cte2', kind: 'intersect', body: 'Intersect(cte0, cte1)', referencedCteIndexes: [0, 1] },
   ],
   ctes: [
-    { cteIndex: 0, parameterOrdinal: 0, span: null },
-    { cteIndex: 1, parameterOrdinal: 1, span: null },
-    { cteIndex: 2, parameterOrdinal: null, span: null },
+    { cteIndex: 0, parameterOrdinal: 0, contributingOrdinals: [0], span: null },
+    { cteIndex: 1, parameterOrdinal: 1, contributingOrdinals: [1], span: null },
+    { cteIndex: 2, parameterOrdinal: null, contributingOrdinals: [0, 1], span: null },
   ],
 };
 
@@ -64,45 +64,28 @@ test('a cte label resolves to its owning parameter ordinal', () => {
   assert.equal(ordinalForCteLabel(plan, 'cte1'), 1);
 });
 
-test('a non-cte label (sort/page/inc/countOnly) resolves to null', () => {
+test('a non-cte label (sort/page/inc/countOnly) resolves to a null ordinal but still canonicalizes to itself', () => {
   assert.equal(ordinalForCteLabel(plan, 'sort'), null);
-  assert.equal(cteIndexForLabel(plan, 'sort'), null);
+  assert.equal(canonicalLabel(plan, 'sort'), 'sort');
 });
 
 test('the "root" row resolves via its own CteProvenance when it has one', () => {
   const rootHasOwnOrdinal: QueryPlan = {
     explain: '',
-    rows: [{ label: 'root', kind: 'ParamSource', cteIndex: 0, body: 'StringSearchParam[1,1]  Text LIKE @p0' }],
-    ctes: [{ cteIndex: 0, parameterOrdinal: 3, span: null }],
+    rows: [{ label: 'root', canonicalLabel: 'cte0', kind: 'paramSource', body: 'StringSearchParam[1,1]  Text LIKE @p0', referencedCteIndexes: [] }],
+    ctes: [{ cteIndex: 0, parameterOrdinal: 3, contributingOrdinals: [3], span: null }],
   };
   assert.equal(ordinalForCteLabel(rootHasOwnOrdinal, 'root'), 3);
 });
 
-test('a structural "root" (ChainJoin) with no own ordinal inherits the single ordinal it references', () => {
+test('a structural "root" (ChainJoin) with no own ordinal reads the single ordinal its CteProvenance.contributingOrdinals closes over', () => {
   assert.equal(ordinalForCteLabel(chainPlan, 'root'), 0);
   assert.equal(ordinalForCteLabel(chainPlan, 'cte0'), 0);
 });
 
 test('a structural row referencing two DIFFERENT ordinals stays unattributable', () => {
   assert.equal(ordinalForCteLabel(intersectPlan, 'root'), null);
-  assert.equal(cteIndexForLabel(intersectPlan, 'root'), 2, 'it still has its own identity, just no owning parameter');
-});
-
-test('a structural row referencing a child that is itself unresolved stays unattributable', () => {
-  const unresolvedChild: QueryPlan = {
-    explain: '',
-    rows: [
-      { label: 'cte0', kind: 'Intersect', cteIndex: 0, body: 'Intersect(cte1, cte2)' },
-      { label: 'cte1', kind: 'ParamSource', cteIndex: 1, body: 'StringSearchParam[1,1]  Text LIKE @p0' },
-      { label: 'root', kind: 'ChainJoin', cteIndex: 2, body: 'ChainJoin(cte0, ref=1, inner=1, output=[1], Forward)' },
-    ],
-    ctes: [
-      { cteIndex: 0, parameterOrdinal: null, span: null },
-      { cteIndex: 1, parameterOrdinal: 0, span: null },
-      { cteIndex: 2, parameterOrdinal: null, span: null },
-    ],
-  };
-  assert.equal(ordinalForCteLabel(unresolvedChild, 'root'), null);
+  assert.equal(canonicalLabel(intersectPlan, 'root'), 'cte2', 'it still has its own identity, just no owning parameter');
 });
 
 test('a plan row is selected when its cte maps to the selected ordinal', () => {
@@ -156,7 +139,15 @@ test('a "root" plan row and its "cte{i}" SQL range are the same canonical identi
 test('an _include stage\'s main SQL range and its "lim" companion range are the same canonical identity', () => {
   const includePlan: QueryPlan = {
     explain: '',
-    rows: [{ label: 'inc0', kind: 'Include', cteIndex: null, body: 'IncludeStage(ref=1, seedTypes=[4], outputTypes=[1,2,3], seeds=[match], limit=0, Forward)' }],
+    rows: [
+      {
+        label: 'inc0',
+        canonicalLabel: 'inc0',
+        kind: 'includeStage',
+        body: 'IncludeStage(ref=1, seedTypes=[4], outputTypes=[1,2,3], seeds=[match], limit=0, Forward)',
+        referencedCteIndexes: [],
+      },
+    ],
     ctes: [],
   };
   const selection = selectionForCteLabel(includePlan, 'inc0');
@@ -219,12 +210,12 @@ test('a reference cycle does not infinite-loop and does not silently drop every 
   const cyclicPlan: QueryPlan = {
     explain: '',
     rows: [
-      { label: 'cte0', kind: 'Union', cteIndex: 0, body: 'Union(cte1)' },
-      { label: 'root', kind: 'Union', cteIndex: 1, body: 'Union(cte0)' },
+      { label: 'cte0', canonicalLabel: 'cte0', kind: 'union', body: 'Union(cte1)', referencedCteIndexes: [1] },
+      { label: 'root', canonicalLabel: 'cte1', kind: 'union', body: 'Union(cte0)', referencedCteIndexes: [0] },
     ],
     ctes: [
-      { cteIndex: 0, parameterOrdinal: null, span: null },
-      { cteIndex: 1, parameterOrdinal: null, span: null },
+      { cteIndex: 0, parameterOrdinal: null, contributingOrdinals: [], span: null },
+      { cteIndex: 1, parameterOrdinal: null, contributingOrdinals: [], span: null },
     ],
   };
   const { tree } = buildPlanRowTree(cyclicPlan);
@@ -249,9 +240,10 @@ test('canonicalLabel resolves a SQL range labelled "cte{i}" even when no plan ro
   assert.equal(intersectPlan.rows.some((r) => r.label === 'cte2'), false, 'confirms no row is literally labelled "cte2" -- "root" is the only row for that cte');
 });
 
-test('canonicalLabel returns null for SqlBuilder-internal glue with no plan-row counterpart at all (e.g. "orderBy"/"cteMatchPage")', () => {
+test('canonicalLabel returns null for SqlBuilder-internal sections with no plan-row counterpart at all (e.g. "orderBy"/"cteMatchPage"/"assembly")', () => {
   assert.equal(canonicalLabel(plan, 'orderBy'), null);
   assert.equal(canonicalLabel(plan, 'cteMatchPage'), null);
+  assert.equal(canonicalLabel(plan, 'assembly'), null);
 });
 
 test('an unresolvable range never highlights, even when nothing else is selected either (both sides null must not accidentally match)', () => {

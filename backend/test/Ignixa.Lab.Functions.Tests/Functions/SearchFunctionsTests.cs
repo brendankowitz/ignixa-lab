@@ -75,7 +75,9 @@ public sealed class SearchFunctionsTests
         parameter.KeySyntax.Should().NotBeNull("the chain structure lives on the key syntax");
         parameter.KeySyntax!.Kind.Should().Be("ForwardChain");
         parameter.ValueSyntax.Should().NotBeNull("the terminal value has its own syntax projection");
-        parameter.DataType.Should().Be("Reference", "a chain is always over a Reference-typed search parameter");
+        // ParameterTrace.DataType reports the chain's terminal parameter -- "name" here -- since that is
+        // the one "Smith" is actually matched against, not the reference parameter that names the chain.
+        parameter.DataType.Should().Be("String", "the value binds against the chain's terminal parameter, not the reference parameter that names it");
     }
 
     [Fact]
