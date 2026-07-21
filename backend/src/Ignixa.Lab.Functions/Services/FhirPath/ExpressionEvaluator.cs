@@ -193,6 +193,8 @@ public sealed class ExpressionEvaluator
                 .SelectMany(ext => ext.Children("value"))
                 .ToList();
 
+            // A variable with a null Name can't be meaningfully bound (there's no identifier to register it
+            // under), so it's silently skipped here rather than treated as an error.
             if (valueElements.Count > 0 && varParam.Name != null)
             {
                 evalContext = evalContext.WithEnvironmentVariable(varParam.Name, valueElements);

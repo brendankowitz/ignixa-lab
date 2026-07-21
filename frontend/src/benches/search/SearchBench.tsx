@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type MouseEvent } from 'react';
+import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react';
 import { Card, ErrorBanner, Pills, type PillItem } from '../components/primitives';
 import { benchHeaderStyle, benchPageStyle, chipStyle, engineBadgeStyle, monoFont, sectionLabelStyle } from '../components/styles';
 import { useIsNarrowViewport } from '../../hooks/useIsNarrowViewport';
@@ -300,6 +300,14 @@ export function SearchBench() {
   const [query, setQuery] = useState(DEFAULT_QUERY);
   const [selectedOrdinal, setSelectedOrdinal] = useState<number | null>(null);
   const [sqlTab, setSqlTab] = useState<SqlTab>('sql');
+
+  // Clicking a span sets `selectedOrdinal` to trace a parameter across columns, but that ordinal is only
+  // meaningful for the trace `result` it was clicked in — resourceType/query changes trigger useSearchTrace to
+  // swap in a fresh result (see useSearchTrace's own [resourceType, query] effect), so without this reset a
+  // stale ordinal would silently re-target whichever parameter now happens to occupy that same slot.
+  useEffect(() => {
+    setSelectedOrdinal(null);
+  }, [resourceType, query]);
 
   const { result, error, isLoading } = useSearchTrace(resourceType, query);
   const plan = result?.plan ?? null;
