@@ -24,12 +24,28 @@ $repoPackageCache = Join-Path $repoRoot 'artifacts/nuget-packages/ignixalab.test
 New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 
 # The fixed local development version otherwise allows restore to reuse stale
-# suite content. Invalidate only this repository's configured package cache.
-if (Test-Path -LiteralPath $repoPackageCache) {
-    Remove-Item -Recurse -Force -LiteralPath $repoPackageCache
+# suite content. nuget.config's globalPackagesFolder points restore at the
+# repo-relative cache above, but NuGet gives $env:NUGET_PACKAGES precedence
+# over nuget.config when it's set — on any machine with that variable set
+# (observed: dev workstations pointing it at a shared tools cache), restore
+# actually reads/writes there instead, so invalidating only the repo-relative
+# path is a no-op and stale suite content silently survives every repack.
+# Invalidate both locations whenever they differ.
+$packageCaches = @($repoPackageCache)
+if ($env:NUGET_PACKAGES) {
+    $envPackageCache = Join-Path $env:NUGET_PACKAGES 'ignixalab.testscript.suites/0.1.0-local'
+    if ($envPackageCache -ne $repoPackageCache) {
+        $packageCaches += $envPackageCache
+    }
 }
-if (Test-Path -LiteralPath $repoPackageCache) {
-    throw "Failed to invalidate repo-local suite package cache: $repoPackageCache"
+
+foreach ($packageCache in $packageCaches) {
+    if (Test-Path -LiteralPath $packageCache) {
+        Remove-Item -Recurse -Force -LiteralPath $packageCache
+    }
+    if (Test-Path -LiteralPath $packageCache) {
+        throw "Failed to invalidate suite package cache: $packageCache"
+    }
 }
 
 $consumerAssets = @(

@@ -4,7 +4,7 @@ import type { SampleId } from '../benches/fhirpath/sampleResources';
 import type { ValidationDepth } from '../benches/validation/validationTypes';
 import type { ValidationSampleId } from '../benches/validation/sampleResources';
 
-export type BenchId = 'fhirpath' | 'validation' | 'fml' | 'sqlonfhir' | 'fakes';
+export type BenchId = 'fhirpath' | 'validation' | 'fml' | 'sqlonfhir' | 'fakes' | 'search';
 export type FakesMode = 'population' | 'scenario' | 'resource' | 'workflow';
 export const COPY_FEEDBACK_DURATION_MS = 1400;
 
@@ -72,7 +72,7 @@ export interface BenchShareState {
 // so a deep link can only ever restore the Setup tab. buildConformanceShareUrl
 // still encodes whatever tab the user is on when they copy the link.
 const CONFORMANCE_TABS: TabId[] = ['setup'];
-const BENCHES: BenchId[] = ['fhirpath', 'validation', 'fml', 'sqlonfhir', 'fakes'];
+const BENCHES: BenchId[] = ['fhirpath', 'validation', 'fml', 'sqlonfhir', 'fakes', 'search'];
 const FHIRPATH_VERSIONS: FhirPathVersion[] = ['stu3', 'r4', 'r4b', 'r5', 'r6'];
 const SAMPLE_IDS: SampleId[] = ['patient', 'observation', 'custom'];
 const VALIDATION_DEPTHS: ValidationDepth[] = ['minimal', 'spec', 'full', 'compatibility'];

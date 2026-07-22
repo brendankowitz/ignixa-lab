@@ -36,6 +36,7 @@ builder.Services.AddSingleton<CapabilityStatementFetcher>();
 builder.Services.AddScoped<TestScriptRunner>();
 
 builder.Services.AddSingleton<SchemaProviderFactory>();
+builder.Services.AddSingleton<Ignixa.Lab.Functions.Services.Search.SearchEngineFactory>();
 builder.Services.AddSingleton<ExpressionAnalyzer>();
 builder.Services.AddSingleton<ExpressionEvaluator>();
 builder.Services.AddSingleton<ResultFormatter>();
