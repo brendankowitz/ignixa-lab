@@ -456,6 +456,9 @@ export function SearchBench() {
     <div style={benchPageStyle(1440, compact)}>
       <div style={benchHeaderStyle(compact)}>
         <h1 style={{ margin: 0, fontSize: 21, fontWeight: 700, letterSpacing: '-.02em' }}>Search</h1>
+        <span title="Powered by Ignixa.Search.Sql, an alpha/experimental package — behavior and output shape may still change." style={chipStyle('var(--chip-amb-bg)', 'var(--chip-amb-fg)')}>
+          alpha
+        </span>
         <span style={{ fontSize: 12.5, color: 'var(--text3)' }}>
           Trace a FHIR search query from parse to generated SQL, targeting the Microsoft FHIR Server-compatible schema.
         </span>

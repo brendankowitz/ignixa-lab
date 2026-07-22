@@ -18,7 +18,7 @@ const BENCH_TABS: PillItem<BenchId>[] = [
   { id: 'fhirpath', label: 'FHIRPath' },
   { id: 'validation', label: 'Validation' },
   { id: 'fakes', label: 'Fakes' },
-  { id: 'search', label: 'Search' },
+  { id: 'search', label: 'Search', title: 'Alpha — powered by an experimental Ignixa.Search.Sql package' },
   { id: 'sqlonfhir', label: 'SQL on FHIR', disabled: true, title: 'Not yet implemented' },
   { id: 'fml', label: 'FML', disabled: true, title: 'Not yet implemented' },
 ];
