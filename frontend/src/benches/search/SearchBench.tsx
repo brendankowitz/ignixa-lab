@@ -368,7 +368,16 @@ function PlanRowView({
  * — recursively, so a multi-level composition (e.g. a chain nested inside an `Intersect`) nests all the
  * way down. Each node keeps its own independent click/selected/dashed state (a chain's leaf and its
  * `ChainJoin` both solid and highlighting together; an `Intersect`'s two differently-owned operands each
- * on their own) — nesting only changes layout, not the click-to-trace semantics `PlanRowView` already has. */
+ * on their own) — nesting only changes layout, not the click-to-trace semantics `PlanRowView` already has.
+ *
+ * The guide line below a node recolors to the accent whenever THAT node (`node.row`) is itself selected —
+ * reusing the exact same `isRowSelected` join `PlanRowView` uses for the row, so the line lights up in
+ * lockstep with it: a chain's leaf and its `ChainJoin` share an ordinal, so selecting either highlights the
+ * `ChainJoin`'s own row (and thus its line) too, visibly tying the leaf to the join it belongs to. An
+ * `Intersect`'s two operands don't share an ordinal with each other or with the `Intersect` itself, so
+ * clicking one operand alone leaves the line uncolored — only clicking the `Intersect` row directly lights
+ * up the line grouping its two children, which is the one click that actually asserts "these are one
+ * group." */
 function PlanRowTree({
   node,
   plan,
@@ -382,6 +391,7 @@ function PlanRowTree({
   onSelect: (label: string) => void;
   compact: boolean;
 }) {
+  const groupSelected = isRowSelected(node.row.label, selection, plan);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <PlanRowView row={node.row} plan={plan} selection={selection} onSelect={onSelect} />
@@ -393,7 +403,7 @@ function PlanRowTree({
             gap: 6,
             marginLeft: compact ? 10 : 16,
             paddingLeft: 10,
-            borderLeft: '2px solid var(--border2)',
+            borderLeft: `2px solid ${groupSelected ? 'var(--accent-border)' : 'var(--border2)'}`,
           }}
         >
           {node.children.map((child, index) => (
