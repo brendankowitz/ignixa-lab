@@ -9,6 +9,7 @@ import {
   selectionForCteLabel,
   isRowSelected,
   isRangeSelected,
+  isSelectionEmpty,
   buildPlanRowTree,
   CLEARED_SELECTION,
 } from './searchLineage.ts';
@@ -81,6 +82,15 @@ test('the "root" row resolves via its own CteProvenance when it has one', () => 
 test('a structural "root" (ChainJoin) with no own ordinal reads the single ordinal its CteProvenance.contributingOrdinals closes over', () => {
   assert.equal(ordinalForCteLabel(chainPlan, 'root'), 0);
   assert.equal(ordinalForCteLabel(chainPlan, 'cte0'), 0);
+});
+
+test('a CTE whose contributingOrdinals is empty (nothing attributable at all) resolves to no ordinal, same as length 2+', () => {
+  const nothingAttributable: QueryPlan = {
+    explain: '',
+    rows: [{ label: 'cte0', canonicalLabel: 'cte0', kind: 'compartmentSource', body: 'CompartmentSource[1],1', referencedCteIndexes: [] }],
+    ctes: [{ cteIndex: 0, parameterOrdinal: null, contributingOrdinals: [], span: null }],
+  };
+  assert.equal(ordinalForCteLabel(nothingAttributable, 'cte0'), null);
 });
 
 test('a structural row referencing two DIFFERENT ordinals stays unattributable', () => {
@@ -249,4 +259,15 @@ test('canonicalLabel returns null for SqlBuilder-internal sections with no plan-
 test('an unresolvable range never highlights, even when nothing else is selected either (both sides null must not accidentally match)', () => {
   const selection = selectionForOrdinal(0); // label is null here -- ordinal-only selection
   assert.equal(isRangeSelected('orderBy', selection, plan), false);
+});
+
+test('isSelectionEmpty recognizes CLEARED_SELECTION, and equally recognizes selectionForCteLabel on an unresolvable label as empty', () => {
+  // selectionForCteLabel("orderBy") can't resolve to a real row (see findRow), so both its fields collapse
+  // to null -- the same shape as CLEARED_SELECTION. isSelectionEmpty is what lets callers (isRowSelected,
+  // and the UI's own "is anything selected?" check) treat that collapse as "nothing selected" by
+  // construction, rather than each independently re-deriving the same two-null condition.
+  assert.equal(isSelectionEmpty(CLEARED_SELECTION), true);
+  assert.equal(isSelectionEmpty(selectionForCteLabel(plan, 'orderBy')), true);
+  assert.equal(isSelectionEmpty(selectionForOrdinal(0)), false);
+  assert.equal(isSelectionEmpty(selectionForCteLabel(plan, 'cte0')), false);
 });

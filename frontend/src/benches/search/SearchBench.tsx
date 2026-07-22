@@ -3,7 +3,7 @@ import { Card, ErrorBanner, Pills, type PillItem } from '../components/primitive
 import { benchHeaderStyle, benchPageStyle, chipStyle, engineBadgeStyle, monoFont, sectionLabelStyle } from '../components/styles';
 import { useIsNarrowViewport } from '../../hooks/useIsNarrowViewport';
 import { useSearchTrace } from './useSearchTrace';
-import { spanSegments, type Segment } from './searchSpans';
+import { cutByCovers, spanSegments, type Cover, type Segment } from './searchSpans';
 import { tokenizeSql } from './sqlHighlight';
 import { SearchQueryBuilder } from './SearchQueryBuilder';
 import {
@@ -12,6 +12,7 @@ import {
   CLEARED_SELECTION,
   isRangeSelected,
   isRowSelected,
+  isSelectionEmpty,
   ordinalForCteLabel,
   selectionForCteLabel,
   selectionForOrdinal,
@@ -84,6 +85,24 @@ function planRowKindLabel(kind: string): string {
   return PLAN_ROW_KIND_LABELS[kind] ?? kind;
 }
 
+/** A kind chip (colored via {@link kindChipColors}) shared by `ExpressionParamBlock`'s IR-row kind and
+ * `PlanRowView`'s plan-row kind, so the color lookup happens once per chip instead of twice. */
+function KindChip({ kind, label }: { kind: string; label: string }) {
+  const colors = kindChipColors(kind);
+  return <span style={chipStyle(colors.bg, colors.fg)}>{label}</span>;
+}
+
+/** The border/background treatment `ExpressionParamBlock` and `PlanRowView` both give their outer card,
+ * driven by the same "is this selected" / "does this have a single owning parameter" state — kept as one
+ * helper so the two don't drift on what "selected" looks like. */
+function selectableCardStyle(selected: boolean, dashed = false): CSSProperties {
+  return {
+    borderRadius: 8,
+    border: `1px ${dashed ? 'dashed' : 'solid'} ${selected ? 'var(--accent-border)' : 'var(--border2)'}`,
+    background: selected ? 'var(--chip-vio-bg)' : 'var(--code)',
+  };
+}
+
 /** Hover text for a `SqlTextRange.kind`/`SqlRangeKind` token — every SQL segment carries one now, including
  * the structural sections with no plan row to join to (matchPage/where/seek/orderBy/assembly), so a segment
  * that isn't part of the click-to-trace lineage can still say what it is instead of being unlabeled glue. */
@@ -98,9 +117,9 @@ const SQL_RANGE_KIND_TITLES: Record<string, string> = {
   assembly: 'Final assembly (UNION ALL of match page + every include stage)',
 };
 
-/** Same left-to-right cut approach as `spanSegments`, but over the emitted SQL text and `SqlTextRange[]`
- * (start/length/label/kind, no tree — ranges don't nest for this DTO, but the algorithm tolerates it either
- * way). */
+/** Same left-to-right cut approach as `spanSegments` (via the shared `cutByCovers`), but over the emitted
+ * SQL text and `SqlTextRange[]` (start/length/label/kind, no tree — ranges don't nest for this DTO, but the
+ * algorithm tolerates it either way). */
 interface SqlSegment {
   start: number;
   length: number;
@@ -109,40 +128,20 @@ interface SqlSegment {
 }
 
 function sqlSegments(sql: string, ranges: SqlTextRange[]): SqlSegment[] {
-  const cuts = new Set<number>([0, sql.length]);
-  const covering: { start: number; end: number; label: string; kind: string }[] = [];
-  for (const range of ranges) {
-    const start = Math.max(0, range.start);
-    const end = Math.min(sql.length, range.start + range.length);
-    if (end > start) {
-      cuts.add(start);
-      cuts.add(end);
-      covering.push({ start, end, label: range.label, kind: range.kind });
-    }
-  }
+  const covers: Cover<{ label: string; kind: string }>[] = ranges
+    .map((range) => ({
+      start: Math.max(0, range.start),
+      end: Math.min(sql.length, range.start + range.length),
+      payload: { label: range.label, kind: range.kind },
+    }))
+    .filter((cover) => cover.end > cover.start);
 
-  const boundaries = [...cuts].sort((a, b) => a - b);
-  const segments: SqlSegment[] = [];
-  for (let i = 0; i < boundaries.length - 1; i += 1) {
-    const start = boundaries[i];
-    const end = boundaries[i + 1];
-    if (end <= start) {
-      continue;
-    }
-    let best: { label: string; kind: string } | null = null;
-    let bestWidth = Infinity;
-    for (const candidate of covering) {
-      if (candidate.start <= start && candidate.end >= end) {
-        const width = candidate.end - candidate.start;
-        if (width < bestWidth) {
-          best = candidate;
-          bestWidth = width;
-        }
-      }
-    }
-    segments.push({ start, length: end - start, label: best?.label ?? null, kind: best?.kind ?? null });
-  }
-  return segments;
+  return cutByCovers(sql.length, covers).map((segment) => ({
+    start: segment.start,
+    length: segment.length,
+    label: segment.payload?.label ?? null,
+    kind: segment.payload?.kind ?? null,
+  }));
 }
 
 /** Renders one span-segments run (a parameter's key or value string) as clickable/plain fragments. Every
@@ -277,9 +276,7 @@ function ExpressionParamBlock({
   return (
     <div
       style={{
-        borderRadius: 8,
-        border: `1px solid ${selected ? 'var(--accent-border)' : 'var(--border2)'}`,
-        background: selected ? 'var(--chip-vio-bg)' : 'var(--code)',
+        ...selectableCardStyle(selected),
         padding: '6px 8px',
         display: 'flex',
         flexDirection: 'column',
@@ -305,7 +302,7 @@ function ExpressionParamBlock({
             borderRadius: 4,
           }}
         >
-          <span style={chipStyle(kindChipColors(row.kind).bg, kindChipColors(row.kind).fg)}>{row.kind}</span>
+          <KindChip kind={row.kind} label={row.kind} />
           <span style={{ fontFamily: monoFont, fontSize: 11.5, color: 'var(--text)' }}>{row.text}</span>
         </div>
       ))}
@@ -348,14 +345,12 @@ function PlanRowView({
       }}
       title={attributable ? 'Select this parameter' : 'Select this SQL block (no single owning parameter)'}
       style={{
+        ...selectableCardStyle(selected, !attributable),
         display: 'flex',
         gap: 8,
         alignItems: 'baseline',
         flexWrap: 'wrap',
         padding: '6px 8px',
-        borderRadius: 8,
-        border: `1px ${attributable ? 'solid' : 'dashed'} ${selected ? 'var(--accent-border)' : 'var(--border2)'}`,
-        background: selected ? 'var(--chip-vio-bg)' : 'var(--code)',
         opacity: attributable ? 1 : 0.85,
         cursor: 'pointer',
       }}
@@ -363,7 +358,7 @@ function PlanRowView({
       <span style={chipStyle(attributable ? 'var(--chip-teal-bg)' : 'var(--chip-gray-bg)', attributable ? 'var(--chip-teal-fg)' : 'var(--chip-gray2-fg)')}>
         {row.label}
       </span>
-      <span style={chipStyle(kindChipColors(row.kind).bg, kindChipColors(row.kind).fg)}>{planRowKindLabel(row.kind)}</span>
+      <KindChip kind={row.kind} label={planRowKindLabel(row.kind)} />
       <span style={{ fontFamily: monoFont, fontSize: 11.5, color: 'var(--text)' }}>{row.body}</span>
     </div>
   );
@@ -455,7 +450,7 @@ export function SearchBench() {
     alignItems: 'start',
   };
 
-  const hasSelection = selection.ordinal !== null || selection.label !== null;
+  const hasSelection = !isSelectionEmpty(selection);
 
   return (
     <div style={benchPageStyle(1440, compact)}>
@@ -465,7 +460,9 @@ export function SearchBench() {
           Trace a FHIR search query from parse to generated SQL, targeting the Microsoft FHIR Server-compatible schema.
         </span>
         <div style={{ flex: 1 }} />
-        {plan ? <span style={chipStyle('var(--chip-vio-bg)', 'var(--chip-vio-fg)')}>{`${plan.ctes.length} CTEs`}</span> : null}
+        {plan ? (
+          <span style={chipStyle('var(--chip-vio-bg)', 'var(--chip-vio-fg)')}>{`${plan.ctes.length} ${plan.ctes.length === 1 ? 'CTE' : 'CTEs'}`}</span>
+        ) : null}
         <span style={engineBadgeStyle}>{isLoading ? 'tracing…' : 'ignixa-search'}</span>
       </div>
 

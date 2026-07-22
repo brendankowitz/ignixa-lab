@@ -38,6 +38,19 @@ public sealed class SearchFunctions(ILogger<SearchFunctions> logger, SearchEngin
 
         var parameters = new QueryParameterParser().Parse(rawQuery);
         var engine = engineFactory.Get(fhirVersion);
+
+        // SearchCompiler.CompileAsync never validates the top-level resourceType itself -- it only rejects
+        // an unknown resource type when one appears as a chain/_has target (via SearchKeyBinder resolving a
+        // ReferenceSearchParameter's target types). Given a resource type nothing recognizes, it happily
+        // compiles a full plan and SQL against `dbo.Resource WHERE ResourceTypeId = @p0` for an ID that will
+        // never match anything -- a confidently wrong 200, not a 400, for exactly the tool whose whole job
+        // is to be trusted provenance. Reject it here instead, the same way an unknown search parameter is
+        // already rejected per-parameter deeper in the pipeline.
+        if (!engine.SearchParameters.TryGetSearchParameters(resourceType, out _))
+        {
+            return new BadRequestObjectResult(new { error = $"'{resourceType}' is not a supported FHIR resource type for {fhirVersion}." });
+        }
+
         var resolver = new InMemorySymbolResolver();
 
         SearchTrace trace;

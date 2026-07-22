@@ -24,12 +24,24 @@ test('parseQueryString on an empty/whitespace string returns no pairs', () => {
 });
 
 test('parseQueryString treats a key with no "=" as an empty value, not a dropped pair', () => {
-  assert.deepEqual(parseQueryString('_summary'), [{ key: '_summary', value: '' }]);
+  assert.deepEqual(parseQueryString('_summary'), [{ key: '_summary', value: '', bare: true }]);
 });
 
 test('toQueryString is the inverse of parseQueryString for well-formed input', () => {
   const query = 'name=Smith&gender=male';
   assert.equal(toQueryString(parseQueryString(query)), query);
+});
+
+test('toQueryString round-trips a bare key (no "=") unchanged, rather than silently appending "="', () => {
+  assert.equal(toQueryString(parseQueryString('_summary')), '_summary');
+  assert.equal(toQueryString(parseQueryString('name=Smith&_summary&gender=male')), 'name=Smith&_summary&gender=male');
+});
+
+test('a bare key elsewhere in the query survives an unrelated builder edit unchanged', () => {
+  // Regression: upsertSingleton/removeKey/appendUnique only filter the pairs array by key -- a pair they
+  // don't touch must come back through toQueryString exactly as it was typed, not gain a "=" it never had.
+  assert.equal(upsertSingleton('name=Smith&_summary', '_total', 'accurate'), 'name=Smith&_summary&_total=accurate');
+  assert.equal(appendUnique('_summary&name=Smith', '_include', 'Patient:general-practitioner'), '_summary&name=Smith&_include=Patient:general-practitioner');
 });
 
 test('upsertSingleton appends a new key on an empty query', () => {

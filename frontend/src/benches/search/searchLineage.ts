@@ -15,6 +15,16 @@ export interface Selection {
 
 export const CLEARED_SELECTION: Selection = { ordinal: null, label: null };
 
+/** Whether `selection` represents "nothing selected". True for `CLEARED_SELECTION` itself, and equally true
+ * for whatever `selectionForCteLabel` returns when its `label` doesn't resolve to anything real (see
+ * {@link findRow}) — both fields collapse to null in that case too, since there's nothing left to group or
+ * highlight by. Centralizing this check is what lets `isRowSelected` and a UI's own "is anything selected?"
+ * query agree by construction instead of each independently re-deriving the same two-null condition (and
+ * risking one of them drifting to treat an unresolvable selection as "selected"). */
+export function isSelectionEmpty(selection: Selection): boolean {
+  return selection.ordinal === null && selection.label === null;
+}
+
 /**
  * Finds the plan row addressed by `label`, whichever of its three possible forms `label` is:
  * - a row's own display `label` (e.g. `"root"`, the match/output CTE's display name), or
@@ -24,7 +34,7 @@ export const CLEARED_SELECTION: Selection = { ordinal: null, label: null };
  *   getting a row of its own (see `Ignixa.Search.Sql.Builders.SqlLabels.IncludeLimitLabel`).
  *
  * Returns null when `label` matches none of those — a SqlBuilder-internal section with no plan row at all
- * (`orderBy`/`matchPage`/`where`/`seek`/`assembly`), self-describing only via its own `SqlTextRange.kind`.
+ * (`orderBy`/`cteMatchPage`/`where`/`seek`/`assembly`), self-describing only via its own `SqlTextRange.kind`.
  */
 function findRow(plan: QueryPlan, label: string): PlanExplainRow | null {
   return (
@@ -96,7 +106,7 @@ export function selectionForCteLabel(plan: QueryPlan, label: string): Selection 
  * parameter-family join) or by canonical label identity (a row highlighting only itself, including its
  * `"lim"`-suffixed SQL companion and the `"root"`/`"cte{i}"` alias — see {@link canonicalLabel}). */
 export function isRowSelected(label: string, selection: Selection, plan: QueryPlan | null): boolean {
-  if (!plan || (selection.ordinal === null && selection.label === null)) {
+  if (!plan || isSelectionEmpty(selection)) {
     return false;
   }
   if (selection.ordinal !== null && ordinalForCteLabel(plan, label) === selection.ordinal) {

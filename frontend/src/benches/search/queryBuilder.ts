@@ -4,6 +4,13 @@
 export interface QueryPair {
   key: string;
   value: string;
+  /** True when the raw segment had no `=` at all (e.g. a hand-typed bare `_summary`) — distinct from an
+   * explicit-but-empty value (`_summary=`). Without this, `toQueryString` can't tell the two apart and
+   * silently appends `=` to a bare flag the moment any unrelated pair is touched, rewriting text the user
+   * never asked to change. Only ever set by `parseQueryString`; every pair a builder mutator constructs
+   * itself (`upsertSingleton`, `appendUnique`) always has a real value, so it's left `undefined` (falsy)
+   * there. */
+  bare?: boolean;
 }
 
 /** Splits a raw query string (the part after `?`, e.g. `name=Smith&gender=male`) into its `key=value`
@@ -19,13 +26,14 @@ export function parseQueryString(query: string): QueryPair[] {
     .filter((segment) => segment.length > 0)
     .map((segment) => {
       const eq = segment.indexOf('=');
-      return eq === -1 ? { key: segment, value: '' } : { key: segment.slice(0, eq), value: segment.slice(eq + 1) };
+      return eq === -1 ? { key: segment, value: '', bare: true } : { key: segment.slice(0, eq), value: segment.slice(eq + 1) };
     });
 }
 
-/** Joins `key=value` pairs back into a raw query string, `&`-separated, no leading `?`. */
+/** Joins `key=value` pairs back into a raw query string, `&`-separated, no leading `?` — reproducing a
+ * `bare` pair's original no-`=` shape instead of always writing `key=value`. */
 export function toQueryString(pairs: QueryPair[]): string {
-  return pairs.map(({ key, value }) => `${key}=${value}`).join('&');
+  return pairs.map(({ key, value, bare }) => (bare ? key : `${key}=${value}`)).join('&');
 }
 
 /** Sets a single-valued control parameter (`_summary`, `_total`, `_count`, …): replaces the pair with this

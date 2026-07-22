@@ -133,6 +133,37 @@ public sealed class SearchFunctionsTests
         result.Should().BeOfType<BadRequestObjectResult>();
     }
 
+    [Fact]
+    public async Task Trace_UnknownResourceType_ReturnsBadRequestRatherThanACompiledPlanForNothing()
+    {
+        // Confirmed live against the real compiler: SearchCompiler.CompileAsync never validates the
+        // top-level resourceType itself (only a chain/_has TARGET resource type is validated) -- given a
+        // resourceType nothing recognizes, it happily compiles a full plan/SQL against
+        // `WHERE ResourceTypeId = @p0` for an ID that matches nothing. That's a confidently wrong 200 for a
+        // tool whose whole job is trustworthy tracing, so SearchFunctions.Trace rejects it up front instead.
+        var functions = CreateFunctions();
+
+        var result = await functions.Trace(BuildGetRequest("?name=Smith"), "R4", "TotallyBogusResource", CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>()
+            .Subject.Value.Should().BeEquivalentTo(new { error = "'TotallyBogusResource' is not a supported FHIR resource type for R4." });
+    }
+
+    [Fact]
+    public async Task Trace_MalformedDateValue_ReturnsBadRequestViaTheGenericExceptionPath()
+    {
+        // Confirmed live: an unparseable date value throws a bare FormatException out of SearchCompiler
+        // .CompileAsync itself (parsing happens too early to be caught and recorded as a per-parameter
+        // Ignored/Failed outcome the way an unrecognized parameter name is) -- exercises the catch-all
+        // `catch (Exception ex)` branch in SearchFunctions.Trace, not the "malformed resourceType" guard
+        // above or the per-parameter leniency the other tests in this file cover.
+        var functions = CreateFunctions();
+
+        var result = await functions.Trace(BuildGetRequest("?birthdate=notadate"), "R4", "Patient", CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
     [Theory]
     [InlineData("STU3")]
     [InlineData("R4B")]
