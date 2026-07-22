@@ -8,26 +8,26 @@
   -->
   <ItemGroup>
     <!-- FHIR TestScript execution engine (published from ignixa-fhir); includes the requiresCapability gating extension (ignixa-fhir#292). -->
-    <PackageVersion Include="Ignixa.TestScript" Version="0.6.24-beta" />
+    <PackageVersion Include="Ignixa.TestScript" Version="0.6.28-beta" />
 
     <!-- Generates fixture resources for the canonical suites' fhirfakes markers -->
-    <PackageVersion Include="Ignixa.TestScript.FhirFakes" Version="0.6.24-beta" />
+    <PackageVersion Include="Ignixa.TestScript.FhirFakes" Version="0.6.28-beta" />
 
     <!-- FHIRPath expression evaluation engine, powering the fhirpath-evaluator endpoints -->
-    <PackageVersion Include="Ignixa.FhirPath" Version="0.6.24" />
-    <PackageVersion Include="Ignixa.Serialization" Version="0.6.24" />
-    <PackageVersion Include="Ignixa.Specification" Version="0.6.24" />
-    <PackageVersion Include="Ignixa.Validation" Version="0.6.24" />
-    <PackageVersion Include="Ignixa.PackageManagement" Version="0.6.24" />
+    <PackageVersion Include="Ignixa.FhirPath" Version="0.6.28" />
+    <PackageVersion Include="Ignixa.Serialization" Version="0.6.28" />
+    <PackageVersion Include="Ignixa.Specification" Version="0.6.28" />
+    <PackageVersion Include="Ignixa.Validation" Version="0.6.28" />
+    <PackageVersion Include="Ignixa.PackageManagement" Version="0.6.28" />
 
     <!-- Synthetic FHIR data generator (populations, clinical scenarios, single resources, edge-case fuzzing), powering the Fakes bench -->
-    <PackageVersion Include="Ignixa.FhirFakes" Version="0.6.24" />
+    <PackageVersion Include="Ignixa.FhirFakes" Version="0.6.28" />
 
     <!-- FHIR search parser/indexer, powering the Search bench's parse + typed-expression stages -->
-    <PackageVersion Include="Ignixa.Search" Version="0.6.24" />
+    <PackageVersion Include="Ignixa.Search" Version="0.6.28" />
 
     <!-- Search-to-SQL compiler (alpha/experimental per its own README) — powers the Search bench's lowered-plan + emitted-SQL stages and the SearchCompiler tracing entry point -->
-    <PackageVersion Include="Ignixa.Search.Sql" Version="0.6.24-alpha" />
+    <PackageVersion Include="Ignixa.Search.Sql" Version="0.6.28-alpha" />
 
     <!-- Validates the CapabilityStatement's declared fhirVersion as real semver before trusting it for engine gating -->
     <PackageVersion Include="NuGet.Versioning" Version="6.14.0" />
