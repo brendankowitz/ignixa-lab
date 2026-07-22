@@ -1,0 +1,266 @@
+{
+  "resourceType": "TestScript",
+  "name": "Search/global-parameters",
+  "description": "Search result global parameter conformance tests for _elements and _summary=text,data on Patient, a common normative resource. Uses a single deterministic Patient fixture scoped by _id so assertions can focus on response shaping rather than search matching.",
+  "status": "active",
+  "fixture": [
+    {
+      "id": "global-parameters-patient",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "resourceType": "Patient",
+        "id": "ignixa-global-parameters-patient",
+        "text": {
+          "status": "generated",
+          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">Ignixa global parameters patient narrative</div>"
+        },
+        "identifier": [
+          {
+            "system": "http://ignixa.io/testscript/global-parameters",
+            "value": "GLOBAL-PARAMETERS"
+          }
+        ],
+        "name": [
+          {
+            "family": "GlobalParameters",
+            "given": ["Ignixa"]
+          }
+        ],
+        "gender": "female",
+        "birthDate": "1999-09-09"
+      }
+    }
+  ],
+  "setup": {
+    "action": [
+      {
+        "operation": {
+          "type": { "code": "update" },
+          "url": "Patient/ignixa-global-parameters-patient",
+          "sourceId": "global-parameters-patient",
+          "description": "PUT Patient/ignixa-global-parameters-patient with narrative and data elements for global parameter response-shaping tests"
+        }
+      }
+    ]
+  },
+  "test": [
+    {
+      "name": "_elements returns only requested data elements",
+      "description": "GET /Patient?_id=ignixa-global-parameters-patient&_elements=identifier,name must return the matching Patient with identifier and name present while non-requested data and narrative elements are omitted.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        {
+          "operation": {
+            "type": { "code": "search" },
+            "resource": "Patient",
+            "params": "?_id=ignixa-global-parameters-patient&_elements=identifier,name",
+            "responseId": "elements-response",
+            "description": "Search Patient by _id while requesting only identifier and name via _elements"
+          }
+        },
+        {
+          "assert": {
+            "description": "Search must return HTTP 200",
+            "response": "okay"
+          }
+        },
+        {
+          "assert": {
+            "description": "Response must be a Bundle",
+            "resource": "Bundle"
+          }
+        },
+        {
+          "assert": {
+            "description": "Result set must contain the global parameters Patient",
+            "expression": "entry.where(resource.id = 'ignixa-global-parameters-patient').exists()"
+          }
+        },
+        {
+          "assert": {
+            "description": "_elements result must keep requested identifier",
+            "expression": "entry.where(resource.id = 'ignixa-global-parameters-patient').resource.identifier.exists()"
+          }
+        },
+        {
+          "assert": {
+            "description": "_elements result must keep requested name",
+            "expression": "entry.where(resource.id = 'ignixa-global-parameters-patient').resource.name.exists()"
+          }
+        },
+        {
+          "assert": {
+            "description": "_elements result should omit non-requested gender",
+            "expression": "entry.where(resource.id = 'ignixa-global-parameters-patient').resource.gender.exists()",
+            "value": "false",
+            "operator": "equals",
+            "warningOnly": true
+          }
+        },
+        {
+          "assert": {
+            "description": "_elements result should omit non-requested birthDate",
+            "expression": "entry.where(resource.id = 'ignixa-global-parameters-patient').resource.birthDate.exists()",
+            "value": "false",
+            "operator": "equals",
+            "warningOnly": true
+          }
+        },
+        {
+          "assert": {
+            "description": "_elements result should omit non-requested narrative text",
+            "expression": "entry.where(resource.id = 'ignixa-global-parameters-patient').resource.text.exists()",
+            "value": "false",
+            "operator": "equals",
+            "warningOnly": true
+          }
+        },
+        {
+          "assert": {
+            "description": "_elements result should carry the SUBSETTED tag",
+            "expression": "entry.where(resource.id = 'ignixa-global-parameters-patient').resource.meta.tag.where(system = 'http://terminology.hl7.org/CodeSystem/v3-ObservationValue' and code = 'SUBSETTED').exists()",
+            "warningOnly": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "_summary=text returns narrative without data elements",
+      "description": "GET /Patient?_id=ignixa-global-parameters-patient&_summary=text must return the matching Patient narrative while omitting regular data elements.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        {
+          "operation": {
+            "type": { "code": "search" },
+            "resource": "Patient",
+            "params": "?_id=ignixa-global-parameters-patient&_summary=text",
+            "responseId": "summary-text-response",
+            "description": "Search Patient by _id with _summary=text"
+          }
+        },
+        {
+          "assert": {
+            "description": "Search must return HTTP 200",
+            "response": "okay"
+          }
+        },
+        {
+          "assert": {
+            "description": "Response must be a Bundle",
+            "resource": "Bundle"
+          }
+        },
+        {
+          "assert": {
+            "description": "_summary=text result must keep narrative text",
+            "expression": "entry.where(resource.id = 'ignixa-global-parameters-patient').resource.text.exists()"
+          }
+        },
+        {
+          "assert": {
+            "description": "_summary=text result must omit identifier data",
+            "expression": "entry.where(resource.id = 'ignixa-global-parameters-patient').resource.identifier.exists()",
+            "value": "false",
+            "operator": "equals"
+          }
+        },
+        {
+          "assert": {
+            "description": "_summary=text result must omit name data",
+            "expression": "entry.where(resource.id = 'ignixa-global-parameters-patient').resource.name.exists()",
+            "value": "false",
+            "operator": "equals"
+          }
+        },
+        {
+          "assert": {
+            "description": "_summary=text result must omit gender data",
+            "expression": "entry.where(resource.id = 'ignixa-global-parameters-patient').resource.gender.exists()",
+            "value": "false",
+            "operator": "equals"
+          }
+        },
+        {
+          "assert": {
+            "description": "_summary=text result must omit birthDate data",
+            "expression": "entry.where(resource.id = 'ignixa-global-parameters-patient').resource.birthDate.exists()",
+            "value": "false",
+            "operator": "equals"
+          }
+        }
+      ]
+    },
+    {
+      "name": "_summary=data returns data without narrative",
+      "description": "GET /Patient?_id=ignixa-global-parameters-patient&_summary=data must return the matching Patient data while omitting narrative text.",
+      "extension": [{ "url": "http://ignixa.io/testscript/fhirVersions", "valueString": "4.0,4.3,5.0" }],
+      "action": [
+        {
+          "operation": {
+            "type": { "code": "search" },
+            "resource": "Patient",
+            "params": "?_id=ignixa-global-parameters-patient&_summary=data",
+            "responseId": "summary-data-response",
+            "description": "Search Patient by _id with _summary=data"
+          }
+        },
+        {
+          "assert": {
+            "description": "Search must return HTTP 200",
+            "response": "okay"
+          }
+        },
+        {
+          "assert": {
+            "description": "Response must be a Bundle",
+            "resource": "Bundle"
+          }
+        },
+        {
+          "assert": {
+            "description": "_summary=data result must keep identifier data",
+            "expression": "entry.where(resource.id = 'ignixa-global-parameters-patient').resource.identifier.exists()"
+          }
+        },
+        {
+          "assert": {
+            "description": "_summary=data result must keep name data",
+            "expression": "entry.where(resource.id = 'ignixa-global-parameters-patient').resource.name.exists()"
+          }
+        },
+        {
+          "assert": {
+            "description": "_summary=data result must keep gender data",
+            "expression": "entry.where(resource.id = 'ignixa-global-parameters-patient').resource.gender.exists()"
+          }
+        },
+        {
+          "assert": {
+            "description": "_summary=data result must keep birthDate data",
+            "expression": "entry.where(resource.id = 'ignixa-global-parameters-patient').resource.birthDate.exists()"
+          }
+        },
+        {
+          "assert": {
+            "description": "_summary=data result must omit narrative text",
+            "expression": "entry.where(resource.id = 'ignixa-global-parameters-patient').resource.text.exists()",
+            "value": "false",
+            "operator": "equals"
+          }
+        }
+      ]
+    }
+  ],
+  "teardown": {
+    "action": [
+      {
+        "operation": {
+          "type": { "code": "delete" },
+          "url": "Patient/ignixa-global-parameters-patient",
+          "description": "Teardown: delete global parameters Patient"
+        }
+      }
+    ]
+  }
+}

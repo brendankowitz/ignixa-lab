@@ -173,7 +173,7 @@ public sealed class SuiteCatalogTests : IDisposable
     {
         var suites = CreateBundledCatalog().GetSuites();
 
-        suites.Should().HaveCount(87);
+        suites.Should().HaveCount(88);
     }
 
     [Fact]
@@ -194,6 +194,7 @@ public sealed class SuiteCatalogTests : IDisposable
         {
             "CRUD/all-resource-types.json",
             "Search/chaining.json",
+            "Search/global-parameters.json",
             "Microsoft/ms-not-expression.json",
             "Bundles/transaction.json",
             "Validation/validate-op.json",
