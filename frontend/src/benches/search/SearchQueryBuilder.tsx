@@ -21,33 +21,45 @@ interface RefChipOption {
 
 // Every search-term chip below was run against the real compiler before being added here (not merely
 // plausible-looking FHIR syntax) — each compiles cleanly (no per-parameter Ignored/Failed outcome, no
-// page-level Failure). Two are deliberately excluded even though they're valid FHIR search syntax:
-// `system|code` token search and `:contains`/`:exact` string modifiers on values that could overflow the
-// inline column — `Ignixa.Search.Sql` (alpha) doesn't support either yet, so both would render as a
-// per-parameter Failed outcome instead of demonstrating a working trace. Chips share a `key` (e.g. the two
-// `date` chips on Observation) so they combine as an AND, same as typing both by hand — clicking both
-// toggles both `date=` pairs on independently, exactly like `_include`.
+// page-level Failure); see SearchFunctionsTests.Trace_NewlyAddedChipQueries_CompileCleanly for the sa/eb/
+// :missing/_id/plain-quantity additions. Three are deliberately excluded even though they're valid FHIR
+// search syntax: `system|code` token search and `:contains`/`:exact` string modifiers on values that could
+// overflow the inline column — `Ignixa.Search.Sql` (alpha) doesn't support either yet, so both would render
+// as a per-parameter Failed outcome instead of demonstrating a working trace — and an explicit `_type`
+// matching the route's own resource type, which compiles but never reaches Parameters as a traced entry
+// (see Trace_ExplicitTypeParameter_IsAbsorbedByTheResourceTypeRouteSegment), so it would be a chip with
+// nothing to click through to. Chips share a `key` (e.g. the two `date` chips on Observation) so they
+// combine as an AND, same as typing both by hand — clicking both toggles both `date=` pairs on
+// independently, exactly like `_include`.
 const SEARCH_TERMS: Record<ResourceType, RefChipOption[]> = {
   Patient: [
     { key: 'name', value: 'Smith', label: 'name=Smith' },
     { key: 'gender', value: 'male', label: 'gender=male' },
     { key: 'birthdate', value: 'gt2000-01-01', label: 'birthdate=gt2000-01-01' },
+    { key: 'birthdate', value: 'sa2000-01-01', label: 'birthdate=sa2000-01-01 (starts-after)' },
+    { key: 'birthdate', value: 'eb2000-01-01', label: 'birthdate=eb2000-01-01 (ends-before)' },
     { key: 'name', value: 'Smith,Jones', label: 'name=Smith,Jones (OR)' },
     { key: 'general-practitioner:Practitioner.name', value: 'Jones', label: 'general-practitioner.name=Jones (chain)' },
     { key: '_has:Observation:patient:code', value: '1234-5', label: '_has Observation.patient.code (reverse chain)' },
+    { key: '_id', value: 'example', label: '_id=example' },
+    { key: 'name:missing', value: 'true', label: 'name:missing=true' },
+    { key: 'general-practitioner:missing', value: 'true', label: 'general-practitioner:missing=true' },
   ],
   Observation: [
     { key: 'code', value: '8480-6', label: 'code=8480-6' },
     { key: 'code-value-quantity', value: '8480-6$gt90', label: 'code-value-quantity=8480-6$gt90 (composite)' },
+    { key: 'value-quantity', value: 'gt90', label: 'value-quantity=gt90' },
     { key: 'patient', value: 'Patient/123', label: 'patient=Patient/123' },
     { key: 'date', value: 'ge2024-01-01', label: 'date=ge2024-01-01' },
     { key: 'date', value: 'lt2025-01-01', label: 'date=lt2025-01-01' },
+    { key: 'value-quantity:missing', value: 'true', label: 'value-quantity:missing=true' },
   ],
   Encounter: [
     { key: 'status', value: 'finished', label: 'status=finished' },
     { key: 'date', value: 'ge2024-01-01', label: 'date=ge2024-01-01' },
     { key: 'subject.name', value: 'Smith', label: 'subject.name=Smith (chain)' },
     { key: 'class', value: 'AMB', label: 'class=AMB' },
+    { key: '_id', value: 'example', label: '_id=example' },
   ],
 };
 

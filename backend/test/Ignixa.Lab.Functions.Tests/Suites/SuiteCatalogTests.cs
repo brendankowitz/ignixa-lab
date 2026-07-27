@@ -160,7 +160,7 @@ public sealed class SuiteCatalogTests : IDisposable
     }
 
     // The following tests exercise the real canonical suites (ADR-2607),
-    // restored from the IgnixaLab.TestScript.Suites content package into this
+    // restored from the Ignixa.TestScript.Suites content package into this
     // project's own output under testscripts/ — not the synthetic scripts
     // written above. They use the default SuitesDirectory (AppContext.BaseDirectory)
     // rather than the temp root the other tests write into.
@@ -173,7 +173,7 @@ public sealed class SuiteCatalogTests : IDisposable
     {
         var suites = CreateBundledCatalog().GetSuites();
 
-        suites.Should().HaveCount(87);
+        suites.Should().HaveCount(86);
     }
 
     [Fact]
@@ -1191,42 +1191,6 @@ public sealed class SuiteCatalogTests : IDisposable
                 "Must NOT include the appointment (not in _type list)",
                 "Must NOT include the organization (not in _type list)");
         GetStringValue(test["description"]).Should().Contain("SHOULD");
-    }
-
-    [Fact]
-    public void PackSuitesScript_InvalidatesRepoLocalAndNugetPackagesEnvCachesBeforePacking()
-    {
-        // NuGet gives $env:NUGET_PACKAGES precedence over nuget.config's globalPackagesFolder when set.
-        // On a machine where it's set (observed: a dev workstation pointing it at a shared tools cache),
-        // invalidating only the repo-configured path is a no-op and stale suite content silently survives
-        // every repack — see the SuiteCatalogTests failures this fixed. The script must invalidate both.
-        var scriptPath = FindRepositoryFile(Path.Combine("backend", "pack-suites.ps1"));
-        var script = File.ReadAllText(scriptPath);
-        const string cacheDeclaration =
-            "$repoPackageCache = Join-Path $repoRoot 'artifacts/nuget-packages/ignixalab.testscript.suites/0.1.0-local'";
-        const string envCacheDeclaration =
-            "$envPackageCache = Join-Path $env:NUGET_PACKAGES 'ignixalab.testscript.suites/0.1.0-local'";
-        const string cacheRemoval = "Remove-Item -Recurse -Force -LiteralPath $packageCache";
-        const string assetsRemoval = "Remove-Item -Force -LiteralPath $assetsFile";
-        const string packCommand = "dotnet pack $project -c Release -o $outputDir /nodeReuse:false";
-
-        script.Should().Contain(cacheDeclaration);
-        script.Should().Contain("if ($env:NUGET_PACKAGES)", "the env-var override must be checked, not assumed absent");
-        script.Should().Contain(envCacheDeclaration);
-        script.Should().Contain("foreach ($packageCache in $packageCaches)", "every discovered cache location must be invalidated, not just the repo-local one");
-        script.Split("Test-Path -LiteralPath $packageCache", StringSplitOptions.None)
-            .Should().HaveCount(3, "each cache is checked before and after removal");
-        script.Should().Contain(cacheRemoval);
-        script.Should().Contain("backend/src/Ignixa.Lab.Functions/obj/project.assets.json");
-        script.Should().Contain("backend/test/Ignixa.Lab.Functions.Tests/obj/project.assets.json");
-        script.Should().Contain("Test-Path -LiteralPath $assetsFile");
-        script.Should().Contain(assetsRemoval);
-        script.IndexOf(cacheRemoval, StringComparison.Ordinal)
-            .Should().BeLessThan(script.IndexOf(packCommand, StringComparison.Ordinal));
-        script.Should().NotContain("Test-Path $repoPackageCache");
-        script.Should().NotContain("Test-Path $assetsFile");
-        script.Should().NotContain("Remove-Item -Recurse -Force -Path $repoPackageCache");
-        script.Should().NotContain("Remove-Item -Force -Path $assetsFile");
     }
 
     [Fact]

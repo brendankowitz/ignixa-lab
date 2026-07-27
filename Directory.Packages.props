@@ -33,11 +33,10 @@
     <PackageVersion Include="NuGet.Versioning" Version="6.14.0" />
 
     <!--
-      Canonical TestScript suites (ADR-2607). Interim local package built by
-      backend/src/Ignixa.Lab.Suites and packed to the local-feed source; will
-      be repointed at the upstream ignixa-fhir suites artifact once published.
+      Canonical TestScript suites (ADR-2607), published from ignixa-fhir as
+      NuGet content (testscripts/ + source-revision.txt for permalinking).
     -->
-    <PackageVersion Include="IgnixaLab.TestScript.Suites" Version="0.1.0-local" />
+    <PackageVersion Include="Ignixa.TestScript.Suites" Version="0.6.28-beta" />
 
     <!-- Azure Functions .NET isolated worker (ASP.NET Core integration) -->
     <PackageVersion Include="Microsoft.Azure.Functions.Worker" Version="2.0.0" />
@@ -46,9 +45,6 @@
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Timer" Version="4.3.1" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.ApplicationInsights" Version="2.0.0" />
     <PackageVersion Include="Microsoft.ApplicationInsights.WorkerService" Version="2.23.0" />
-
-    <!-- Stamps the git commit into IgnixaLab.TestScript.Suites' packed output, so the Functions app can link back to the exact commit testscripts fixtures came from -->
-    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
 
     <!-- Testing -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />

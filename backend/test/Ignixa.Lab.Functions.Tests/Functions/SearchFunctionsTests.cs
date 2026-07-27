@@ -198,4 +198,46 @@ public sealed class SearchFunctionsTests
             .Should().BeOfType<SearchTraceResponse>().Subject;
         response.Parameters.Should().ContainSingle().Which.Outcome.Kind.Should().Be("Compiled");
     }
+
+    // Confirmed live against the real compiler (0.6.28-alpha, no per-parameter Ignored/Failed outcome, no
+    // page-level Failure), the same way every SearchQueryBuilder chip is verified before being added --
+    // these back the `sa`/`eb`/`:missing`/`_id`/plain-quantity chips that ship there.
+    [Theory]
+    [InlineData("Patient", "birthdate=sa2000-01-01")]
+    [InlineData("Patient", "birthdate=eb2000-01-01")]
+    [InlineData("Patient", "name:missing=true")]
+    [InlineData("Patient", "name:missing=false")]
+    [InlineData("Patient", "_id=example")]
+    [InlineData("Patient", "general-practitioner:missing=true")]
+    [InlineData("Observation", "value-quantity=gt90")]
+    [InlineData("Observation", "value-quantity:missing=true")]
+    [InlineData("Observation", "code:missing=true")]
+    public async Task Trace_NewlyAddedChipQueries_CompileCleanly(string resourceType, string query)
+    {
+        var functions = CreateFunctions();
+
+        var result = await functions.Trace(BuildGetRequest($"?{query}"), "R4", resourceType, CancellationToken.None);
+
+        var response = result.Should().BeOfType<OkObjectResult>().Subject.Value
+            .Should().BeOfType<SearchTraceResponse>().Subject;
+        response.Failure.Should().BeNull();
+        response.Parameters.Should().ContainSingle().Which.Outcome.Kind.Should().Be("Compiled");
+    }
+
+    [Fact]
+    public async Task Trace_ExplicitTypeParameter_IsAbsorbedByTheResourceTypeRouteSegment()
+    {
+        // Confirmed live: an explicit `_type` matching the route's own {resourceType} never reaches
+        // Parameters as a traced entry -- SearchOptionsBuilder resolves resource-type scoping from the
+        // route segment already, so `_type` here would just be a redundant, non-clickable chip with no
+        // CTE/SQL provenance to show. Excluded from SearchQueryBuilder for that reason.
+        var functions = CreateFunctions();
+
+        var result = await functions.Trace(BuildGetRequest("?_type=Encounter"), "R4", "Encounter", CancellationToken.None);
+
+        var response = result.Should().BeOfType<OkObjectResult>().Subject.Value
+            .Should().BeOfType<SearchTraceResponse>().Subject;
+        response.Failure.Should().BeNull();
+        response.Parameters.Should().BeEmpty();
+    }
 }

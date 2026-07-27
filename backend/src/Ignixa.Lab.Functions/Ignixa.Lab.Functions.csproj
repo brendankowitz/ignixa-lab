@@ -13,7 +13,7 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Ignixa.TestScript" />
     <PackageReference Include="Ignixa.TestScript.FhirFakes" />
-    <PackageReference Include="IgnixaLab.TestScript.Suites" />
+    <PackageReference Include="Ignixa.TestScript.Suites" />
     <PackageReference Include="Ignixa.FhirPath" />
     <PackageReference Include="Ignixa.Serialization" />
     <PackageReference Include="Ignixa.Specification" />
