@@ -43,7 +43,7 @@ reports are interchangeable between the two projects.
 
 ### 🧪 Conformance Testing
 
-- **87 bundled FHIR TestScript suites** across 9 categories — `Bundles`,
+- **86 bundled FHIR TestScript suites** across 9 categories — `Bundles`,
   `CRUD`, `Foundation`, `Microsoft`, `Operations`, `Regression`, `Search`,
   `Subscriptions`, `Validation` — plus support for uploading your own
   TestScripts inline.
@@ -92,7 +92,6 @@ Prerequisites: **.NET SDK 10**, **Node.js 20+**, and the
 **Backend**
 
 ```bash
-./backend/pack-suites.ps1                             # packs the suites into artifacts/local-feed (first run + whenever suites change)
 cd backend/src/Ignixa.Lab.Functions
 cp local.settings.json.example local.settings.json    # first run only
 func start                                             # serves http://localhost:7071
@@ -120,16 +119,15 @@ is Expression Benches — all served by the same dev server and cross-linked.
 │   │   ├── Conformance/              Report schema records (report, result, step, error, http)
 │   │   ├── Configuration/            IgnixaLabOptions
 │   │   ├── Execution/                Runner, SSRF guard, report mapper, evaluator factory
-│   │   ├── Functions/                HTTP endpoints: Health, Suites, Run, Capability, FhirPath, Fakes, Validation
+│   │   ├── Functions/                HTTP endpoints: Health, Suites, Run, Capability, FhirPath, Fakes, Validation, Search
 │   │   ├── Middleware/               CORS + rate limiting
 │   │   ├── Models/                   Request/descriptor DTOs
-│   │   ├── Suites/                   SuiteCatalog — reads testscripts restored from IgnixaLab.TestScript.Suites
+│   │   ├── Suites/                   SuiteCatalog — reads testscripts restored from Ignixa.TestScript.Suites
 │   │   └── Program.cs                Host + DI wiring
-│   ├── src/Ignixa.Lab.Suites/        The 87 canonical TestScript suites, packed into a local NuGet feed
 │   └── test/Ignixa.Lab.Functions.Tests/   xUnit tests
 ├── frontend/                         Vite + React 19 + TypeScript
 │   └── src/                          conformance app (api client, types, hooks, components)
-│                                      + benches/ (fhirpath, fakes, validation, fml, sof)
+│                                      + benches/ (fhirpath, fakes, validation, search, fml, sof)
 ├── docs/                             Architecture, API, schema, and development guides
 ├── .github/workflows/                CI + deploy for backend and frontend
 ├── Directory.Build.props             Shared MSBuild settings (analyzers, warnings-as-errors)

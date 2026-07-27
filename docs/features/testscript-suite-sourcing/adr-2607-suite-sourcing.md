@@ -1,6 +1,6 @@
 # ADR-2607: TestScript suite sourcing
 
-**Status**: Proposed
+**Status**: Implemented
 **Date**: 2026-07-01
 **Feature**: testscript-suite-sourcing
 
@@ -41,14 +41,20 @@ This wins because it gives explicit version pinning and reproducible builds, kee
 CI simple (no submodule recursion), avoids cloning the whole upstream repo for a
 subset, and matches the engine's existing distribution model.
 
-**Interim (until `ignixa-fhir` publishes the artifact):** the TestScript files are
-kept in this repo and packed into a **local** versioned NuGet content package by a
-dedicated packaging project, published to a repo-local feed. The Functions project
-consumes it via `PackageReference`, restoring the suites into the `testscripts/`
-output that `SuiteCatalog` already reads (no catalog change). This builds and
-proves the exact consumption seam now; the upstream integration later is just
-repointing that `PackageReference` at the published `ignixa-fhir` package (and
-retiring the local feed).
+**Interim (retired):** until `ignixa-fhir` published the artifact, the TestScript
+files were kept in this repo and packed into a local versioned NuGet content
+package by a dedicated `Ignixa.Lab.Suites` project, published to a repo-local
+feed (`artifacts/local-feed`, populated by `backend/pack-suites.ps1`). This
+proved the exact consumption seam ahead of the upstream package existing.
+
+**Now:** `ignixa-fhir` publishes `Ignixa.TestScript.Suites` (first at
+`0.6.28-beta`, alongside the `Ignixa.TestScript` engine — see
+[ignixa-fhir#349](https://github.com/brendankowitz/ignixa-fhir/pull/349)). The
+Functions project's `PackageReference` now points at that package directly from
+`nuget.org`; the interim `Ignixa.Lab.Suites` project, `pack-suites.ps1`, and the
+`local-feed` NuGet source have been removed. `SuiteCatalog` required no change —
+it already read from `AppContext.BaseDirectory/testscripts`, which is exactly
+where both the interim and upstream packages place their content.
 
 ## Consequences
 
@@ -57,9 +63,6 @@ retiring the local feed).
   the vendored starters when the package is absent.
 - Suites are pinned to a version and travel through CI reproducibly; upgrading is
   an explicit version bump rather than a manual copy.
-- Requires an upstream `ignixa-fhir` change to publish the suites artifact. Until
-  that exists, the vendored starters remain the effective source — this ADR sets
-  the target so the consumption seam can be built now and pointed at the package
-  when it ships.
 - Adds a versioning-coordination concern between the engine package and the suites
-  package that upstream must manage.
+  package that upstream must manage — both are bumped together in
+  `Directory.Packages.props` when picking up a new `ignixa-fhir` release.
