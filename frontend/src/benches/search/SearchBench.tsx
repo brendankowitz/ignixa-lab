@@ -555,9 +555,6 @@ export function SearchBench() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <span style={sectionLabelStyle}>FHIR version</span>
           <Pills items={FHIR_VERSION_ITEMS} activeId={fhirVersion} onChange={setFhirVersion} />
-          <div style={{ width: 1, height: 18, background: 'var(--border2)' }} />
-          <span style={sectionLabelStyle}>Resource type</span>
-          <Pills items={RESOURCE_TYPE_ITEMS} activeId={resourceType} onChange={handleResourceTypeChange} />
         </div>
 
         {availableModes.length > 1 ? (
@@ -570,6 +567,11 @@ export function SearchBench() {
             />
           </div>
         ) : null}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={sectionLabelStyle}>Resource type</span>
+          <Pills items={RESOURCE_TYPE_ITEMS} activeId={resourceType} onChange={handleResourceTypeChange} />
+        </div>
 
         {searchMode === 'compartment' ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
