@@ -119,3 +119,56 @@ export type FhirVersion = (typeof FHIR_VERSIONS)[number];
 export const DEFAULT_FHIR_VERSION: FhirVersion = 'R4';
 export const DEFAULT_RESOURCE_TYPE: ResourceType = 'Patient';
 export const DEFAULT_QUERY = 'name=Smith&birthdate=gt2000-01-01';
+
+export type SearchMode = 'type' | 'compartment' | 'everything';
+
+/** Which resource types can be a compartment root, and which support $everything -- neither is "any of the
+ * bench's 3 resource types": only Patient and Encounter are among FHIR's 5 compartment types (Device,
+ * Encounter, Patient, Practitioner, RelatedPerson), and $everything is Patient-only in Ignixa.Search --
+ * there is no EncounterEverythingExpression or similar. Observation is a compartment member type, never a
+ * root, so it never gets either extra mode. */
+const SEARCH_MODES_BY_RESOURCE_TYPE: Record<ResourceType, SearchMode[]> = {
+  Patient: ['type', 'compartment', 'everything'],
+  Encounter: ['type', 'compartment'],
+  Observation: ['type'],
+};
+
+export function searchModesFor(resourceType: ResourceType): SearchMode[] {
+  return SEARCH_MODES_BY_RESOURCE_TYPE[resourceType];
+}
+
+/** The other resource types available as a compartment's member type when `resourceType` is the root, plus
+ * the wildcard. Excludes the root itself -- searching a Patient's own compartment for other Patients isn't
+ * a shape this bench models. */
+export function compartmentMemberOptions(root: ResourceType): (ResourceType | '*')[] {
+  return [...RESOURCE_TYPES.filter((type) => type !== root), '*'];
+}
+
+/** The resource types offerable as $everything's `_type` filter -- every bench resource type except Patient
+ * itself, which is always the anchor and is never filtered out by `_type`. */
+export function everythingTypeFilterOptions(): ResourceType[] {
+  return RESOURCE_TYPES.filter((type) => type !== 'Patient');
+}
+
+export type CompartmentMemberType = ResourceType | '*';
+
+export type SearchRequest =
+  | { mode: 'type'; fhirVersion: FhirVersion; resourceType: ResourceType; query: string }
+  | {
+      mode: 'compartment';
+      fhirVersion: FhirVersion;
+      compartmentType: ResourceType;
+      compartmentId: string;
+      memberType: CompartmentMemberType;
+      query: string;
+    }
+  | {
+      mode: 'everything';
+      fhirVersion: FhirVersion;
+      patientId: string;
+      typeFilter: ResourceType[];
+      since: string;
+      start: string;
+      end: string;
+      includeReferencedResources: boolean;
+    };

@@ -433,7 +433,7 @@ export function SearchBench() {
   const [selection, setSelection] = useState<Selection>(CLEARED_SELECTION);
   const [sqlTab, setSqlTab] = useState<SqlTab>('sql');
 
-  const { result, error, isLoading } = useSearchTrace(fhirVersion, resourceType, query);
+  const { result, error, isLoading } = useSearchTrace({ mode: 'type', fhirVersion, resourceType, query });
   const plan = result?.plan ?? null;
   const emittedSql = result?.sql ?? null;
   const planRowTree = plan ? buildPlanRowTree(plan) : null;
