@@ -20,16 +20,21 @@ import {
   type Selection,
 } from './searchLineage';
 import {
+  compartmentMemberOptions,
   DEFAULT_FHIR_VERSION,
   DEFAULT_QUERY,
   DEFAULT_RESOURCE_TYPE,
   FHIR_VERSIONS,
   RESOURCE_TYPES,
+  searchModesFor,
+  type CompartmentMemberType,
   type FhirVersion,
   type ParameterTrace,
   type PlanExplainRow,
   type QueryPlan,
   type ResourceType,
+  type SearchMode,
+  type SearchRequest,
   type SqlTextRange,
 } from './searchTypes';
 
@@ -46,6 +51,12 @@ const SQL_TAB_ITEMS: PillItem<SqlTab>[] = [
   { id: 'sql', label: 'SQL' },
   { id: 'explain', label: 'Explain' },
 ];
+
+const SEARCH_MODE_LABELS: Record<SearchMode, string> = {
+  type: 'Type search',
+  compartment: 'Compartment',
+  everything: '$everything',
+};
 
 /** Stable, arbitrary-domain-string → chip-color mapping — IR/plan `kind`/`label` values come straight from the
  * engine, so unlike FhirPathBench's `astChipColors` we can't switch on a known set of expression types. */
@@ -433,7 +444,34 @@ export function SearchBench() {
   const [selection, setSelection] = useState<Selection>(CLEARED_SELECTION);
   const [sqlTab, setSqlTab] = useState<SqlTab>('sql');
 
-  const { result, error, isLoading } = useSearchTrace({ mode: 'type', fhirVersion, resourceType, query });
+  const [searchMode, setSearchMode] = useState<SearchMode>('type');
+  const [compartmentId, setCompartmentId] = useState('');
+  const [memberType, setMemberType] = useState<CompartmentMemberType>('*');
+
+  const availableModes = searchModesFor(resourceType);
+  const handleResourceTypeChange = (nextType: ResourceType) => {
+    setResourceType(nextType);
+    if (!searchModesFor(nextType).includes(searchMode)) {
+      setSearchMode('type');
+    }
+  };
+
+  const searchRequest: SearchRequest | null = (() => {
+    if (searchMode === 'type') {
+      return { mode: 'type', fhirVersion, resourceType, query };
+    }
+    if (searchMode === 'compartment') {
+      if (!compartmentId.trim()) {
+        return null;
+      }
+      return { mode: 'compartment', fhirVersion, compartmentType: resourceType, compartmentId: compartmentId.trim(), memberType, query };
+    }
+    // 'everything' is handled by Task 8; until then this branch is unreachable because 'everything' can't
+    // be selected without Task 8's UI, but the type checker still needs every SearchMode covered.
+    return null;
+  })();
+
+  const { result, error, isLoading } = useSearchTrace(searchRequest);
   const plan = result?.plan ?? null;
   const emittedSql = result?.sql ?? null;
   const planRowTree = plan ? buildPlanRowTree(plan) : null;
@@ -491,8 +529,54 @@ export function SearchBench() {
           <Pills items={FHIR_VERSION_ITEMS} activeId={fhirVersion} onChange={setFhirVersion} />
           <div style={{ width: 1, height: 18, background: 'var(--border2)' }} />
           <span style={sectionLabelStyle}>Resource type</span>
-          <Pills items={RESOURCE_TYPE_ITEMS} activeId={resourceType} onChange={setResourceType} />
+          <Pills items={RESOURCE_TYPE_ITEMS} activeId={resourceType} onChange={handleResourceTypeChange} />
         </div>
+
+        {availableModes.length > 1 ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={sectionLabelStyle}>Mode</span>
+            <Pills
+              items={availableModes.map((mode) => ({ id: mode, label: SEARCH_MODE_LABELS[mode] }))}
+              activeId={searchMode}
+              onChange={setSearchMode}
+            />
+          </div>
+        ) : null}
+
+        {searchMode === 'compartment' ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={sectionLabelStyle}>{resourceType} id</span>
+            <input
+              value={compartmentId}
+              onChange={(event) => setCompartmentId(event.target.value)}
+              placeholder="example"
+              spellCheck={false}
+              style={{
+                fontFamily: monoFont,
+                fontSize: 12.5,
+                padding: '6px 10px',
+                borderRadius: 6,
+                border: '1px solid var(--border2)',
+                background: 'var(--code)',
+                color: 'var(--text)',
+                width: 140,
+              }}
+            />
+            <span
+              onClick={() => setCompartmentId('example')}
+              style={{ fontFamily: monoFont, fontSize: 11, color: 'var(--accent)', cursor: 'pointer' }}
+            >
+              example
+            </span>
+            <div style={{ width: 1, height: 18, background: 'var(--border2)' }} />
+            <span style={sectionLabelStyle}>within compartment, search</span>
+            <Pills
+              items={compartmentMemberOptions(resourceType).map((type) => ({ id: type, label: type === '*' ? '* all types' : type }))}
+              activeId={memberType}
+              onChange={setMemberType}
+            />
+          </div>
+        ) : null}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <span style={sectionLabelStyle}>Search query</span>
@@ -516,7 +600,9 @@ export function SearchBench() {
                 userSelect: 'none',
               }}
             >
-              GET /{resourceType}?
+              {searchMode === 'compartment'
+                ? `GET /${resourceType}/${compartmentId.trim() || '{id}'}/${memberType}?`
+                : `GET /${resourceType}?`}
             </span>
             <textarea
               value={query}
