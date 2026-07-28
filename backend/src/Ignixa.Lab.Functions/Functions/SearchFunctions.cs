@@ -63,7 +63,7 @@ public sealed class SearchFunctions(ILogger<SearchFunctions> logger, SearchEngin
                 resolver,
                 engine.Compartments,
                 engine.SearchParameters,
-                cancellationToken);
+                cancellationToken: cancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -78,6 +78,6 @@ public sealed class SearchFunctions(ILogger<SearchFunctions> logger, SearchEngin
             return new BadRequestObjectResult(new { error = ex.Message });
         }
 
-        return new OkObjectResult(SearchTraceMapper.ToResponse(trace));
+        return new OkObjectResult(SearchTraceMapper.ToResponse(trace, resourceType));
     }
 }

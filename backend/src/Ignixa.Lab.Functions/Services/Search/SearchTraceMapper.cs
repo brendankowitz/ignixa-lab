@@ -12,12 +12,12 @@ namespace Ignixa.Lab.Functions.Services.Search;
 /// this only translates shapes and projects the two non-serializable pieces.</summary>
 public static class SearchTraceMapper
 {
-    public static SearchTraceResponse ToResponse(SearchTrace trace)
+    public static SearchTraceResponse ToResponse(SearchTrace trace, string requestedResourceType)
     {
         ArgumentNullException.ThrowIfNull(trace);
 
         return new SearchTraceResponse(
-            trace.ResourceType,
+            trace.ResourceType ?? requestedResourceType,
             trace.Parameters.Select(ToParameterDto).ToList(),
             trace.Plan is null ? null : ToPlanDto(trace.Plan),
             trace.Sql is null ? null : new EmittedSqlDto(

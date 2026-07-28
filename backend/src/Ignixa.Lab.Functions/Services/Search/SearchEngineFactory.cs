@@ -55,7 +55,7 @@ public sealed class SearchEngineFactory(SchemaProviderFactory schemaProviderFact
         var definitionManager = new SearchParameterDefinitionManager(
             schema, NullLogger<SearchParameterDefinitionManager>.Instance);
 
-        var referenceParser = new ReferenceSearchValueParser(schema);
+        var referenceParser = new ReferenceSearchValueParser(schema, NullFhirBaseUriProvider.Instance);
         var searchParamExpressionParser = new SearchParameterExpressionParser(referenceParser, schema);
 
         ISearchParameterDefinitionManager.SearchableSearchParameterDefinitionManagerResolver resolver =

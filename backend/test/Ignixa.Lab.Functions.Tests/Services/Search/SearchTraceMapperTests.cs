@@ -22,7 +22,7 @@ public sealed class SearchTraceMapperTests
             [Trace(0, "name", "Smith", new ParameterOutcome.Compiled())],
             Plan: null, Sql: null);
 
-        var response = SearchTraceMapper.ToResponse(trace);
+        var response = SearchTraceMapper.ToResponse(trace, "Patient");
 
         response.ResourceType.Should().Be("Patient");
         var outcome = response.Parameters.Single().Outcome;
@@ -38,7 +38,7 @@ public sealed class SearchTraceMapperTests
             [Trace(0, "birthdate:exact", "2000", new ParameterOutcome.Ignored("modifier not allowed on date", new SourceSpan(SourceOrigin.Key, 10, 5)))],
             Plan: null, Sql: null);
 
-        var outcome = SearchTraceMapper.ToResponse(trace).Parameters.Single().Outcome;
+        var outcome = SearchTraceMapper.ToResponse(trace, "Patient").Parameters.Single().Outcome;
 
         outcome.Kind.Should().Be("Ignored");
         outcome.Reason.Should().Be("modifier not allowed on date");
@@ -54,7 +54,7 @@ public sealed class SearchTraceMapperTests
             [Trace(0, "unknown", "x", new ParameterOutcome.Failed(TraceStage.Resolve, "could not be resolved", new SourceSpan(SourceOrigin.Value, 0, 1)))],
             Plan: null, Sql: null);
 
-        var outcome = SearchTraceMapper.ToResponse(trace).Parameters.Single().Outcome;
+        var outcome = SearchTraceMapper.ToResponse(trace, "Patient").Parameters.Single().Outcome;
 
         outcome.Kind.Should().Be("Failed");
         outcome.Stage.Should().Be("Resolve");
@@ -71,13 +71,13 @@ public sealed class SearchTraceMapperTests
             Explain: "root = ...",
             Ctes: [new CteProvenance(0, parameterOrdinal: 7, new SourceSpan(SourceOrigin.Value, 0, 5))],
             Rows: [new PlanExplainRow("root", "cte0", PlanRowKind.ParamSource, "ParamSource name", referencedCteIndexes: [])]);
-        var sql = new EmittedSqlTrace("SELECT 1", [new SqlTextRange("cte0", SqlRangeKind.Cte, 0, 6)]);
+        var sql = new EmittedSqlTrace("SELECT 1", Parameters: [], Ranges: [new SqlTextRange("cte0", SqlRangeKind.Cte, 0, 6)]);
         var trace = new SearchTrace("Patient", [Trace(0, "name", "Smith", new ParameterOutcome.Compiled())], plan, sql)
         {
             Implicit = [new ImplicitParameter("_count", "10", "server default")],
         };
 
-        var response = SearchTraceMapper.ToResponse(trace);
+        var response = SearchTraceMapper.ToResponse(trace, "Patient");
 
         response.Plan!.Ctes.Single().ParameterOrdinal.Should().Be(7);
         response.Plan.Ctes.Single().ContributingOrdinals.Should().Equal(7);
@@ -112,7 +112,7 @@ public sealed class SearchTraceMapperTests
             ]);
         var trace = new SearchTrace("Patient", [Trace(0, "general-practitioner.name", "Smith", new ParameterOutcome.Compiled())], plan, Sql: null);
 
-        var response = SearchTraceMapper.ToResponse(trace);
+        var response = SearchTraceMapper.ToResponse(trace, "Patient");
 
         response.Plan!.Rows[1].Kind.Should().Be(PlanRowKind.ChainJoin);
         response.Plan.Rows[1].ReferencedCteIndexes.Should().Equal(0);
@@ -130,7 +130,7 @@ public sealed class SearchTraceMapperTests
         var trace = new ParameterTrace(
             0, "name", keySyntax: null, "Smith", valueSyntax: null, ir: null,
             new ParameterOutcome.Compiled(), dataType: SearchParamType.String);
-        var response = SearchTraceMapper.ToResponse(new SearchTrace("Patient", [trace], Plan: null, Sql: null));
+        var response = SearchTraceMapper.ToResponse(new SearchTrace("Patient", [trace], Plan: null, Sql: null), "Patient");
 
         response.Parameters.Single().DataType.Should().Be("String");
     }
@@ -143,7 +143,7 @@ public sealed class SearchTraceMapperTests
             Failure = new TraceFailure(TraceStage.Resolve, "Search parameters could not be resolved: 'bogus'.", null),
         };
 
-        var response = SearchTraceMapper.ToResponse(trace);
+        var response = SearchTraceMapper.ToResponse(trace, "Patient");
 
         response.Plan.Should().BeNull();
         response.Sql.Should().BeNull();
