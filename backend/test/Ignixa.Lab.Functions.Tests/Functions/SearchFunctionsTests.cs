@@ -333,4 +333,97 @@ public sealed class SearchFunctionsTests
 
         result.Should().BeOfType<BadRequestObjectResult>();
     }
+
+    [Fact]
+    public async Task EverythingTrace_Bare_ReturnsEmptyParametersWithNonNullPlanAndSql()
+    {
+        // The whole thing is one expression, not parameter-driven -- there is nothing for QueryParameterParser
+        // to have parsed, so Parameters comes back empty. This is the shape the frontend's empty-parameters
+        // state depends on; pin it so that dependency doesn't silently break.
+        var functions = CreateFunctions();
+
+        var result = await functions.EverythingTrace(BuildCompartmentGetRequest(), "R4", "example", CancellationToken.None);
+
+        var response = result.Should().BeOfType<OkObjectResult>().Subject.Value
+            .Should().BeOfType<SearchTraceResponse>().Subject;
+        response.Failure.Should().BeNull();
+        response.Parameters.Should().BeEmpty();
+        response.Plan.Should().NotBeNull();
+        response.Sql.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task EverythingTrace_WithTypeFilter_CompilesToASmallerPlanThanBare()
+    {
+        // Confirmed live: a _type filter collapses the plan from ~800 lines to a handful of CTEs and drops
+        // ReferencedTypeExpansion entirely (out of scope once _type is set).
+        var functions = CreateFunctions();
+
+        var bare = await functions.EverythingTrace(BuildCompartmentGetRequest(), "R4", "example", CancellationToken.None);
+        var filtered = await functions.EverythingTrace(BuildCompartmentGetRequest("?_type=Observation"), "R4", "example", CancellationToken.None);
+
+        var bareResponse = bare.Should().BeOfType<OkObjectResult>().Subject.Value.Should().BeOfType<SearchTraceResponse>().Subject;
+        var filteredResponse = filtered.Should().BeOfType<OkObjectResult>().Subject.Value.Should().BeOfType<SearchTraceResponse>().Subject;
+        filteredResponse.Failure.Should().BeNull();
+        filteredResponse.Plan!.Ctes.Count.Should().BeLessThan(bareResponse.Plan!.Ctes.Count);
+    }
+
+    [Fact]
+    public async Task EverythingTrace_WithSince_CompilesCleanly()
+    {
+        var functions = CreateFunctions();
+
+        var result = await functions.EverythingTrace(BuildCompartmentGetRequest("?_since=2026-01-01T00:00:00Z"), "R4", "example", CancellationToken.None);
+
+        var response = result.Should().BeOfType<OkObjectResult>().Subject.Value
+            .Should().BeOfType<SearchTraceResponse>().Subject;
+        response.Failure.Should().BeNull();
+        response.Sql!.Sql.Should().Contain("dbo.Transactions");
+    }
+
+    [Fact]
+    public async Task EverythingTrace_WithStartAndEnd_CompilesCleanly()
+    {
+        var functions = CreateFunctions();
+
+        var result = await functions.EverythingTrace(BuildCompartmentGetRequest("?start=2020-01-01T00:00:00Z&end=2026-01-01T00:00:00Z"), "R4", "example", CancellationToken.None);
+
+        var response = result.Should().BeOfType<OkObjectResult>().Subject.Value
+            .Should().BeOfType<SearchTraceResponse>().Subject;
+        response.Failure.Should().BeNull();
+        response.Plan.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task EverythingTrace_IncludeReferencedResourcesFalse_OmitsReferencedTypeExpansionFromExplain()
+    {
+        var functions = CreateFunctions();
+
+        var result = await functions.EverythingTrace(BuildCompartmentGetRequest("?includeReferencedResources=false"), "R4", "example", CancellationToken.None);
+
+        var response = result.Should().BeOfType<OkObjectResult>().Subject.Value
+            .Should().BeOfType<SearchTraceResponse>().Subject;
+        response.Failure.Should().BeNull();
+        response.Plan!.Explain.Should().NotContain("ReferencedTypeExpansion");
+    }
+
+    [Fact]
+    public async Task EverythingTrace_EmptyPatientId_ReturnsBadRequest()
+    {
+        var functions = CreateFunctions();
+
+        var result = await functions.EverythingTrace(BuildCompartmentGetRequest(), "R4", "  ", CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task EverythingTrace_MalformedSince_ReturnsBadRequest()
+    {
+        var functions = CreateFunctions();
+
+        var result = await functions.EverythingTrace(BuildCompartmentGetRequest("?_since=not-a-date"), "R4", "example", CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+    }
 }

@@ -79,6 +79,79 @@ public sealed class SearchFunctions(ILogger<SearchFunctions> logger, SearchEngin
         return await CompileAndRespondAsync(fhirVersion, compileResourceType, parameters, operationExpression, cancellationToken);
     }
 
+    [Function("SearchEverythingTrace")]
+    public async Task<IActionResult> EverythingTrace(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "options", Route = "search/{fhirVersion}/Patient/{patientId}/$everything")] HttpRequest request,
+        string fhirVersion,
+        string patientId,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(patientId))
+        {
+            return new BadRequestObjectResult(new { error = "A patient id is required." });
+        }
+
+        HashSet<string>? filteredResourceTypes = null;
+        if (request.Query.TryGetValue("_type", out var typeValues) && !string.IsNullOrWhiteSpace(typeValues.ToString()))
+        {
+            filteredResourceTypes = typeValues.ToString()
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .ToHashSet();
+        }
+
+        if (!TryParseOptionalDate(request, "_since", out var sinceDate, out var sinceError))
+        {
+            return new BadRequestObjectResult(new { error = sinceError });
+        }
+
+        if (!TryParseOptionalDate(request, "start", out var startDate, out var startError))
+        {
+            return new BadRequestObjectResult(new { error = startError });
+        }
+
+        if (!TryParseOptionalDate(request, "end", out var endDate, out var endError))
+        {
+            return new BadRequestObjectResult(new { error = endError });
+        }
+
+        var includeReferencedResources = true;
+        if (request.Query.TryGetValue("includeReferencedResources", out var includeValues) && !string.IsNullOrWhiteSpace(includeValues.ToString()))
+        {
+            if (!bool.TryParse(includeValues.ToString(), out includeReferencedResources))
+            {
+                return new BadRequestObjectResult(new { error = $"'includeReferencedResources' value '{includeValues}' is not 'true' or 'false'." });
+            }
+        }
+
+        var operationExpression = new PatientEverythingExpression(patientId, startDate, endDate, sinceDate, filteredResourceTypes, includeReferencedResources);
+
+        // $everything isn't parameter-driven -- there's no query string for QueryParameterParser to parse,
+        // every option above became a typed constructor argument on the expression instead. The resource
+        // type the compiler compiles against is always "Patient", the operation's anchor type; this route
+        // only ever accepts Patient (there is no EncounterEverythingExpression or similar in the library).
+        return await CompileAndRespondAsync(fhirVersion, "Patient", parameters: [], operationExpression, cancellationToken);
+    }
+
+    private static bool TryParseOptionalDate(HttpRequest request, string queryKey, out DateTimeOffset? value, out string? error)
+    {
+        value = null;
+        error = null;
+
+        if (!request.Query.TryGetValue(queryKey, out var rawValues) || string.IsNullOrWhiteSpace(rawValues.ToString()))
+        {
+            return true;
+        }
+
+        if (!DateTimeOffset.TryParse(rawValues.ToString(), out var parsed))
+        {
+            error = $"'{queryKey}' value '{rawValues}' is not a valid date/time.";
+            return false;
+        }
+
+        value = parsed;
+        return true;
+    }
+
     // SearchCompiler.CompileAsync never validates the top-level resourceType itself -- it only rejects an
     // unknown resource type when one appears as a chain/_has target (via SearchKeyBinder resolving a
     // ReferenceSearchParameter's target types). Given a resource type nothing recognizes, it happily
