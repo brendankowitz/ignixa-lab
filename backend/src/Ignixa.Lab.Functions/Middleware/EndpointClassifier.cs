@@ -36,13 +36,22 @@ public static class EndpointClassifier
             // Fakes generation is likewise a single in-process unit of work per
             // call with no outbound HTTP (no amplification risk) — the Run tier
             // was never meant for this and was only hit because these endpoints
-            // fell through to the fail-safe default below.
-            "FakesMetadata" or "FakesPopulation" or "FakesScenario" or "FakesResource" => EndpointClass.Capability,
+            // fell through to the fail-safe default below. FakesWorkflow was
+            // missing from this list entirely (caught by the assembly-wide guard
+            // test below, which enumerates every [Function] and would otherwise
+            // let it silently fall to the Run tier the same way SearchTrace's
+            // sibling routes did) — it's the same single in-process call as its
+            // siblings, so it belongs in the same tier.
+            "FakesMetadata" or "FakesPopulation" or "FakesScenario" or "FakesResource" or "FakesWorkflow" => EndpointClass.Capability,
             // Search tracing is likewise a single in-process compile call with no
             // outbound HTTP — same tier as FhirPath/Fakes, not the Run tier's
             // fail-safe default (which a debounced auto-run UI would exhaust in
-            // seconds).
-            "SearchTrace" => EndpointClass.Capability,
+            // seconds). SearchCompartmentTrace/SearchEverythingTrace are the same
+            // shape of call as SearchTrace (still one in-process compile, still no
+            // outbound HTTP) and shipped without a case arm here, which is exactly
+            // how they ended up sharing the Run tier's 4-requests/minute budget
+            // with the actual TestScript runner.
+            "SearchTrace" or "SearchCompartmentTrace" or "SearchEverythingTrace" => EndpointClass.Capability,
             // Fail safe: an unrecognized (e.g. newly added) endpoint gets the
             // strictest tier rather than silently running unlimited.
             _ => EndpointClass.Run,
