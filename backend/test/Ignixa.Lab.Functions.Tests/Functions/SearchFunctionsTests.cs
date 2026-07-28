@@ -14,19 +14,11 @@ public sealed class SearchFunctionsTests
     private static SearchFunctions CreateFunctions() =>
         new(NullLogger<SearchFunctions>.Instance, new SearchEngineFactory(new SchemaProviderFactory()));
 
-    private static HttpRequest BuildGetRequest(string queryString)
+    private static HttpRequest BuildGetRequest(string queryString = "")
     {
         var context = new DefaultHttpContext();
         context.Request.Method = "GET";
         context.Request.QueryString = new QueryString(queryString); // e.g. "?name=Smith"
-        return context.Request;
-    }
-
-    private static HttpRequest BuildCompartmentGetRequest(string queryString = "")
-    {
-        var context = new DefaultHttpContext();
-        context.Request.Method = "GET";
-        context.Request.QueryString = new QueryString(queryString);
         return context.Request;
     }
 
@@ -259,7 +251,7 @@ public sealed class SearchFunctionsTests
         // pins the correct, narrow shape so that mistake can't silently regress back in.
         var functions = CreateFunctions();
 
-        var result = await functions.CompartmentTrace(BuildCompartmentGetRequest(), "R4", "Patient", "example", "Observation", CancellationToken.None);
+        var result = await functions.CompartmentTrace(BuildGetRequest(), "R4", "Patient", "example", "Observation", CancellationToken.None);
 
         var response = result.Should().BeOfType<OkObjectResult>().Subject.Value
             .Should().BeOfType<SearchTraceResponse>().Subject;
@@ -277,7 +269,7 @@ public sealed class SearchFunctionsTests
     {
         var functions = CreateFunctions();
 
-        var result = await functions.CompartmentTrace(BuildCompartmentGetRequest(), "R4", "Patient", "example", "*", CancellationToken.None);
+        var result = await functions.CompartmentTrace(BuildGetRequest(), "R4", "Patient", "example", "*", CancellationToken.None);
 
         var response = result.Should().BeOfType<OkObjectResult>().Subject.Value
             .Should().BeOfType<SearchTraceResponse>().Subject;
@@ -295,7 +287,7 @@ public sealed class SearchFunctionsTests
         // exclusive -- a normal search parameter layers on top of the compartment scope.
         var functions = CreateFunctions();
 
-        var result = await functions.CompartmentTrace(BuildCompartmentGetRequest("?code=1234-5"), "R4", "Patient", "example", "Observation", CancellationToken.None);
+        var result = await functions.CompartmentTrace(BuildGetRequest("?code=1234-5"), "R4", "Patient", "example", "Observation", CancellationToken.None);
 
         var response = result.Should().BeOfType<OkObjectResult>().Subject.Value
             .Should().BeOfType<SearchTraceResponse>().Subject;
@@ -308,7 +300,7 @@ public sealed class SearchFunctionsTests
     {
         var functions = CreateFunctions();
 
-        var result = await functions.CompartmentTrace(BuildCompartmentGetRequest(), "R4", "NotACompartmentType", "example", "Observation", CancellationToken.None);
+        var result = await functions.CompartmentTrace(BuildGetRequest(), "R4", "NotACompartmentType", "example", "Observation", CancellationToken.None);
 
         result.Should().BeOfType<BadRequestObjectResult>()
             .Subject.Value.Should().BeEquivalentTo(new { error = "'NotACompartmentType' is not a valid FHIR compartment type." });
@@ -319,7 +311,7 @@ public sealed class SearchFunctionsTests
     {
         var functions = CreateFunctions();
 
-        var result = await functions.CompartmentTrace(BuildCompartmentGetRequest(), "R4", "Patient", "example", "TotallyBogusResource", CancellationToken.None);
+        var result = await functions.CompartmentTrace(BuildGetRequest(), "R4", "Patient", "example", "TotallyBogusResource", CancellationToken.None);
 
         result.Should().BeOfType<BadRequestObjectResult>();
     }
@@ -329,9 +321,73 @@ public sealed class SearchFunctionsTests
     {
         var functions = CreateFunctions();
 
-        var result = await functions.CompartmentTrace(BuildCompartmentGetRequest(), "R4", "Patient", "  ", "Observation", CancellationToken.None);
+        var result = await functions.CompartmentTrace(BuildGetRequest(), "R4", "Patient", "  ", "Observation", CancellationToken.None);
 
         result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task CompartmentTrace_LowercaseCompartmentType_NormalizesAndCompiles()
+    {
+        // Enum.TryParse(ignoreCase: true) accepts "patient" -- confirms the normalized (canonically-cased)
+        // value is what actually reaches CompartmentSearchExpression, not the raw lowercase string.
+        var functions = CreateFunctions();
+
+        var result = await functions.CompartmentTrace(BuildGetRequest(), "R4", "patient", "example", "Observation", CancellationToken.None);
+
+        var response = result.Should().BeOfType<OkObjectResult>().Subject.Value
+            .Should().BeOfType<SearchTraceResponse>().Subject;
+        response.Failure.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task CompartmentTrace_EncounterRoot_ScopedToRealMemberResourceType_Compiles()
+    {
+        // All the other compartment tests in this file use "Patient" as the compartment root -- the frontend
+        // also offers Compartment mode for Encounter (see SEARCH_MODES_BY_RESOURCE_TYPE in searchTypes.ts),
+        // so a non-Patient root needs its own coverage. Confirmed live: "Condition" is a real member of the
+        // R4 Encounter compartment.
+        var functions = CreateFunctions();
+
+        var result = await functions.CompartmentTrace(BuildGetRequest(), "R4", "Encounter", "example", "Condition", CancellationToken.None);
+
+        var response = result.Should().BeOfType<OkObjectResult>().Subject.Value
+            .Should().BeOfType<SearchTraceResponse>().Subject;
+        response.Failure.Should().BeNull();
+        response.Plan.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task CompartmentTrace_EncounterRoot_WildcardResourceType_CompilesTheFullTraversal()
+    {
+        var functions = CreateFunctions();
+
+        var result = await functions.CompartmentTrace(BuildGetRequest(), "R4", "Encounter", "example", "*", CancellationToken.None);
+
+        var response = result.Should().BeOfType<OkObjectResult>().Subject.Value
+            .Should().BeOfType<SearchTraceResponse>().Subject;
+        response.Failure.Should().BeNull();
+        response.Plan.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task CompartmentTrace_EncounterRoot_NonMemberResourceType_ReturnsBadRequest()
+    {
+        // Confirmed live (before the membership-check fix): "Patient" is NOT a member of the R4 Encounter
+        // compartment (verified via ICompartmentDefinitionManager.TryGetResourceTypes(Encounter) -- Patient
+        // is absent from the returned set), yet CompartmentSearchExpression happily compiled a plan for it
+        // anyway: 1 CTE, Failure == null, SQL containing a literal "AND 1 = 0" (the compartment-linking
+        // search parameter for that pair just doesn't exist, so the WHERE clause folds to always-false). That
+        // was a 200 OK carrying a plan that looks real but can never match anything -- the exact "confidently
+        // wrong 200" CompileAndRespondAsync's own resourceType check exists to prevent, just one level down
+        // (compartment membership rather than resource-type existence). This pins the fixed behavior: reject
+        // it with 400 instead.
+        var functions = CreateFunctions();
+
+        var result = await functions.CompartmentTrace(BuildGetRequest(), "R4", "Encounter", "example", "Patient", CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>()
+            .Subject.Value.Should().BeEquivalentTo(new { error = "'Patient' is not a member of the 'Encounter' compartment." });
     }
 
     [Fact]
@@ -342,7 +398,7 @@ public sealed class SearchFunctionsTests
         // state depends on; pin it so that dependency doesn't silently break.
         var functions = CreateFunctions();
 
-        var result = await functions.EverythingTrace(BuildCompartmentGetRequest(), "R4", "example", CancellationToken.None);
+        var result = await functions.EverythingTrace(BuildGetRequest(), "R4", "example", CancellationToken.None);
 
         var response = result.Should().BeOfType<OkObjectResult>().Subject.Value
             .Should().BeOfType<SearchTraceResponse>().Subject;
@@ -359,8 +415,8 @@ public sealed class SearchFunctionsTests
         // ReferencedTypeExpansion entirely (out of scope once _type is set).
         var functions = CreateFunctions();
 
-        var bare = await functions.EverythingTrace(BuildCompartmentGetRequest(), "R4", "example", CancellationToken.None);
-        var filtered = await functions.EverythingTrace(BuildCompartmentGetRequest("?_type=Observation"), "R4", "example", CancellationToken.None);
+        var bare = await functions.EverythingTrace(BuildGetRequest(), "R4", "example", CancellationToken.None);
+        var filtered = await functions.EverythingTrace(BuildGetRequest("?_type=Observation"), "R4", "example", CancellationToken.None);
 
         var bareResponse = bare.Should().BeOfType<OkObjectResult>().Subject.Value.Should().BeOfType<SearchTraceResponse>().Subject;
         var filteredResponse = filtered.Should().BeOfType<OkObjectResult>().Subject.Value.Should().BeOfType<SearchTraceResponse>().Subject;
@@ -369,11 +425,36 @@ public sealed class SearchFunctionsTests
     }
 
     [Fact]
+    public async Task EverythingTrace_UnknownTypeFilterValue_ReturnsBadRequest()
+    {
+        // Mirrors CompartmentTrace_UnknownMemberResourceType_ReturnsBadRequest's "reject unknown things with
+        // a 400" philosophy: before this fix, _type was split into a HashSet and passed straight to
+        // PatientEverythingExpression with no check that each value is a real resource type, unlike the
+        // compartment route's member-resourceType check and CompileAndRespondAsync's own top-level check.
+        var functions = CreateFunctions();
+
+        var result = await functions.EverythingTrace(BuildGetRequest("?_type=TotallyBogusResource"), "R4", "example", CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task EverythingTrace_MixOfValidAndUnknownTypeFilterValues_ReturnsBadRequest()
+    {
+        var functions = CreateFunctions();
+
+        var result = await functions.EverythingTrace(BuildGetRequest("?_type=Observation,TotallyBogusResource"), "R4", "example", CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>()
+            .Subject.Value.Should().BeEquivalentTo(new { error = "'_type' contains unsupported resource type(s) for R4: TotallyBogusResource." });
+    }
+
+    [Fact]
     public async Task EverythingTrace_WithSince_CompilesCleanly()
     {
         var functions = CreateFunctions();
 
-        var result = await functions.EverythingTrace(BuildCompartmentGetRequest("?_since=2026-01-01T00:00:00Z"), "R4", "example", CancellationToken.None);
+        var result = await functions.EverythingTrace(BuildGetRequest("?_since=2026-01-01T00:00:00Z"), "R4", "example", CancellationToken.None);
 
         var response = result.Should().BeOfType<OkObjectResult>().Subject.Value
             .Should().BeOfType<SearchTraceResponse>().Subject;
@@ -386,7 +467,7 @@ public sealed class SearchFunctionsTests
     {
         var functions = CreateFunctions();
 
-        var result = await functions.EverythingTrace(BuildCompartmentGetRequest("?start=2020-01-01T00:00:00Z&end=2026-01-01T00:00:00Z"), "R4", "example", CancellationToken.None);
+        var result = await functions.EverythingTrace(BuildGetRequest("?start=2020-01-01T00:00:00Z&end=2026-01-01T00:00:00Z"), "R4", "example", CancellationToken.None);
 
         var response = result.Should().BeOfType<OkObjectResult>().Subject.Value
             .Should().BeOfType<SearchTraceResponse>().Subject;
@@ -399,7 +480,7 @@ public sealed class SearchFunctionsTests
     {
         var functions = CreateFunctions();
 
-        var result = await functions.EverythingTrace(BuildCompartmentGetRequest("?includeReferencedResources=false"), "R4", "example", CancellationToken.None);
+        var result = await functions.EverythingTrace(BuildGetRequest("?includeReferencedResources=false"), "R4", "example", CancellationToken.None);
 
         var response = result.Should().BeOfType<OkObjectResult>().Subject.Value
             .Should().BeOfType<SearchTraceResponse>().Subject;
@@ -412,7 +493,7 @@ public sealed class SearchFunctionsTests
     {
         var functions = CreateFunctions();
 
-        var result = await functions.EverythingTrace(BuildCompartmentGetRequest(), "R4", "  ", CancellationToken.None);
+        var result = await functions.EverythingTrace(BuildGetRequest(), "R4", "  ", CancellationToken.None);
 
         result.Should().BeOfType<BadRequestObjectResult>();
     }
@@ -422,7 +503,7 @@ public sealed class SearchFunctionsTests
     {
         var functions = CreateFunctions();
 
-        var result = await functions.EverythingTrace(BuildCompartmentGetRequest("?_since=not-a-date"), "R4", "example", CancellationToken.None);
+        var result = await functions.EverythingTrace(BuildGetRequest("?_since=not-a-date"), "R4", "example", CancellationToken.None);
 
         result.Should().BeOfType<BadRequestObjectResult>();
     }

@@ -63,10 +63,16 @@ public sealed class SearchFunctions(ILogger<SearchFunctions> logger, SearchEngin
             return new BadRequestObjectResult(new { error = "A compartment id is required." });
         }
 
-        if (!Enum.TryParse<CompartmentType>(compartmentType, ignoreCase: true, out _))
+        // Enum.TryParse(ignoreCase: true) alone accepts numeric strings too (e.g. "999" parses as a
+        // valid-looking-but-undefined enum value) -- IsDefined catches that. Capturing the parsed value (not
+        // discarding it) lets normalizedCompartmentType below pass the canonical name downstream instead of
+        // the raw string, so e.g. lowercase "patient" doesn't sail past this check only to 400 later via a
+        // different, less clear error out of CompartmentSearchExpression.
+        if (!Enum.TryParse<CompartmentType>(compartmentType, ignoreCase: true, out var parsedCompartmentType) || !Enum.IsDefined(parsedCompartmentType))
         {
             return new BadRequestObjectResult(new { error = $"'{compartmentType}' is not a valid FHIR compartment type." });
         }
+        var normalizedCompartmentType = parsedCompartmentType.ToString();
 
         // "*" (Patient/{id}/*) means "every resource type in the compartment" -- null filteredResourceTypes
         // is what CompartmentSearchExpression reads as that wildcard. A specific type narrows to just it.
@@ -74,14 +80,31 @@ public sealed class SearchFunctions(ILogger<SearchFunctions> logger, SearchEngin
         // no single member type to name); for a scoped search it's the actual member type being searched.
         var wildcard = resourceType == "*";
         var filteredResourceTypes = wildcard ? null : new HashSet<string> { resourceType };
-        var compileResourceType = wildcard ? compartmentType : resourceType;
+        var compileResourceType = wildcard ? normalizedCompartmentType : resourceType;
+
+        if (!wildcard)
+        {
+            // Confirmed live: CompartmentSearchExpression does NOT reject a resourceType that's a real FHIR
+            // resource but simply not a member of this compartment (e.g. Patient is not a member of the
+            // Encounter compartment) -- it happily compiles a plan/SQL with a literal `1 = 0` folded into the
+            // WHERE clause (the compartment-linking search parameter for that pair just doesn't exist) and
+            // returns 200 with no Failure set. That's exactly the "confidently wrong 200" CompileAndRespondAsync's
+            // own resourceType check exists to prevent for the top-level type -- reject it here the same way,
+            // before compiling, using the compartment definition manager as the source of truth for membership.
+            var membershipEngine = engineFactory.Get(fhirVersion);
+            if (!membershipEngine.Compartments.TryGetResourceTypes(parsedCompartmentType, out var memberResourceTypes) ||
+                !memberResourceTypes.Contains(resourceType))
+            {
+                return new BadRequestObjectResult(new { error = $"'{resourceType}' is not a member of the '{normalizedCompartmentType}' compartment." });
+            }
+        }
 
         var rawQuery = request.QueryString.HasValue
             ? request.QueryString.Value!.TrimStart('?')
             : string.Empty;
         var parameters = new QueryParameterParser().Parse(rawQuery);
 
-        var operationExpression = new CompartmentSearchExpression(compartmentType, compartmentId, filteredResourceTypes);
+        var operationExpression = new CompartmentSearchExpression(normalizedCompartmentType, compartmentId.Trim(), filteredResourceTypes);
 
         return await CompileAndRespondAsync(fhirVersion, compileResourceType, parameters, operationExpression, cancellationToken);
     }
@@ -104,6 +127,20 @@ public sealed class SearchFunctions(ILogger<SearchFunctions> logger, SearchEngin
             filteredResourceTypes = typeValues.ToString()
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .ToHashSet();
+
+            // Same "reject unknown things with a 400" philosophy CompileAndRespondAsync's own resourceType
+            // check and the compartment route's member-resourceType check already apply -- an unrecognized
+            // _type value would otherwise sail straight into PatientEverythingExpression and just never match
+            // anything, a confidently wrong 200 rather than a 400 for a tool whose whole job is trustworthy
+            // tracing.
+            var engineForTypeCheck = engineFactory.Get(fhirVersion);
+            var unknownTypes = filteredResourceTypes
+                .Where(type => !engineForTypeCheck.SearchParameters.TryGetSearchParameters(type, out _))
+                .ToArray();
+            if (unknownTypes.Length > 0)
+            {
+                return new BadRequestObjectResult(new { error = $"'_type' contains unsupported resource type(s) for {fhirVersion}: {string.Join(", ", unknownTypes)}." });
+            }
         }
 
         if (!TryParseOptionalDate(request, "_since", out var sinceDate, out var sinceError))
@@ -130,7 +167,7 @@ public sealed class SearchFunctions(ILogger<SearchFunctions> logger, SearchEngin
             }
         }
 
-        var operationExpression = new PatientEverythingExpression(patientId, startDate, endDate, sinceDate, filteredResourceTypes, includeReferencedResources);
+        var operationExpression = new PatientEverythingExpression(patientId.Trim(), startDate, endDate, sinceDate, filteredResourceTypes, includeReferencedResources);
 
         // $everything isn't parameter-driven -- there's no query string for QueryParameterParser to parse,
         // every option above became a typed constructor argument on the expression instead. The resource
@@ -149,7 +186,16 @@ public sealed class SearchFunctions(ILogger<SearchFunctions> logger, SearchEngin
             return true;
         }
 
-        if (!DateTimeOffset.TryParse(rawValues.ToString(), out var parsed))
+        // Invariant culture + AssumeUniversal|AdjustToUniversal so the same request URL parses to the same
+        // instant regardless of the host's culture (e.g. "01/02/2020" is culture-ambiguous) or local
+        // timezone (an offset-less value like "2026-01-01T00:00:00" would otherwise silently pick up the
+        // server's local offset, not UTC) -- this is bench tooling that must produce the same SQL parameter
+        // values wherever it runs.
+        if (!DateTimeOffset.TryParse(
+                rawValues.ToString(),
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal,
+                out var parsed))
         {
             error = $"'{queryKey}' value '{rawValues}' is not a valid date/time.";
             return false;
