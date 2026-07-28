@@ -1,10 +1,17 @@
 import type { SearchRequest, SearchTraceResponse } from './searchTypes';
 
 function apiBaseUrl(): string {
-  return (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
+  // Optional-chained on `.env` itself (not just the property) so buildUrl stays callable under the plain
+  // `node --experimental-strip-types --test` runner searchApi.test.ts uses -- Vite always populates
+  // `import.meta.env`, but a bare Node ESM loader leaves it undefined rather than an empty object, and
+  // `undefined.VITE_API_BASE_URL` throws before the `?? ''` below ever gets a chance to run.
+  return (import.meta.env?.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
 }
 
-function buildUrl(request: SearchRequest): string {
+// Exported for direct unit testing (searchApi.test.ts) -- three branches, five conditional query params, and
+// a deliberately-unencoded "$everything" segment are enough surface area to warrant testing the URL shape in
+// isolation rather than only indirectly through runSearch/fetch.
+export function buildUrl(request: SearchRequest): string {
   const base = apiBaseUrl();
   switch (request.mode) {
     case 'type': {

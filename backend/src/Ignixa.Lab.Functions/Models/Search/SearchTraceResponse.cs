@@ -37,7 +37,7 @@ public sealed record SpanDto(string Origin, int Start, int Length);
 
 public sealed record IrRowDto(string Kind, string Text, int Depth);
 
-/// <summary><see cref="Kind"/> is "Compiled" | "Ignored" | "Failed". <see cref="Reason"/> carries the
+/// <summary><see cref="Kind"/> is "Compiled" | "Ignored" | "KnownMiss" | "Failed". <see cref="Reason"/> carries the
 /// Ignored reason or the Failed message; <see cref="Stage"/> is set only for Failed.</summary>
 public sealed record ParameterOutcomeDto(string Kind, string? Reason, string? Stage, SpanDto? Span);
 

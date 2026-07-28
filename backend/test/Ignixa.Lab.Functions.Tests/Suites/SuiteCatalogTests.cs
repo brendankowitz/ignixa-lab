@@ -638,15 +638,16 @@ public sealed class SuiteCatalogTests : IDisposable
     }
 
     [Theory]
-    [InlineData("Search/chaining-and-sort.json", "_sort=name orders chained results ascending (missing name last)", "_sort")]
-    [InlineData("Search/chaining-and-sort.json", "_summary=count on the combined query reports the total without returning entries", "_summary")]
-    [InlineData("Search/chaining-and-sort.json", "_total=accurate on the combined query reports the exact total", "_total")]
-    [InlineData("Search/includes.json", "_summary=count excludes included resources from the reported total", "_summary")]
-    [InlineData("Search/includes.json", "_total=accurate excludes included resources from the reported total", "_total")]
+    [InlineData("Search/chaining-and-sort.json", "_sort=name orders chained results ascending (missing name last)", "_sort", "HealthcareService")]
+    [InlineData("Search/chaining-and-sort.json", "_summary=count on the combined query reports the total without returning entries", "_summary", "HealthcareService")]
+    [InlineData("Search/chaining-and-sort.json", "_total=accurate on the combined query reports the exact total", "_total", "HealthcareService")]
+    [InlineData("Search/includes.json", "_summary=count excludes included resources from the reported total", "_summary", "Patient")]
+    [InlineData("Search/includes.json", "_total=accurate excludes included resources from the reported total", "_total", "Patient")]
     public void BundledSearchControlTests_DoNotGateOnAnUnadvertisableResultParameter(
         string relativePath,
         string testName,
-        string control)
+        string control,
+        string resourceType)
     {
         // _sort/_summary/_total/_count are search RESULT parameters, not SearchParameter resources -- no
         // conformant server declares them via searchParam.where(name=...), so gating a test on that produces
@@ -656,6 +657,9 @@ public sealed class SuiteCatalogTests : IDisposable
         var requirement = GetMetadataCapabilityRequirement(ReadBundledTest(relativePath, testName));
 
         requirement.Should().NotContain($"searchParam.where(name='{control}')");
+        // The old resourceType-scoping gate (the part of requiresCapability ignixa-fhir#362 did NOT touch)
+        // should still be there -- only the unsatisfiable result-parameter gate above was the defect.
+        requirement.Should().Contain($"type='{resourceType}'");
     }
 
     [Fact]

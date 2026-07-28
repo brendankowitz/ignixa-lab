@@ -212,8 +212,8 @@ function SegmentRun({
 /** One "Search" column block: the parameter's detected search data type (mirrors the mock's per-span `cat`
  * category label — one per parameter block here rather than per token, since this column groups by
  * parameter, not by a single continuous flowing line), the key=value string rendered as clickable syntax
- * spans, plus an inline warning for `Ignored`/`Failed` outcomes (a per-parameter note, not a page-level
- * error). */
+ * spans, plus an inline warning for `Ignored`/`KnownMiss`/`Failed` outcomes (a per-parameter note, not a
+ * page-level error). */
 function SearchParamBlock({
   param,
   selection,
