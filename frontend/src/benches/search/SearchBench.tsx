@@ -97,6 +97,12 @@ function planRowKindLabel(kind: string): string {
   return PLAN_ROW_KIND_LABELS[kind] ?? kind;
 }
 
+/** A node past this many direct children collapses by default (e.g. a wildcard compartment search's
+ * `Union` of one leaf CTE per (resourceType, search-param) pair in the compartment definition — 76 for R4
+ * Patient, all structurally identical `ParamSource`/`CompartmentSource` rows). Below this, seeing every
+ * child at once is more useful than collapsing (an `Intersect`'s 2 operands, a chain's leaf + `ChainJoin`). */
+const MANY_CHILDREN_THRESHOLD = 8;
+
 /** A kind chip (colored via {@link kindChipColors}) shared by `ExpressionParamBlock`'s IR-row kind and
  * `PlanRowView`'s plan-row kind, so the color lookup happens once per chip instead of twice. */
 function KindChip({ kind, label }: { kind: string; label: string }) {
@@ -400,6 +406,16 @@ function PlanRowView({
   );
 }
 
+/** Whether `node` or any of its descendants is the current selection — used to force a collapsed node open
+ * when the thing the user actually selected (e.g. by clicking a `cte{i}` range in the SQL pane) lives inside
+ * it. Without this, collapsing could make a real, already-selected row unreachable/invisible in this pane. */
+function subtreeContainsSelection(node: PlanRowNode, selection: Selection, plan: QueryPlan): boolean {
+  if (isRowSelected(node.row.label, selection, plan)) {
+    return true;
+  }
+  return node.children.some((child) => subtreeContainsSelection(child, selection, plan));
+}
+
 /** Renders one `PlanRowNode` and, indented beneath it behind a guide line, every CTE it directly composes
  * — recursively, so a multi-level composition (e.g. a chain nested inside an `Intersect`) nests all the
  * way down. Each node keeps its own independent click/selected/dashed state (a chain's leaf and its
@@ -413,7 +429,12 @@ function PlanRowView({
  * `Intersect`'s two operands don't share an ordinal with each other or with the `Intersect` itself, so
  * clicking one operand alone leaves the line uncolored — only clicking the `Intersect` row directly lights
  * up the line grouping its two children, which is the one click that actually asserts "these are one
- * group." */
+ * group."
+ *
+ * A node past `MANY_CHILDREN_THRESHOLD` direct children (a wildcard compartment search's Union of dozens of
+ * near-identical leaf CTEs) starts collapsed behind a one-line summary instead of dumping every child card —
+ * expandable on click, or automatically if the current selection lives inside it (see
+ * `subtreeContainsSelection`), so nothing already selected ever goes invisible. */
 function PlanRowTree({
   node,
   plan,
@@ -428,6 +449,10 @@ function PlanRowTree({
   compact: boolean;
 }) {
   const groupSelected = isRowSelected(node.row.label, selection, plan);
+  const manyChildren = node.children.length > MANY_CHILDREN_THRESHOLD;
+  const [manuallyExpanded, setManuallyExpanded] = useState(false);
+  const expanded = !manyChildren || manuallyExpanded || node.children.some((child) => subtreeContainsSelection(child, selection, plan));
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <PlanRowView row={node.row} plan={plan} selection={selection} onSelect={onSelect} />
@@ -442,9 +467,21 @@ function PlanRowTree({
             borderLeft: `2px solid ${groupSelected ? 'var(--accent-border)' : 'var(--border2)'}`,
           }}
         >
-          {node.children.map((child, index) => (
-            <PlanRowTree key={index} node={child} plan={plan} selection={selection} onSelect={onSelect} compact={compact} />
-          ))}
+          {expanded ? (
+            node.children.map((child, index) => (
+              <PlanRowTree key={index} node={child} plan={plan} selection={selection} onSelect={onSelect} compact={compact} />
+            ))
+          ) : (
+            <span
+              onClick={(event: MouseEvent) => {
+                event.stopPropagation();
+                setManuallyExpanded(true);
+              }}
+              style={{ fontFamily: monoFont, fontSize: 11.5, color: 'var(--accent)', cursor: 'pointer' }}
+            >
+              ▸ {node.children.length} sources (click to expand)
+            </span>
+          )}
         </div>
       ) : null}
     </div>
