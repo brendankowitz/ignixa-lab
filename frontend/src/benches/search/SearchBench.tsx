@@ -24,6 +24,7 @@ import {
   DEFAULT_FHIR_VERSION,
   DEFAULT_QUERY,
   DEFAULT_RESOURCE_TYPE,
+  everythingTypeFilterOptions,
   FHIR_VERSIONS,
   RESOURCE_TYPES,
   searchModesFor,
@@ -447,6 +448,12 @@ export function SearchBench() {
   const [searchMode, setSearchMode] = useState<SearchMode>('type');
   const [compartmentId, setCompartmentId] = useState('');
   const [memberType, setMemberType] = useState<CompartmentMemberType>('*');
+  const [everythingId, setEverythingId] = useState('');
+  const [typeFilter, setTypeFilter] = useState<ResourceType[]>([]);
+  const [since, setSince] = useState('');
+  const [everythingStart, setEverythingStart] = useState('');
+  const [everythingEnd, setEverythingEnd] = useState('');
+  const [includeReferencedResources, setIncludeReferencedResources] = useState(true);
 
   const availableModes = searchModesFor(resourceType);
   const handleResourceTypeChange = (nextType: ResourceType) => {
@@ -466,9 +473,19 @@ export function SearchBench() {
       }
       return { mode: 'compartment', fhirVersion, compartmentType: resourceType, compartmentId: compartmentId.trim(), memberType, query };
     }
-    // 'everything' is handled by Task 8; until then this branch is unreachable because 'everything' can't
-    // be selected without Task 8's UI, but the type checker still needs every SearchMode covered.
-    return null;
+    if (!everythingId.trim()) {
+      return null;
+    }
+    return {
+      mode: 'everything',
+      fhirVersion,
+      patientId: everythingId.trim(),
+      typeFilter,
+      since,
+      start: everythingStart,
+      end: everythingEnd,
+      includeReferencedResources,
+    };
   })();
 
   const { result, error, isLoading } = useSearchTrace(searchRequest);
@@ -505,6 +522,17 @@ export function SearchBench() {
   };
 
   const hasSelection = !isSelectionEmpty(selection);
+
+  // Computed outside the `searchMode !== 'everything'`-gated JSX below (which hides the whole "Search query"
+  // block, breadcrumb included, in $everything mode) so the `searchMode === 'everything'` branch here still
+  // type-checks -- inside that gate, control-flow narrowing has already excluded 'everything' from
+  // `searchMode`'s type, which is exactly what a naive inline ternary would trip on.
+  const searchQueryBreadcrumb =
+    searchMode === 'compartment'
+      ? `GET /${resourceType}/${compartmentId.trim() || '{id}'}/${memberType}?`
+      : searchMode === 'everything'
+        ? `GET /Patient/${everythingId.trim() || '{id}'}/$everything?`
+        : `GET /${resourceType}?`;
 
   return (
     <div style={benchPageStyle(1440, compact)}>
@@ -578,59 +606,146 @@ export function SearchBench() {
           </div>
         ) : null}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={sectionLabelStyle}>Search query</span>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'stretch',
-              border: '1px solid var(--border2)',
-              borderRadius: 8,
-              background: 'var(--code)',
-              minWidth: 0,
-            }}
-          >
-            <span
+        {searchMode === 'everything' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span style={sectionLabelStyle}>Patient id</span>
+              <input
+                value={everythingId}
+                onChange={(event) => setEverythingId(event.target.value)}
+                placeholder="example"
+                spellCheck={false}
+                style={{
+                  fontFamily: monoFont,
+                  fontSize: 12.5,
+                  padding: '6px 10px',
+                  borderRadius: 6,
+                  border: '1px solid var(--border2)',
+                  background: 'var(--code)',
+                  color: 'var(--text)',
+                  width: 140,
+                }}
+              />
+              <span
+                onClick={() => setEverythingId('example')}
+                style={{ fontFamily: monoFont, fontSize: 11, color: 'var(--accent)', cursor: 'pointer' }}
+              >
+                example
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span style={sectionLabelStyle}>_type</span>
+              {everythingTypeFilterOptions().map((type) => {
+                const active = typeFilter.includes(type);
+                return (
+                  <span
+                    key={type}
+                    onClick={() =>
+                      setTypeFilter((prev) => (active ? prev.filter((t) => t !== type) : [...prev, type]))
+                    }
+                    style={{
+                      ...chipStyle(active ? 'var(--chip-vio-bg)' : 'var(--chip-gray-bg)', active ? 'var(--chip-vio-fg)' : 'var(--chip-gray2-fg)'),
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {type}
+                  </span>
+                );
+              })}
+              {typeFilter.length === 0 ? <span style={{ fontSize: 11, color: 'var(--text4)' }}>(all types)</span> : null}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span style={sectionLabelStyle}>_since</span>
+              <input
+                value={since}
+                onChange={(event) => setSince(event.target.value)}
+                placeholder="2026-01-01T00:00:00Z"
+                spellCheck={false}
+                style={{ fontFamily: monoFont, fontSize: 11.5, padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border2)', background: 'var(--code)', color: 'var(--text)', width: 190 }}
+              />
+              <span style={sectionLabelStyle}>start</span>
+              <input
+                value={everythingStart}
+                onChange={(event) => setEverythingStart(event.target.value)}
+                placeholder="2020-01-01T00:00:00Z"
+                spellCheck={false}
+                style={{ fontFamily: monoFont, fontSize: 11.5, padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border2)', background: 'var(--code)', color: 'var(--text)', width: 190 }}
+              />
+              <span style={sectionLabelStyle}>end</span>
+              <input
+                value={everythingEnd}
+                onChange={(event) => setEverythingEnd(event.target.value)}
+                placeholder="2026-01-01T00:00:00Z"
+                spellCheck={false}
+                style={{ fontFamily: monoFont, fontSize: 11.5, padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border2)', background: 'var(--code)', color: 'var(--text)', width: 190 }}
+              />
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: 'var(--text3)', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={includeReferencedResources}
+                onChange={(event) => setIncludeReferencedResources(event.target.checked)}
+              />
+              include referenced resources (Practitioner / Organization / Location / Medication)
+            </label>
+          </div>
+        ) : null}
+
+        {searchMode !== 'everything' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span style={sectionLabelStyle}>Search query</span>
+            <div
               style={{
-                fontFamily: monoFont,
-                fontSize: 12.5,
-                color: 'var(--text3)',
-                padding: '11px 0 11px 13px',
-                whiteSpace: 'nowrap',
-                userSelect: 'none',
+                display: 'flex',
+                alignItems: 'stretch',
+                border: '1px solid var(--border2)',
+                borderRadius: 8,
+                background: 'var(--code)',
+                minWidth: 0,
               }}
             >
-              {searchMode === 'compartment'
-                ? `GET /${resourceType}/${compartmentId.trim() || '{id}'}/${memberType}?`
-                : `GET /${resourceType}?`}
-            </span>
-            <textarea
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              spellCheck={false}
-              rows={2}
-              aria-label="Search query"
-              style={{
-                flex: 1,
-                minWidth: 0,
-                border: 'none',
-                outline: 'none',
-                background: 'transparent',
-                fontFamily: monoFont,
-                fontSize: 12.5,
-                lineHeight: 1.55,
-                color: 'var(--text)',
-                padding: '11px 13px 11px 4px',
-                resize: 'vertical',
-              }}
-            />
+              <span
+                style={{
+                  fontFamily: monoFont,
+                  fontSize: 12.5,
+                  color: 'var(--text3)',
+                  padding: '11px 0 11px 13px',
+                  whiteSpace: 'nowrap',
+                  userSelect: 'none',
+                }}
+              >
+                {searchQueryBreadcrumb}
+              </span>
+              <textarea
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                spellCheck={false}
+                rows={2}
+                aria-label="Search query"
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  border: 'none',
+                  outline: 'none',
+                  background: 'transparent',
+                  fontFamily: monoFont,
+                  fontSize: 12.5,
+                  lineHeight: 1.55,
+                  color: 'var(--text)',
+                  padding: '11px 13px 11px 4px',
+                  resize: 'vertical',
+                }}
+              />
+            </div>
           </div>
-        </div>
+        ) : null}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={sectionLabelStyle}>Builder</span>
-          <SearchQueryBuilder resourceType={resourceType} query={query} onQueryChange={setQuery} />
-        </div>
+        {searchMode !== 'everything' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span style={sectionLabelStyle}>Builder</span>
+            <SearchQueryBuilder resourceType={resourceType} query={query} onQueryChange={setQuery} />
+          </div>
+        ) : null}
 
         {result && result.implicit.length > 0 ? (
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -672,6 +787,8 @@ export function SearchBench() {
                 <SearchParamBlock key={param.ordinal} param={param} selection={selection} onSelect={selectOrdinal} />
               ))}
             </div>
+          ) : result ? (
+            <span style={{ fontSize: 11, color: 'var(--text4)' }}>No parameters — this is a whole-compartment operation.</span>
           ) : (
             <span style={{ fontSize: 11, color: 'var(--text4)' }}>No parameters parsed yet.</span>
           )}
@@ -685,6 +802,8 @@ export function SearchBench() {
                 <ExpressionParamBlock key={param.ordinal} param={param} selection={selection} onSelect={selectOrdinal} compact={compact} />
               ))}
             </div>
+          ) : result ? (
+            <span style={{ fontSize: 11, color: 'var(--text4)' }}>No parameters — this is a whole-compartment operation.</span>
           ) : (
             <span style={{ fontSize: 11, color: 'var(--text4)' }}>No typed expression yet.</span>
           )}
