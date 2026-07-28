@@ -3,6 +3,7 @@ using Ignixa.Lab.Functions.Services.Search;
 using Ignixa.Search.Expressions;
 using Ignixa.Search.Parsing;
 using Ignixa.Search.Sql.Tracing;
+using Ignixa.Specification.ValueSets.Normative;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
@@ -39,6 +40,43 @@ public sealed class SearchFunctions(ILogger<SearchFunctions> logger, SearchEngin
         var parameters = new QueryParameterParser().Parse(rawQuery);
 
         return CompileAndRespondAsync(fhirVersion, resourceType, parameters, operationExpression: null, cancellationToken);
+    }
+
+    [Function("SearchCompartmentTrace")]
+    public async Task<IActionResult> CompartmentTrace(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "options", Route = "search/{fhirVersion}/{compartmentType}/{compartmentId}/{resourceType}")] HttpRequest request,
+        string fhirVersion,
+        string compartmentType,
+        string compartmentId,
+        string resourceType,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(compartmentId))
+        {
+            return new BadRequestObjectResult(new { error = "A compartment id is required." });
+        }
+
+        if (!Enum.TryParse<CompartmentType>(compartmentType, ignoreCase: true, out _))
+        {
+            return new BadRequestObjectResult(new { error = $"'{compartmentType}' is not a valid FHIR compartment type." });
+        }
+
+        // "*" (Patient/{id}/*) means "every resource type in the compartment" -- null filteredResourceTypes
+        // is what CompartmentSearchExpression reads as that wildcard. A specific type narrows to just it.
+        // The resource type passed to the compiler for a wildcard is the compartment root itself (there is
+        // no single member type to name); for a scoped search it's the actual member type being searched.
+        var wildcard = resourceType == "*";
+        var filteredResourceTypes = wildcard ? null : new HashSet<string> { resourceType };
+        var compileResourceType = wildcard ? compartmentType : resourceType;
+
+        var rawQuery = request.QueryString.HasValue
+            ? request.QueryString.Value!.TrimStart('?')
+            : string.Empty;
+        var parameters = new QueryParameterParser().Parse(rawQuery);
+
+        var operationExpression = new CompartmentSearchExpression(compartmentType, compartmentId, filteredResourceTypes);
+
+        return await CompileAndRespondAsync(fhirVersion, compileResourceType, parameters, operationExpression, cancellationToken);
     }
 
     // SearchCompiler.CompileAsync never validates the top-level resourceType itself -- it only rejects an

@@ -22,6 +22,14 @@ public sealed class SearchFunctionsTests
         return context.Request;
     }
 
+    private static HttpRequest BuildCompartmentGetRequest(string queryString = "")
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Method = "GET";
+        context.Request.QueryString = new QueryString(queryString);
+        return context.Request;
+    }
+
     [Fact]
     public async Task Trace_PatientNameSmith_CompilesToPlanAndSql()
     {
@@ -239,5 +247,90 @@ public sealed class SearchFunctionsTests
             .Should().BeOfType<SearchTraceResponse>().Subject;
         response.Failure.Should().BeNull();
         response.Parameters.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task CompartmentTrace_ScopedToResourceType_CompilesToANarrowPlan_NotTheFullWildcardTraversal()
+    {
+        // Confirmed live: omitting the resource-type scope (or passing the true wildcard) produces the full
+        // ~75-CTE compartment traversal. Scoping to one type must produce a small, correctly-narrowed plan --
+        // an earlier manual probe that omitted the scope by mistake produced the huge plan and looked like a
+        // library defect until the actual cause (a missing argument, not a compiler bug) was found. This test
+        // pins the correct, narrow shape so that mistake can't silently regress back in.
+        var functions = CreateFunctions();
+
+        var result = await functions.CompartmentTrace(BuildCompartmentGetRequest(), "R4", "Patient", "example", "Observation", CancellationToken.None);
+
+        var response = result.Should().BeOfType<OkObjectResult>().Subject.Value
+            .Should().BeOfType<SearchTraceResponse>().Subject;
+        response.Failure.Should().BeNull();
+        response.Plan.Should().NotBeNull();
+        // The full wildcard traversal is dozens of CTEs (one per (resourceType, search-param) pair in the
+        // Patient compartment); a single-type scope is at most a handful. This is not an exact literal count
+        // (which resource types have which search params can shift) -- it's an assertion that scoping did
+        // something, not nothing.
+        response.Plan!.Ctes.Count.Should().BeLessThan(10);
+    }
+
+    [Fact]
+    public async Task CompartmentTrace_WildcardResourceType_CompilesTheFullTraversal()
+    {
+        var functions = CreateFunctions();
+
+        var result = await functions.CompartmentTrace(BuildCompartmentGetRequest(), "R4", "Patient", "example", "*", CancellationToken.None);
+
+        var response = result.Should().BeOfType<OkObjectResult>().Subject.Value
+            .Should().BeOfType<SearchTraceResponse>().Subject;
+        response.Failure.Should().BeNull();
+        response.Plan.Should().NotBeNull();
+        // The scoped test above asserts "small"; this one asserts the wildcard case is genuinely the big
+        // one, so the two tests together prove the scope argument actually does the narrowing.
+        response.Plan!.Ctes.Count.Should().BeGreaterThan(10);
+    }
+
+    [Fact]
+    public async Task CompartmentTrace_CombinedWithAQueryStringParameter_NarrowsFurther()
+    {
+        // Confirmed live: compartment scoping and the existing query-string search terms are not mutually
+        // exclusive -- a normal search parameter layers on top of the compartment scope.
+        var functions = CreateFunctions();
+
+        var result = await functions.CompartmentTrace(BuildCompartmentGetRequest("?code=1234-5"), "R4", "Patient", "example", "Observation", CancellationToken.None);
+
+        var response = result.Should().BeOfType<OkObjectResult>().Subject.Value
+            .Should().BeOfType<SearchTraceResponse>().Subject;
+        response.Failure.Should().BeNull();
+        response.Parameters.Should().ContainSingle(p => p.Key == "code").Which.Outcome.Kind.Should().Be("Compiled");
+    }
+
+    [Fact]
+    public async Task CompartmentTrace_UnknownCompartmentType_ReturnsBadRequest()
+    {
+        var functions = CreateFunctions();
+
+        var result = await functions.CompartmentTrace(BuildCompartmentGetRequest(), "R4", "NotACompartmentType", "example", "Observation", CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>()
+            .Subject.Value.Should().BeEquivalentTo(new { error = "'NotACompartmentType' is not a valid FHIR compartment type." });
+    }
+
+    [Fact]
+    public async Task CompartmentTrace_UnknownMemberResourceType_ReturnsBadRequest()
+    {
+        var functions = CreateFunctions();
+
+        var result = await functions.CompartmentTrace(BuildCompartmentGetRequest(), "R4", "Patient", "example", "TotallyBogusResource", CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task CompartmentTrace_EmptyCompartmentId_ReturnsBadRequest()
+    {
+        var functions = CreateFunctions();
+
+        var result = await functions.CompartmentTrace(BuildCompartmentGetRequest(), "R4", "Patient", "  ", "Observation", CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
     }
 }
