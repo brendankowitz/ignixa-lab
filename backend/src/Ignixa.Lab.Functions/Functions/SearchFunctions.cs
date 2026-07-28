@@ -44,7 +44,14 @@ public sealed class SearchFunctions(ILogger<SearchFunctions> logger, SearchEngin
 
     [Function("SearchCompartmentTrace")]
     public async Task<IActionResult> CompartmentTrace(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "options", Route = "search/{fhirVersion}/{compartmentType}/{compartmentId}/{resourceType}")] HttpRequest request,
+        // This route's {resourceType} segment is structurally identical to SearchEverythingTrace's literal
+        // "$everything" segment for a real request -- both are 4 segments deep with {fhirVersion} and a
+        // Patient-shaped middle. The Functions host maps routes in function-name order (alphabetical, not
+        // declaration order) and does not re-rank an ambiguous match by literal-vs-parameter specificity the
+        // way plain ASP.NET Core MVC would, so without this constraint "Patient/example/$everything" silently
+        // lands here instead of SearchEverythingTrace. The regex excludes only the literal "$everything";
+        // every real resource type and the "*" wildcard still match freely.
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "options", Route = "search/{fhirVersion}/{compartmentType}/{compartmentId}/{resourceType:regex(^(?!\\$everything$).+$)}")] HttpRequest request,
         string fhirVersion,
         string compartmentType,
         string compartmentId,
