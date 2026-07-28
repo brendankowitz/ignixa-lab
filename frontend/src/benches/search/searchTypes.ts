@@ -21,7 +21,7 @@ export interface IrRow {
   depth: number;
 }
 
-export type OutcomeKind = 'Compiled' | 'Ignored' | 'Failed';
+export type OutcomeKind = 'Compiled' | 'Ignored' | 'Failed' | 'KnownMiss';
 
 export interface ParameterOutcome {
   kind: OutcomeKind;

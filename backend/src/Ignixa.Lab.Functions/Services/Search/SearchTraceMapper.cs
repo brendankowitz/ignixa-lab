@@ -58,6 +58,10 @@ public static class SearchTraceMapper
     private static ParameterOutcomeDto ToOutcomeDto(ParameterOutcome outcome) => outcome switch
     {
         ParameterOutcome.Compiled => new ParameterOutcomeDto("Compiled", null, null, null),
+        // The query is well-formed and still runs -- it's just structurally incapable of returning a row
+        // for this parameter (e.g. an unknown token system or quantity code), which is otherwise visible
+        // only as a "1 = 0" buried in the emitted SQL.
+        ParameterOutcome.KnownMiss knownMiss => new ParameterOutcomeDto("KnownMiss", knownMiss.Reason, null, ToSpanDto(knownMiss.Span)),
         ParameterOutcome.Ignored ignored => new ParameterOutcomeDto("Ignored", ignored.Reason, null, ToSpanDto(ignored.Span)),
         ParameterOutcome.Failed failed => new ParameterOutcomeDto("Failed", failed.Message, failed.Stage.ToString(), ToSpanDto(failed.Span)),
         _ => throw new NotSupportedException($"Unknown ParameterOutcome: {outcome.GetType().Name}."),

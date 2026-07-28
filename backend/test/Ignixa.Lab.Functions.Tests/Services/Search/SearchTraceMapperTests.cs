@@ -62,6 +62,25 @@ public sealed class SearchTraceMapperTests
     }
 
     [Fact]
+    public void ToResponse_KnownMissOutcome_CarriesReasonAndSpan()
+    {
+        // Confirmed live: a system-qualified token/quantity value the resolver reports as unknown compiles
+        // to a predicate that can never match (rendered "1 = 0" in the emitted SQL) rather than failing the
+        // request -- KnownMiss is how that becomes visible per-parameter instead of only as opaque SQL.
+        var trace = new SearchTrace("Observation",
+            [Trace(0, "code", "http://loinc.org|99999-9", new ParameterOutcome.KnownMiss("No resource uses the token system 'http://loinc.org'.", new SourceSpan(SourceOrigin.Value, 0, 24)))],
+            Plan: null, Sql: null);
+
+        var outcome = SearchTraceMapper.ToResponse(trace, "Observation").Parameters.Single().Outcome;
+
+        outcome.Kind.Should().Be("KnownMiss");
+        outcome.Reason.Should().Be("No resource uses the token system 'http://loinc.org'.");
+        outcome.Stage.Should().BeNull();
+        outcome.Span!.Start.Should().Be(0);
+        outcome.Span.Length.Should().Be(24);
+    }
+
+    [Fact]
     public void ToResponse_PreservesCteParameterOrdinalAndKindData()
     {
         // The frontend joins plan rows / SQL ranges to parameters through CteProvenance.ParameterOrdinal,

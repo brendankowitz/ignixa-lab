@@ -216,13 +216,16 @@ function SearchParamBlock({
   const selected = selection.ordinal === param.ordinal;
   const muted = param.outcome.kind === 'Ignored';
   const failed = param.outcome.kind === 'Failed';
+  // Compiled, not dropped -- the query is well-formed and still runs, it's just structurally incapable of
+  // returning a row for this parameter. Distinct from `muted`: not faded, since nothing was ignored here.
+  const knownMiss = param.outcome.kind === 'KnownMiss';
 
   return (
     <div
       style={{
         padding: '8px 10px',
         borderRadius: 8,
-        border: `1px ${muted ? 'dashed' : 'solid'} ${failed ? 'var(--fail-border)' : selected ? 'var(--accent-border)' : 'var(--border2)'}`,
+        border: `1px ${muted ? 'dashed' : 'solid'} ${failed ? 'var(--fail-border)' : knownMiss ? 'var(--warn)' : selected ? 'var(--accent-border)' : 'var(--border2)'}`,
         background: selected ? 'var(--chip-vio-bg)' : 'var(--code)',
         opacity: muted ? 0.75 : 1,
         display: 'flex',
@@ -250,6 +253,9 @@ function SearchParamBlock({
         <SegmentRun text={param.value} segments={valueSegments} ordinal={param.ordinal} selection={selection} onSelect={onSelect} />
       </div>
       {muted ? <span style={{ fontSize: 11, color: 'var(--text4)' }}>⚠ ignored — {param.outcome.reason}</span> : null}
+      {knownMiss ? (
+        <span style={{ fontSize: 11, color: 'var(--warn)' }}>⚠ compiled — can never match — {param.outcome.reason}</span>
+      ) : null}
       {failed ? (
         <span style={{ fontSize: 11, color: 'var(--fail)' }}>
           ✕ failed at {param.outcome.stage} — {param.outcome.reason}
