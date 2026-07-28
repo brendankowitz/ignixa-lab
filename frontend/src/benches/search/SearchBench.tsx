@@ -321,7 +321,12 @@ function ExpressionParamBlock({
           }}
         >
           <KindChip kind={row.kind} label={row.kind} />
-          <span style={{ fontFamily: monoFont, fontSize: 11.5, color: 'var(--text)' }}>{row.text}</span>
+          {/* Same flex min-width trap as PlanRowView's body span -- a long typed-expression row (e.g. a
+              multi-branch chain or a composite predicate) would otherwise push the card wider instead of
+              wrapping inside it. */}
+          <span style={{ fontFamily: monoFont, fontSize: 11.5, color: 'var(--text)', minWidth: 0, overflowWrap: 'anywhere' }}>
+            {row.text}
+          </span>
         </div>
       ))}
       {param.ir.length === 0 ? <span style={{ fontSize: 11, color: 'var(--text4)', padding: '2px 0' }}>no expression</span> : null}
@@ -377,7 +382,20 @@ function PlanRowView({
         {row.label}
       </span>
       <KindChip kind={row.kind} label={planRowKindLabel(row.kind)} />
-      <span style={{ fontFamily: monoFont, fontSize: 11.5, color: 'var(--text)' }}>{row.body}</span>
+      {/* A flex item's default min-width is its unwrapped content width, not 0 -- without min-width: 0 a long
+          body (e.g. a 76-way Union(cte0, cte1, ..., cte74) on a wildcard compartment search) pushes the row
+          wider instead of wrapping inside the card. */}
+      <span
+        style={{
+          fontFamily: monoFont,
+          fontSize: 11.5,
+          color: 'var(--text)',
+          minWidth: 0,
+          overflowWrap: 'anywhere',
+        }}
+      >
+        {row.body}
+      </span>
     </div>
   );
 }
@@ -446,9 +464,11 @@ export function SearchBench() {
   const [sqlTab, setSqlTab] = useState<SqlTab>('sql');
 
   const [searchMode, setSearchMode] = useState<SearchMode>('type');
-  const [compartmentId, setCompartmentId] = useState('');
+  // Pre-filled, not blank -- an empty id silently traces nothing and leaves every pane reading "No X emitted
+  // yet.", which is easy to mistake for a broken feature rather than a field waiting for input.
+  const [compartmentId, setCompartmentId] = useState('example');
   const [memberType, setMemberType] = useState<CompartmentMemberType>('*');
-  const [everythingId, setEverythingId] = useState('');
+  const [everythingId, setEverythingId] = useState('example');
   const [typeFilter, setTypeFilter] = useState<ResourceType[]>([]);
   const [since, setSince] = useState('');
   const [everythingStart, setEverythingStart] = useState('');
