@@ -44,9 +44,10 @@ public static class EndpointClassifier
             "SearchTrace" or "SearchCompartmentTrace" or "SearchEverythingTrace" => EndpointClass.Capability,
             // Fail safe: an unrecognized (e.g. newly added) endpoint gets the
             // strictest tier rather than silently running unlimited. Every
-            // [Function] in the assembly must still appear in some arm above —
-            // EndpointClassifierTests.Classify_EveryHttpTriggeredFunctionInTheAssembly_IsExplicitlyClassified
-            // enforces that, so landing here is a test failure, not a quiet demotion.
+            // HTTP-triggered [Function] in the assembly must still appear in some
+            // arm above — EndpointClassifierTests enforces that, so landing here is
+            // a test failure, not a quiet demotion. Non-HTTP triggers (the
+            // FhirPathWarmer timer) never reach this classifier and are exempt.
             _ => EndpointClass.Run,
         };
     }

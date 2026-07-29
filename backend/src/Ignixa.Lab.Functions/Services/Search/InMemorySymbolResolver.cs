@@ -10,8 +10,9 @@ namespace Ignixa.Lab.Functions.Services.Search;
 /// so this stands in for the compiler's only I/O seam. <see cref="ISymbolResolver"/> resolves search
 /// parameters, resource types, code systems, and quantity codes to surrogate ids; for the ids it does hand
 /// out the compiler only cares that one is present, never its value, so any deterministic assignment
-/// produces real plan/SQL shape. Ids are assigned sequentially on first sight from four independent
-/// registries. (<see cref="ISymbolResolver"/> declares a fifth member, <c>GetSystemIdsAsync</c>; it is a
+/// produces real plan/SQL shape. Ids are assigned on first sight from four independent registries, in
+/// increasing order (a <c>GetOrAdd</c> factory can run more than once under contention and burn a value, so
+/// they are monotonic rather than strictly contiguous). (<see cref="ISymbolResolver"/> declares a fifth member, <c>GetSystemIdsAsync</c>; it is a
 /// default-implemented batch over <see cref="GetSystemIdAsync"/> and is deliberately not overridden.)
 ///
 /// Search parameters are keyed by their globally-unique <see cref="SearchParameterInfo.Url"/> (falling back
@@ -31,9 +32,12 @@ namespace Ignixa.Lab.Functions.Services.Search;
 /// <item>Resource type: null produces an unmatchable-id sentinel, with no always-false predicate and so no
 /// <c>KnownMiss</c>.</item>
 /// </list>
-/// The latter two are genuine "the request named something that does not exist" failures, and both are
-/// already rejected with a 400 upstream in <see cref="Functions.SearchFunctions"/>, so this resolver always
-/// answers them.
+/// The latter two are genuine "the request named something that does not exist" failures rather than the
+/// "real value, absent from this database" answer a system/quantity miss carries, so this resolver always
+/// answers them. The resource type is separately rejected with a 400 upstream in
+/// <see cref="Functions.SearchFunctions"/>; an unresolvable search parameter is not — nothing in
+/// <c>SearchFunctions</c> validates parameter names, and one that survives binding surfaces as a per-parameter
+/// <c>Failed</c> outcome inside a 200 (see <c>SearchTraceMapperTests</c>).
 ///
 /// A new instance is created per HTTP request, so ids are stable within a trace and need not persist across
 /// requests. The <c>parameter</c> argument is assumed valid per the method contract (defensive null-checking

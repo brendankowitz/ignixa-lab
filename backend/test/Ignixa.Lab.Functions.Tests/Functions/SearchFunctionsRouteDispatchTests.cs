@@ -139,6 +139,37 @@ public sealed class SearchFunctionsRouteDispatchTests
         matched.Should().Be("SearchTrace");
     }
 
+    // The constraint's pattern spells "$everything" in lowercase, which reads like it would only exclude that
+    // exact casing and let "$Everything" fall through to the compartment route (where it would 400 as "not a
+    // member of the compartment" instead of reaching the everything handler). It doesn't: ASP.NET Core's
+    // RegexRouteConstraint compiles inline patterns with RegexOptions.IgnoreCase, and literal route segments
+    // match case-insensitively too, so a case-variant is excluded from the compartment route *and* matched by
+    // the everything route -- the two halves stay consistent. Pinned because the lowercase-looking pattern
+    // invites someone to "fix" the casing with an (?i) prefix or a second alternation branch it doesn't need.
+    [Theory]
+    [InlineData("$Everything")]
+    [InlineData("$EVERYTHING")]
+    public async Task EverythingUrl_WithCaseVariantOperationName_StillDispatchesToSearchEverythingTrace(string segment)
+    {
+        var matched = await DispatchAsync(HostRegistrationOrder, $"/search/R4/Patient/example/{segment}");
+
+        matched.Should().Be("SearchEverythingTrace");
+    }
+
+    // A consequence of the constraint worth stating rather than rediscovering: it excludes "$everything" from
+    // *every* compartment root, while SearchEverythingTrace's template hardcodes Patient. So a non-Patient
+    // $everything URL matches neither route and 404s, rather than 400ing with an explanation. That is
+    // intentional -- PatientEverythingExpression is the library's only $everything expression, so there is
+    // nothing to compile for an Encounter root -- and the UI never generates such a URL. Pinned so that a
+    // later "let's constrain this to Patient only" edit to the regex shows up as a deliberate change here.
+    [Fact]
+    public async Task NonPatientEverythingUrl_MatchesNoRouteAtAll()
+    {
+        var matched = await DispatchAsync(HostRegistrationOrder, "/search/R4/Encounter/example/$everything");
+
+        matched.Should().BeNull();
+    }
+
     // The fix works by making the two templates mutually exclusive (the constraint), not by relying on a
     // favorable registration order -- so the everything URL must resolve correctly regardless of which
     // route was registered first. This is the case that would have failed before the fix even if the host

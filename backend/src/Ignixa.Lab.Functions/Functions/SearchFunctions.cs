@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Ignixa.Lab.Functions.Models.Search;
 using Ignixa.Lab.Functions.Services.Search;
+using Ignixa.Search.Exceptions;
 using Ignixa.Search.Expressions;
 using Ignixa.Search.Parsing;
 using Ignixa.Search.Sql.Tracing;
@@ -26,11 +27,17 @@ namespace Ignixa.Lab.Functions.Functions;
 /// </summary>
 public sealed partial class SearchFunctions(ILogger<SearchFunctions> logger, SearchEngineFactory engineFactory)
 {
-    /// <summary>The FHIR <c>id</c> grammar. Ids reach the emitted SQL as bound parameters, so this is not a
+    /// <summary>The FHIR <c>id</c> grammar. Ids reach the emitted SQL as bound parameters, so this is not an
     /// injection guard — it is the same "reject what can never match rather than returning a confidently
     /// wrong 200" rule the resource-type and compartment-membership checks below apply.</summary>
     [GeneratedRegex(@"^[A-Za-z0-9\-\.]{1,64}$")]
     private static partial Regex FhirIdPattern { get; }
+
+    /// <summary>Every query key <see cref="EverythingTrace"/> understands. Ordinal because that is how the
+    /// <see cref="IQueryCollection"/> lookups below read them — a wrong-cased key is a different key, and is
+    /// rejected rather than quietly ignored.</summary>
+    private static readonly HashSet<string> EverythingQueryKeys =
+        new(["_type", "_since", "start", "end", "includeReferencedResources"], StringComparer.Ordinal);
 
     [Function("SearchTrace")]
     public Task<IActionResult> Trace(
@@ -44,22 +51,24 @@ public sealed partial class SearchFunctions(ILogger<SearchFunctions> logger, Sea
             return Task.FromResult<IActionResult>(new BadRequestObjectResult(new { error = "A resource type is required." }));
         }
 
-        var parameters = ParseQuery(request);
-
-        return CompileAndRespondAsync(fhirVersion, resourceType, parameters, operationExpression: null, cancellationToken);
+        return CompileAndRespondAsync(fhirVersion, resourceType, request, operationExpression: null, cancellationToken);
     }
 
     [Function("SearchCompartmentTrace")]
     public async Task<IActionResult> CompartmentTrace(
         // This route's {resourceType} segment is structurally identical to SearchEverythingTrace's literal
-        // "$everything" segment for a real request -- both are 4 segments deep with {fhirVersion} and a
-        // Patient-shaped middle. The Functions host maps routes in function-name order (alphabetical, not
+        // "$everything" segment for a real request -- both templates are five segments, and this one's
+        // {compartmentType}/{compartmentId}/{resourceType} are unconstrained parameters that match
+        // "Patient/example/$everything" segment-for-segment. The Functions host maps routes in function-name
+        // order (alphabetical, not
         // declaration order) and does not re-rank an ambiguous match by literal-vs-parameter specificity the
         // way plain ASP.NET Core MVC would, so without this constraint "Patient/example/$everything" silently
-        // lands here instead of SearchEverythingTrace. The regex excludes only the literal "$everything";
-        // every real resource type and the "*" wildcard still match freely. SearchFunctionsRouteDispatchTests
-        // pins the mutual exclusivity in both registration orders, so neither premise has to be taken on
-        // trust.
+        // lands here instead of SearchEverythingTrace. The regex excludes only the "$everything" segment;
+        // every real resource type and the "*" wildcard still match freely. The lowercase spelling is not a
+        // case-sensitivity gap -- inline regex constraints compile with RegexOptions.IgnoreCase and literal
+        // route segments match case-insensitively, so "$Everything" is excluded here and matched there, in
+        // step. SearchFunctionsRouteDispatchTests pins the mutual exclusivity in both registration orders and
+        // for case variants, so none of these premises has to be taken on trust.
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", "options", Route = "search/{fhirVersion}/{compartmentType}/{compartmentId}/{resourceType:regex(^(?!\\$everything$).+$)}")] HttpRequest request,
         string fhirVersion,
         string compartmentType,
@@ -95,29 +104,34 @@ public sealed partial class SearchFunctions(ILogger<SearchFunctions> logger, Sea
         var filteredResourceTypes = wildcard ? null : new HashSet<string> { resourceType };
         var compileResourceType = wildcard ? normalizedCompartmentType : resourceType;
 
-        if (!wildcard)
+        // Resolved for both branches, not just the scoped one: "is this compartment defined for this FHIR
+        // version at all" is a question the wildcard case needs answered too. A wildcard that skipped the
+        // lookup would compile a traversal over a compartment the version does not define -- no compartment
+        // CTEs at all, returned as a confident 200.
+        if (!engineFactory.Get(fhirVersion).Compartments.TryGetResourceTypes(parsedCompartmentType, out var memberResourceTypes))
         {
-            // Nothing in the compiler rejects a resourceType that is a real FHIR resource but simply not a
-            // member of this compartment (e.g. Patient is not a member of the Encounter compartment): the
-            // lowering stage compiles it straight through to a plan whose WHERE clause folds to a literal
-            // "1 = 0" -- the compartment-linking search parameter for that pair just doesn't exist -- and
-            // returns 200 with no Failure set. That is the same confidently-wrong 200 CompileAndRespondAsync's
-            // own resourceType check prevents one level up, so reject it here the same way, before compiling,
-            // using the compartment definition manager as the source of truth for membership. (Stated as an
-            // invariant deliberately: the compiler has enforced neither behaviour consistently across
-            // versions -- 0.6.28 threw here instead of folding -- so what matters is that *we* enforce it.)
-            var membershipEngine = engineFactory.Get(fhirVersion);
-            if (!membershipEngine.Compartments.TryGetResourceTypes(parsedCompartmentType, out var memberResourceTypes) ||
-                !memberResourceTypes.Contains(resourceType))
+            return new BadRequestObjectResult(new
             {
-                return new BadRequestObjectResult(new { error = $"'{resourceType}' is not a member of the '{normalizedCompartmentType}' compartment." });
-            }
+                error = $"The '{normalizedCompartmentType}' compartment is not defined for {SearchEngineFactory.Resolve(fhirVersion)}.",
+            });
         }
 
-        var parameters = ParseQuery(request);
+        // Nothing in the compiler rejects a resourceType that is a real FHIR resource but simply not a member
+        // of this compartment (e.g. Patient is not a member of the Encounter compartment): the lowering stage
+        // compiles it straight through to a plan whose WHERE clause folds to a literal "1 = 0" -- the
+        // compartment-linking search parameter for that pair just doesn't exist -- and returns 200 with no
+        // Failure set. That is the same confidently-wrong 200 the resourceType check in the shared helper
+        // below prevents, so reject it here the same way, before compiling, using the compartment definition
+        // manager as the source of truth for membership. (Stated as an invariant deliberately: the compiler
+        // has not enforced this consistently across package versions, so what matters is that *we* do.)
+        if (!wildcard && !memberResourceTypes.Contains(resourceType))
+        {
+            return new BadRequestObjectResult(new { error = $"'{resourceType}' is not a member of the '{normalizedCompartmentType}' compartment." });
+        }
+
         var operationExpression = new CompartmentSearchExpression(normalizedCompartmentType, trimmedCompartmentId, filteredResourceTypes);
 
-        return await CompileAndRespondAsync(fhirVersion, compileResourceType, parameters, operationExpression, cancellationToken);
+        return await CompileAndRespondAsync(fhirVersion, compileResourceType, request, operationExpression, cancellationToken);
     }
 
     [Function("SearchEverythingTrace")]
@@ -130,6 +144,26 @@ public sealed partial class SearchFunctions(ILogger<SearchFunctions> logger, Sea
         if (!TryValidateFhirId(patientId, "patient id", out var trimmedPatientId, out var idError))
         {
             return new BadRequestObjectResult(new { error = idError });
+        }
+
+        // The other two routes hand their whole query string to QueryParameterParser, so a name this app does
+        // not recognize still comes back as an Ignored chip with a reason. $everything reads five fixed keys
+        // and compiles from typed constructor arguments instead, so without this check anything else -- a
+        // typo'd "_typ", a wrong-cased "_Since" (these lookups are ordinal), a stray "_count" -- is dropped
+        // in silence and answered with a full unfiltered trace that looks exactly like the bare request. The
+        // UI compounds it by explaining the empty parameter list as expected for $everything, so there is
+        // nothing anywhere for the user to notice. Reject instead, same standard as an unknown _type value.
+        var unknownKeys = request.Query.Keys
+            .Where(key => !EverythingQueryKeys.Contains(key))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        if (unknownKeys.Length > 0)
+        {
+            return new BadRequestObjectResult(new
+            {
+                error = $"'$everything' does not support parameter(s): {string.Join(", ", unknownKeys)}. " +
+                        $"Supported: {string.Join(", ", EverythingQueryKeys.Order(StringComparer.Ordinal))}.",
+            });
         }
 
         var engine = engineFactory.Get(fhirVersion);
@@ -173,12 +207,14 @@ public sealed partial class SearchFunctions(ILogger<SearchFunctions> logger, Sea
 
         var operationExpression = new PatientEverythingExpression(trimmedPatientId, startDate, endDate, sinceDate, filteredResourceTypes, includeReferencedResources);
 
-        // $everything isn't parameter-driven -- there's no query string for QueryParameterParser to parse,
-        // every option above became a typed constructor argument on the expression instead. The resource
+        // $everything isn't parameter-driven: the five keys it accepts became typed constructor arguments on
+        // the expression above, so no FHIR *search* parameters are left for QueryParameterParser (any other
+        // key already 400'd at the EverythingQueryKeys check). Hence parameters: [] -- the empty Parameters
+        // list the frontend's empty-state note describes (parameterSource: null says exactly that). The resource
         // type the compiler compiles against is always "Patient", the operation's anchor type; this route
         // only ever accepts Patient (PatientEverythingExpression is the library's only $everything
         // expression -- IExpressionVisitor declares a single VisitPatientEverything).
-        return await CompileAndRespondAsync(fhirVersion, "Patient", parameters: [], operationExpression, cancellationToken);
+        return await CompileAndRespondAsync(fhirVersion, "Patient", parameterSource: null, operationExpression, cancellationToken);
     }
 
     private static IReadOnlyList<QueryParameter> ParseQuery(HttpRequest request)
@@ -308,10 +344,14 @@ public sealed partial class SearchFunctions(ILogger<SearchFunctions> logger, Sea
     // be trusted provenance. Reject it here instead, the same way an unknown search parameter is already
     // rejected per-parameter deeper in the pipeline. Shared by every route above (type/compartment/
     // $everything all pass the resource type they're compiling against).
+    /// <param name="parameterSource">The request whose query string supplies the FHIR search parameters, or
+    /// null for an operation that takes none ($everything). Parsed inside the try below rather than by the
+    /// caller so a parser throw is classified by the same 400/500 split as a compiler throw instead of
+    /// escaping to the host as a bare 500.</param>
     private async Task<IActionResult> CompileAndRespondAsync(
         string fhirVersion,
         string resourceType,
-        IReadOnlyList<QueryParameter> parameters,
+        HttpRequest? parameterSource,
         Expression? operationExpression,
         CancellationToken cancellationToken)
     {
@@ -328,6 +368,8 @@ public sealed partial class SearchFunctions(ILogger<SearchFunctions> logger, Sea
         SearchTrace trace;
         try
         {
+            var parameters = parameterSource is null ? [] : ParseQuery(parameterSource);
+
             trace = await SearchCompiler.CompileAsync(
                 resourceType,
                 parameters,
@@ -344,12 +386,19 @@ public sealed partial class SearchFunctions(ILogger<SearchFunctions> logger, Sea
             // isn't reported back as the client's malformed query.
             throw;
         }
-        catch (Exception ex) when (ex is FhirException or FormatException)
+        catch (Exception ex) when (ex is BadSearchRequestException or SearchResourceNotSupportedException)
         {
             // Input the compiler rejects outright rather than recording as trace data -- e.g.
             // BadSearchRequestException ("The date time string 'notadate' is not in a correct format.") for a
             // malformed value. These messages are written for the person who typed the query, so echoing them
             // is the useful answer for a bench.
+            //
+            // Allowlisted by concrete type, deliberately, rather than by their FhirException base: that base
+            // is the library's *whole* fault hierarchy, not a "bad request" marker. InternalServerErrorException
+            // and InvalidDefinitionException (the likely shape of a package-bump regression -- this app pins an
+            // alpha and bumps it often) both derive from it, so catching the base reported our own faults to an
+            // anonymous caller as their bad query, echoed the raw message, and logged at Information -- the
+            // exact defect the 500 arm below was written to fix. Anything not named here falls through to it.
             logger.LogInformation(ex, "Rejected search trace for {FhirVersion}/{ResourceType}", resolvedVersion, resourceType);
             return new BadRequestObjectResult(new { error = ex.Message });
         }
@@ -375,6 +424,23 @@ public sealed partial class SearchFunctions(ILogger<SearchFunctions> logger, Sea
             };
         }
 
-        return new OkObjectResult(SearchTraceMapper.ToResponse(trace, resolvedVersion, resourceType));
+        // Mapped in its own try, not the one above: SearchTraceMapper throws NotSupportedException for a
+        // ParameterOutcome it does not model, and this PR adding KnownMiss is the proof that outcome types do
+        // get added -- inside the block above, that mapper gap would be reported to the caller as "this query
+        // uses a shape the SQL compiler does not support yet", blaming their query for our missing arm. Left
+        // unguarded it escaped the method entirely, losing the {FhirVersion}/{ResourceType} context every
+        // other failure path here attaches.
+        try
+        {
+            return new OkObjectResult(SearchTraceMapper.ToResponse(trace, resolvedVersion, resourceType));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to map search trace for {FhirVersion}/{ResourceType}", resolvedVersion, resourceType);
+            return new ObjectResult(new { error = "The search trace could not be serialized due to an internal error." })
+            {
+                StatusCode = StatusCodes.Status500InternalServerError,
+            };
+        }
     }
 }

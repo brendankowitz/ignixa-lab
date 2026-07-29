@@ -15,6 +15,20 @@ public sealed class SearchTraceMapperTests
     private static ParameterTrace Trace(int ordinal, string key, string value, ParameterOutcome outcome) =>
         new(ordinal, key, keySyntax: null, value, valueSyntax: null, ir: null, outcome, dataType: null);
 
+    /// <summary>An expression node <c>IrProjector</c> has no case for, so <c>TryDescribe</c> declines it. Stands
+    /// in for the real thing this guards: a future library expression type the projector does not yet model.</summary>
+    private sealed class UndescribableExpression : Expression
+    {
+        public override TOutput AcceptVisitor<TContext, TOutput>(IExpressionVisitor<TContext, TOutput> visitor, TContext context) =>
+            throw new NotSupportedException("No visitor case for this node.");
+
+        public override string ToString() => "Undescribable()";
+
+        public override void AddValueInsensitiveHashCode(ref HashCode hashCode) => hashCode.Add(nameof(UndescribableExpression));
+
+        public override bool ValueInsensitiveEquals(Expression other) => other is UndescribableExpression;
+    }
+
     [Fact]
     public void ToResponse_CompiledOutcome_MapsKindOnly()
     {
@@ -78,6 +92,56 @@ public sealed class SearchTraceMapperTests
         outcome.Stage.Should().BeNull();
         outcome.Span!.Start.Should().Be(0);
         outcome.Span.Length.Should().Be(24);
+    }
+
+    [Fact]
+    public void ToResponse_ProjectsBoundSqlParameters()
+    {
+        // Every value a caller supplies -- the compartment id, the $everything window instants -- reaches the
+        // emitted SQL only as a @pN marker, so a pane showing the SQL without these shows bind markers with
+        // nothing behind them. The trace has carried Parameters since 0.6.41; this pins that we project it.
+        var sql = new EmittedSqlTrace(
+            "SELECT 1 WHERE Id = @p0",
+            Parameters: [new EmittedSqlParameter("@p0", "example")],
+            Ranges: []);
+        var trace = new SearchTrace("Patient", [], Plan: null, sql);
+
+        var response = SearchTraceMapper.ToResponse(trace, "R4", "Patient");
+
+        var parameter = response.Sql!.Parameters.Should().ContainSingle().Subject;
+        parameter.Name.Should().Be("@p0");
+        parameter.Value.Should().Be("example");
+    }
+
+    [Fact]
+    public void ToResponse_UndescribableIr_ReportsWhyRatherThanLookingLikeNoIrAtAll()
+    {
+        // An expression the projector cannot describe degrades to an empty Ir list -- byte-identical to a
+        // parameter that genuinely has none. For a provenance tool those are opposite answers ("there is
+        // nothing here" vs "I could not tell you"), so the reason has to survive the mapping; the discard
+        // that used to sit here made the two indistinguishable in the UI and logged nothing anywhere.
+        var trace = new ParameterTrace(
+            0, "name", keySyntax: null, "Smith", valueSyntax: null, new UndescribableExpression(), new ParameterOutcome.Compiled(), dataType: null);
+
+        var dto = SearchTraceMapper.ToResponse(new SearchTrace("Patient", [trace], Plan: null, Sql: null), "R4", "Patient")
+            .Parameters.Single();
+
+        dto.Ir.Should().BeEmpty();
+        dto.IrUnavailableReason.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public void ToResponse_ParameterWithNoIr_LeavesTheUnavailableReasonNull()
+    {
+        // The other half of the pair above: a genuinely IR-less parameter must NOT carry a reason, or the UI
+        // would warn on every one of them and the distinction the field exists to draw would be lost.
+        var trace = Trace(0, "name", "Smith", new ParameterOutcome.Compiled());
+
+        var dto = SearchTraceMapper.ToResponse(new SearchTrace("Patient", [trace], Plan: null, Sql: null), "R4", "Patient")
+            .Parameters.Single();
+
+        dto.Ir.Should().BeEmpty();
+        dto.IrUnavailableReason.Should().BeNull();
     }
 
     [Fact]

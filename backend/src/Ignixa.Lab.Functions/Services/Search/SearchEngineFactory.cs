@@ -39,7 +39,6 @@ public sealed class SearchEngineFactory(SchemaProviderFactory schemaProviderFact
     /// the user must echo <see cref="Resolve"/>, not their raw input — otherwise an unrecognized value is
     /// silently served an R4 trace labelled with a version that was never consulted.
     /// </summary>
-    [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Instance method by design so it can be consumed via DI and mocked in tests.")]
     public SearchEngine Get(string fhirVersion) => Resolve(fhirVersion) switch
     {
         "STU3" => _stu3.Value,
@@ -50,9 +49,10 @@ public sealed class SearchEngineFactory(SchemaProviderFactory schemaProviderFact
         _ => _r4.Value,
     };
 
-    /// <summary>Canonical name of the version <see cref="Get"/> would actually build for this input — the
-    /// input itself when recognized, otherwise "R4" (the fallback). This is the only version string safe to
-    /// put in a response body or an error message.</summary>
+    /// <summary>Canonical name of the version <see cref="Get"/> would actually build for this input — its
+    /// canonical spelling when recognized (so "R3" resolves to "STU3" and "r4b" to "R4B", not the input
+    /// verbatim), otherwise "R4" (the fallback). This is the only version string safe to put in a response
+    /// body or an error message.</summary>
     public static string Resolve(string fhirVersion) => TryNormalize(fhirVersion) ?? "R4";
 
     /// <summary>Canonical name for a recognized version, or null when nothing matches. Distinct from

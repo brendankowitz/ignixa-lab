@@ -263,6 +263,12 @@ public sealed class SearchFunctionsTests
         // (which resource types have which search params can shift) -- it's an assertion that scoping did
         // something, not nothing.
         response.Plan!.Ctes.Count.Should().BeLessThan(10);
+        // ...and something rather than *nothing*: the compartment id and type reach the SQL only as bound
+        // parameters and numeric surrogate ids, so neither appears in the emitted text and a transposed or
+        // dropped argument would leave a plan with no compartment traversal at all -- which "fewer than 10
+        // CTEs" happily accepts, zero being fewer than 10. Naming the CTE kind closes that.
+        response.Plan.Ctes.Should().NotBeEmpty();
+        response.Plan.Explain.Should().Contain("CompartmentSource");
     }
 
     [Fact]
@@ -330,15 +336,21 @@ public sealed class SearchFunctionsTests
     [Fact]
     public async Task CompartmentTrace_LowercaseCompartmentType_NormalizesAndCompiles()
     {
-        // Enum.TryParse(ignoreCase: true) accepts "patient" -- confirms the normalized (canonically-cased)
-        // value is what actually reaches CompartmentSearchExpression, not the raw lowercase string.
+        // Failure == null alone would not show normalization happened -- a raw "patient" passed through to a
+        // case-tolerant library looks identical. Compare against the canonically-cased request instead: the
+        // compartment type reaches the SQL only as a numeric surrogate id, so if normalization stopped
+        // resolving the compartment the plan would lose its CompartmentSource CTEs and the two would diverge.
         var functions = CreateFunctions();
 
-        var result = await functions.CompartmentTrace(BuildGetRequest(), "R4", "patient", "example", "Observation", CancellationToken.None);
+        var lowercase = await functions.CompartmentTrace(BuildGetRequest(), "R4", "patient", "example", "Observation", CancellationToken.None);
+        var canonical = await functions.CompartmentTrace(BuildGetRequest(), "R4", "Patient", "example", "Observation", CancellationToken.None);
 
-        var response = result.Should().BeOfType<OkObjectResult>().Subject.Value
+        var response = lowercase.Should().BeOfType<OkObjectResult>().Subject.Value
             .Should().BeOfType<SearchTraceResponse>().Subject;
         response.Failure.Should().BeNull();
+        response.Plan!.Explain.Should().Be(
+            canonical.Should().BeOfType<OkObjectResult>().Subject.Value
+                .Should().BeOfType<SearchTraceResponse>().Subject.Plan!.Explain);
     }
 
     [Fact]
@@ -650,6 +662,51 @@ public sealed class SearchFunctionsTests
                 new { error = $"'{compartmentId}' is not a valid FHIR id (expected 1-64 characters from A-Z, a-z, 0-9, '-' and '.')." });
     }
 
+    [Theory]
+    [InlineData("?_typ=Observation", "_typ")]
+    [InlineData("?_Since=2020-01-01", "_Since")]
+    [InlineData("?_count=5", "_count")]
+    [InlineData("?name=Smith", "name")]
+    public async Task EverythingTrace_UnrecognizedQueryParameter_ReturnsBadRequest(string queryString, string expectedInError)
+    {
+        // The other two routes hand unknown parameters to QueryParameterParser, which reports them as Ignored
+        // chips. $everything compiles from typed constructor arguments and reports zero Parameters, so an
+        // unrecognized key had no channel at all: it was dropped in silence and answered with a full
+        // unfiltered trace identical to the bare request, while the UI explained the empty parameter list as
+        // normal for $everything. A typo'd filter that silently means "no filter" is the confidently-wrong 200
+        // this file rejects everywhere else. Note _Since: the lookups are ordinal, so wrong case is a
+        // different key and must be rejected rather than silently ignored.
+        var functions = CreateFunctions();
+
+        var result = await functions.EverythingTrace(BuildGetRequest(queryString), "R4", "example", CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>()
+            .Subject.Value.Should().BeEquivalentTo(new
+            {
+                error = $"'$everything' does not support parameter(s): {expectedInError}. " +
+                        "Supported: _since, _type, end, includeReferencedResources, start.",
+            });
+    }
+
+    [Fact]
+    public async Task EverythingTrace_EveryRecognizedParameterTogether_IsAccepted()
+    {
+        // The negative twin of the test above: an allowlist is only safe if it actually admits everything the
+        // handler reads. If a key were misspelled in EverythingQueryKeys, the reject-unknown check would 400
+        // a request the handler fully supports -- and every existing $everything test passes one parameter at
+        // a time, so none of them would catch it.
+        var functions = CreateFunctions();
+
+        var result = await functions.EverythingTrace(
+            BuildGetRequest("?_type=Observation&_since=2020-01-01T00:00:00Z&start=2021-01-01T00:00:00Z&end=2022-01-01T00:00:00Z&includeReferencedResources=false"),
+            "R4",
+            "example",
+            CancellationToken.None);
+
+        result.Should().BeOfType<OkObjectResult>().Subject.Value
+            .Should().BeOfType<SearchTraceResponse>().Subject.Failure.Should().BeNull();
+    }
+
     [Fact]
     public async Task EverythingTrace_PatientIdOutsideTheFhirIdGrammar_ReturnsBadRequest()
     {
@@ -660,6 +717,45 @@ public sealed class SearchFunctionsTests
         result.Should().BeOfType<BadRequestObjectResult>()
             .Subject.Value.Should().BeEquivalentTo(
                 new { error = "'has space' is not a valid FHIR id (expected 1-64 characters from A-Z, a-z, 0-9, '-' and '.')." });
+    }
+
+    [Theory]
+    [InlineData("a")]
+    [InlineData("way-too-long-way-too-long-way-too-long-way-too-long-way-too-long")] // exactly 64
+    [InlineData("has.dots.and-dashes.123")]
+    public async Task CompartmentTrace_IdAtTheEdgesOfTheFhirIdGrammar_IsAccepted(string compartmentId)
+    {
+        // The rejection cases are covered above; without these, tightening the regex (a {1,64} that became
+        // {1,63}, or a dropped '.') would narrow what the bench accepts with the whole suite still green.
+        compartmentId.Length.Should().BeLessThanOrEqualTo(64);
+        var functions = CreateFunctions();
+
+        var result = await functions.CompartmentTrace(BuildGetRequest(), "R4", "Patient", compartmentId, "Observation", CancellationToken.None);
+
+        result.Should().BeOfType<OkObjectResult>().Subject.Value
+            .Should().BeOfType<SearchTraceResponse>().Subject.Failure.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task EverythingTrace_TypeFilter_DependsOnWhichTypeWasNamed_NotJustThatOneWas()
+    {
+        // The existing filter test asserts only "smaller plan than bare", which a filter that resolved to the
+        // *wrong* member type satisfies just as well. Asserting on the type name directly is not available:
+        // resource types reach the plan as numeric surrogate ids (`CompartmentSource[56,60]`), so the Explain
+        // never spells "Observation". Comparing two different single-type filters gets at the same property
+        // from the other side -- if the filter's contents were ignored, or every value collapsed to the same
+        // one, these two would be identical.
+        var functions = CreateFunctions();
+
+        var observation = await functions.EverythingTrace(BuildGetRequest("?_type=Observation"), "R4", "example", CancellationToken.None);
+        var encounter = await functions.EverythingTrace(BuildGetRequest("?_type=Encounter"), "R4", "example", CancellationToken.None);
+
+        var observationPlan = observation.Should().BeOfType<OkObjectResult>().Subject.Value
+            .Should().BeOfType<SearchTraceResponse>().Subject.Plan!.Explain;
+        var encounterPlan = encounter.Should().BeOfType<OkObjectResult>().Subject.Value
+            .Should().BeOfType<SearchTraceResponse>().Subject.Plan!.Explain;
+
+        observationPlan.Should().NotBe(encounterPlan);
     }
 
     [Fact]

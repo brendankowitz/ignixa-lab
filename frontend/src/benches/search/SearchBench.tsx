@@ -315,8 +315,15 @@ function SearchParamBlock({
         <SegmentRun text={param.value} segments={valueSegments} ordinal={param.ordinal} selection={selection} onSelect={onSelect} />
       </div>
       {muted ? <span style={{ fontSize: 11, color: 'var(--text4)' }}>⚠ ignored — {param.outcome.reason}</span> : null}
+      {/* "Can never match" is a claim about a database, and this bench has none — InMemorySymbolResolver
+          answers from a small stand-in system/unit table, so an ordinary-but-unlisted system (a local
+          CodeSystem, most UCUM units) lands here too. The verdict is the real one a server gives for a system
+          it has not indexed; the qualifier keeps it from reading as a judgement on the user's query. */}
       {knownMiss ? (
-        <span style={{ fontSize: 11, color: 'var(--warn)' }}>⚠ compiled — can never match — {param.outcome.reason}</span>
+        <span style={{ fontSize: 11, color: 'var(--warn)' }}>
+          ⚠ compiled — can never match — {param.outcome.reason}
+          <span style={{ color: 'var(--text4)' }}> (resolved against this bench's stand-in lookup table, not a live index)</span>
+        </span>
       ) : null}
       {failed ? (
         <span style={{ fontSize: 11, color: 'var(--fail)' }}>
@@ -379,7 +386,18 @@ function ExpressionParamBlock({
           </span>
         </div>
       ))}
-      {param.ir.length === 0 ? <span style={{ fontSize: 11, color: 'var(--text4)', padding: '2px 0' }}>no expression</span> : null}
+      {/* "no expression" and "couldn't describe it" are different answers and must not look alike: the
+          backend degrades an undescribable IR to an empty list, so without this the pane would assert the
+          parameter has no expression when it actually has one nobody could render. */}
+      {param.ir.length === 0 ? (
+        param.irUnavailableReason !== null ? (
+          <span style={{ fontSize: 11, color: 'var(--warn)', padding: '2px 0', overflowWrap: 'anywhere' }}>
+            ⚠ expression unavailable — {param.irUnavailableReason}
+          </span>
+        ) : (
+          <span style={{ fontSize: 11, color: 'var(--text4)', padding: '2px 0' }}>no expression</span>
+        )
+      ) : null}
     </div>
   );
 }
@@ -495,6 +513,13 @@ function PlanRowTree({
   const groupSelected = isRowSelected(node.row.label, selection, plan);
   const manyChildren = node.children.length > MANY_CHILDREN_THRESHOLD;
   const [manuallyExpanded, setManuallyExpanded] = useState(false);
+
+  // Positional keys can't tell one trace's "cte5" from another's, so a node the user expanded in the previous
+  // query would stay expanded at the same position in the next one. Collapse back to the auto-collapse
+  // default whenever the plan itself changes.
+  useEffect(() => {
+    setManuallyExpanded(false);
+  }, [plan]);
   const expanded = !manyChildren || manuallyExpanded || node.children.some((child) => subtreeContainsSelection(child, selection, plan));
 
   return (
@@ -513,9 +538,11 @@ function PlanRowTree({
         >
           {expanded ? (
             node.children.map((child) => (
-              // Keyed by canonical label, not array index: index keys make React reuse each PlanRowTree
-              // instance across unrelated traces, so a node expanded in one query stays expanded at that
-              // position in the next. Canonical labels are unique within a plan.
+              // Keyed by canonical label, not array index, so a node keeps its identity when siblings are
+              // reordered or inserted within one plan rather than every position past the change re-keying.
+              // Note this does NOT isolate one trace from the next: canonical labels are positional CTE names
+              // ("cte0", "cte1", ...), so "cte5" collides across traces exactly as index 5 would. The
+              // manuallyExpanded reset below is what actually handles a new plan.
               <PlanRowTree key={child.row.canonicalLabel} node={child} plan={plan} selection={selection} onSelect={onSelect} compact={compact} />
             ))
           ) : (
@@ -604,6 +631,8 @@ export function SearchBench() {
     };
   })();
 
+  const searchRequestKey = JSON.stringify(searchRequest);
+
   const { result, error, isLoading } = useSearchTrace(searchRequest);
   const plan = result?.plan ?? null;
   const emittedSql = result?.sql ?? null;
@@ -619,16 +648,21 @@ export function SearchBench() {
   // Clicking a span sets `selection` to trace a parameter (or a self-contained structural CTE) across
   // columns, but that selection is only meaningful for the trace `result` it was clicked in. Two moments
   // can invalidate it:
-  //  - the user edits fhirVersion/resourceType/query (a new request is about to be debounced/fetched), and
+  //  - the user edits any input that produces a new request (a fetch is about to be debounced), and
   //  - `result` itself swaps to a new reference once that debounced fetch actually resolves — which can land
   //    well after the reset above already fired, if the user clicks a span from the still-displayed *previous*
   //    result during the debounce/network window.
   // `useSearchTrace` only replaces `result` with a new object on a state update (fresh success, or cleared to
   // null on error) — it never mutates it in place and leaves it referentially untouched while a request is
   // merely in flight — so `result` is a safe, stable-until-changed effect dependency here.
+  //
+  // Keyed off the serialized request rather than a hand-listed dep set: mode, compartment id, member type,
+  // the $everything id and its five filters all change the request too, and enumerating them here means
+  // every future input is one someone has to remember to add. This is the same key `useSearchTrace` debounces
+  // on, so the reset fires exactly when a refetch does, never on an unrelated re-render.
   useEffect(() => {
     setSelection(CLEARED_SELECTION);
-  }, [fhirVersion, resourceType, query, result]);
+  }, [searchRequestKey, result]);
 
   const traceGridStyle: CSSProperties = {
     display: 'grid',
@@ -917,6 +951,13 @@ export function SearchBench() {
 
       {error !== null ? <ErrorBanner message={error} /> : null}
       {result?.failure ? <ErrorBanner message={`${result.failure.stage}: ${result.failure.message}`} /> : null}
+      {/* The backend answers an unrecognized FHIR version with an R4 trace rather than a 400, and reports the
+          version it actually compiled against. Unreachable from the version pills alone, but the response
+          carries the field precisely so a substitution can't pass as the version that was asked for — so say
+          it rather than labelling someone else's trace with the version they picked. */}
+      {result && result.fhirVersion !== fhirVersion ? (
+        <ErrorBanner message={`Traced against ${result.fhirVersion}, not ${fhirVersion} — the backend does not recognize ${fhirVersion} and fell back.`} />
+      ) : null}
 
       {result ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -1034,6 +1075,20 @@ export function SearchBench() {
               );
             })}
           </pre>
+        ) : null}
+        {/* Every value the user typed reaches the SQL as a bind marker, so the statement above shows @p0/@p1
+            and nothing else. Without this table the pane can show a compartment id or a $everything window
+            bound to markers the reader cannot resolve — the provenance stops one step short of the values. */}
+        {sqlTab === 'sql' && emittedSql && emittedSql.parameters.length > 0 ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--border2)' }}>
+            {emittedSql.parameters.map((parameter) => (
+              <span key={parameter.name} style={{ fontFamily: monoFont, fontSize: 10.5, color: 'var(--text3)' }}>
+                <span style={{ color: 'var(--accent)' }}>{parameter.name}</span>
+                {' = '}
+                {parameter.value ?? 'null'}
+              </span>
+            ))}
+          </div>
         ) : null}
         {sqlTab === 'sql' && !emittedSql ? <span style={{ fontSize: 11, color: 'var(--text4)' }}>No SQL emitted yet.</span> : null}
         {sqlTab === 'explain' ? (

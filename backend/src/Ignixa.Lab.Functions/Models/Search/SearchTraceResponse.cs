@@ -22,6 +22,9 @@ public sealed record SearchTraceResponse(
 /// <see cref="Ignixa.Search.Parsing.ParameterTrace.DataType"/> directly. Null when the parameter never
 /// bound a value (an `Ignored`/`Failed` outcome). A chain reports its reference parameter's type
 /// ("Reference"); a composite reports its own declared type ("Composite"), not one component's.</summary>
+/// <summary><see cref="IrUnavailableReason"/> distinguishes the two ways <see cref="Ir"/> comes back empty:
+/// null means the parameter genuinely has no IR, non-null means the projector could not describe it and says
+/// why. Without it an undescribable expression is indistinguishable from an absent one.</summary>
 public sealed record ParameterTraceDto(
     int Ordinal,
     string Key,
@@ -30,7 +33,8 @@ public sealed record ParameterTraceDto(
     SyntaxNodeDto? ValueSyntax,
     IReadOnlyList<IrRowDto> Ir,
     string? DataType,
-    ParameterOutcomeDto Outcome);
+    ParameterOutcomeDto Outcome,
+    string? IrUnavailableReason);
 
 /// <summary>Serializable <see cref="Ignixa.Search.Expressions.Parsers.SyntaxNode"/>. Its <see cref="Span"/>
 /// is non-null (the syntax scanner always spans real text).</summary>
@@ -66,7 +70,12 @@ public sealed record PlanExplainRowDto(
 /// structural CTE (Intersect/Union/Except/ChainJoin), or empty where nothing is attributable.</summary>
 public sealed record CteProvenanceDto(int CteIndex, int? ParameterOrdinal, IReadOnlyList<int> ContributingOrdinals, SpanDto? Span);
 
-public sealed record EmittedSqlDto(string Sql, IReadOnlyList<SqlTextRangeDto> Ranges);
+public sealed record EmittedSqlDto(string Sql, IReadOnlyList<SqlParameterDto> Parameters, IReadOnlyList<SqlTextRangeDto> Ranges);
+
+/// <summary>One bound parameter behind a <c>@pN</c> marker in <see cref="EmittedSqlDto.Sql"/>.
+/// <see cref="Value"/> is the value's <c>ToString()</c> for display — null only when the bound value itself
+/// is null.</summary>
+public sealed record SqlParameterDto(string Name, string? Value);
 
 /// <summary><see cref="Label"/> says which section this is (unique within one emitted statement) and,
 /// where a <see cref="PlanExplainRowDto"/> exists for it, equals that row's <see cref="PlanExplainRowDto.CanonicalLabel"/>.

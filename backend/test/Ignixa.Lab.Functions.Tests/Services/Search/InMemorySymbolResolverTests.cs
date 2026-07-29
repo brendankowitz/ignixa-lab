@@ -51,16 +51,20 @@ public sealed class InMemorySymbolResolverTests
     }
 
     [Fact]
-    public async Task SearchParamAndResourceTypeIds_AreIndependentSequences()
+    public async Task FirstSearchParamAndFirstResourceTypeId_AreBothOne_ProvingTheCountersAreNotShared()
     {
+        // Asserted as literal 1s rather than `typeId.Should().Be(paramId)`: equality is the correct assertion
+        // here (independent counters both start at 1; a shared counter would hand out 1 and 2) but it reads
+        // exactly like a copy-paste bug, and the obvious "fix" to NotBe would invert the test while still
+        // passing review. Spelling out the values leaves nothing to re-derive.
         var resolver = new InMemorySymbolResolver();
 
         var typeId = await resolver.GetResourceTypeIdAsync("Patient", CancellationToken.None);
         var paramId = await resolver.GetSearchParamIdAsync(
             Param("name", "http://hl7.org/fhir/SearchParameter/Patient-name"), CancellationToken.None);
 
-        // Each registry assigns from its own sequence; a shared counter is a bug.
-        typeId.Should().Be(paramId);
+        typeId.Should().Be(1);
+        paramId.Should().Be(1);
     }
 
     [Fact]
@@ -101,14 +105,17 @@ public sealed class InMemorySymbolResolverTests
     }
 
     [Fact]
-    public async Task SystemAndQuantityCodeIds_AreIndependentSequences()
+    public async Task FirstSystemAndFirstQuantityCodeId_AreBothOne_ProvingTheCountersAreNotShared()
     {
+        // Same reasoning as the search-param/resource-type pair above: equality is right but looks wrong, so
+        // assert the values.
         var resolver = new InMemorySymbolResolver();
 
         var systemId = await resolver.GetSystemIdAsync("http://loinc.org", CancellationToken.None);
         var codeId = await resolver.GetQuantityCodeIdAsync("mm[Hg]", CancellationToken.None);
 
-        systemId.Should().Be(codeId);
+        systemId.Should().Be(1);
+        codeId.Should().Be(1);
     }
 
     [Fact]

@@ -65,6 +65,34 @@ test('runSearch rejects a 200 whose body is not a search trace', async () => {
   // unmounts the bench to a blank page rather than showing the error banner.
   await assert.rejects(runWithStubbedFetch(JSON.stringify({ unexpected: true })), /Expected a search trace/);
   await assert.rejects(runWithStubbedFetch('null'), /Expected a search trace/);
+  // `parameters` alone is a weak fingerprint -- any endpoint answering `{parameters: []}` would pass and
+  // render with `undefined` everywhere else.
+  await assert.rejects(runWithStubbedFetch(JSON.stringify({ parameters: [] })), /Expected a search trace/);
+});
+
+test('runSearch quotes a non-2xx JSON body that is not shaped { error }, rather than dropping it', async () => {
+  // Only `{ error }` is ours. A host ProblemDetails or gateway envelope was parsed, held, and discarded in
+  // favour of a bare status number -- less than the non-JSON branch manages with the same information.
+  await assert.rejects(
+    runWithStubbedFetch(JSON.stringify({ title: 'Internal Server Error', traceId: '00-abc' }), 500, 'Internal Server Error'),
+    (error: Error) => {
+      assert.match(error.message, /500 Internal Server Error/);
+      assert.match(error.message, /traceId/);
+      return true;
+    },
+  );
+});
+
+test('runSearch does not produce a blank error message from an empty { error } string', async () => {
+  // `?? ` passes an empty string through (it is not nullish), and the bench renders any non-null error, so
+  // this used to surface as an error banner with no text in it.
+  await assert.rejects(
+    runWithStubbedFetch(JSON.stringify({ error: '' }), 400, 'Bad Request'),
+    (error: Error) => {
+      assert.match(error.message, /400 Bad Request/);
+      return true;
+    },
+  );
 });
 
 test('buildUrl (type mode) builds /api/search/{fhirVersion}/{resourceType}?{query}', () => {

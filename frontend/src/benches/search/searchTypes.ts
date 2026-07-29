@@ -31,7 +31,11 @@ export interface ParameterOutcome {
 }
 
 /** `dataType` is the parameter's own resolved FHIR search-parameter type (e.g. "String", "Token", "Date",
- * "Reference", "Composite") — null when it never reached a successful parse (an Ignored/Failed outcome). */
+ * "Reference", "Composite") — null when it never reached a successful parse (an Ignored/Failed outcome).
+ *
+ * `irUnavailableReason` disambiguates an empty `ir`: null means the parameter genuinely has no IR, non-null
+ * means the backend's projector could not describe the expression and says why. Render it — an empty pane
+ * that silently means "couldn't say" is the one thing a provenance view must not show. */
 export interface ParameterTrace {
   ordinal: number;
   key: string;
@@ -41,6 +45,7 @@ export interface ParameterTrace {
   ir: IrRow[];
   dataType: string | null;
   outcome: ParameterOutcome;
+  irUnavailableReason: string | null;
 }
 
 /** Mirrors `Ignixa.Search.Sql.Ast.PlanExplainRow`. `label` is display text only (the match/output CTE
@@ -83,8 +88,16 @@ export interface SqlTextRange {
   length: number;
 }
 
+/** One bound parameter behind a `@pN` marker in `sql`. `value` is the backend's display rendering of the
+ * bound value, null only when the value itself is null. */
+export interface SqlParameter {
+  name: string;
+  value: string | null;
+}
+
 export interface EmittedSql {
   sql: string;
+  parameters: SqlParameter[];
   ranges: SqlTextRange[];
 }
 
@@ -100,7 +113,11 @@ export interface TraceFailure {
   span: Span | null;
 }
 
+/** `fhirVersion` is the version the backend actually compiled against, which is not always the one asked
+ * for: an unrecognized value falls back to R4 rather than being rejected. Compare it against the requested
+ * version and say so when they differ — that is the entire reason the backend sends it. */
 export interface SearchTraceResponse {
+  fhirVersion: string;
   resourceType: string;
   parameters: ParameterTrace[];
   plan: QueryPlan | null;

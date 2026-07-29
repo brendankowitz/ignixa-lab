@@ -60,7 +60,21 @@ public sealed class CompartmentMembershipContractTests
         // exactly five compartments and Observation is not among them.
         Enum.GetNames<CompartmentType>().Should().NotContain("Observation");
 
+        // The enum check alone would still pass against an engine carrying no compartment definitions at all,
+        // which would make the whole "root vs member" distinction this file pins vacuous. So assert the other
+        // half directly: every compartment the enum does name resolves to a real member set, and Observation
+        // shows up inside one -- present as a member, absent as a root, which is exactly the asymmetry the
+        // bench's UI encodes.
         var engine = new SearchEngineFactory(new SchemaProviderFactory()).Get(fhirVersion);
-        engine.Compartments.Should().NotBeNull();
+
+        foreach (var compartmentType in Enum.GetValues<CompartmentType>())
+        {
+            engine.Compartments.TryGetResourceTypes(compartmentType, out var members)
+                .Should().BeTrue($"the {compartmentType} compartment must be defined in {fhirVersion}");
+            members.Should().NotBeEmpty();
+        }
+
+        engine.Compartments.TryGetResourceTypes(CompartmentType.Patient, out var patientMembers).Should().BeTrue();
+        patientMembers.Should().Contain("Observation");
     }
 }

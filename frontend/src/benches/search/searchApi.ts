@@ -74,8 +74,17 @@ export async function runSearch(request: SearchRequest, signal: AbortSignal): Pr
   }
 
   if (!response.ok) {
-    const errorBody = json as { error?: string };
-    throw new Error(errorBody?.error ?? `Request failed with status ${response.status}`);
+    // Only `{ error: "..." }` is ours. Any other JSON error body -- a host ProblemDetails, a gateway envelope
+    // -- would collapse to a bare status number with the server's actual explanation parsed, in hand, and
+    // thrown away, which is strictly less than the non-JSON branch above manages. An empty-string `error`
+    // takes the same path: `??` passes it through and the banner renders blank.
+    const errorMessage = (json as { error?: unknown })?.error;
+    if (typeof errorMessage === 'string' && errorMessage.trim() !== '') {
+      throw new Error(errorMessage);
+    }
+    throw new Error(
+      `Request failed with status ${response.status} ${response.statusText}: ${JSON.stringify(json).slice(0, BODY_EXCERPT_LENGTH)}`,
+    );
   }
 
   // A 2xx of the wrong shape would otherwise be cast blind and blow up mid-render (`result.parameters.map`),
@@ -83,7 +92,7 @@ export async function runSearch(request: SearchRequest, signal: AbortSignal): Pr
   // React's render phase, where useSearchTrace's catch can't see it. One structural check is enough to turn
   // that into an ordinary reported error.
   const trace = json as SearchTraceResponse;
-  if (!trace || typeof trace !== 'object' || !Array.isArray(trace.parameters)) {
+  if (!trace || typeof trace !== 'object' || !Array.isArray(trace.parameters) || typeof trace.resourceType !== 'string') {
     throw new Error(
       `Expected a search trace but got ${JSON.stringify(json).slice(0, BODY_EXCERPT_LENGTH)}`,
     );
