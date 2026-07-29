@@ -3,8 +3,13 @@ namespace Ignixa.Lab.Functions.Models.Search;
 /// <summary>Serializable projection of <see cref="Ignixa.Search.Sql.Tracing.SearchTrace"/> for the Search
 /// bench UI. Mirrors the trace field-for-field, replacing the two non-serializable pieces (the live IR
 /// <c>Expression</c> graph and the plan's raw expression graph) with flattened row projections. Serialized
-/// as camelCase JSON (ASP.NET Core default).</summary>
+/// as camelCase JSON (ASP.NET Core default).
+///
+/// <see cref="FhirVersion"/> is the version actually compiled against, which is not always the one in the
+/// route: an unrecognized value falls back to R4 (see <see cref="Services.Search.SearchEngineFactory.Get"/>)
+/// rather than being rejected, and without this field a client has no way to notice the substitution.</summary>
 public sealed record SearchTraceResponse(
+    string FhirVersion,
     string ResourceType,
     IReadOnlyList<ParameterTraceDto> Parameters,
     QueryPlanDto? Plan,
@@ -17,6 +22,9 @@ public sealed record SearchTraceResponse(
 /// <see cref="Ignixa.Search.Parsing.ParameterTrace.DataType"/> directly. Null when the parameter never
 /// bound a value (an `Ignored`/`Failed` outcome). A chain reports its reference parameter's type
 /// ("Reference"); a composite reports its own declared type ("Composite"), not one component's.</summary>
+/// <summary><see cref="IrUnavailableReason"/> distinguishes the two ways <see cref="Ir"/> comes back empty:
+/// null means the parameter genuinely has no IR, non-null means the projector could not describe it and says
+/// why. Without it an undescribable expression is indistinguishable from an absent one.</summary>
 public sealed record ParameterTraceDto(
     int Ordinal,
     string Key,
@@ -25,7 +33,8 @@ public sealed record ParameterTraceDto(
     SyntaxNodeDto? ValueSyntax,
     IReadOnlyList<IrRowDto> Ir,
     string? DataType,
-    ParameterOutcomeDto Outcome);
+    ParameterOutcomeDto Outcome,
+    string? IrUnavailableReason);
 
 /// <summary>Serializable <see cref="Ignixa.Search.Expressions.Parsers.SyntaxNode"/>. Its <see cref="Span"/>
 /// is non-null (the syntax scanner always spans real text).</summary>
@@ -37,7 +46,7 @@ public sealed record SpanDto(string Origin, int Start, int Length);
 
 public sealed record IrRowDto(string Kind, string Text, int Depth);
 
-/// <summary><see cref="Kind"/> is "Compiled" | "Ignored" | "Failed". <see cref="Reason"/> carries the
+/// <summary><see cref="Kind"/> is "Compiled" | "Ignored" | "KnownMiss" | "Failed". <see cref="Reason"/> carries the
 /// Ignored reason or the Failed message; <see cref="Stage"/> is set only for Failed.</summary>
 public sealed record ParameterOutcomeDto(string Kind, string? Reason, string? Stage, SpanDto? Span);
 
@@ -61,7 +70,12 @@ public sealed record PlanExplainRowDto(
 /// structural CTE (Intersect/Union/Except/ChainJoin), or empty where nothing is attributable.</summary>
 public sealed record CteProvenanceDto(int CteIndex, int? ParameterOrdinal, IReadOnlyList<int> ContributingOrdinals, SpanDto? Span);
 
-public sealed record EmittedSqlDto(string Sql, IReadOnlyList<SqlTextRangeDto> Ranges);
+public sealed record EmittedSqlDto(string Sql, IReadOnlyList<SqlParameterDto> Parameters, IReadOnlyList<SqlTextRangeDto> Ranges);
+
+/// <summary>One bound parameter behind a <c>@pN</c> marker in <see cref="EmittedSqlDto.Sql"/>.
+/// <see cref="Value"/> is the value's <c>ToString()</c> for display — null only when the bound value itself
+/// is null.</summary>
+public sealed record SqlParameterDto(string Name, string? Value);
 
 /// <summary><see cref="Label"/> says which section this is (unique within one emitted statement) and,
 /// where a <see cref="PlanExplainRowDto"/> exists for it, equals that row's <see cref="PlanExplainRowDto.CanonicalLabel"/>.

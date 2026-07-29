@@ -173,7 +173,9 @@ public sealed class SuiteCatalogTests : IDisposable
     {
         var suites = CreateBundledCatalog().GetSuites();
 
-        suites.Should().HaveCount(86);
+        // Pins the bundled suite count so a package bump that silently adds or drops suites is a visible,
+        // deliberate edit here rather than an unnoticed change in what the app ships.
+        suites.Should().HaveCount(89);
     }
 
     [Fact]
@@ -503,7 +505,7 @@ public sealed class SuiteCatalogTests : IDisposable
     [Theory]
     [InlineData("system-level history returns a non-empty bundle", "rest.interaction.where(code='history-system').exists()", false)]
     [InlineData("type-level history returns a non-empty bundle", "type='Patient').interaction.where(code='history-type').exists()", false)]
-    [InlineData("instance history reflects create then update, newest first by default", "code='history-instance'", true)]
+    [InlineData("instance history reflects three versions, newest first by default", "code='history-instance'", true)]
     [InlineData("instance history with explicit ascending sort returns oldest first", "code='history-instance'", true)]
     [InlineData("instance history with explicit descending sort matches default order", "code='history-instance'", true)]
     [InlineData("history entries report a well-formed response.status for every version", "code='history-instance'", true)]
@@ -641,16 +643,22 @@ public sealed class SuiteCatalogTests : IDisposable
     [InlineData("Search/chaining-and-sort.json", "_total=accurate on the combined query reports the exact total", "_total", "HealthcareService")]
     [InlineData("Search/includes.json", "_summary=count excludes included resources from the reported total", "_summary", "Patient")]
     [InlineData("Search/includes.json", "_total=accurate excludes included resources from the reported total", "_total", "Patient")]
-    public void BundledSearchControlTests_RequireAdvertisedControl(
+    public void BundledSearchControlTests_DoNotGateOnAnUnadvertisableResultParameter(
         string relativePath,
         string testName,
         string control,
         string resourceType)
     {
+        // _sort/_summary/_total/_count are search RESULT parameters, not SearchParameter resources -- no
+        // conformant server declares them via searchParam.where(name=...), so gating a test on that produces
+        // an unsatisfiable requiresCapability: always skipped, never pass or fail. This guards against a
+        // bundled suite reintroducing that gate.
         var requirement = GetMetadataCapabilityRequirement(ReadBundledTest(relativePath, testName));
 
+        requirement.Should().NotContain($"searchParam.where(name='{control}')");
+        // The old resourceType-scoping gate (the part of requiresCapability ignixa-fhir#362 did NOT touch)
+        // should still be there -- only the unsatisfiable result-parameter gate above was the defect.
         requirement.Should().Contain($"type='{resourceType}'");
-        requirement.Should().Contain($"name='{control}'");
     }
 
     [Fact]
@@ -666,9 +674,17 @@ public sealed class SuiteCatalogTests : IDisposable
         GetMetadataCapabilityRequirement(tests[1]).Should().NotContain("type='Patient'");
         foreach (var test in tests)
         {
-            test["action"]!.AsArray()
+            var assertions = test["action"]!.AsArray()
                 .Select(action => action?["assert"])
                 .Where(assertion => assertion is not null)
+                .ToArray();
+
+            // The leading liveness check (HTTP 200) must stay a hard assertion: warning-only there would let
+            // these tests report `pass` against a server returning 500 to every request. Only the
+            // _include:iterate branch-visibility assertions that follow it are warning-only, since base
+            // CapabilityStatement has no precise iterate declaration to gate on.
+            (assertions[0]!["warningOnly"]?.GetValue<bool>() == true).Should().BeFalse();
+            assertions.Skip(1)
                 .Select(assertion => assertion!["warningOnly"]?.GetValue<bool>() == true)
                 .Should().OnlyContain(warningOnly => warningOnly);
         }
@@ -1142,7 +1158,7 @@ public sealed class SuiteCatalogTests : IDisposable
     {
         var test = ReadBundledTest(
             "Search/includes.json",
-            "Invalid target resource type on _include returns a Bad Request");
+            "Invalid target resource type on _include is handled (informational)");
         var assertions = FindAssertions(test);
 
         GetStringValue(test["description"]).Should().Contain("Prefer: handling=strict");

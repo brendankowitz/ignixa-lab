@@ -3,7 +3,8 @@
 ## Prerequisites
 
 - **.NET SDK 9** (pinned in `global.json`; roll-forward `latestFeature`).
-- **Node.js 20+** and npm.
+- **Node.js 22+** and npm. (22, not 20: `npm test` passes a glob to `node --test`, which Node 20 treats as a
+  literal path and fails on. Node 20 still builds the frontend, which is why the Pages workflow can pin it.)
 - **Azure Functions Core Tools v4** to run the backend locally (`func`).
 
 ## Backend

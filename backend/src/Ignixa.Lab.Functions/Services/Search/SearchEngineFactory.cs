@@ -35,17 +35,36 @@ public sealed class SearchEngineFactory(SchemaProviderFactory schemaProviderFact
     /// <summary>
     /// Gets the cached Search engine dependencies for the given FHIR version (case-insensitive; "STU3" and
     /// "R3" are synonyms, matching <see cref="SchemaProviderFactory"/>). Defaults to R4 for an unrecognized
-    /// value, same fallback <see cref="SchemaProviderFactory"/> uses.
+    /// value, same fallback <see cref="SchemaProviderFactory"/> uses. Callers that report the version back to
+    /// the user must echo <see cref="Resolve"/>, not their raw input — otherwise an unrecognized value is
+    /// silently served an R4 trace labelled with a version that was never consulted.
     /// </summary>
-    [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Instance method by design so it can be consumed via DI and mocked in tests.")]
-    public SearchEngine Get(string fhirVersion) => fhirVersion.ToUpperInvariant() switch
+    public SearchEngine Get(string fhirVersion) => Resolve(fhirVersion) switch
     {
-        "STU3" or "R3" => _stu3.Value,
-        "R4" => _r4.Value,
+        "STU3" => _stu3.Value,
         "R4B" => _r4B.Value,
         "R5" => _r5.Value,
         "R6" => _r6.Value,
+        // "R4" plus every unrecognized value, which Resolve has already folded to "R4".
         _ => _r4.Value,
+    };
+
+    /// <summary>Canonical name of the version <see cref="Get"/> would actually build for this input — its
+    /// canonical spelling when recognized (so "R3" resolves to "STU3" and "r4b" to "R4B", not the input
+    /// verbatim), otherwise "R4" (the fallback). This is the only version string safe to put in a response
+    /// body or an error message.</summary>
+    public static string Resolve(string fhirVersion) => TryNormalize(fhirVersion) ?? "R4";
+
+    /// <summary>Canonical name for a recognized version, or null when nothing matches. Distinct from
+    /// <see cref="Resolve"/> so a caller that wants to know whether the fallback fired can tell.</summary>
+    public static string? TryNormalize(string fhirVersion) => fhirVersion.ToUpperInvariant() switch
+    {
+        "STU3" or "R3" => "STU3",
+        "R4" => "R4",
+        "R4B" => "R4B",
+        "R5" => "R5",
+        "R6" => "R6",
+        _ => null,
     };
 
     private static SearchEngine Build(SchemaProviderFactory schemaProviderFactory, string version, FhirVersion fhirVersion)
@@ -55,7 +74,7 @@ public sealed class SearchEngineFactory(SchemaProviderFactory schemaProviderFact
         var definitionManager = new SearchParameterDefinitionManager(
             schema, NullLogger<SearchParameterDefinitionManager>.Instance);
 
-        var referenceParser = new ReferenceSearchValueParser(schema);
+        var referenceParser = new ReferenceSearchValueParser(schema, NullFhirBaseUriProvider.Instance);
         var searchParamExpressionParser = new SearchParameterExpressionParser(referenceParser, schema);
 
         ISearchParameterDefinitionManager.SearchableSearchParameterDefinitionManagerResolver resolver =

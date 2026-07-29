@@ -34,17 +34,20 @@ public static class EndpointClassifier
             "FhirPathMetadata" or "FhirPathStu3" or "FhirPathR4" or "FhirPathR4B"
                 or "FhirPathR5" or "FhirPathR6" => EndpointClass.Capability,
             // Fakes generation is likewise a single in-process unit of work per
-            // call with no outbound HTTP (no amplification risk) — the Run tier
-            // was never meant for this and was only hit because these endpoints
-            // fell through to the fail-safe default below.
-            "FakesMetadata" or "FakesPopulation" or "FakesScenario" or "FakesResource" => EndpointClass.Capability,
+            // call with no outbound HTTP (no amplification risk), so it belongs at
+            // the Capability tier rather than the fail-safe Run default.
+            "FakesMetadata" or "FakesPopulation" or "FakesScenario" or "FakesResource" or "FakesWorkflow" => EndpointClass.Capability,
             // Search tracing is likewise a single in-process compile call with no
-            // outbound HTTP — same tier as FhirPath/Fakes, not the Run tier's
-            // fail-safe default (which a debounced auto-run UI would exhaust in
-            // seconds).
-            "SearchTrace" => EndpointClass.Capability,
+            // outbound HTTP — same tier as FhirPath/Fakes. The Run tier is far too
+            // strict here: the bench auto-runs on a debounce, so it would exhaust
+            // that budget within seconds of typing.
+            "SearchTrace" or "SearchCompartmentTrace" or "SearchEverythingTrace" => EndpointClass.Capability,
             // Fail safe: an unrecognized (e.g. newly added) endpoint gets the
-            // strictest tier rather than silently running unlimited.
+            // strictest tier rather than silently running unlimited. Every
+            // HTTP-triggered [Function] in the assembly must still appear in some
+            // arm above — EndpointClassifierTests enforces that, so landing here is
+            // a test failure, not a quiet demotion. Non-HTTP triggers (the
+            // FhirPathWarmer timer) never reach this classifier and are exempt.
             _ => EndpointClass.Run,
         };
     }

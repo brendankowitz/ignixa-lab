@@ -72,4 +72,44 @@ public sealed class SearchEngineFactoryTests
         r3.Builder.Should().BeSameAs(stu3.Builder);
         lowerR4.Builder.Should().BeSameAs(factory.Get("R4").Builder);
     }
+
+    [Theory]
+    [InlineData("R4", "R4")]
+    [InlineData("r4", "R4")]
+    [InlineData("stu3", "STU3")]
+    [InlineData("R3", "STU3")]
+    [InlineData("r4b", "R4B")]
+    [InlineData("R6", "R6")]
+    public void Resolve_RecognizedVersion_ReturnsItsCanonicalName(string input, string expected)
+    {
+        SearchEngineFactory.Resolve(input).Should().Be(expected);
+        SearchEngineFactory.TryNormalize(input).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("R7")]
+    [InlineData("not-a-real-version")]
+    [InlineData("")]
+    public void Resolve_UnrecognizedVersion_FoldsToR4WhileTryNormalizeReportsTheMiss(string input)
+    {
+        // The pair is the point: Resolve names the version actually built (so a response or error message can
+        // never claim a version that was never consulted), TryNormalize still says the fallback fired.
+        SearchEngineFactory.Resolve(input).Should().Be("R4");
+        SearchEngineFactory.TryNormalize(input).Should().BeNull();
+    }
+
+    [Fact]
+    public void Resolve_AgreesWithGet_ForEverySupportedVersionAndTheFallback()
+    {
+        // Guards the one way these can silently diverge: adding a version to Get's switch without adding it
+        // to TryNormalize would serve that engine while labelling the response "R4".
+        var factory = new SearchEngineFactory(new SchemaProviderFactory());
+
+        foreach (var input in new[] { "STU3", "R3", "R4", "R4B", "R5", "R6", "R7", "nonsense" })
+        {
+            factory.Get(input).Builder.Should().BeSameAs(
+                factory.Get(SearchEngineFactory.Resolve(input)).Builder,
+                "Resolve('{0}') must name the same engine Get('{0}') builds", input);
+        }
+    }
 }
