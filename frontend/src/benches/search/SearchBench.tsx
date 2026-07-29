@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react';
+import { useEffect, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
 import { Card, ErrorBanner, Pills, type PillItem } from '../components/primitives';
 import { benchHeaderStyle, benchPageStyle, chipStyle, engineBadgeStyle, monoFont, sectionLabelStyle } from '../components/styles';
 import { useIsNarrowViewport } from '../../hooks/useIsNarrowViewport';
@@ -26,6 +26,7 @@ import {
   DEFAULT_RESOURCE_TYPE,
   everythingTypeFilterOptions,
   FHIR_VERSIONS,
+  isCompartmentRoot,
   RESOURCE_TYPES,
   searchModesFor,
   type CompartmentMemberType,
@@ -97,11 +98,54 @@ function planRowKindLabel(kind: string): string {
   return PLAN_ROW_KIND_LABELS[kind] ?? kind;
 }
 
-/** A node past this many direct children collapses by default (e.g. a wildcard compartment search's
- * `Union` of one leaf CTE per (resourceType, search-param) pair in the compartment definition — 76 for R4
- * Patient, all structurally identical `ParamSource`/`CompartmentSource` rows). Below this, seeing every
- * child at once is more useful than collapsing (an `Intersect`'s 2 operands, a chain's leaf + `ChainJoin`). */
+/** A node with more than this many direct children collapses by default — the case that motivates it is a
+ * wildcard compartment search, whose `Union` fans out to dozens of structurally identical
+ * `CompartmentSource` rows (one per distinct compartment search parameter, which the compiler groups down
+ * from the far larger set of (resourceType, parameter) pairs). At or below this, seeing every child at once
+ * is more useful than collapsing — an `Intersect`'s 2 operands, a chain's leaf + `ChainJoin`. */
 const MANY_CHILDREN_THRESHOLD = 8;
+
+/** A text-styled control. Rendered as a real `<button>` rather than a clickable `<span>` so it is reachable
+ * by keyboard and announced as actionable — the styling is stripped back to look like inline text, matching
+ * how `Pills` in `primitives.tsx` keeps its own controls operable. `aria-pressed` is set only for toggles;
+ * one-shot actions leave it undefined. */
+function TextAction({
+  onPress,
+  pressed,
+  title,
+  style,
+  children,
+}: {
+  onPress: () => void;
+  pressed?: boolean;
+  title?: string;
+  style?: CSSProperties;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      aria-pressed={pressed}
+      onClick={(event) => {
+        event.stopPropagation();
+        onPress();
+      }}
+      style={{
+        appearance: 'none',
+        border: 'none',
+        background: 'none',
+        padding: 0,
+        font: 'inherit',
+        color: 'inherit',
+        cursor: 'pointer',
+        ...style,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
 
 /** A kind chip (colored via {@link kindChipColors}) shared by `ExpressionParamBlock`'s IR-row kind and
  * `PlanRowView`'s plan-row kind, so the color lookup happens once per chip instead of twice. */
@@ -389,7 +433,7 @@ function PlanRowView({
       </span>
       <KindChip kind={row.kind} label={planRowKindLabel(row.kind)} />
       {/* A flex item's default min-width is its unwrapped content width, not 0 -- without min-width: 0 a long
-          body (e.g. a 76-way Union(cte0, cte1, ..., cte74) on a wildcard compartment search) pushes the row
+          body (e.g. the many-way Union(cte0, cte1, ...) on a wildcard compartment search) pushes the row
           wider instead of wrapping inside the card. */}
       <span
         style={{
@@ -468,19 +512,19 @@ function PlanRowTree({
           }}
         >
           {expanded ? (
-            node.children.map((child, index) => (
-              <PlanRowTree key={index} node={child} plan={plan} selection={selection} onSelect={onSelect} compact={compact} />
+            node.children.map((child) => (
+              // Keyed by canonical label, not array index: index keys make React reuse each PlanRowTree
+              // instance across unrelated traces, so a node expanded in one query stays expanded at that
+              // position in the next. Canonical labels are unique within a plan.
+              <PlanRowTree key={child.row.canonicalLabel} node={child} plan={plan} selection={selection} onSelect={onSelect} compact={compact} />
             ))
           ) : (
-            <span
-              onClick={(event: MouseEvent) => {
-                event.stopPropagation();
-                setManuallyExpanded(true);
-              }}
-              style={{ fontFamily: monoFont, fontSize: 11.5, color: 'var(--accent)', cursor: 'pointer' }}
+            <TextAction
+              onPress={() => setManuallyExpanded(true)}
+              style={{ fontFamily: monoFont, fontSize: 11.5, color: 'var(--accent)', textAlign: 'left' }}
             >
-              ▸ {node.children.length} sources (click to expand)
-            </span>
+              ▸ {node.children.length} sources (expand)
+            </TextAction>
           )}
         </div>
       ) : null}
@@ -518,14 +562,29 @@ export function SearchBench() {
     if (!searchModesFor(nextType).includes(searchMode)) {
       setSearchMode('type');
     }
+    // Member types are per-root (a Patient is not in the Encounter compartment), so a carried-over
+    // memberType can be absent from the new root's options -- which renders the Pills row with nothing
+    // highlighted while still issuing requests for the stale type. Fall back to the wildcard, which every
+    // root offers.
+    if (isCompartmentRoot(nextType) && !compartmentMemberOptions(nextType).includes(memberType)) {
+      setMemberType('*');
+    }
   };
+
+  // Which resource type the query string is compiled against, and so which parameters the Builder should
+  // offer. In a scoped compartment search that is the *member* type, not the root: the backend compiles
+  // `Patient/{id}/Observation?...` against Observation, so offering Patient's search parameters here would
+  // suggest terms that silently compile to nothing. A wildcard search has no single member type and does
+  // compile against the root.
+  const queryResourceType: ResourceType =
+    searchMode === 'compartment' && memberType !== '*' ? memberType : resourceType;
 
   const searchRequest: SearchRequest | null = (() => {
     if (searchMode === 'type') {
       return { mode: 'type', fhirVersion, resourceType, query };
     }
     if (searchMode === 'compartment') {
-      if (!compartmentId.trim()) {
+      if (!compartmentId.trim() || !isCompartmentRoot(resourceType)) {
         return null;
       }
       return { mode: 'compartment', fhirVersion, compartmentType: resourceType, compartmentId: compartmentId.trim(), memberType, query };
@@ -580,16 +639,35 @@ export function SearchBench() {
 
   const hasSelection = !isSelectionEmpty(selection);
 
-  // Computed outside the `searchMode !== 'everything'`-gated JSX below (which hides the whole "Search query"
-  // block, breadcrumb included, in $everything mode) so the `searchMode === 'everything'` branch here still
-  // type-checks -- inside that gate, control-flow narrowing has already excluded 'everything' from
-  // `searchMode`'s type, which is exactly what a naive inline ternary would trip on.
+  // The "Search query" block this labels is hidden entirely in $everything mode (which has no query string),
+  // so there is no 'everything' arm here.
   const searchQueryBreadcrumb =
     searchMode === 'compartment'
       ? `GET /${resourceType}/${compartmentId.trim() || '{id}'}/${memberType}?`
-      : searchMode === 'everything'
-        ? `GET /Patient/${everythingId.trim() || '{id}'}/$everything?`
-        : `GET /${resourceType}?`;
+      : `GET /${resourceType}?`;
+
+  // Non-null exactly when the compartment controls should render. Narrowing `resourceType` here (rather than
+  // at each use) is what lets `compartmentMemberOptions` take the stricter `CompartmentRoot`.
+  const compartmentRoot = isCompartmentRoot(resourceType) ? resourceType : null;
+
+  // Why nothing is being traced right now, or null when a request is in flight or done. Distinct from
+  // `error`: this is "waiting for you", not "something went wrong", and without it every pane falls back to
+  // its first-paint placeholder, which reads as a broken bench rather than an empty field.
+  const notReadyReason =
+    searchRequest !== null
+      ? null
+      : searchMode === 'compartment'
+        ? `Enter a ${resourceType} id to trace a compartment search.`
+        : 'Enter a Patient id to trace $everything.';
+
+  // Keyed off the mode, not off `parameters.length === 0`: a plain type search with an empty query box also
+  // returns zero parameters, and telling the user that is "a whole-compartment operation" is simply false.
+  const emptyParametersNote =
+    searchMode === 'everything'
+      ? 'No parameters — $everything is one whole operation, not a parameter-driven query.'
+      : searchMode === 'compartment'
+        ? 'No parameters — add a query above to filter within the compartment.'
+        : 'No parameters — add a query above.';
 
   return (
     <div style={benchPageStyle(1440, compact)}>
@@ -630,10 +708,11 @@ export function SearchBench() {
           <Pills items={RESOURCE_TYPE_ITEMS} activeId={resourceType} onChange={handleResourceTypeChange} />
         </div>
 
-        {searchMode === 'compartment' ? (
+        {searchMode === 'compartment' && compartmentRoot ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <span style={sectionLabelStyle}>{resourceType} id</span>
+            <label style={sectionLabelStyle} htmlFor="compartment-id">{resourceType} id</label>
             <input
+              id="compartment-id"
               value={compartmentId}
               onChange={(event) => setCompartmentId(event.target.value)}
               placeholder="example"
@@ -649,16 +728,17 @@ export function SearchBench() {
                 width: 140,
               }}
             />
-            <span
-              onClick={() => setCompartmentId('example')}
-              style={{ fontFamily: monoFont, fontSize: 11, color: 'var(--accent)', cursor: 'pointer' }}
+            <TextAction
+              onPress={() => setCompartmentId('example')}
+              title="Reset to the sample id"
+              style={{ fontFamily: monoFont, fontSize: 11, color: 'var(--accent)' }}
             >
               example
-            </span>
+            </TextAction>
             <div style={{ width: 1, height: 18, background: 'var(--border2)' }} />
             <span style={sectionLabelStyle}>within compartment, search</span>
             <Pills
-              items={compartmentMemberOptions(resourceType).map((type) => ({ id: type, label: type === '*' ? '* all types' : type }))}
+              items={compartmentMemberOptions(compartmentRoot).map((type) => ({ id: type, label: type === '*' ? '* all types' : type }))}
               activeId={memberType}
               onChange={setMemberType}
             />
@@ -668,8 +748,9 @@ export function SearchBench() {
         {searchMode === 'everything' ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <span style={sectionLabelStyle}>Patient id</span>
+              <label style={sectionLabelStyle} htmlFor="everything-patient-id">Patient id</label>
               <input
+                id="everything-patient-id"
                 value={everythingId}
                 onChange={(event) => setEverythingId(event.target.value)}
                 placeholder="example"
@@ -685,53 +766,60 @@ export function SearchBench() {
                   width: 140,
                 }}
               />
-              <span
-                onClick={() => setEverythingId('example')}
-                style={{ fontFamily: monoFont, fontSize: 11, color: 'var(--accent)', cursor: 'pointer' }}
+              <TextAction
+                onPress={() => setEverythingId('example')}
+                title="Reset to the sample id"
+                style={{ fontFamily: monoFont, fontSize: 11, color: 'var(--accent)' }}
               >
                 example
-              </span>
+              </TextAction>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            {/* A multi-select, so each chip is an independently toggleable button carrying its own pressed
+                state rather than one of a set of mutually exclusive Pills. */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }} role="group" aria-label="_type filter">
               <span style={sectionLabelStyle}>_type</span>
               {everythingTypeFilterOptions().map((type) => {
                 const active = typeFilter.includes(type);
                 return (
-                  <span
+                  <TextAction
                     key={type}
-                    onClick={() =>
+                    pressed={active}
+                    onPress={() =>
                       setTypeFilter((prev) => (active ? prev.filter((t) => t !== type) : [...prev, type]))
                     }
-                    style={{
-                      ...chipStyle(active ? 'var(--chip-vio-bg)' : 'var(--chip-gray-bg)', active ? 'var(--chip-vio-fg)' : 'var(--chip-gray2-fg)'),
-                      cursor: 'pointer',
-                    }}
+                    style={chipStyle(
+                      active ? 'var(--chip-vio-bg)' : 'var(--chip-gray-bg)',
+                      active ? 'var(--chip-vio-fg)' : 'var(--chip-gray2-fg)',
+                    )}
                   >
                     {type}
-                  </span>
+                  </TextAction>
                 );
               })}
               {typeFilter.length === 0 ? <span style={{ fontSize: 11, color: 'var(--text4)' }}>(all types)</span> : null}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <span style={sectionLabelStyle}>_since</span>
+              <label style={sectionLabelStyle} htmlFor="everything-since">_since</label>
               <input
+                id="everything-since"
                 value={since}
                 onChange={(event) => setSince(event.target.value)}
                 placeholder="2026-01-01T00:00:00Z"
                 spellCheck={false}
                 style={{ fontFamily: monoFont, fontSize: 11.5, padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border2)', background: 'var(--code)', color: 'var(--text)', width: 190 }}
               />
-              <span style={sectionLabelStyle}>start</span>
+              <label style={sectionLabelStyle} htmlFor="everything-start">start</label>
               <input
+                id="everything-start"
                 value={everythingStart}
                 onChange={(event) => setEverythingStart(event.target.value)}
                 placeholder="2020-01-01T00:00:00Z"
                 spellCheck={false}
                 style={{ fontFamily: monoFont, fontSize: 11.5, padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border2)', background: 'var(--code)', color: 'var(--text)', width: 190 }}
               />
-              <span style={sectionLabelStyle}>end</span>
+              <label style={sectionLabelStyle} htmlFor="everything-end">end</label>
               <input
+                id="everything-end"
                 value={everythingEnd}
                 onChange={(event) => setEverythingEnd(event.target.value)}
                 placeholder="2026-01-01T00:00:00Z"
@@ -801,9 +889,18 @@ export function SearchBench() {
 
         {searchMode !== 'everything' ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span style={sectionLabelStyle}>Builder</span>
-            <SearchQueryBuilder resourceType={resourceType} query={query} onQueryChange={setQuery} />
+            <span style={sectionLabelStyle}>
+              Builder{queryResourceType !== resourceType ? ` — ${queryResourceType} parameters` : ''}
+            </span>
+            {/* queryResourceType, not resourceType: in a scoped compartment search the query string is
+                compiled against the member type, so offering the root's parameters would suggest terms that
+                compile to nothing. */}
+            <SearchQueryBuilder resourceType={queryResourceType} query={query} onQueryChange={setQuery} />
           </div>
+        ) : null}
+
+        {notReadyReason ? (
+          <span style={{ fontSize: 11.5, color: 'var(--text4)' }}>{notReadyReason}</span>
         ) : null}
 
         {result && result.implicit.length > 0 ? (
@@ -847,9 +944,9 @@ export function SearchBench() {
               ))}
             </div>
           ) : result ? (
-            <span style={{ fontSize: 11, color: 'var(--text4)' }}>No parameters — this is a whole-compartment operation.</span>
+            <span style={{ fontSize: 11, color: 'var(--text4)' }}>{emptyParametersNote}</span>
           ) : (
-            <span style={{ fontSize: 11, color: 'var(--text4)' }}>No parameters parsed yet.</span>
+            <span style={{ fontSize: 11, color: 'var(--text4)' }}>{notReadyReason ?? 'No parameters parsed yet.'}</span>
           )}
         </Card>
 
@@ -862,9 +959,9 @@ export function SearchBench() {
               ))}
             </div>
           ) : result ? (
-            <span style={{ fontSize: 11, color: 'var(--text4)' }}>No parameters — this is a whole-compartment operation.</span>
+            <span style={{ fontSize: 11, color: 'var(--text4)' }}>{emptyParametersNote}</span>
           ) : (
-            <span style={{ fontSize: 11, color: 'var(--text4)' }}>No typed expression yet.</span>
+            <span style={{ fontSize: 11, color: 'var(--text4)' }}>{notReadyReason ?? 'No typed expression yet.'}</span>
           )}
         </Card>
 
@@ -872,8 +969,8 @@ export function SearchBench() {
           <span style={sectionLabelStyle}>SQL AST</span>
           {plan && planRowTree ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {planRowTree.tree.map((node, index) => (
-                <PlanRowTree key={index} node={node} plan={plan} selection={selection} onSelect={selectCteLabel} compact={compact} />
+              {planRowTree.tree.map((node) => (
+                <PlanRowTree key={node.row.canonicalLabel} node={node} plan={plan} selection={selection} onSelect={selectCteLabel} compact={compact} />
               ))}
               {planRowTree.extras.map((row, index) => (
                 <PlanRowView key={`extra-${index}`} row={row} plan={plan} selection={selection} onSelect={selectCteLabel} />

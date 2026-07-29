@@ -173,8 +173,8 @@ public sealed class SuiteCatalogTests : IDisposable
     {
         var suites = CreateBundledCatalog().GetSuites();
 
-        // Ignixa.TestScript.Suites 0.6.41-beta added three new Search suites (last-updated, projection,
-        // query-composition) on top of the 86 bundled at 0.6.28-beta.
+        // Pins the bundled suite count so a package bump that silently adds or drops suites is a visible,
+        // deliberate edit here rather than an unnoticed change in what the app ships.
         suites.Should().HaveCount(89);
     }
 
@@ -651,9 +651,8 @@ public sealed class SuiteCatalogTests : IDisposable
     {
         // _sort/_summary/_total/_count are search RESULT parameters, not SearchParameter resources -- no
         // conformant server declares them via searchParam.where(name=...), so gating a test on that produces
-        // an unsatisfiable requiresCapability (always skipped, never pass/fail). ignixa-fhir#362 removed this
-        // exact defect from the bundled suites (verified: CI corpus skips fell 217 -> 210); this guards
-        // against it reappearing.
+        // an unsatisfiable requiresCapability: always skipped, never pass or fail. This guards against a
+        // bundled suite reintroducing that gate.
         var requirement = GetMetadataCapabilityRequirement(ReadBundledTest(relativePath, testName));
 
         requirement.Should().NotContain($"searchParam.where(name='{control}')");
@@ -680,9 +679,9 @@ public sealed class SuiteCatalogTests : IDisposable
                 .Where(assertion => assertion is not null)
                 .ToArray();
 
-            // ignixa-fhir#362: the liveness check (HTTP 200) is now a hard assertion -- these tests used to
-            // report `pass` unconditionally, even against a server returning 500 to every request. Only the
-            // _include:iterate branch-visibility assertions that follow it stay warning-only, since base
+            // The leading liveness check (HTTP 200) must stay a hard assertion: warning-only there would let
+            // these tests report `pass` against a server returning 500 to every request. Only the
+            // _include:iterate branch-visibility assertions that follow it are warning-only, since base
             // CapabilityStatement has no precise iterate declaration to gate on.
             (assertions[0]!["warningOnly"]?.GetValue<bool>() == true).Should().BeFalse();
             assertions.Skip(1)

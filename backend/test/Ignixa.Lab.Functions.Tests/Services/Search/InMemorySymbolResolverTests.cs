@@ -62,4 +62,69 @@ public sealed class InMemorySymbolResolverTests
         // Each registry assigns from its own sequence; a shared counter is a bug.
         typeId.Should().Be(paramId);
     }
+
+    [Fact]
+    public async Task GetSystemIdAsync_KnownSystem_ResolvesStably()
+    {
+        var resolver = new InMemorySymbolResolver();
+
+        var first = await resolver.GetSystemIdAsync("http://loinc.org", CancellationToken.None);
+        var second = await resolver.GetSystemIdAsync("http://loinc.org", CancellationToken.None);
+
+        first.Should().NotBeNull();
+        second.Should().Be(first);
+    }
+
+    [Fact]
+    public async Task GetSystemIdAsync_UnknownSystem_DeclinesSoTheCompilerCanReportAKnownMiss()
+    {
+        // Null is not a failure here -- it is the real answer a server gives for a system absent from its
+        // System table, and it is what lowers the parameter to an always-false predicate the trace surfaces
+        // as ParameterOutcome.KnownMiss. Always resolving would make the bench claim every system exists.
+        var resolver = new InMemorySymbolResolver();
+
+        var id = await resolver.GetSystemIdAsync("http://not-a-real-system.example", CancellationToken.None);
+
+        id.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetQuantityCodeIdAsync_KnownAndUnknownCodes_ResolveAndDeclineRespectively()
+    {
+        var resolver = new InMemorySymbolResolver();
+
+        var known = await resolver.GetQuantityCodeIdAsync("mm[Hg]", CancellationToken.None);
+        var unknown = await resolver.GetQuantityCodeIdAsync("not-a-ucum-code", CancellationToken.None);
+
+        known.Should().NotBeNull();
+        unknown.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task SystemAndQuantityCodeIds_AreIndependentSequences()
+    {
+        var resolver = new InMemorySymbolResolver();
+
+        var systemId = await resolver.GetSystemIdAsync("http://loinc.org", CancellationToken.None);
+        var codeId = await resolver.GetQuantityCodeIdAsync("mm[Hg]", CancellationToken.None);
+
+        systemId.Should().Be(codeId);
+    }
+
+    [Fact]
+    public async Task DecliningASystem_DoesNotBurnAnIdForTheNextKnownOne()
+    {
+        // The decline happens before GetOrAdd, so an unknown system must not advance the counter -- otherwise
+        // ids would depend on how many unknown systems a query happened to mention.
+        var resolver = new InMemorySymbolResolver();
+
+        await resolver.GetSystemIdAsync("http://unknown-a.example", CancellationToken.None);
+        await resolver.GetSystemIdAsync("http://unknown-b.example", CancellationToken.None);
+        var first = await resolver.GetSystemIdAsync("http://loinc.org", CancellationToken.None);
+
+        var fresh = new InMemorySymbolResolver();
+        var baseline = await fresh.GetSystemIdAsync("http://loinc.org", CancellationToken.None);
+
+        first.Should().Be(baseline);
+    }
 }

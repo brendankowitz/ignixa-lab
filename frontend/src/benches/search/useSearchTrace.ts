@@ -37,7 +37,10 @@ export function useSearchTrace(request: SearchRequest | null): SearchTraceState 
       runSearch(request, controller.signal)
         .then((result) => setState({ result, error: null, isLoading: false }))
         .catch((error: unknown) => {
-          if (error instanceof DOMException && error.name === 'AbortError') {
+          // Ask our own controller, not the error's name. Any AbortError we did not cause (a browser-imposed
+          // abort on navigation, or a timeout signal composed in later) would otherwise take this early
+          // return and strand `isLoading: true` forever, since no new effect run follows to clear it.
+          if (controller.signal.aborted) {
             return;
           }
           setState({ result: null, error: getErrorMessage(error), isLoading: false });

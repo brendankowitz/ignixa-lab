@@ -1,8 +1,10 @@
+using System.Text.RegularExpressions;
 using Ignixa.Lab.Functions.Models.Search;
 using Ignixa.Lab.Functions.Services.Search;
 using Ignixa.Search.Expressions;
 using Ignixa.Search.Parsing;
 using Ignixa.Search.Sql.Tracing;
+using Ignixa.Serialization.Abstractions;
 using Ignixa.Specification.ValueSets.Normative;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -18,10 +20,18 @@ namespace Ignixa.Lab.Functions.Functions;
 /// resource — this is bench tooling, so no OperationOutcome wrapping). Supports the same FHIR version set
 /// as <see cref="Services.FhirPath.SchemaProviderFactory"/> (STU3, R4, R4B, R5, R6) via
 /// <see cref="SearchEngineFactory.Get"/>, which defaults an unrecognized value to R4 rather than rejecting
-/// the request — same permissive fallback the rest of this app uses for FHIR version strings.
+/// the request — same permissive fallback the rest of this app uses for FHIR version strings. The version
+/// actually used comes back as <see cref="SearchTraceResponse.FhirVersion"/> so that fallback is visible
+/// rather than silent.
 /// </summary>
-public sealed class SearchFunctions(ILogger<SearchFunctions> logger, SearchEngineFactory engineFactory)
+public sealed partial class SearchFunctions(ILogger<SearchFunctions> logger, SearchEngineFactory engineFactory)
 {
+    /// <summary>The FHIR <c>id</c> grammar. Ids reach the emitted SQL as bound parameters, so this is not a
+    /// injection guard — it is the same "reject what can never match rather than returning a confidently
+    /// wrong 200" rule the resource-type and compartment-membership checks below apply.</summary>
+    [GeneratedRegex(@"^[A-Za-z0-9\-\.]{1,64}$")]
+    private static partial Regex FhirIdPattern { get; }
+
     [Function("SearchTrace")]
     public Task<IActionResult> Trace(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", "options", Route = "search/{fhirVersion}/{resourceType}")] HttpRequest request,
@@ -34,10 +44,7 @@ public sealed class SearchFunctions(ILogger<SearchFunctions> logger, SearchEngin
             return Task.FromResult<IActionResult>(new BadRequestObjectResult(new { error = "A resource type is required." }));
         }
 
-        var rawQuery = request.QueryString.HasValue
-            ? request.QueryString.Value!.TrimStart('?')
-            : string.Empty;
-        var parameters = new QueryParameterParser().Parse(rawQuery);
+        var parameters = ParseQuery(request);
 
         return CompileAndRespondAsync(fhirVersion, resourceType, parameters, operationExpression: null, cancellationToken);
     }
@@ -50,7 +57,9 @@ public sealed class SearchFunctions(ILogger<SearchFunctions> logger, SearchEngin
         // declaration order) and does not re-rank an ambiguous match by literal-vs-parameter specificity the
         // way plain ASP.NET Core MVC would, so without this constraint "Patient/example/$everything" silently
         // lands here instead of SearchEverythingTrace. The regex excludes only the literal "$everything";
-        // every real resource type and the "*" wildcard still match freely.
+        // every real resource type and the "*" wildcard still match freely. SearchFunctionsRouteDispatchTests
+        // pins the mutual exclusivity in both registration orders, so neither premise has to be taken on
+        // trust.
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", "options", Route = "search/{fhirVersion}/{compartmentType}/{compartmentId}/{resourceType:regex(^(?!\\$everything$).+$)}")] HttpRequest request,
         string fhirVersion,
         string compartmentType,
@@ -58,39 +67,45 @@ public sealed class SearchFunctions(ILogger<SearchFunctions> logger, SearchEngin
         string resourceType,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(compartmentId))
+        if (!TryValidateFhirId(compartmentId, "compartment id", out var trimmedCompartmentId, out var idError))
         {
-            return new BadRequestObjectResult(new { error = "A compartment id is required." });
+            return new BadRequestObjectResult(new { error = idError });
         }
 
-        // Enum.TryParse(ignoreCase: true) alone accepts numeric strings too (e.g. "999" parses as a
-        // valid-looking-but-undefined enum value) -- IsDefined catches that. Capturing the parsed value (not
-        // discarding it) lets normalizedCompartmentType below pass the canonical name downstream instead of
-        // the raw string, so e.g. lowercase "patient" doesn't sail past this check only to 400 later via a
-        // different, less clear error out of CompartmentSearchExpression.
-        if (!Enum.TryParse<CompartmentType>(compartmentType, ignoreCase: true, out var parsedCompartmentType) || !Enum.IsDefined(parsedCompartmentType))
+        // Match on the enum's names rather than Enum.TryParse, which accepts far more than a compartment
+        // name: any numeric string in range ("3" parses to Practitioner) and any comma-separated combination
+        // ("Patient, Encounter" OR-parses to Practitioner), both of which Enum.IsDefined then waves through
+        // because the *result* is a defined value. That silently traced a different compartment than the one
+        // in the URL and returned 200 -- the exact "confidently wrong 200" the checks in this file exist to
+        // prevent. Name-matching also gives us the canonical casing to pass downstream, so lowercase
+        // "patient" is normalized here rather than 400ing later with a less clear error.
+        var normalizedCompartmentType = Enum.GetNames<CompartmentType>()
+            .FirstOrDefault(name => name.Equals(compartmentType, StringComparison.OrdinalIgnoreCase));
+        if (normalizedCompartmentType is null)
         {
             return new BadRequestObjectResult(new { error = $"'{compartmentType}' is not a valid FHIR compartment type." });
         }
-        var normalizedCompartmentType = parsedCompartmentType.ToString();
+        var parsedCompartmentType = Enum.Parse<CompartmentType>(normalizedCompartmentType);
 
         // "*" (Patient/{id}/*) means "every resource type in the compartment" -- null filteredResourceTypes
-        // is what CompartmentSearchExpression reads as that wildcard. A specific type narrows to just it.
-        // The resource type passed to the compiler for a wildcard is the compartment root itself (there is
-        // no single member type to name); for a scoped search it's the actual member type being searched.
+        // is what the compiler reads as that wildcard. A specific type narrows to just it. The resource type
+        // passed to the compiler for a wildcard is the compartment root itself (there is no single member
+        // type to name); for a scoped search it's the actual member type being searched.
         var wildcard = resourceType == "*";
         var filteredResourceTypes = wildcard ? null : new HashSet<string> { resourceType };
         var compileResourceType = wildcard ? normalizedCompartmentType : resourceType;
 
         if (!wildcard)
         {
-            // Confirmed live: CompartmentSearchExpression does NOT reject a resourceType that's a real FHIR
-            // resource but simply not a member of this compartment (e.g. Patient is not a member of the
-            // Encounter compartment) -- it happily compiles a plan/SQL with a literal `1 = 0` folded into the
-            // WHERE clause (the compartment-linking search parameter for that pair just doesn't exist) and
-            // returns 200 with no Failure set. That's exactly the "confidently wrong 200" CompileAndRespondAsync's
-            // own resourceType check exists to prevent for the top-level type -- reject it here the same way,
-            // before compiling, using the compartment definition manager as the source of truth for membership.
+            // Nothing in the compiler rejects a resourceType that is a real FHIR resource but simply not a
+            // member of this compartment (e.g. Patient is not a member of the Encounter compartment): the
+            // lowering stage compiles it straight through to a plan whose WHERE clause folds to a literal
+            // "1 = 0" -- the compartment-linking search parameter for that pair just doesn't exist -- and
+            // returns 200 with no Failure set. That is the same confidently-wrong 200 CompileAndRespondAsync's
+            // own resourceType check prevents one level up, so reject it here the same way, before compiling,
+            // using the compartment definition manager as the source of truth for membership. (Stated as an
+            // invariant deliberately: the compiler has enforced neither behaviour consistently across
+            // versions -- 0.6.28 threw here instead of folding -- so what matters is that *we* enforce it.)
             var membershipEngine = engineFactory.Get(fhirVersion);
             if (!membershipEngine.Compartments.TryGetResourceTypes(parsedCompartmentType, out var memberResourceTypes) ||
                 !memberResourceTypes.Contains(resourceType))
@@ -99,12 +114,8 @@ public sealed class SearchFunctions(ILogger<SearchFunctions> logger, SearchEngin
             }
         }
 
-        var rawQuery = request.QueryString.HasValue
-            ? request.QueryString.Value!.TrimStart('?')
-            : string.Empty;
-        var parameters = new QueryParameterParser().Parse(rawQuery);
-
-        var operationExpression = new CompartmentSearchExpression(normalizedCompartmentType, compartmentId.Trim(), filteredResourceTypes);
+        var parameters = ParseQuery(request);
+        var operationExpression = new CompartmentSearchExpression(normalizedCompartmentType, trimmedCompartmentId, filteredResourceTypes);
 
         return await CompileAndRespondAsync(fhirVersion, compileResourceType, parameters, operationExpression, cancellationToken);
     }
@@ -116,31 +127,17 @@ public sealed class SearchFunctions(ILogger<SearchFunctions> logger, SearchEngin
         string patientId,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(patientId))
+        if (!TryValidateFhirId(patientId, "patient id", out var trimmedPatientId, out var idError))
         {
-            return new BadRequestObjectResult(new { error = "A patient id is required." });
+            return new BadRequestObjectResult(new { error = idError });
         }
 
-        HashSet<string>? filteredResourceTypes = null;
-        if (request.Query.TryGetValue("_type", out var typeValues) && !string.IsNullOrWhiteSpace(typeValues.ToString()))
-        {
-            filteredResourceTypes = typeValues.ToString()
-                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .ToHashSet();
+        var engine = engineFactory.Get(fhirVersion);
+        var resolvedVersion = SearchEngineFactory.Resolve(fhirVersion);
 
-            // Same "reject unknown things with a 400" philosophy CompileAndRespondAsync's own resourceType
-            // check and the compartment route's member-resourceType check already apply -- an unrecognized
-            // _type value would otherwise sail straight into PatientEverythingExpression and just never match
-            // anything, a confidently wrong 200 rather than a 400 for a tool whose whole job is trustworthy
-            // tracing.
-            var engineForTypeCheck = engineFactory.Get(fhirVersion);
-            var unknownTypes = filteredResourceTypes
-                .Where(type => !engineForTypeCheck.SearchParameters.TryGetSearchParameters(type, out _))
-                .ToArray();
-            if (unknownTypes.Length > 0)
-            {
-                return new BadRequestObjectResult(new { error = $"'_type' contains unsupported resource type(s) for {fhirVersion}: {string.Join(", ", unknownTypes)}." });
-            }
+        if (!TryParseTypeFilter(request, engine, resolvedVersion, out var filteredResourceTypes, out var typeError))
+        {
+            return new BadRequestObjectResult(new { error = typeError });
         }
 
         if (!TryParseOptionalDate(request, "_since", out var sinceDate, out var sinceError))
@@ -158,6 +155,13 @@ public sealed class SearchFunctions(ILogger<SearchFunctions> logger, SearchEngin
             return new BadRequestObjectResult(new { error = endError });
         }
 
+        // Independently valid, jointly impossible: an inverted window compiles to a plan that can never
+        // match, which is the same class of confidently-wrong 200 as every other check here.
+        if (startDate is { } start && endDate is { } end && start > end)
+        {
+            return new BadRequestObjectResult(new { error = $"'start' ({start:O}) is after 'end' ({end:O})." });
+        }
+
         var includeReferencedResources = true;
         if (request.Query.TryGetValue("includeReferencedResources", out var includeValues) && !string.IsNullOrWhiteSpace(includeValues.ToString()))
         {
@@ -167,13 +171,104 @@ public sealed class SearchFunctions(ILogger<SearchFunctions> logger, SearchEngin
             }
         }
 
-        var operationExpression = new PatientEverythingExpression(patientId.Trim(), startDate, endDate, sinceDate, filteredResourceTypes, includeReferencedResources);
+        var operationExpression = new PatientEverythingExpression(trimmedPatientId, startDate, endDate, sinceDate, filteredResourceTypes, includeReferencedResources);
 
         // $everything isn't parameter-driven -- there's no query string for QueryParameterParser to parse,
         // every option above became a typed constructor argument on the expression instead. The resource
         // type the compiler compiles against is always "Patient", the operation's anchor type; this route
-        // only ever accepts Patient (there is no EncounterEverythingExpression or similar in the library).
+        // only ever accepts Patient (PatientEverythingExpression is the library's only $everything
+        // expression -- IExpressionVisitor declares a single VisitPatientEverything).
         return await CompileAndRespondAsync(fhirVersion, "Patient", parameters: [], operationExpression, cancellationToken);
+    }
+
+    private static IReadOnlyList<QueryParameter> ParseQuery(HttpRequest request)
+    {
+        var rawQuery = request.QueryString.HasValue
+            ? request.QueryString.Value!.TrimStart('?')
+            : string.Empty;
+        return new QueryParameterParser().Parse(rawQuery);
+    }
+
+    private static bool TryValidateFhirId(string? id, string label, out string trimmed, out string? error)
+    {
+        trimmed = id?.Trim() ?? string.Empty;
+        error = null;
+
+        if (string.IsNullOrWhiteSpace(trimmed))
+        {
+            error = $"A {label} is required.";
+            return false;
+        }
+
+        if (!FhirIdPattern.IsMatch(trimmed))
+        {
+            error = $"'{trimmed}' is not a valid FHIR id (expected 1-64 characters from A-Z, a-z, 0-9, '-' and '.').";
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>Parses <c>_type</c> into the expression's filter set. Null means "no filter" — both when the
+    /// parameter is absent and when it holds nothing but separators (<c>?_type=,</c>), which is the same
+    /// request in every respect that matters.</summary>
+    private static bool TryParseTypeFilter(
+        HttpRequest request,
+        SearchEngine engine,
+        string resolvedVersion,
+        out HashSet<string>? filteredResourceTypes,
+        out string? error)
+    {
+        filteredResourceTypes = null;
+        error = null;
+
+        if (!request.Query.TryGetValue("_type", out var typeValues) || string.IsNullOrWhiteSpace(typeValues.ToString()))
+        {
+            return true;
+        }
+
+        var requestedTypes = typeValues.ToString()
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToHashSet(StringComparer.Ordinal);
+        if (requestedTypes.Count == 0)
+        {
+            return true;
+        }
+
+        // Two checks, not one. Existence catches a typo; Patient-compartment membership catches a real
+        // resource type that $everything can still never return -- the lowering folds a non-member to an
+        // always-false predicate, and because $everything reports zero Parameters that never surfaces as a
+        // KnownMiss chip, only as a "1 = 0" in the SQL. Same standard the compartment route applies to its
+        // member type. Note this is about _type specifically: referenced Practitioner/Organization/Location/
+        // Medication resources are pulled in by includeReferencedResources, not by naming them in _type.
+        var unknownTypes = requestedTypes
+            .Where(type => !engine.SearchParameters.TryGetSearchParameters(type, out _))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        if (unknownTypes.Length > 0)
+        {
+            error = $"'_type' contains unsupported resource type(s) for {resolvedVersion}: {string.Join(", ", unknownTypes)}.";
+            return false;
+        }
+
+        if (!engine.Compartments.TryGetResourceTypes(CompartmentType.Patient, out var patientMembers))
+        {
+            error = $"The Patient compartment is not defined for {resolvedVersion}.";
+            return false;
+        }
+
+        var nonMembers = requestedTypes
+            .Where(type => !patientMembers.Contains(type))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        if (nonMembers.Length > 0)
+        {
+            error = $"'_type' contains resource type(s) that are not members of the Patient compartment: {string.Join(", ", nonMembers)}.";
+            return false;
+        }
+
+        filteredResourceTypes = requestedTypes;
+        return true;
     }
 
     private static bool TryParseOptionalDate(HttpRequest request, string queryKey, out DateTimeOffset? value, out string? error)
@@ -211,7 +306,7 @@ public sealed class SearchFunctions(ILogger<SearchFunctions> logger, SearchEngin
     // compiles a full plan and SQL against `dbo.Resource WHERE ResourceTypeId = @p0` for an ID that will
     // never match anything -- a confidently wrong 200, not a 400, for exactly the tool whose whole job is to
     // be trusted provenance. Reject it here instead, the same way an unknown search parameter is already
-    // rejected per-parameter deeper in the pipeline. Shared by every route below (type/compartment/
+    // rejected per-parameter deeper in the pipeline. Shared by every route above (type/compartment/
     // $everything all pass the resource type they're compiling against).
     private async Task<IActionResult> CompileAndRespondAsync(
         string fhirVersion,
@@ -221,10 +316,11 @@ public sealed class SearchFunctions(ILogger<SearchFunctions> logger, SearchEngin
         CancellationToken cancellationToken)
     {
         var engine = engineFactory.Get(fhirVersion);
+        var resolvedVersion = SearchEngineFactory.Resolve(fhirVersion);
 
         if (!engine.SearchParameters.TryGetSearchParameters(resourceType, out _))
         {
-            return new BadRequestObjectResult(new { error = $"'{resourceType}' is not a supported FHIR resource type for {fhirVersion}." });
+            return new BadRequestObjectResult(new { error = $"'{resourceType}' is not a supported FHIR resource type for {resolvedVersion}." });
         }
 
         var resolver = new InMemorySymbolResolver();
@@ -244,17 +340,41 @@ public sealed class SearchFunctions(ILogger<SearchFunctions> logger, SearchEngin
         }
         catch (OperationCanceledException)
         {
+            // Before the catches below, so a client disconnect (TaskCanceledException derives from this)
+            // isn't reported back as the client's malformed query.
             throw;
+        }
+        catch (Exception ex) when (ex is FhirException or FormatException)
+        {
+            // Input the compiler rejects outright rather than recording as trace data -- e.g.
+            // BadSearchRequestException ("The date time string 'notadate' is not in a correct format.") for a
+            // malformed value. These messages are written for the person who typed the query, so echoing them
+            // is the useful answer for a bench.
+            logger.LogInformation(ex, "Rejected search trace for {FhirVersion}/{ResourceType}", resolvedVersion, resourceType);
+            return new BadRequestObjectResult(new { error = ex.Message });
+        }
+        catch (NotSupportedException ex)
+        {
+            // A query shape the alpha SQL compiler has not implemented yet. Still the caller's input, so 400
+            // rather than 500 -- but with our own wording: these messages are addressed to the library's
+            // maintainers and have been observed carrying internal repo paths, which should not be echoed to
+            // an anonymous caller. The detail stays in the log.
+            logger.LogWarning(ex, "Unsupported search shape for {FhirVersion}/{ResourceType}", resolvedVersion, resourceType);
+            return new BadRequestObjectResult(new { error = "This query uses a shape the SQL compiler does not support yet." });
         }
         catch (Exception ex)
         {
-            // SearchCompiler records Resolve/Lower/Emit failures as trace data rather than throwing; a throw
-            // here is an unexpected shape (e.g. a malformed query the parser rejected outright). Surface it
-            // as a 400 rather than a 500, consistent with the bench's plain-JSON error convention.
-            logger.LogWarning(ex, "Search trace failed for {FhirVersion}/{ResourceType}", fhirVersion, resourceType);
-            return new BadRequestObjectResult(new { error = ex.Message });
+            // Anything else is a fault on our side, not the caller's. It used to be reported as a 400 with
+            // ex.Message, which meant a version-skewed deployment (MissingMethodException/TypeLoadException
+            // after a package bump) told the user their query was invalid, echoed assembly identities back to
+            // an anonymous caller, and -- being a warning-level 4xx -- tripped no failure-rate alert.
+            logger.LogError(ex, "Unexpected failure compiling search trace for {FhirVersion}/{ResourceType}", resolvedVersion, resourceType);
+            return new ObjectResult(new { error = "The search trace could not be compiled due to an internal error." })
+            {
+                StatusCode = StatusCodes.Status500InternalServerError,
+            };
         }
 
-        return new OkObjectResult(SearchTraceMapper.ToResponse(trace, resourceType));
+        return new OkObjectResult(SearchTraceMapper.ToResponse(trace, resolvedVersion, resourceType));
     }
 }

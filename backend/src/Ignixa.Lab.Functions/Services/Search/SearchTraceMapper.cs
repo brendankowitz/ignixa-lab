@@ -12,11 +12,19 @@ namespace Ignixa.Lab.Functions.Services.Search;
 /// this only translates shapes and projects the two non-serializable pieces.</summary>
 public static class SearchTraceMapper
 {
-    public static SearchTraceResponse ToResponse(SearchTrace trace, string requestedResourceType)
+    /// <param name="fhirVersion">The version actually compiled against (<see cref="SearchEngineFactory.Resolve"/>),
+    /// not the caller's raw route value — see <see cref="SearchTraceResponse.FhirVersion"/>.</param>
+    /// <param name="requestedResourceType">The type passed to <c>SearchCompiler.CompileAsync</c>. Only used
+    /// if the trace comes back without one, which the <c>CompileAsync</c> entry point this app uses should
+    /// never do (it null-checks its <c>resourceType</c> and echoes it unmodified; only the
+    /// <c>CompileFromOptionsAsync</c> overload normalizes empty to null to mark a system-level search). Kept
+    /// as a defensive echo of an already-validated value rather than emitting a null resource type.</param>
+    public static SearchTraceResponse ToResponse(SearchTrace trace, string fhirVersion, string requestedResourceType)
     {
         ArgumentNullException.ThrowIfNull(trace);
 
         return new SearchTraceResponse(
+            fhirVersion,
             trace.ResourceType ?? requestedResourceType,
             trace.Parameters.Select(ToParameterDto).ToList(),
             trace.Plan is null ? null : ToPlanDto(trace.Plan),

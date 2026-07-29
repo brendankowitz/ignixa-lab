@@ -2,8 +2,70 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildUrl } from './searchApi.ts';
+import { buildUrl, runSearch } from './searchApi.ts';
 import type { SearchRequest } from './searchTypes.ts';
+
+const TYPE_REQUEST: SearchRequest = { mode: 'type', fhirVersion: 'R4', resourceType: 'Patient', query: 'name=Smith' };
+
+/** Runs `runSearch` against a stubbed `fetch` returning `body` with `status`, restoring the global after. */
+async function runWithStubbedFetch(body: string, status = 200, statusText = 'OK'): Promise<unknown> {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (() =>
+    Promise.resolve({
+      ok: status >= 200 && status < 300,
+      status,
+      statusText,
+      text: () => Promise.resolve(body),
+    })) as unknown as typeof globalThis.fetch;
+  try {
+    return await runSearch(TYPE_REQUEST, new AbortController().signal);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+}
+
+test('runSearch returns the parsed trace for a well-formed 200', async () => {
+  const result = await runWithStubbedFetch(
+    JSON.stringify({ fhirVersion: 'R4', resourceType: 'Patient', parameters: [], implicit: [] }),
+  );
+
+  assert.equal((result as { resourceType: string }).resourceType, 'Patient');
+});
+
+test('runSearch surfaces the backend\'s { error } body on a non-2xx', async () => {
+  await assert.rejects(
+    runWithStubbedFetch(JSON.stringify({ error: "'Nope' is not a supported FHIR resource type for R4." }), 400, 'Bad Request'),
+    /is not a supported FHIR resource type/,
+  );
+});
+
+test('runSearch quotes the body when a 200 is not JSON, rather than reporting "failed with status 200"', async () => {
+  // The misconfigured-VITE_API_BASE_URL case: /api/... falls through to the SPA's index.html, which answers
+  // 200 with HTML. Reporting only the status produces a self-contradicting, unactionable message.
+  await assert.rejects(
+    runWithStubbedFetch('<!doctype html><title>app</title>'),
+    (error: Error) => {
+      assert.match(error.message, /non-JSON response \(HTTP 200\)/);
+      assert.match(error.message, /VITE_API_BASE_URL/);
+      assert.match(error.message, /<!doctype html>/);
+      return true;
+    },
+  );
+});
+
+test('runSearch quotes the body when a non-2xx is not JSON', async () => {
+  await assert.rejects(
+    runWithStubbedFetch('<html>502 Bad Gateway</html>', 502, 'Bad Gateway'),
+    /502 Bad Gateway.*502 Bad Gateway/s,
+  );
+});
+
+test('runSearch rejects a 200 whose body is not a search trace', async () => {
+  // Without the shape check this is cast blind and throws inside React's render phase instead, which
+  // unmounts the bench to a blank page rather than showing the error banner.
+  await assert.rejects(runWithStubbedFetch(JSON.stringify({ unexpected: true })), /Expected a search trace/);
+  await assert.rejects(runWithStubbedFetch('null'), /Expected a search trace/);
+});
 
 test('buildUrl (type mode) builds /api/search/{fhirVersion}/{resourceType}?{query}', () => {
   const request: SearchRequest = { mode: 'type', fhirVersion: 'R4', resourceType: 'Patient', query: 'name=Smith' };

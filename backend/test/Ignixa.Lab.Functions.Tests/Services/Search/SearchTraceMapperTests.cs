@@ -22,7 +22,7 @@ public sealed class SearchTraceMapperTests
             [Trace(0, "name", "Smith", new ParameterOutcome.Compiled())],
             Plan: null, Sql: null);
 
-        var response = SearchTraceMapper.ToResponse(trace, "Patient");
+        var response = SearchTraceMapper.ToResponse(trace, "R4", "Patient");
 
         response.ResourceType.Should().Be("Patient");
         var outcome = response.Parameters.Single().Outcome;
@@ -38,7 +38,7 @@ public sealed class SearchTraceMapperTests
             [Trace(0, "birthdate:exact", "2000", new ParameterOutcome.Ignored("modifier not allowed on date", new SourceSpan(SourceOrigin.Key, 10, 5)))],
             Plan: null, Sql: null);
 
-        var outcome = SearchTraceMapper.ToResponse(trace, "Patient").Parameters.Single().Outcome;
+        var outcome = SearchTraceMapper.ToResponse(trace, "R4", "Patient").Parameters.Single().Outcome;
 
         outcome.Kind.Should().Be("Ignored");
         outcome.Reason.Should().Be("modifier not allowed on date");
@@ -54,7 +54,7 @@ public sealed class SearchTraceMapperTests
             [Trace(0, "unknown", "x", new ParameterOutcome.Failed(TraceStage.Resolve, "could not be resolved", new SourceSpan(SourceOrigin.Value, 0, 1)))],
             Plan: null, Sql: null);
 
-        var outcome = SearchTraceMapper.ToResponse(trace, "Patient").Parameters.Single().Outcome;
+        var outcome = SearchTraceMapper.ToResponse(trace, "R4", "Patient").Parameters.Single().Outcome;
 
         outcome.Kind.Should().Be("Failed");
         outcome.Stage.Should().Be("Resolve");
@@ -71,7 +71,7 @@ public sealed class SearchTraceMapperTests
             [Trace(0, "code", "http://loinc.org|99999-9", new ParameterOutcome.KnownMiss("No resource uses the token system 'http://loinc.org'.", new SourceSpan(SourceOrigin.Value, 0, 24)))],
             Plan: null, Sql: null);
 
-        var outcome = SearchTraceMapper.ToResponse(trace, "Observation").Parameters.Single().Outcome;
+        var outcome = SearchTraceMapper.ToResponse(trace, "R4", "Observation").Parameters.Single().Outcome;
 
         outcome.Kind.Should().Be("KnownMiss");
         outcome.Reason.Should().Be("No resource uses the token system 'http://loinc.org'.");
@@ -96,7 +96,7 @@ public sealed class SearchTraceMapperTests
             Implicit = [new ImplicitParameter("_count", "10", "server default")],
         };
 
-        var response = SearchTraceMapper.ToResponse(trace, "Patient");
+        var response = SearchTraceMapper.ToResponse(trace, "R4", "Patient");
 
         response.Plan!.Ctes.Single().ParameterOrdinal.Should().Be(7);
         response.Plan.Ctes.Single().ContributingOrdinals.Should().Equal(7);
@@ -131,7 +131,7 @@ public sealed class SearchTraceMapperTests
             ]);
         var trace = new SearchTrace("Patient", [Trace(0, "general-practitioner.name", "Smith", new ParameterOutcome.Compiled())], plan, Sql: null);
 
-        var response = SearchTraceMapper.ToResponse(trace, "Patient");
+        var response = SearchTraceMapper.ToResponse(trace, "R4", "Patient");
 
         response.Plan!.Rows[1].Kind.Should().Be(PlanRowKind.ChainJoin);
         response.Plan.Rows[1].ReferencedCteIndexes.Should().Equal(0);
@@ -149,7 +149,7 @@ public sealed class SearchTraceMapperTests
         var trace = new ParameterTrace(
             0, "name", keySyntax: null, "Smith", valueSyntax: null, ir: null,
             new ParameterOutcome.Compiled(), dataType: SearchParamType.String);
-        var response = SearchTraceMapper.ToResponse(new SearchTrace("Patient", [trace], Plan: null, Sql: null), "Patient");
+        var response = SearchTraceMapper.ToResponse(new SearchTrace("Patient", [trace], Plan: null, Sql: null), "R4", "Patient");
 
         response.Parameters.Single().DataType.Should().Be("String");
     }
@@ -162,11 +162,33 @@ public sealed class SearchTraceMapperTests
             Failure = new TraceFailure(TraceStage.Resolve, "Search parameters could not be resolved: 'bogus'.", null),
         };
 
-        var response = SearchTraceMapper.ToResponse(trace, "Patient");
+        var response = SearchTraceMapper.ToResponse(trace, "R4", "Patient");
 
         response.Plan.Should().BeNull();
         response.Sql.Should().BeNull();
         response.Failure!.Stage.Should().Be("Resolve");
         response.Implicit.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ToResponse_EchoesTheResolvedFhirVersion_NotTheResourceType()
+    {
+        // The response carries the version actually compiled against so an unrecognized route value falling
+        // back to R4 is visible to the client rather than silent -- see SearchEngineFactory.Resolve.
+        var trace = new SearchTrace("Patient", [], Plan: null, Sql: null);
+
+        SearchTraceMapper.ToResponse(trace, "R5", "Patient").FhirVersion.Should().Be("R5");
+    }
+
+    [Fact]
+    public void ToResponse_NullTraceResourceType_FallsBackToTheRequestedType()
+    {
+        // The CompileAsync entry point this app uses always echoes its resourceType back, so this branch is
+        // defensive only -- pinned so that if a future package does start returning null (the
+        // CompileFromOptionsAsync overload already normalizes empty to null for a system-level search) the
+        // response carries the validated type we compiled against rather than a null.
+        var trace = new SearchTrace(null!, [], Plan: null, Sql: null);
+
+        SearchTraceMapper.ToResponse(trace, "R4", "Observation").ResourceType.Should().Be("Observation");
     }
 }
