@@ -8,6 +8,8 @@ using Ignixa.FhirPath.Evaluation;
 using Ignixa.FhirPath.Parser;
 using Ignixa.Serialization;
 using Ignixa.Serialization.SourceNodes;
+using Ignixa.Lab.Functions.Serialization;
+using Ignixa.FhirPath.Analysis;
 using Ignixa.Specification.Generated;
 using Ignixa.Specification.Extensions;
 
@@ -473,5 +475,27 @@ public class ResultFormatterTests
         topLevelNames.Should().BeEquivalentTo(
             new[] { "parameters", "result", "debug-trace" },
             "only parameters, result, and debug-trace should be top-level");
+    }
+
+    [Fact]
+    public void VisitInstanceSelector_EmitsTypeNamespaceAssignmentsAndNestedValues()
+    {
+        var analyzer = new ExpressionAnalyzer(new SchemaProviderFactory());
+        var (parsed, context, error) = analyzer.ParseAndAnalyze(
+            "FHIR.Identifier { system: 'http://example.org', value: 'N0001' }",
+            null,
+            "Patient",
+            "R4");
+
+        error.Should().BeNull();
+        var root = parsed!.Expression.AcceptVisitor<AnalysisResult?, JsonObject>(new JsonAstVisitor { RootTypeName = "Patient" }, parsed!.Analysis);
+
+        root["ExpressionType"]!.GetValue<string>().Should().Be("InstanceSelectorExpression");
+        root["Name"]!.GetValue<string>().Should().Be("FHIR.Identifier");
+        root["TypeName"]!.GetValue<string>().Should().Be("Identifier");
+        root["NamespacePrefix"]!.GetValue<string>().Should().Be("FHIR");
+        root["Arguments"]!.AsArray().Should().HaveCount(2);
+        root["Arguments"]![0]!["Name"]!.GetValue<string>().Should().Be("system");
+        root["Arguments"]![1]!["Name"]!.GetValue<string>().Should().Be("value");
     }
 }
