@@ -23,7 +23,7 @@ public sealed class SearchFunctionsTests
     }
 
     [Fact]
-    public async Task Trace_PatientNameSmith_CompilesToPlanAndSql()
+    public async Task Trace_PatientNameSmith_UsesPlanAndCompileDiagnostics()
     {
         var functions = CreateFunctions();
 
@@ -36,10 +36,12 @@ public sealed class SearchFunctionsTests
         response.Parameters.Should().ContainSingle(p => p.Key.StartsWith("name"));
         response.Parameters.Single().Outcome.Kind.Should().Be("Compiled");
         response.Plan.Should().NotBeNull();
+        response.Plan!.Rows.Should().NotBeEmpty();
         response.Sql.Should().NotBeNull();
+        response.Sql!.Parameters.Should().NotBeEmpty();
         // The lineage join the UI depends on: a CTE attributed to the parameter, and a SQL range labelled for it.
-        var cte = response.Plan!.Ctes.Should().Contain(c => c.ParameterOrdinal == 0).Subject;
-        response.Sql!.Ranges.Should().Contain(r => r.Label == $"cte{cte.CteIndex}");
+        var cte = response.Plan.Ctes.Should().Contain(c => c.ParameterOrdinal == 0).Subject;
+        response.Sql.Ranges.Should().Contain(r => r.Label == $"cte{cte.CteIndex}");
     }
 
     [Fact]
@@ -150,7 +152,7 @@ public sealed class SearchFunctionsTests
     }
 
     [Fact]
-    public async Task Trace_MalformedDateValue_ReturnsBadRequestCarryingTheCompilerMessage()
+    public async Task Trace_MalformedDateValue_RemainsBadRequestAfterPlanMigration()
     {
         // Confirmed live: an unparseable date value throws BadSearchRequestException (a FhirException) out of
         // SearchCompiler.CompileAsync itself -- parsing happens too early to be caught and recorded as a

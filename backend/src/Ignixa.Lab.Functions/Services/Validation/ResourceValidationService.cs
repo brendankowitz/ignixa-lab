@@ -72,7 +72,7 @@ public sealed class ResourceValidationService(
             SkipTerminologyValidation = request.SkipTerminology,
             TerminologyService = setup.TerminologyService,
         };
-        var result = schema.Validate(element, settings, new ValidationState());
+        var result = schema.Validate(element, settings);
         return ToResponse(requestedFhirVersion, EngineVersion, resourceType, depth, result);
     }
 

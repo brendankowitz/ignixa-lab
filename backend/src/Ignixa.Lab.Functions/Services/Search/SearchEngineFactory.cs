@@ -9,9 +9,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Ignixa.Lab.Functions.Services.Search;
 
-/// <summary>The three per-FHIR-version dependencies <see cref="Ignixa.Search.Sql.Tracing.SearchCompiler"/>
-/// needs beyond the symbol resolver: the options builder, the search-parameter definition manager, and the
-/// compartment definition manager.</summary>
+/// <summary>The three per-FHIR-version dependencies the Search compiler needs beyond the symbol resolver: the
+/// options builder, the search-parameter definition manager, and the compartment definition manager.</summary>
 public sealed record SearchEngine(
     ISearchOptionsBuilder Builder,
     ISearchParameterDefinitionManager SearchParameters,

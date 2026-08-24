@@ -1,9 +1,9 @@
 namespace Ignixa.Lab.Functions.Models.Search;
 
-/// <summary>Serializable projection of <see cref="Ignixa.Search.Sql.Tracing.SearchTrace"/> for the Search
-/// bench UI. Mirrors the trace field-for-field, replacing the two non-serializable pieces (the live IR
-/// <c>Expression</c> graph and the plan's raw expression graph) with flattened row projections. Serialized
-/// as camelCase JSON (ASP.NET Core default).
+/// <summary>Serializable projection of the Search bench diagnostics for the Search bench UI. Mirrors the
+/// trace field-for-field, replacing the two non-serializable pieces (the live IR <c>Expression</c> graph and
+/// the plan's raw expression graph) with flattened row projections. Serialized as camelCase JSON (ASP.NET
+/// Core default).
 ///
 /// <see cref="FhirVersion"/> is the version actually compiled against, which is not always the one in the
 /// route: an unrecognized value falls back to R4 (see <see cref="Services.Search.SearchEngineFactory.Get"/>)
