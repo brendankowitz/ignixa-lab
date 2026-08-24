@@ -345,9 +345,9 @@ public sealed partial class SearchFunctions(ILogger<SearchFunctions> logger, Sea
     // rejected per-parameter deeper in the pipeline. Shared by every route above (type/compartment/
     // $everything all pass the resource type they're compiling against).
     /// <param name="parameterSource">The request whose query string supplies the FHIR search parameters, or
-    /// null for an operation that takes none ($everything). Parsed inside the try below rather than by the
-    /// caller so a parser throw is classified by the same 400/500 split as a compiler throw instead of
-    /// escaping to the host as a bare 500.</param>
+    /// null for an operation that takes none ($everything). Parsing inside the try lets the catches below
+    /// classify parser failures alongside compiler failures instead of letting them escape to the host as a bare
+    /// 500.</param>
     private async Task<IActionResult> CompileAndRespondAsync(
         string fhirVersion,
         string resourceType,
@@ -409,6 +409,11 @@ public sealed partial class SearchFunctions(ILogger<SearchFunctions> logger, Sea
             // exact defect the 500 arm below was written to fix. Anything not named here falls through to it.
             logger.LogInformation(ex, "Rejected search trace for {FhirVersion}/{ResourceType}", resolvedVersion, resourceType);
             return new BadRequestObjectResult(new { error = ex.Message });
+        }
+        catch (SearchCompilationException ex)
+        {
+            // Preserve expected compiler failures as trace data instead of returning a generic 500.
+            compiled = SearchCompilationResult.Failed(ex.Failure);
         }
         catch (NotSupportedException ex)
         {
