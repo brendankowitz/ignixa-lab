@@ -437,6 +437,7 @@ public sealed class SearchFunctionsTests
         var filteredResponse = filtered.Should().BeOfType<OkObjectResult>().Subject.Value.Should().BeOfType<SearchTraceResponse>().Subject;
         filteredResponse.Failure.Should().BeNull();
         filteredResponse.Plan!.Ctes.Count.Should().BeLessThan(bareResponse.Plan!.Ctes.Count);
+        filteredResponse.Plan.Explain.Should().NotContain("ReferencedTypeExpansion");
     }
 
     [Fact]

@@ -30,6 +30,9 @@ public sealed class SearchTraceMapperTests
         public override bool ValueInsensitiveEquals(Expression other) => other is UndescribableExpression;
     }
 
+    /// <summary>Stands in for a future <see cref="ParameterOutcome"/> subtype the mapper does not model yet.</summary>
+    private sealed record UnsupportedParameterOutcome() : ParameterOutcome(new ParameterOutcome.Compiled());
+
     [Fact]
     public async Task Trace_PatientNameSmith_UsesPlanAndCompileDiagnostics()
     {
@@ -163,14 +166,35 @@ public sealed class SearchTraceMapperTests
     [Fact]
     public async Task Trace_ChainJoinRow_CarriesReferencedCteIndexesAndContributingOrdinals()
     {
-        var compiled = await CompileAsync("?general-practitioner.name=Smith");
+        var compiled = await CompileAsync("?general-practitioner:Practitioner.name=Smith");
 
         var response = SearchTraceMapper.ToResponse(compiled, "R4", "Patient");
 
         response.Failure.Should().BeNull();
-        response.Plan!.Rows.Should().ContainSingle(r => r.Label == "root" && r.CanonicalLabel == "cte0" && r.Kind == "resourceSource");
-        response.Plan.Ctes.Should().NotBeEmpty();
+
+        var chainJoin = response.Plan!.Rows.Should().ContainSingle(r => r.Label == "root" && r.CanonicalLabel == "cte1" && r.Kind == "chainJoin").Subject;
+        chainJoin.ReferencedCteIndexes.Should().Equal(0);
+
+        response.Plan.Ctes.Should().HaveCount(2);
+        response.Plan.Ctes.Should().Contain(c => c.CteIndex == 0 && c.ParameterOrdinal == 0)
+            .Which.ContributingOrdinals.Should().Equal(0);
+        response.Plan.Ctes.Should().Contain(c => c.CteIndex == 1 && c.ParameterOrdinal == null)
+            .Which.ContributingOrdinals.Should().Equal(0);
+
         response.Sql!.Ranges.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task Trace_UnsupportedOutcomeShape_ThrowsRatherThanSilentlyDroppingIt()
+    {
+        var compiled = await CompileAsync("?name=Smith");
+        var diagnostics = CloneDiagnostics(
+            compiled.Diagnostics!,
+            [new ParameterTrace(0, "name", keySyntax: null, "Smith", valueSyntax: null, null, new UnsupportedParameterOutcome(), dataType: SearchParamType.String)]);
+
+        Action act = () => SearchTraceMapper.ToResponse(WithDiagnostics(compiled, diagnostics), "R4", "Patient");
+
+        act.Should().Throw<NotSupportedException>().WithMessage("*UnsupportedParameterOutcome*");
     }
 
     [Fact]

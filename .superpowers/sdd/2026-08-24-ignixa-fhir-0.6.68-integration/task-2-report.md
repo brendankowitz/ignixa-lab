@@ -38,3 +38,14 @@
 ## Concerns
 - One test was relaxed to match the restored compiler’s actual stable shape rather than an older chain-join assumption.
 - No remaining automated verification gaps found in the backend test project.
+
+## Fix report
+- Restored the chain-join mapper assertion to the actual 0.6.68 diagnostic shape: `root|cte1|chainJoin|0` with CTE 0 contributing `0` and CTE 1 also contributing `0`.
+- Added an explicit mapper failure regression that feeds a synthetic unsupported `ParameterOutcome` subtype and asserts `NotSupportedException`.
+- Tightened the task-scoped SearchFunctions regression so the `_type` operation-expression path is asserted against the emitted plan explain text.
+
+### Verification
+- `dotnet test backend\test\Ignixa.Lab.Functions.Tests\Ignixa.Lab.Functions.Tests.csproj -c Release --no-restore --filter "FullyQualifiedName~SearchFunctionsTests|FullyQualifiedName~SearchTraceMapperTests|FullyQualifiedName~SearchEngineFactoryTests"`
+  - `Passed!  - Failed: 0, Passed: 114, Skipped: 0, Total: 114, Duration: 13 s - Ignixa.Lab.Functions.Tests.dll (net10.0)`
+- `dotnet test backend\test\Ignixa.Lab.Functions.Tests\Ignixa.Lab.Functions.Tests.csproj -c Release --no-restore`
+  - `Passed!  - Failed: 0, Passed: 687, Skipped: 0, Total: 687, Duration: 38 s - Ignixa.Lab.Functions.Tests.dll (net10.0)`
