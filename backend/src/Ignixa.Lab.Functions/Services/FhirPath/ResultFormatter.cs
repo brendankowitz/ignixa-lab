@@ -388,9 +388,19 @@ public sealed class ResultFormatter
 
     private static void SetTypedValue(ParametersParameter param, string instanceType, object value)
     {
-        // Ignixa returns values in the correct FHIR format, just pass through
         var valueTypeName = $"value{char.ToUpperInvariant(instanceType[0])}{instanceType[1..]}";
-        param.SetValue(valueTypeName, JsonValue.Create(value));
+        param.SetValue(valueTypeName, CreateJsonValueFromPrimitive(value));
+    }
+
+    private static JsonNode CreateJsonValueFromPrimitive(object value)
+    {
+        if (value is FhirTemporal temporal)
+        {
+            value = temporal.ToString();
+        }
+
+        return JsonNode.Parse(JsonSerializer.Serialize(value, value.GetType()))
+            ?? throw new InvalidOperationException("Primitive FHIRPath values must serialize to JSON.");
     }
 
     private static void AddPathExtension(ParametersParameter param, string path)
@@ -442,7 +452,7 @@ public sealed class ResultFormatter
                 var child = children[0];
                 if (child.Value != null)
                 {
-                    target[child.Name] = JsonValue.Create(child.Value);
+                    target[child.Name] = CreateJsonValueFromPrimitive(child.Value);
                 }
                 else
                 {
@@ -458,7 +468,7 @@ public sealed class ResultFormatter
                 {
                     if (child.Value != null)
                     {
-                        array.Add(JsonValue.Create(child.Value));
+                        array.Add(CreateJsonValueFromPrimitive(child.Value));
                     }
                     else
                     {

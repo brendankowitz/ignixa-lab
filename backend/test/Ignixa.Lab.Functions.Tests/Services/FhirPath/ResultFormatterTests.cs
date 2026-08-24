@@ -93,6 +93,15 @@ public class ResultFormatterTests
             .FirstOrDefault(p => p?["name"]?.GetValue<string>() == partName);
     }
 
+    private static JsonNode FindSingleResultPart(JsonNode root)
+    {
+        var resultParam = root["parameter"]!.AsArray()
+            .Single(p => p?["name"]?.GetValue<string>() == "result")!;
+        var parts = resultParam["part"]!.AsArray();
+        parts.Should().ContainSingle();
+        return parts[0]!;
+    }
+
     /// <summary>
     /// Regression: Patient.name expression was collapsing single-item arrays (given: ["John"])
     /// to scalars (given: "John") because SerializeElementChildren used child count instead of
@@ -476,6 +485,34 @@ public class ResultFormatterTests
         topLevelNames.Should().BeEquivalentTo(
             new[] { "parameters", "result", "debug-trace" },
             "only parameters, result, and debug-trace should be top-level");
+    }
+
+    [Theory]
+    [InlineData("birthDate", "valueDate", "1970-01-01")]
+    [InlineData("deceasedDateTime", "valueDateTime", "2015-02-04T14:00:00Z")]
+    [InlineData("meta.lastUpdated", "valueInstant", "2015-02-04T14:00:00Z")]
+    [InlineData("@T12:34:56", "valueTime", "12:34:56")]
+    public void TemporalPrimitive_UsesCanonicalFhirText(
+        string expression,
+        string valueField,
+        string expectedValue)
+    {
+        const string patientJson = """
+        {
+          "resourceType": "Patient",
+          "birthDate": "1970-01-01",
+          "deceasedDateTime": "2015-02-04T14:00:00Z",
+          "meta": {
+            "lastUpdated": "2015-02-04T14:00:00Z"
+          }
+        }
+        """;
+
+        var (_, json) = EvaluateAndFormat(expression, patientJson, "R4");
+
+        var resultPart = FindSingleResultPart(json);
+        resultPart[valueField]!.GetValue<string>().Should().Be(expectedValue);
+        json.ToJsonString().Should().NotContain("FhirTemporal");
     }
 
     [Fact]
