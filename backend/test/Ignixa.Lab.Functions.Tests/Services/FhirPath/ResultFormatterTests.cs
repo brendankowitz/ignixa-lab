@@ -5,6 +5,7 @@ using Ignixa.Lab.Functions.Services.FhirPath;
 using Ignixa.Lab.Functions.Models;
 using Ignixa.Abstractions;
 using Ignixa.FhirPath.Evaluation;
+using Ignixa.FhirPath.Expressions;
 using Ignixa.FhirPath.Parser;
 using Ignixa.Serialization;
 using Ignixa.Serialization.SourceNodes;
@@ -478,7 +479,7 @@ public class ResultFormatterTests
     }
 
     [Fact]
-    public void VisitInstanceSelector_EmitsTypeNamespaceAssignmentsAndNestedValues()
+    public void VisitInstanceSelector_EmitsTypeNamespaceAssignmentsNestedValuesAndPositions()
     {
         var analyzer = new ExpressionAnalyzer(new SchemaProviderFactory());
         var (parsed, context, error) = analyzer.ParseAndAnalyze(
@@ -488,14 +489,51 @@ public class ResultFormatterTests
             "R4");
 
         error.Should().BeNull();
-        var root = parsed!.Expression.AcceptVisitor<AnalysisResult?, JsonObject>(new JsonAstVisitor { RootTypeName = "Patient" }, parsed!.Analysis);
+        var selector = parsed!.Expression.Should().BeOfType<InstanceSelectorExpression>().Subject;
+        selector.Location.Should().NotBeNull();
+        selector.Elements.Should().HaveCount(2);
+
+        var selectorLocation = selector.Location!;
+        var root = selector.AcceptVisitor<AnalysisResult?, JsonObject>(new JsonAstVisitor { RootTypeName = "Patient" }, parsed.Analysis);
 
         root["ExpressionType"]!.GetValue<string>().Should().Be("InstanceSelectorExpression");
-        root["Name"]!.GetValue<string>().Should().Be("FHIR.Identifier");
-        root["TypeName"]!.GetValue<string>().Should().Be("Identifier");
-        root["NamespacePrefix"]!.GetValue<string>().Should().Be("FHIR");
-        root["Arguments"]!.AsArray().Should().HaveCount(2);
-        root["Arguments"]![0]!["Name"]!.GetValue<string>().Should().Be("system");
-        root["Arguments"]![1]!["Name"]!.GetValue<string>().Should().Be("value");
+        root["Name"]!.GetValue<string>().Should().Be(selector.FullTypeName);
+        root["TypeName"]!.GetValue<string>().Should().Be(selector.TypeName);
+        root["NamespacePrefix"]!.GetValue<string>().Should().Be(selector.NamespacePrefix);
+        root["IsEmpty"]!.GetValue<bool>().Should().BeFalse();
+        root["ReturnType"]!.GetValue<string>().Should().Be(selector.TypeName);
+        root["Position"]!.GetValue<int>().Should().Be(selectorLocation.RawPosition);
+        root["Length"]!.GetValue<int>().Should().Be(selectorLocation.Length);
+        root["Line"]!.GetValue<int>().Should().Be(selectorLocation.LineNumber);
+        root["Column"]!.GetValue<int>().Should().Be(selectorLocation.LinePosition);
+
+        var arguments = root["Arguments"]!.AsArray();
+        arguments.Should().HaveCount(2);
+
+        var selectorElements = selector.Elements;
+        for (var i = 0; i < selectorElements.Count; i++)
+        {
+            var element = selectorElements[i];
+            var assignment = arguments[i]!.AsObject();
+            var valueNode = assignment["Arguments"]!.AsArray()[0]!.AsObject();
+            var valueLocation = element.ValueExpression.Location;
+
+            valueLocation.Should().NotBeNull();
+
+            assignment["ExpressionType"]!.GetValue<string>().Should().Be("ElementAssignment");
+            assignment["Name"]!.GetValue<string>().Should().Be(element.ElementName);
+            assignment["ReturnType"]!.GetValue<string>().Should().NotBeNullOrEmpty();
+            assignment["Position"]!.GetValue<int>().Should().Be(valueLocation!.RawPosition);
+            assignment["Length"]!.GetValue<int>().Should().Be(valueLocation.Length);
+            assignment["Line"]!.GetValue<int>().Should().Be(valueLocation.LineNumber);
+            assignment["Column"]!.GetValue<int>().Should().Be(valueLocation.LinePosition);
+
+            valueNode["ExpressionType"]!.GetValue<string>().Should().Be("ConstantExpression");
+            valueNode["ReturnType"]!.GetValue<string>().Should().NotBeNullOrEmpty();
+            valueNode["Position"]!.GetValue<int>().Should().Be(valueLocation.RawPosition);
+            valueNode["Length"]!.GetValue<int>().Should().Be(valueLocation.Length);
+            valueNode["Line"]!.GetValue<int>().Should().Be(valueLocation.LineNumber);
+            valueNode["Column"]!.GetValue<int>().Should().Be(valueLocation.LinePosition);
+        }
     }
 }

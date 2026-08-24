@@ -135,6 +135,9 @@ public class JsonAstVisitor : IFhirPathExpressionVisitor<AnalysisResult?, JsonOb
         node["Arguments"] = new JsonArray(
             expression.Elements.Select(element =>
             {
+                // ElementAssignment does not expose its own source span in the restored API.
+                // Anchor the node to the nested value expression, which is the only source
+                // metadata available for this assignment element.
                 var assignment = CreateNode(element.ValueExpression, "ElementAssignment", element.ElementName, context);
                 assignment["Arguments"] = new JsonArray(element.ValueExpression.AcceptVisitor(this, context));
                 return assignment;
