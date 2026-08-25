@@ -5,9 +5,10 @@ import assert from 'node:assert/strict';
 import { DEFAULT_EXPRESSION, EXAMPLE_EXPRESSIONS } from './sampleResources.ts';
 
 test('instance-selector examples are available for their matching resources', () => {
-  assert.ok(EXAMPLE_EXPRESSIONS.patient.includes('name.select(HumanName { family: family, given: given.first() })'));
-  assert.ok(EXAMPLE_EXPRESSIONS.observation.includes('component.code.coding.select(Coding { system: system, code: code })'));
-  assert.ok(EXAMPLE_EXPRESSIONS.custom.includes("Coding { system: 'http://loinc.org', code: '8480-6' }"));
+  assert.ok(EXAMPLE_EXPRESSIONS.patient.includes("address.select(Address { text: line.join(', ') & ', ' & city & ' ' & state & ' ' & postalCode, city: city, postalCode: postalCode })"));
+  assert.ok(EXAMPLE_EXPRESSIONS.observation.includes('code.coding.select(CodeableConcept { coding: $this, text: display })'));
+  assert.ok(EXAMPLE_EXPRESSIONS.observation.includes("Annotation { text: 'BP ' & component.value.value.first().toString() & '/' & component.value.value.last().toString() & ' mmHg' }"));
+  assert.ok(EXAMPLE_EXPRESSIONS.custom.includes("CodeableConcept { coding: Coding { system: 'http://loinc.org', code: '8480-6' }, text: 'Systolic BP' }"));
 });
 
 test('default expression remains the first patient example', () => {

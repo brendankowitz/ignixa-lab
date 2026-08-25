@@ -64,16 +64,17 @@ export const EXAMPLE_EXPRESSIONS: Record<SampleId, string[]> = {
     "telecom.where(system = 'phone').value",
     'name.given.count()',
     "name.select(given.first() & ' ' & family)",
-    'name.select(HumanName { family: family, given: given.first() })',
+    "address.select(Address { text: line.join(', ') & ', ' & city & ' ' & state & ' ' & postalCode, city: city, postalCode: postalCode })",
   ],
   observation: [
     "component.where(code.coding.code = '8480-6').value.value",
     "code.coding.display.join(' / ')",
     'component.count()',
     'effective',
-    'component.code.coding.select(Coding { system: system, code: code })',
+    'code.coding.select(CodeableConcept { coding: $this, text: display })',
+    "Annotation { text: 'BP ' & component.value.value.first().toString() & '/' & component.value.value.last().toString() & ' mmHg' }",
   ],
-  custom: ["Coding { system: 'http://loinc.org', code: '8480-6' }"],
+  custom: ["CodeableConcept { coding: Coding { system: 'http://loinc.org', code: '8480-6' }, text: 'Systolic BP' }"],
 };
 
 export const DEFAULT_EXPRESSION = EXAMPLE_EXPRESSIONS.patient[0];
