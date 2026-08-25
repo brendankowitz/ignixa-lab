@@ -191,7 +191,7 @@ public sealed class FhirPathServiceTests
           "resourceType": "Bundle",
           "type": "collection",
           "entry": [
-            { "resource": { "resourceType": "Patient", "id": "example" } },
+            { "resource": { "resourceType": "Patient", "id": "example", "name": [{ "family": "Sibling" }] } },
             {
               "resource": {
                 "resourceType": "Observation",
@@ -206,7 +206,7 @@ public sealed class FhirPathServiceTests
         var request = new FhirPathRequest
         {
             Resource = ResourceJsonNode.Parse(bundleJson),
-            Expression = "entry[1].resource.subject.resolve().id",
+            Expression = "entry[1].resource.subject.resolve().name.family",
             FhirVersion = "R4"
         };
 
@@ -215,7 +215,7 @@ public sealed class FhirPathServiceTests
         result.IsSuccess.Should().BeTrue();
         var values = result.Results.SelectMany(group => group.OutputValues).ToList();
         values.Should().ContainSingle();
-        values[0].Value?.ToString().Should().Be("example");
+        values[0].Value?.ToString().Should().Be("Sibling");
     }
 
     private static FhirPathService CreateService(IHttpClientFactory httpClientFactory, bool allowPrivateTargets, int httpTimeoutSeconds = 100)

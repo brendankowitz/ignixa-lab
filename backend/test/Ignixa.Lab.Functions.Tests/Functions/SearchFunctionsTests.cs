@@ -182,6 +182,17 @@ public sealed class SearchFunctionsTests
         response.Failure.Message.Should().Contain("at most 3 keys");
     }
 
+    [Fact]
+    public async Task Trace_Cancellation_PropagatesInsteadOfBecomingAnErrorResponse()
+    {
+        var functions = CreateFunctions();
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            functions.Trace(BuildGetRequest("?name=Smith"), "R4", "Patient", cancellation.Token));
+    }
+
     [Theory]
     [InlineData("STU3")]
     [InlineData("R4B")]

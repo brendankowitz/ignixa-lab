@@ -110,6 +110,7 @@ export interface ImplicitParameter {
 export interface TraceFailure {
   stage: string;
   message: string;
+  parameterCode: string | null;
   span: Span | null;
 }
 

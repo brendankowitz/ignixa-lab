@@ -1,12 +1,12 @@
 # Ignixa FHIR 0.6.68 integration
 
-**Status:** Proposed
+**Status:** Implemented
 **Date:** 2026-08-24
 **Scope:** Upgrade the Ignixa package family used by `ignixa-lab` and adapt the lab to the release's breaking API changes and directly useful FHIRPath capabilities.
 
 ## Context
 
-The lab currently pins the Ignixa package family to `0.6.41`, with `Ignixa.Search.Sql` at `0.6.41-alpha` and TestScript packages at `0.6.41-beta`. Release `0.6.68` is published on NuGet and replaces the old three-stage Search.Sql tracing entry point with a two-phase plan/compile API. It also changes FHIR temporal primitive values from raw strings to `FhirTemporal`, adds FHIRPath instance selectors, improves in-instance `resolve()`, and hardens several Search.Sql and FHIRPath correctness paths.
+Before this change, the lab pinned the Ignixa package family to `0.6.41`, with `Ignixa.Search.Sql` at `0.6.41-alpha` and TestScript packages at `0.6.41-beta`. Release `0.6.68` is published on NuGet and replaces the old three-stage Search.Sql tracing entry point with a two-phase plan/compile API. It also changes FHIR temporal primitive values from raw strings to `FhirTemporal`, adds FHIRPath instance selectors, improves in-instance `resolve()`, and hardens several Search.Sql and FHIRPath correctness paths.
 
 The lab's Search bench is intentionally SQL-server-free. It uses an in-memory symbol resolver to demonstrate planning and SQL emission, so it needs the new compiler seam but does not need to adopt the release's SQL Server execution or schema-deployment projects.
 
@@ -47,7 +47,7 @@ Retain `SearchEngineFactory` as the per-FHIR-version cache for the options build
 1. Parse the query parameters using the existing parser.
 2. Build `SearchPlanOptions`, including the operation expression for `$everything` and compartment routes, and request full diagnostics for the Search bench.
 3. Call `CreatePlanAsync` (or its options-based equivalent when the route already owns `SearchOptions`).
-4. Call `SearchPlan.Compile()` and read the resulting `CompiledSearch`.
+4. Call `SearchPlan.TryCompile()` and read the resulting `SearchCompilationResult`.
 5. Map `SearchPlan.Diagnostics`, `CompiledSearch.Diagnostics`, and `SearchCompilationFailure` into the current response DTOs.
 
 The response mapper will preserve the current top-level fields (`fhirVersion`, `resourceType`, `parameters`, `plan`, `sql`, `implicit`, and `failure`). New upstream fields such as CTE provenance and SQL ranges will be included only where they map cleanly to existing DTO fields; otherwise they remain available in backend diagnostics without inventing a frontend contract. Query parse errors and caller-invalid search values remain 400 responses, while compiler or mapper defects remain explicit 500 responses with server-side logging.
@@ -62,7 +62,7 @@ The lab's lightweight resolver already handles contained resources. Add coverage
 
 ## Error handling
 
-Use the new compiler's explicit `TryCreatePlan`/`TryCompile` result types where they make the request-vs-server distinction clearer. Do not catch the broad `FhirException` hierarchy as a client error. Preserve cancellation, allowlisted malformed-query errors, unsupported query-shape handling, and logged internal failures.
+Use `CreatePlanAsync` with its explicit `SearchCompilationException` catch and `SearchPlan.TryCompile()` where they make the request-vs-server distinction clearer. Do not catch the broad `FhirException` hierarchy as a client error. Preserve cancellation, allowlisted malformed-query errors, unsupported query-shape handling, structured compiler failures, and logged internal failures.
 
 If an upstream diagnostic or parameter outcome is not representable, fail the mapper explicitly and return the existing internal-error response rather than silently dropping evidence.
 

@@ -1,9 +1,9 @@
 namespace Ignixa.Lab.Functions.Models.Search;
 
-/// <summary>Serializable projection of the Search bench diagnostics for the Search bench UI. Mirrors the
-/// trace field-for-field, replacing the two non-serializable pieces (the live IR <c>Expression</c> graph and
-/// the plan's raw expression graph) with flattened row projections. Serialized as camelCase JSON (ASP.NET
-/// Core default).
+/// <summary>Serializable projection of selected Search.Sql diagnostics for the Search bench UI. It keeps the
+/// stable wire fields while replacing non-serializable pieces (the live IR <c>Expression</c> graph and the
+/// plan's raw expression graph) with flattened row projections. Serialized as camelCase JSON (ASP.NET Core
+/// default).
 ///
 /// <see cref="FhirVersion"/> is the version actually compiled against, which is not always the one in the
 /// route: an unrecognized value falls back to R4 (see <see cref="Services.Search.SearchEngineFactory.Get"/>)
@@ -85,4 +85,6 @@ public sealed record SqlTextRangeDto(string Label, string Kind, int Start, int L
 
 public sealed record ImplicitParameterDto(string Name, string Value, string Reason);
 
-public sealed record TraceFailureDto(string Stage, string Message, SpanDto? Span);
+/// <summary>A compilation or plan-trace diagnostic failure. <see cref="ParameterCode"/> identifies the owning
+/// search parameter when the compiler can attribute the failure; it is null for failures owned by the whole plan.</summary>
+public sealed record TraceFailureDto(string Stage, string Message, string? ParameterCode, SpanDto? Span);

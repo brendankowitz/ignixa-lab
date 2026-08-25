@@ -1,6 +1,6 @@
 # Ignixa FHIR 0.6.68 integration Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Historical implementation record:** The plan was executed in PR #43. Its checkbox steps are retained to preserve the original task breakdown; final validation is recorded below.
 
 **Goal:** Upgrade `ignixa-lab` to the released Ignixa FHIR `0.6.68` package family and preserve the lab's Search and FHIRPath behavior across the release's breaking API and value-model changes.
 
@@ -16,7 +16,7 @@
 - **Search diagnostics:** use `SearchPlanOptions.DiagnosticsLevel = SearchDiagnosticsLevel.Full` so the Search bench retains parameter, plan, and SQL provenance.
 - **Search compiler:** construct `SearchSqlCompiler` with a fresh `InMemorySymbolResolver` per request; continue caching the options builder and definition managers per FHIR version.
 - **Frontend compatibility:** preserve `fhirVersion`, `resourceType`, `parameters`, `plan`, `sql`, `implicit`, and `failure`, plus existing AST node naming conventions.
-- **Error handling:** keep malformed caller input as HTTP 400, surface compiler/mapper defects as logged HTTP 500 responses, and never catch the broad `FhirException` hierarchy as a client-error marker.
+- **Error handling:** keep malformed caller input as HTTP 400, surface expected compiler failures in the trace's structured `failure` field with logging, map unexpected compiler/mapper defects to logged HTTP 500 responses, and never catch the broad `FhirException` hierarchy as a client-error marker.
 - **FHIRPath values:** handle `FhirTemporal` values for `date`, `dateTime`, `instant`, and `time` without changing non-temporal primitive or complex-resource output.
 - **Scope exclusions:** do not add SQL Server, EF, retry, schema-deployment, or other upstream data-layer dependencies; do not commit package binaries or machine-specific feeds.
 - **Validation:** use the existing commands `dotnet restore Ignixa.Lab.sln`, `dotnet build Ignixa.Lab.sln -c Release`, `dotnet test Ignixa.Lab.sln -c Release`, `npm run test`, and `npm run build`.
@@ -229,7 +229,7 @@ compiled.Compiled.Sql
 compiled.Compiled.Parameters
 ```
 
-On failure, retain the returned `SearchCompilationFailure` and its `CompilationStage`, `Message`, `Span`, and optional diagnostics instead of inventing a successful trace. Preserve cancellation propagation.
+On failure, retain the returned `SearchCompilationFailure` and its `Stage`, `Message`, `Span`, and optional diagnostics instead of inventing a successful trace. Preserve cancellation propagation.
 
 - [ ] **Step 5: Refactor the mapper around new diagnostics without changing the DTO contract**
 
@@ -248,7 +248,7 @@ private static ParameterOutcomeDto ToOutcomeDto(ParameterOutcome outcome) => out
 };
 ```
 
-If `PlanTraceFailure` or a compilation failure has no representable existing DTO slot, throw `NotSupportedException` from the mapper and let the endpoint's mapper-only catch return the existing logged 500 response. Do not silently drop diagnostic evidence. Keep the current `failure` DTO for stage/message/span.
+Map `PlanTraceFailure` or a `SearchCompilationFailure` into the current `failure` DTO for stage/message/parameterCode/span, while preserving the available parameter, plan, and implicit diagnostics. If a future diagnostic has no representable DTO slot, throw `NotSupportedException` from the mapper and let the endpoint's mapper-only catch return the existing logged 500 response. Do not silently drop diagnostic evidence.
 
 - [ ] **Step 6: Preserve the request error split**
 
@@ -263,6 +263,10 @@ catch (Exception ex) when (ex is BadSearchRequestException or SearchResourceNotS
 {
     logger.LogInformation(ex, "Rejected search trace for {FhirVersion}/{ResourceType}", resolvedVersion, resourceType);
     return new BadRequestObjectResult(new { error = ex.Message });
+}
+catch (SearchCompilationException ex)
+{
+    compiled = SearchCompilationResult.Failed(ex.Failure);
 }
 catch (NotSupportedException ex)
 {
@@ -296,7 +300,7 @@ implicit parameters
 explicit mapper failure for an unknown outcome
 ```
 
-Add a failure fixture that asserts a `SearchCompilationFailure` maps its `CompilationStage` to `TraceFailureDto.Stage` and its `Span` to `TraceFailureDto.Span`.
+Add a failure fixture that asserts a `SearchCompilationFailure` maps its `Stage` to `TraceFailureDto.Stage`, its `ParameterCode` to `TraceFailureDto.ParameterCode`, and its `Span` to `TraceFailureDto.Span`.
 
 - [ ] **Step 8: Run the focused tests and then the backend suite**
 
@@ -514,18 +518,27 @@ Expected: the temporal tests expose any raw `FhirTemporal.ToString()`/runtime-ty
 
 - [ ] **Step 4: Normalize temporal values at the formatter boundary**
 
-Add one narrow helper near the existing typed-value formatting code:
+Keep the existing typed-value formatting boundary and make its JSON conversion preserve JSON scalar
+types while adapting only the new temporal wrapper:
 
 ```csharp
-private static string FormatPrimitiveValue(object? value) => value switch
+private static JsonNode CreateJsonValueFromPrimitive(object value) => value switch
 {
-    null => string.Empty,
-    FhirTemporal temporal => temporal.ToString(),
-    _ => value.ToString() ?? string.Empty,
-};
+    string text => JsonValue.Create(text),
+    int integer => JsonValue.Create(integer),
+    long longInteger => JsonValue.Create(longInteger),
+    bool boolean => JsonValue.Create(boolean),
+    decimal decimalValue => JsonValue.Create(decimalValue),
+    double doubleValue => JsonValue.Create(doubleValue),
+    float floatValue => JsonValue.Create(floatValue),
+    DateTime dateTime => JsonValue.Create(dateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.FFFFFFFK", CultureInfo.InvariantCulture)),
+    DateTimeOffset dateTimeOffset => JsonValue.Create(dateTimeOffset.ToString("yyyy-MM-dd'T'HH:mm:ss.FFFFFFFK", CultureInfo.InvariantCulture)),
+    FhirTemporal temporal => JsonValue.Create(temporal.Literal),
+    _ => JsonNode.Parse(JsonSerializer.Serialize(value)),
+} ?? throw new InvalidOperationException("Primitive FHIRPath values must serialize to JSON.");
 ```
 
-Use it for primitive JSON value fields, parameter/display output, trace output, and constant serialization. Keep existing type-specific keys (`valueDate`, `valueDateTime`, `valueInstant`, `valueTime`) and complex-child array rules unchanged. Do not convert all objects through JSON strings; only recognize `FhirTemporal`.
+Use it for primitive JSON value fields, parameter/display output, trace output, and constant serialization. Keep existing type-specific keys (`valueDate`, `valueDateTime`, `valueInstant`, `valueTime`) and complex-child array rules unchanged. The fallback remains for Ignixa's non-JSON CLR primitive wrappers; do not convert JSON scalars through a serialize/parse round trip.
 
 - [ ] **Step 5: Adapt resolver lookups only at the custom boundary**
 

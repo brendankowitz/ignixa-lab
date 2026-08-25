@@ -207,7 +207,37 @@ public sealed class SearchTraceMapperTests
 
         response.Failure!.Stage.Should().Be("Resolve");
         response.Failure.Message.Should().Be("could not be resolved");
+        response.Failure.ParameterCode.Should().Be("unknown");
         response.Failure.Span!.Origin.Should().Be("Value");
+    }
+
+    [Fact]
+    public async Task Trace_Failure_PreservesDiagnostics()
+    {
+        var compiled = await CompileAsync("?name=Smith");
+        var diagnostics = CloneDiagnostics(compiled.Diagnostics!, compiled.Diagnostics!.Parameters)
+            with
+            {
+                Implicit = [new ImplicitParameter("_count", "10", "server default")],
+            };
+        var failure = new SearchCompilationFailure(
+            CompilationStage.Lower,
+            "could not be lowered",
+            ParameterCode: "name",
+            Span: null,
+            Exception: null)
+        {
+            Diagnostics = diagnostics,
+        };
+
+        var response = SearchTraceMapper.ToResponse(failure, "R4", "Patient");
+
+        response.Parameters.Should().ContainSingle(p => p.Key == "name");
+        response.Plan.Should().NotBeNull();
+        response.Plan!.Rows.Should().NotBeEmpty();
+        response.Implicit.Should().ContainSingle(p => p.Name == "_count" && p.Value == "10");
+        response.Sql.Should().BeNull();
+        response.Failure!.Stage.Should().Be("Lower");
     }
 
     [Fact]
@@ -276,7 +306,7 @@ public sealed class SearchTraceMapperTests
     }
 
     [Fact]
-    public void Trace_NullResourceType_FallsBackToTheRequestedType()
+    public void Trace_FailureUsesTheRequestedResourceType()
     {
         var failure = new SearchCompilationFailure(CompilationStage.Resolve, "boom", null, null, null!);
 

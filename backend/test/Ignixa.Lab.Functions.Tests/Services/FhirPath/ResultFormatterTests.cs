@@ -516,6 +516,40 @@ public class ResultFormatterTests
     }
 
     [Fact]
+    public void NestedTemporalPrimitive_PreservesItsOriginalFhirText()
+    {
+        const string patientJson = """
+        {
+          "resourceType": "Patient",
+          "birthDate": "1970",
+          "meta": {
+            "lastUpdated": "2015-02-04T14:00:00+05:30"
+          }
+        }
+        """;
+
+        var (_, json) = EvaluateAndFormat("meta", patientJson, "R4");
+
+        var meta = FindSingleResultPart(json)["valueMeta"]!;
+        meta["lastUpdated"]!.GetValue<string>().Should().Be("2015-02-04T14:00:00+05:30");
+    }
+
+    [Fact]
+    public void PartialPrecisionTemporalPrimitive_PreservesItsOriginalFhirText()
+    {
+        const string patientJson = """
+        {
+          "resourceType": "Patient",
+          "birthDate": "1970"
+        }
+        """;
+
+        var (_, json) = EvaluateAndFormat("birthDate", patientJson, "R4");
+
+        FindSingleResultPart(json)["valueDate"]!.GetValue<string>().Should().Be("1970");
+    }
+
+    [Fact]
     public void NonTemporalPrimitive_PreservesItsTypedJsonValue()
     {
         var (_, json) = EvaluateAndFormat("gender", TestPatientJson, "R4");

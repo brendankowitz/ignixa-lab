@@ -360,6 +360,7 @@ public sealed partial class SearchFunctions(ILogger<SearchFunctions> logger, Sea
         SearchCompilationResult compiled;
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var engine = engineFactory.Get(fhirVersion);
             if (!engine.SearchParameters.TryGetSearchParameters(resourceType, out _))
             {
@@ -387,6 +388,15 @@ public sealed partial class SearchFunctions(ILogger<SearchFunctions> logger, Sea
                 cancellationToken);
 
             compiled = plan.TryCompile();
+            if (!compiled.Succeeded)
+            {
+                logger.LogWarning(
+                    compiled.Failure!.Exception,
+                    "Search trace compilation produced a structured failure at {Stage} for {FhirVersion}/{ResourceType}",
+                    compiled.Failure.Stage,
+                    resolvedVersion,
+                    resourceType);
+            }
         }
         catch (OperationCanceledException)
         {
@@ -413,6 +423,12 @@ public sealed partial class SearchFunctions(ILogger<SearchFunctions> logger, Sea
         catch (SearchCompilationException ex)
         {
             // Preserve expected compiler failures as trace data instead of returning a generic 500.
+            logger.LogWarning(
+                ex,
+                "Search trace planning produced a structured failure at {Stage} for {FhirVersion}/{ResourceType}",
+                ex.Failure.Stage,
+                resolvedVersion,
+                resourceType);
             compiled = SearchCompilationResult.Failed(ex.Failure);
         }
         catch (NotSupportedException ex)

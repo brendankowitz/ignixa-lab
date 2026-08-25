@@ -49,3 +49,15 @@
   - `Passed!  - Failed: 0, Passed: 114, Skipped: 0, Total: 114, Duration: 13 s - Ignixa.Lab.Functions.Tests.dll (net10.0)`
 - `dotnet test backend\test\Ignixa.Lab.Functions.Tests\Ignixa.Lab.Functions.Tests.csproj -c Release --no-restore`
   - `Passed!  - Failed: 0, Passed: 687, Skipped: 0, Total: 687, Duration: 38 s - Ignixa.Lab.Functions.Tests.dll (net10.0)`
+
+### Final PR validation
+- `dotnet restore Ignixa.Lab.sln --force-evaluate`
+  - Restore completed successfully against the Ignixa 0.6.68 package family.
+- `dotnet build Ignixa.Lab.sln -c Release --no-restore`
+  - Build succeeded with 0 warnings and 0 errors.
+- `dotnet test Ignixa.Lab.sln -c Release --no-build`
+  - `Passed!  - Failed: 0, Passed: 702, Skipped: 0, Total: 702`
+- `npm --prefix frontend run test`
+  - Frontend test command passed, including the instance-selector AST compatibility test.
+- `npm --prefix frontend run build`
+  - Production build completed successfully.

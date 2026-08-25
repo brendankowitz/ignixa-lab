@@ -138,7 +138,7 @@ public static class SearchTraceMapper
         plan.Ctes.Select(c => new CteProvenanceDto(c.CteIndex, c.ParameterOrdinal, c.ContributingOrdinals, ToSpanDto(c.Span))).ToList());
 
     private static TraceFailureDto ToFailureDto(SearchCompilationFailure failure) =>
-        new(failure.Stage.ToString(), failure.Message, ToSpanDto(failure.Span));
+        new(failure.Stage.ToString(), failure.Message, failure.ParameterCode, ToSpanDto(failure.Span));
 
     private static SpanDto ToSpanDto(SourceSpan span) => new(span.Origin.ToString(), span.Start, span.Length);
 
