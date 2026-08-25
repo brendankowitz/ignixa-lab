@@ -6,7 +6,7 @@ import { useIsNarrowViewport } from '../../hooks/useIsNarrowViewport';
 import { highlightFhirPathExpression } from './fhirPathHighlight';
 import { highlightJson } from '../components/jsonHighlight';
 import { invertAstTree } from './astInvert';
-import { hasInstanceSelector } from './instanceSelector';
+import { hasCurrentInstanceSelector } from './instanceSelector';
 import { DEFAULT_EXPRESSION, EXAMPLE_EXPRESSIONS, SAMPLE_RESOURCES, type SampleId } from './sampleResources';
 import { useFhirPathEval } from './useFhirPathEval';
 import type { FhirVersion, FpAstNode, FpVariable } from './fhirPathTypes';
@@ -159,7 +159,7 @@ export function FhirPathBench({ onOpenFakes, fakesSeed, onSeedConsumed, initialS
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fakesSeed]);
 
-  const { result, isLoading } = useFhirPathEval({ version, expression, context, resourceText, variables });
+  const { result, isLoading, evaluatedExpression } = useFhirPathEval({ version, expression, context, resourceText, variables });
 
   const expressionHighlight = useMemo(() => highlightFhirPathExpression(expression), [expression]);
   const resourceHighlight = useMemo(() => highlightJson(resourceText), [resourceText]);
@@ -210,7 +210,10 @@ export function FhirPathBench({ onOpenFakes, fakesSeed, onSeedConsumed, initialS
     () => (result.ast && typeof result.ast === 'object' ? invertAstTree(result.ast) : []),
     [result.ast],
   );
-  const usesInstanceSelector = useMemo(() => hasInstanceSelector(result.ast), [result.ast]);
+  const usesInstanceSelector = useMemo(
+    () => hasCurrentInstanceSelector(result.ast, expression, evaluatedExpression),
+    [evaluatedExpression, expression, result.ast],
+  );
 
   return (
     <div style={benchPageStyle(1280, compact)}>

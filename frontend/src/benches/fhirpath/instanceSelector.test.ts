@@ -2,7 +2,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { hasInstanceSelector } from './instanceSelector.ts';
+import { hasCurrentInstanceSelector, hasInstanceSelector } from './instanceSelector.ts';
 import type { FpAstNode } from './fhirPathTypes.ts';
 
 const nestedInstanceSelector: FpAstNode = {
@@ -60,4 +60,11 @@ test('does not detect instance selectors in a selector-free AST', () => {
 test('treats absent and unparseable ASTs as having no instance selector', () => {
   assert.equal(hasInstanceSelector(null), false);
   assert.equal(hasInstanceSelector('parse-failed'), false);
+});
+
+test('reports an instance selector only for the expression that produced its AST', () => {
+  const evaluatedExpression = "Coding { system: 'http://loinc.org', code: '8480-6' }";
+
+  assert.equal(hasCurrentInstanceSelector(nestedInstanceSelector, evaluatedExpression, evaluatedExpression), true);
+  assert.equal(hasCurrentInstanceSelector(nestedInstanceSelector, 'name.given.first()', evaluatedExpression), false);
 });

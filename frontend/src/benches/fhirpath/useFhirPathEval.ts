@@ -14,10 +14,16 @@ export interface FhirPathEvalInput {
 const DEBOUNCE_MS = 450;
 
 const EMPTY_RESULT: FpEvalResult = { error: null, evaluator: '', groups: [], trace: [], ast: null };
+interface FhirPathEvaluation {
+  result: FpEvalResult;
+  evaluatedExpression: string | null;
+}
+
+const EMPTY_EVALUATION: FhirPathEvaluation = { result: EMPTY_RESULT, evaluatedExpression: null };
 
 /** Debounced, abortable evaluator: re-POSTs to the FHIRPath backend ~450ms after the last change to any input field, cancelling any still-in-flight request first. */
-export function useFhirPathEval(input: FhirPathEvalInput): { result: FpEvalResult; isLoading: boolean } {
-  const [result, setResult] = useState<FpEvalResult>(EMPTY_RESULT);
+export function useFhirPathEval(input: FhirPathEvalInput): { result: FpEvalResult; isLoading: boolean; evaluatedExpression: string | null } {
+  const [evaluation, setEvaluation] = useState(EMPTY_EVALUATION);
   const [isLoading, setIsLoading] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -26,7 +32,7 @@ export function useFhirPathEval(input: FhirPathEvalInput): { result: FpEvalResul
   useEffect(() => {
     if (!input.expression.trim()) {
       abortControllerRef.current?.abort();
-      setResult(EMPTY_RESULT);
+      setEvaluation(EMPTY_EVALUATION);
       setIsLoading(false);
       return;
     }
@@ -42,17 +48,23 @@ export function useFhirPathEval(input: FhirPathEvalInput): { result: FpEvalResul
         body = buildFhirPathRequest(input);
       } catch (error) {
         setIsLoading(false);
-        setResult({ ...EMPTY_RESULT, error: `Resource JSON — ${getErrorMessage(error)}` });
+        setEvaluation({
+          result: { ...EMPTY_RESULT, error: `Resource JSON — ${getErrorMessage(error)}` },
+          evaluatedExpression: input.expression,
+        });
         return;
       }
 
       runFhirPath(input.version, body, controller.signal)
-        .then((response) => setResult(parseFhirPathResponse(response)))
+        .then((response) => setEvaluation({ result: parseFhirPathResponse(response), evaluatedExpression: input.expression }))
         .catch((error: unknown) => {
           if (error instanceof DOMException && error.name === 'AbortError') {
             return;
           }
-          setResult({ ...EMPTY_RESULT, error: getErrorMessage(error) });
+          setEvaluation({
+            result: { ...EMPTY_RESULT, error: getErrorMessage(error) },
+            evaluatedExpression: input.expression,
+          });
         })
         .finally(() => {
           if (abortControllerRef.current === controller) {
@@ -69,5 +81,5 @@ export function useFhirPathEval(input: FhirPathEvalInput): { result: FpEvalResul
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input.version, input.expression, input.context, input.resourceText, variablesKey]);
 
-  return { result, isLoading };
+  return { result: evaluation.result, isLoading, evaluatedExpression: evaluation.evaluatedExpression };
 }
