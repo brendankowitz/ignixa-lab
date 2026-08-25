@@ -1,5 +1,6 @@
-import { forwardRef, useRef, type CSSProperties, type Ref } from 'react';
+import { forwardRef, useCallback, useLayoutEffect, useRef, type CSSProperties, type Ref } from 'react';
 import { monoFont } from './styles';
+import { scrollTransform } from './scrollTransform';
 
 export interface HighlightSegment {
   text: string;
@@ -55,7 +56,35 @@ export const HighlightedTextarea = forwardRef(function HighlightedTextarea(
   { value, onChange, lines, style, spellCheck = false, ariaLabel, onPointerSelection, autoGrowMaxHeight }: HighlightedTextareaProps,
   ref: Ref<HTMLTextAreaElement>,
 ) {
-  const preRef = useRef<HTMLPreElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const highlightContentRef = useRef<HTMLDivElement>(null);
+  const setTextareaRef = useCallback(
+    (textarea: HTMLTextAreaElement | null) => {
+      textareaRef.current = textarea;
+
+      if (typeof ref === 'function') {
+        ref(textarea);
+      } else if (ref) {
+        ref.current = textarea;
+      }
+    },
+    [ref],
+  );
+  const syncHighlightScroll = useCallback(() => {
+    const textarea = textareaRef.current;
+    const highlightContent = highlightContentRef.current;
+    if (!textarea || !highlightContent) {
+      return;
+    }
+
+    // The layers reserve different scrollbar space, so mirroring scrollLeft
+    // would clamp the highlight layer before the textarea reaches its offset.
+    highlightContent.style.transform = scrollTransform(textarea.scrollLeft, textarea.scrollTop);
+  }, []);
+
+  useLayoutEffect(() => {
+    syncHighlightScroll();
+  }, [value, lines, syncHighlightScroll]);
 
   // `fontSize` is set explicitly on both layers below rather than left to
   // inherit from the wrapper: a <pre> is a normal inheriting block element,
@@ -85,29 +114,26 @@ export const HighlightedTextarea = forwardRef(function HighlightedTextarea(
 
   return (
     <div style={wrapperStyle}>
-      <pre ref={preRef} aria-hidden="true" style={{ ...layerStyle, overflow: 'hidden' }}>
-        {lines.map((line, index) => (
-          <div key={index}>
-            {line.segments.map((segment, segmentIndex) => (
-              <span key={segmentIndex} style={{ color: segment.color }}>
-                {segment.text}
-              </span>
-            ))}
-          </div>
-        ))}
+      <pre aria-hidden="true" style={{ ...layerStyle, overflow: 'hidden' }}>
+        <div ref={highlightContentRef} style={{ width: 'max-content' }}>
+          {lines.map((line, index) => (
+            <div key={index}>
+              {line.segments.map((segment, segmentIndex) => (
+                <span key={segmentIndex} style={{ color: segment.color }}>
+                  {segment.text}
+                </span>
+              ))}
+            </div>
+          ))}
+        </div>
       </pre>
       <textarea
-        ref={ref}
+        ref={setTextareaRef}
         value={value}
         aria-label={ariaLabel}
         onChange={(event) => onChange(event.target.value)}
         onPointerUp={(event) => onPointerSelection?.(event.currentTarget)}
-        onScroll={(event) => {
-          if (preRef.current) {
-            preRef.current.scrollTop = event.currentTarget.scrollTop;
-            preRef.current.scrollLeft = event.currentTarget.scrollLeft;
-          }
-        }}
+        onScroll={syncHighlightScroll}
         spellCheck={spellCheck}
         wrap="off"
         style={{
