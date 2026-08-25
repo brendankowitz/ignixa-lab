@@ -64,7 +64,7 @@ export const EXAMPLE_EXPRESSIONS: Record<SampleId, string[]> = {
     "telecom.where(system = 'phone').value",
     'name.given.count()',
     "name.select(given.first() & ' ' & family)",
-    "address.select(Address { text: line.join(', ') & ', ' & city & ' ' & state & ' ' & postalCode, city: city, postalCode: postalCode })",
+    "Reference { reference: 'Patient/' & id, display: name.first().given.first() & ' ' & name.first().family }",
   ],
   observation: [
     "component.where(code.coding.code = '8480-6').value.value",
