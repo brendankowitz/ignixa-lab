@@ -248,7 +248,7 @@ private static ParameterOutcomeDto ToOutcomeDto(ParameterOutcome outcome) => out
 };
 ```
 
-Map `PlanTraceFailure` or a `SearchCompilationFailure` into the current `failure` DTO for scope/stage/message/parameterCode/span, while preserving the available parameter, plan, and implicit diagnostics. If a future diagnostic has no representable DTO slot, throw `NotSupportedException` from the mapper and let the endpoint's mapper-only catch return the existing logged 500 response. Do not silently drop diagnostic evidence.
+Map `PlanTraceFailure` or a `SearchCompilationFailure` into the current `failure` DTO for scope/stage/safe-message/parameterCode/span, while preserving the available parameter, plan, and implicit diagnostics. Keep raw compiler messages only in server-side logs. If a future diagnostic has no representable DTO slot, throw `NotSupportedException` from the mapper and let the endpoint's mapper-only catch return the existing logged 500 response. Do not silently drop diagnostic evidence.
 
 - [ ] **Step 6: Preserve the request error split**
 

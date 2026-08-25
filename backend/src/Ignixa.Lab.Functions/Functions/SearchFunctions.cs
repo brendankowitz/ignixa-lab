@@ -471,9 +471,26 @@ public sealed partial class SearchFunctions(ILogger<SearchFunctions> logger, Sea
         // other failure path here attaches.
         try
         {
-            return compiled.Succeeded
-                ? new OkObjectResult(SearchTraceMapper.ToResponse(compiled.Compiled, resolvedVersion, resourceType))
-                : new OkObjectResult(SearchTraceMapper.ToResponse(compiled.Failure, resolvedVersion, resourceType));
+            if (compiled.Succeeded)
+            {
+                var compiledSearch = compiled.Compiled!;
+                var diagnostics = compiledSearch.Diagnostics
+                    ?? throw new InvalidOperationException("Full search diagnostics were not produced.");
+                if (diagnostics.PlanTrace is null && diagnostics.PlanTraceFailure is null)
+                {
+                    throw new InvalidOperationException("Search plan diagnostics were not produced.");
+                }
+
+                return new OkObjectResult(SearchTraceMapper.ToResponse(compiledSearch, resolvedVersion, resourceType));
+            }
+
+            var failure = compiled.Failure!;
+            if (failure.Diagnostics is null)
+            {
+                throw new InvalidOperationException("Full search failure diagnostics were not produced.");
+            }
+
+            return new OkObjectResult(SearchTraceMapper.ToResponse(failure, resolvedVersion, resourceType));
         }
         catch (Exception ex)
         {

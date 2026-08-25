@@ -255,6 +255,7 @@ public sealed class SearchTraceMapperTests
         var diagnostics = CloneDiagnostics(compiled.Diagnostics!, compiled.Diagnostics!.Parameters)
             with
             {
+                PlanTrace = null,
                 PlanTraceFailure = planFailure,
             };
 
@@ -264,7 +265,7 @@ public sealed class SearchTraceMapperTests
         response.Failure!.Scope.Should().Be("PlanTrace");
         response.Failure.Stage.Should().Be("Emit");
         response.Failure.Message.Should().Be("The search plan explanation is unavailable.");
-        response.Plan.Should().NotBeNull();
+        response.Plan.Should().BeNull();
         response.Sql.Should().NotBeNull();
     }
 
