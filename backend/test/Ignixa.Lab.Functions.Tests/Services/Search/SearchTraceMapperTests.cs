@@ -207,7 +207,7 @@ public sealed class SearchTraceMapperTests
 
         response.Failure!.Stage.Should().Be("Resolve");
         response.Failure.Scope.Should().Be("Compilation");
-        response.Failure.Message.Should().Be("could not be resolved");
+        response.Failure.Message.Should().Be("The search compiler could not process this query.");
         response.Failure.ParameterCode.Should().Be("unknown");
         response.Failure.Span!.Origin.Should().Be("Value");
     }
@@ -263,7 +263,7 @@ public sealed class SearchTraceMapperTests
         response.Failure.Should().NotBeNull();
         response.Failure!.Scope.Should().Be("PlanTrace");
         response.Failure.Stage.Should().Be("Emit");
-        response.Failure.Message.Should().Be("plan explanation unavailable");
+        response.Failure.Message.Should().Be("The search plan explanation is unavailable.");
         response.Plan.Should().NotBeNull();
         response.Sql.Should().NotBeNull();
     }
@@ -299,7 +299,7 @@ public sealed class SearchTraceMapperTests
             .Parameters.Single().Outcome;
 
         outcome.Kind.Should().Be("Failed");
-        outcome.Reason.Should().Be("lowering failed");
+        outcome.Reason.Should().Be("The search parameter could not be compiled.");
         outcome.Stage.Should().Be("Lower");
         outcome.Span.Should().BeEquivalentTo(new SpanDto("Value", 2, 5));
     }

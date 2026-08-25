@@ -179,7 +179,7 @@ public sealed class SearchFunctionsTests
             .Should().BeOfType<SearchTraceResponse>().Subject;
         response.Failure.Should().NotBeNull();
         response.Failure!.Stage.Should().Be("Lower");
-        response.Failure.Message.Should().Contain("at most 3 keys");
+        response.Failure.Message.Should().Be("The search compiler could not process this query.");
     }
 
     [Fact]

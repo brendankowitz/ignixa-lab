@@ -20,8 +20,8 @@ public sealed record SearchTraceResponse(
 /// <summary><see cref="DataType"/> is the parameter's own resolved <c>Ignixa.Search.Models.SearchParamType</c>
 /// (e.g. "String", "Token", "Date", "Reference", "Quantity", "Composite") — mirrors
 /// <see cref="Ignixa.Search.Parsing.ParameterTrace.DataType"/> directly. Null when the parameter never
-/// bound a value (an `Ignored`/`Failed` outcome). A chain reports its reference parameter's type
-/// ("Reference"); a composite reports its own declared type ("Composite"), not one component's.</summary>
+/// bound a value (an `Ignored`/`Failed` outcome). A chain reports the resolved terminal parameter's type
+/// (for example, "String"); a composite reports its own declared type ("Composite"), not one component's.</summary>
 /// <summary><see cref="IrUnavailableReason"/> distinguishes the two ways <see cref="Ir"/> comes back empty:
 /// null means the parameter genuinely has no IR, non-null means the projector could not describe it and says
 /// why. Without it an undescribable expression is indistinguishable from an absent one.</summary>
@@ -47,7 +47,7 @@ public sealed record SpanDto(string Origin, int Start, int Length);
 public sealed record IrRowDto(string Kind, string Text, int Depth);
 
 /// <summary><see cref="Kind"/> is "Compiled" | "Ignored" | "KnownMiss" | "Failed". <see cref="Reason"/> carries the
-/// Ignored reason or the Failed message; <see cref="Stage"/> is set only for Failed.</summary>
+/// Ignored/KnownMiss reason or a safe generic failure message; <see cref="Stage"/> is set only for Failed.</summary>
 public sealed record ParameterOutcomeDto(string Kind, string? Reason, string? Stage, SpanDto? Span);
 
 public sealed record QueryPlanDto(string Explain, IReadOnlyList<PlanExplainRowDto> Rows, IReadOnlyList<CteProvenanceDto> Ctes);
@@ -86,6 +86,8 @@ public sealed record SqlTextRangeDto(string Label, string Kind, int Start, int L
 public sealed record ImplicitParameterDto(string Name, string Value, string Reason);
 
 /// <summary>A compilation or plan-trace diagnostic failure. <see cref="Scope"/> distinguishes a fatal compilation
-/// failure from a non-fatal plan-explainer failure. <see cref="ParameterCode"/> identifies the owning search
-/// parameter when the compiler can attribute the failure; it is null for failures owned by the whole plan.</summary>
+/// failure from a non-fatal plan-explainer failure. <see cref="Message"/> is safe for the anonymous bench
+/// response; the underlying exception remains available only to server-side logging. <see cref="ParameterCode"/>
+/// identifies the owning search parameter when the compiler can attribute the failure; it is null for failures
+/// owned by the whole plan.</summary>
 public sealed record TraceFailureDto(string Scope, string Stage, string Message, string? ParameterCode, SpanDto? Span);

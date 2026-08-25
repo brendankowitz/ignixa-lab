@@ -15,6 +15,10 @@ namespace Ignixa.Lab.Functions.Services.Search;
 /// non-serializable pieces.</summary>
 public static class SearchTraceMapper
 {
+    private const string CompilationFailureMessage = "The search compiler could not process this query.";
+    private const string ParameterFailureMessage = "The search parameter could not be compiled.";
+    private const string PlanTraceFailureMessage = "The search plan explanation is unavailable.";
+
     /// <param name="fhirVersion">The version actually compiled against (<see cref="SearchEngineFactory.Resolve"/>),
     /// not the caller's raw route value — see <see cref="SearchTraceResponse.FhirVersion"/>.</param>
     /// <param name="requestedResourceType">The type passed to the compiler. Used as the response resource type
@@ -130,7 +134,7 @@ public static class SearchTraceMapper
         // only as a "1 = 0" buried in the emitted SQL.
         ParameterOutcome.KnownMiss knownMiss => new ParameterOutcomeDto("KnownMiss", knownMiss.Reason, null, ToSpanDto(knownMiss.Span)),
         ParameterOutcome.Ignored ignored => new ParameterOutcomeDto("Ignored", ignored.Reason, null, ToSpanDto(ignored.Span)),
-        ParameterOutcome.Failed failed => new ParameterOutcomeDto("Failed", failed.Message, failed.Stage.ToString(), ToSpanDto(failed.Span)),
+        ParameterOutcome.Failed failed => new ParameterOutcomeDto("Failed", ParameterFailureMessage, failed.Stage.ToString(), ToSpanDto(failed.Span)),
         _ => throw new NotSupportedException($"Unknown ParameterOutcome: {outcome.GetType().Name}."),
     };
 
@@ -140,7 +144,12 @@ public static class SearchTraceMapper
         plan.Ctes.Select(c => new CteProvenanceDto(c.CteIndex, c.ParameterOrdinal, c.ContributingOrdinals, ToSpanDto(c.Span))).ToList());
 
     private static TraceFailureDto ToFailureDto(SearchCompilationFailure failure, string scope) =>
-        new(scope, failure.Stage.ToString(), failure.Message, failure.ParameterCode, ToSpanDto(failure.Span));
+        new(
+            scope,
+            failure.Stage.ToString(),
+            scope == "PlanTrace" ? PlanTraceFailureMessage : CompilationFailureMessage,
+            failure.ParameterCode,
+            ToSpanDto(failure.Span));
 
     private static SpanDto ToSpanDto(SourceSpan span) => new(span.Origin.ToString(), span.Start, span.Length);
 

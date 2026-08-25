@@ -58,8 +58,12 @@ test('parseFhirPathResponse preserves nested instance-selector AST nodes', () =>
   assert.equal(ast.arguments[0]?.arguments[0]?.name, 'http://example.org');
 
   const inverted = invertAstTree(ast);
-  const invertedSelector = inverted.at(-1);
+  assert.equal(inverted.length, 1);
+  const invertedSelector = inverted[0];
   assert.equal(invertedSelector?.typeName, 'Identifier');
   assert.equal(invertedSelector?.namespacePrefix, 'FHIR');
   assert.equal(invertedSelector?.isEmpty, false);
+  assert.equal(invertedSelector?.arguments.length, 1);
+  assert.equal(invertedSelector?.arguments[0]?.expressionType, 'ElementAssignment');
+  assert.equal(invertedSelector?.arguments[0]?.arguments[0]?.expressionType, 'ConstantExpression');
 });

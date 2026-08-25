@@ -1,6 +1,6 @@
 # Ignixa FHIR 0.6.68 integration Implementation Plan
 
-> **Historical implementation record:** The plan was executed in PR #43. Its checkbox steps are retained to preserve the original task breakdown; final validation is recorded in [the task report](../../.superpowers/sdd/2026-08-24-ignixa-fhir-0.6.68-integration/task-2-report.md).
+> **Historical implementation record:** The plan was executed in PR #43. Its checkbox steps are retained to preserve the original task breakdown; final validation is recorded in [the task report](../../../.superpowers/sdd/2026-08-24-ignixa-fhir-0.6.68-integration/task-2-report.md).
 
 **Goal:** Upgrade `ignixa-lab` to the released Ignixa FHIR `0.6.68` package family and preserve the lab's Search and FHIRPath behavior across the release's breaking API and value-model changes.
 
@@ -15,7 +15,7 @@
 - **Package versions:** stable Ignixa packages use `0.6.68`; `Ignixa.Search.Sql` uses `0.6.68-alpha`; TestScript packages use `0.6.68-beta`.
 - **Search diagnostics:** use `SearchPlanOptions.DiagnosticsLevel = SearchDiagnosticsLevel.Full` so the Search bench retains parameter, plan, and SQL provenance.
 - **Search compiler:** construct `SearchSqlCompiler` with a fresh `InMemorySymbolResolver` per request; continue caching the options builder and definition managers per FHIR version.
-- **Frontend compatibility:** preserve `fhirVersion`, `resourceType`, `parameters`, `plan`, `sql`, `implicit`, and `failure`, plus existing AST node naming conventions.
+- **Frontend compatibility:** preserve `fhirVersion`, `resourceType`, `parameters`, `plan`, `sql`, `implicit`, and `failure`, plus existing AST node naming conventions; additive failure and selector metadata remain backward-compatible.
 - **Error handling:** keep malformed caller input as HTTP 400, surface expected compiler failures in the trace's structured `failure` field with logging, map unexpected compiler/mapper defects to logged HTTP 500 responses, and never catch the broad `FhirException` hierarchy as a client-error marker.
 - **FHIRPath values:** handle `FhirTemporal` values for `date`, `dateTime`, `instant`, and `time` without changing non-temporal primitive or complex-resource output.
 - **Scope exclusions:** do not add SQL Server, EF, retry, schema-deployment, or other upstream data-layer dependencies; do not commit package binaries or machine-specific feeds.
@@ -574,7 +574,7 @@ Include the required trailers from Task 1.
 
 **Interfaces:**
 - Consumes: the completed backend package/compiler/FHIRPath migration.
-- Produces: verified backend and frontend builds/tests with unchanged Search and FHIRPath wire contracts.
+- Produces: verified backend and frontend builds/tests with backward-compatible additive Search and FHIRPath wire metadata.
 
 - [ ] **Step 1: Verify the backend package graph and solution build**
 
@@ -599,14 +599,14 @@ Expected: all pre-existing tests plus the new Search, selector, temporal, and re
 
 - [ ] **Step 3: Verify frontend contracts and build**
 
-Confirm `frontend/src/benches/search/searchTypes.ts` still models the same response fields and `frontend/src/benches/fhirpath/fhirPathTypes.ts` still models AST nodes through `expressionType`, `name`, `returnType`, and `arguments`. Then run:
+Confirm `frontend/src/benches/search/searchTypes.ts` models the existing response fields plus additive failure metadata and `frontend/src/benches/fhirpath/fhirPathTypes.ts` preserves AST nodes through `expressionType`, `name`, `returnType`, `arguments`, and selector metadata. Then run:
 
 ```powershell
 npm --prefix frontend run test
 npm --prefix frontend run build
 ```
 
-Expected: the frontend needs no contract change; the AST selector is consumable through the existing generic node shape.
+Expected: the frontend keeps the existing contract while consuming the additive failure and selector metadata through the existing generic node shapes.
 
 - [ ] **Step 4: Review the final diff for scope and package drift**
 
