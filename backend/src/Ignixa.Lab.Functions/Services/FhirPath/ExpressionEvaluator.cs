@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using System.Text.Json.Nodes;
 using Ignixa.Abstractions;
 using Ignixa.FhirPath.Evaluation;
@@ -20,6 +21,7 @@ namespace Ignixa.Lab.Functions.Services.FhirPath;
 public sealed class ExpressionEvaluator
 {
     private static readonly FhirPathEvaluator Evaluator = new();
+    private static readonly ConditionalWeakTable<ISchema, SourceNodeInstanceFactory> InstanceFactories = new();
     private readonly SchemaProviderFactory _schemaFactory;
 
     public ExpressionEvaluator(SchemaProviderFactory schemaFactory)
@@ -145,6 +147,9 @@ public sealed class ExpressionEvaluator
             elementResolver = new LightweightElementResolver(schemaProvider);
             evalContext = fhirCtx.WithElementResolver(elementResolver.Resolve);
         }
+
+        var instanceFactory = InstanceFactories.GetValue(schema, static schema => new SourceNodeInstanceFactory(schema));
+        evalContext = evalContext.WithInstanceCreator(instanceFactory.Create);
 
         // Set %resource variable if a resource is provided
         if (resource != null && evalContext is FhirEvaluationContext fhirContext)
