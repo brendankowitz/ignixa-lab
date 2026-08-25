@@ -60,13 +60,45 @@ export const HighlightedTextarea = forwardRef(function HighlightedTextarea(
   const highlightContentRef = useRef<HTMLDivElement>(null);
   const setTextareaRef = useCallback(
     (textarea: HTMLTextAreaElement | null) => {
+      if (textarea === null) {
+        textareaRef.current = null;
+
+        if (typeof ref === 'function') {
+          ref(null);
+        } else if (ref) {
+          ref.current = null;
+        }
+
+        return;
+      }
+
       textareaRef.current = textarea;
 
       if (typeof ref === 'function') {
-        ref(textarea);
-      } else if (ref) {
+        const forwardedCleanup = ref(textarea);
+
+        // React 19 uses a returned callback-ref cleanup instead of a null ref
+        // call, so return this cleanup to preserve both refs' detach behavior.
+        return () => {
+          textareaRef.current = null;
+          if (forwardedCleanup) {
+            forwardedCleanup();
+          } else {
+            ref(null);
+          }
+        };
+      }
+
+      if (ref) {
         ref.current = textarea;
       }
+
+      return () => {
+        textareaRef.current = null;
+        if (ref) {
+          ref.current = null;
+        }
+      };
     },
     [ref],
   );
