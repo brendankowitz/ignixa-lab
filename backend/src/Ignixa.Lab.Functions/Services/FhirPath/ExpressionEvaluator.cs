@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using System.Text.Json.Nodes;
 using Ignixa.Abstractions;
 using Ignixa.FhirPath.Evaluation;
@@ -20,6 +21,7 @@ namespace Ignixa.Lab.Functions.Services.FhirPath;
 public sealed class ExpressionEvaluator
 {
     private static readonly FhirPathEvaluator Evaluator = new();
+    private static readonly ConditionalWeakTable<ISchema, SourceNodeInstanceFactory> InstanceFactories = new();
     private readonly SchemaProviderFactory _schemaFactory;
 
     public ExpressionEvaluator(SchemaProviderFactory schemaFactory)
@@ -145,6 +147,30 @@ public sealed class ExpressionEvaluator
             elementResolver = new LightweightElementResolver(schemaProvider);
             evalContext = fhirCtx.WithElementResolver(elementResolver.Resolve);
         }
+
+        // Cache the stateless, schema-bound factory by schema identity: contexts are created per element,
+        // but SchemaProviderFactory exposes at most five stable Lazy schemas, making sharing effective and thread-safe.
+        // Turn unsupported types into errors because FHIRPath would otherwise render a null result as an empty result.
+        var instanceFactory = InstanceFactories.GetValue(schema, static schema => new SourceNodeInstanceFactory(schema));
+        evalContext = evalContext.WithInstanceCreator(request =>
+        {
+            var created = instanceFactory.Create(request);
+            if (created == null)
+            {
+                var fullName = request.NamespacePrefix is null
+                    ? request.TypeName
+                    : $"{request.NamespacePrefix}.{request.TypeName}";
+
+                throw new InvalidOperationException(
+                    string.Equals(request.NamespacePrefix, "System", StringComparison.Ordinal)
+                        ? $"Cannot construct 'System.{request.TypeName}': object construction is not supported for the System namespace. " +
+                          "Use the FHIR type instead, for example Quantity or Coding."
+                        : $"Cannot construct '{fullName}': not a known FHIR type. Instance selectors " +
+                          "take a FHIR type name, for example Coding, HumanName, or CodeableConcept.");
+            }
+
+            return created;
+        });
 
         // Set %resource variable if a resource is provided
         if (resource != null && evalContext is FhirEvaluationContext fhirContext)

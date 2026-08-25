@@ -6,6 +6,7 @@ import { useIsNarrowViewport } from '../../hooks/useIsNarrowViewport';
 import { highlightFhirPathExpression } from './fhirPathHighlight';
 import { highlightJson } from '../components/jsonHighlight';
 import { invertAstTree } from './astInvert';
+import { hasCurrentInstanceSelector } from './instanceSelector';
 import { DEFAULT_EXPRESSION, EXAMPLE_EXPRESSIONS, SAMPLE_RESOURCES, type SampleId } from './sampleResources';
 import { useFhirPathEval } from './useFhirPathEval';
 import type { FhirVersion, FpAstNode, FpVariable } from './fhirPathTypes';
@@ -158,7 +159,7 @@ export function FhirPathBench({ onOpenFakes, fakesSeed, onSeedConsumed, initialS
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fakesSeed]);
 
-  const { result, isLoading } = useFhirPathEval({ version, expression, context, resourceText, variables });
+  const { result, isLoading, evaluatedExpression } = useFhirPathEval({ version, expression, context, resourceText, variables });
 
   const expressionHighlight = useMemo(() => highlightFhirPathExpression(expression), [expression]);
   const resourceHighlight = useMemo(() => highlightJson(resourceText), [resourceText]);
@@ -209,6 +210,10 @@ export function FhirPathBench({ onOpenFakes, fakesSeed, onSeedConsumed, initialS
     () => (result.ast && typeof result.ast === 'object' ? invertAstTree(result.ast) : []),
     [result.ast],
   );
+  const usesInstanceSelector = useMemo(
+    () => hasCurrentInstanceSelector(result.ast, expression, evaluatedExpression),
+    [evaluatedExpression, expression, result.ast],
+  );
 
   return (
     <div style={benchPageStyle(1280, compact)}>
@@ -234,6 +239,31 @@ export function FhirPathBench({ onOpenFakes, fakesSeed, onSeedConsumed, initialS
           />
         </div>
 
+        {usesInstanceSelector ? (
+          <div
+            style={{
+              padding: '8px 10px',
+              borderRadius: 8,
+              border: '1px solid var(--border)',
+              background: 'var(--inset)',
+              color: 'var(--text3)',
+              fontSize: 11.5,
+              lineHeight: 1.5,
+            }}
+          >
+            Object construction is trial-use (see{' '}
+            <a
+              href="https://jira.hl7.org/browse/FHIR-44774"
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: 'var(--accent)' }}
+            >
+              FHIR-44774
+            </a>
+            ) and not normative. Ignixa-specific behavior in spec-silent areas may differ on other engines.
+          </div>
+        ) : null}
+
         <div style={{ display: 'flex', gap: compact ? 10 : 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: '1 1 240px', minWidth: 0 }}>
             <span style={sectionLabelStyle}>
@@ -254,6 +284,7 @@ export function FhirPathBench({ onOpenFakes, fakesSeed, onSeedConsumed, initialS
                 key={example}
                 type="button"
                 onClick={() => setExpression(example)}
+                title={example}
                 style={{
                   fontFamily: monoFont,
                   fontSize: 10.5,
