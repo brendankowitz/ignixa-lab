@@ -150,16 +150,23 @@ public sealed class ExpressionEvaluator
 
         // Cache the stateless, schema-bound factory by schema identity: contexts are created per element,
         // but SchemaProviderFactory exposes at most five stable Lazy schemas, making sharing effective and thread-safe.
-        // Turn unknown non-System types into errors because FHIRPath would otherwise render the null as an empty result.
+        // Turn unsupported types into errors because FHIRPath would otherwise render a null result as an empty result.
         var instanceFactory = InstanceFactories.GetValue(schema, static schema => new SourceNodeInstanceFactory(schema));
         evalContext = evalContext.WithInstanceCreator(request =>
         {
             var created = instanceFactory.Create(request);
-            if (created == null && !string.Equals(request.NamespacePrefix, "System", StringComparison.Ordinal))
+            if (created == null)
             {
+                var fullName = request.NamespacePrefix is null
+                    ? request.TypeName
+                    : $"{request.NamespacePrefix}.{request.TypeName}";
+
                 throw new InvalidOperationException(
-                    $"Cannot construct '{request.TypeName}': not a known FHIR type. Instance selectors " +
-                    "take a FHIR type name, for example Coding, HumanName, or CodeableConcept.");
+                    string.Equals(request.NamespacePrefix, "System", StringComparison.Ordinal)
+                        ? $"Cannot construct 'System.{request.TypeName}': object construction is not supported for the System namespace. " +
+                          "Use the FHIR type instead, for example Quantity or Coding."
+                        : $"Cannot construct '{fullName}': not a known FHIR type. Instance selectors " +
+                          "take a FHIR type name, for example Coding, HumanName, or CodeableConcept.");
             }
 
             return created;

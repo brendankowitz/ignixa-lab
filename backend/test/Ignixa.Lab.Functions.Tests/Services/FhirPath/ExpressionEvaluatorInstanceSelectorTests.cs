@@ -102,7 +102,7 @@ public sealed class ExpressionEvaluatorInstanceSelectorTests
             fhirVersion: "R4");
 
         var result = results.Should().ContainSingle().Subject;
-        result.Error.Should().NotBeNull().And.Contain("Codin");
+        result.Error.Should().NotBeNull().And.Contain("Codin").And.Contain("not a known FHIR type");
     }
 
     [Fact]
@@ -113,7 +113,49 @@ public sealed class ExpressionEvaluatorInstanceSelectorTests
             PatientJson)
             .Should().ContainSingle().Subject;
 
-        result.Error.Should().NotBeNull().And.Contain("Codin");
+        result.Error.Should().NotBeNull().And.Contain("Codin").And.Contain("not a known FHIR type");
+    }
+
+    [Fact]
+    public void Evaluate_SystemInstanceSelector_SurfacesSystemNamespaceError()
+    {
+        const string expression = "System.Quantity { value: 5, unit: 'mg' }";
+        var schemaFactory = new SchemaProviderFactory();
+        var analyzer = new ExpressionAnalyzer(schemaFactory);
+        var (parsed, contextExpression, parseError) = analyzer.ParseAndAnalyze(expression, null, null, "R4");
+
+        parseError.Should().BeNull();
+
+        var results = new ExpressionEvaluator(schemaFactory).Evaluate(
+            parsed!,
+            contextExpression,
+            resource: null,
+            variables: null,
+            fhirVersion: "R4");
+
+        var result = results.Should().ContainSingle().Subject;
+        result.Error.Should().NotBeNull().And.Contain("System namespace");
+    }
+
+    [Fact]
+    public void Evaluate_PrefixedUnknownInstanceSelector_EchoesPrefixedTypeName()
+    {
+        const string expression = "FHIR.Codin { system: 'http://loinc.org', code: '8480-6' }";
+        var schemaFactory = new SchemaProviderFactory();
+        var analyzer = new ExpressionAnalyzer(schemaFactory);
+        var (parsed, contextExpression, parseError) = analyzer.ParseAndAnalyze(expression, null, null, "R4");
+
+        parseError.Should().BeNull();
+
+        var results = new ExpressionEvaluator(schemaFactory).Evaluate(
+            parsed!,
+            contextExpression,
+            resource: null,
+            variables: null,
+            fhirVersion: "R4");
+
+        var result = results.Should().ContainSingle().Subject;
+        result.Error.Should().NotBeNull().And.Contain("FHIR.Codin").And.Contain("not a known FHIR type");
     }
 
     [Fact]
