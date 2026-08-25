@@ -251,16 +251,16 @@ export function FhirPathBench({ onOpenFakes, fakesSeed, onSeedConsumed, initialS
               lineHeight: 1.5,
             }}
           >
-            Object construction is{' '}
+            Object construction is trial-use (see{' '}
             <a
-              href="https://build.fhir.org/ig/HL7/FHIRPath/branches/BP-FHIR-44774/index.html#instance-selector"
+              href="https://jira.hl7.org/browse/FHIR-44774"
               target="_blank"
               rel="noreferrer"
               style={{ color: 'var(--accent)' }}
             >
-              trial-use
-            </a>{' '}
-            and not normative. Ignixa-specific behavior in spec-silent areas may differ on other engines.
+              FHIR-44774
+            </a>
+            ) and not normative. Ignixa-specific behavior in spec-silent areas may differ on other engines.
           </div>
         ) : null}
 

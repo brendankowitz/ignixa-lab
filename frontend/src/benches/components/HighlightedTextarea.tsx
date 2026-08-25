@@ -81,7 +81,8 @@ export const HighlightedTextarea = forwardRef(function HighlightedTextarea(
         // call, so return this cleanup to preserve both refs' detach behavior.
         return () => {
           textareaRef.current = null;
-          if (forwardedCleanup) {
+          // `ref={el => (myRef.current = el)}` returns a truthy element, not a cleanup function.
+          if (typeof forwardedCleanup === 'function') {
             forwardedCleanup();
           } else {
             ref(null);

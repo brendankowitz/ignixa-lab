@@ -148,8 +148,22 @@ public sealed class ExpressionEvaluator
             evalContext = fhirCtx.WithElementResolver(elementResolver.Resolve);
         }
 
+        // Cache the stateless, schema-bound factory by schema identity: contexts are created per element,
+        // but SchemaProviderFactory exposes at most five stable Lazy schemas, making sharing effective and thread-safe.
+        // Turn unknown non-System types into errors because FHIRPath would otherwise render the null as an empty result.
         var instanceFactory = InstanceFactories.GetValue(schema, static schema => new SourceNodeInstanceFactory(schema));
-        evalContext = evalContext.WithInstanceCreator(instanceFactory.Create);
+        evalContext = evalContext.WithInstanceCreator(request =>
+        {
+            var created = instanceFactory.Create(request);
+            if (created == null && !string.Equals(request.NamespacePrefix, "System", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    $"Cannot construct '{request.TypeName}': not a known FHIR type. Instance selectors " +
+                    "take a FHIR type name, for example Coding, HumanName, or CodeableConcept.");
+            }
+
+            return created;
+        });
 
         // Set %resource variable if a resource is provided
         if (resource != null && evalContext is FhirEvaluationContext fhirContext)

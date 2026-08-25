@@ -82,8 +82,38 @@ public sealed class ExpressionEvaluatorInstanceSelectorTests
         result.OutputValues.Should().ContainSingle().Which.InstanceType.Should().Be("Coding");
         PrimitiveValues(result.OutputValues[0], "system").Should().ContainSingle().Which.Should().Be("http://loinc.org");
         PrimitiveValues(result.OutputValues[0], "code").Should().ContainSingle().Which.Should().Be("8480-6");
-        string.Join(Environment.NewLine, results.Select(evaluation => evaluation.Error))
-            .Should().NotContain("no instance creator");
+    }
+
+    [Fact]
+    public void Evaluate_UnknownInstanceSelectorWithoutResource_SurfacesTypeError()
+    {
+        const string expression = "Codin { system: 'http://loinc.org', code: '8480-6' }";
+        var schemaFactory = new SchemaProviderFactory();
+        var analyzer = new ExpressionAnalyzer(schemaFactory);
+        var (parsed, contextExpression, parseError) = analyzer.ParseAndAnalyze(expression, null, null, "R4");
+
+        parseError.Should().BeNull();
+
+        var results = new ExpressionEvaluator(schemaFactory).Evaluate(
+            parsed!,
+            contextExpression,
+            resource: null,
+            variables: null,
+            fhirVersion: "R4");
+
+        var result = results.Should().ContainSingle().Subject;
+        result.Error.Should().NotBeNull().And.Contain("Codin");
+    }
+
+    [Fact]
+    public void Evaluate_UnknownInstanceSelectorWithResource_SurfacesTypeError()
+    {
+        var result = Evaluate(
+            "Codin { system: 'http://loinc.org', code: '8480-6' }",
+            PatientJson)
+            .Should().ContainSingle().Subject;
+
+        result.Error.Should().NotBeNull().And.Contain("Codin");
     }
 
     [Fact]
