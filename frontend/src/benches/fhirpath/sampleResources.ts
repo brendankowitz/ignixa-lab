@@ -64,14 +64,16 @@ export const EXAMPLE_EXPRESSIONS: Record<SampleId, string[]> = {
     "telecom.where(system = 'phone').value",
     'name.given.count()',
     "name.select(given.first() & ' ' & family)",
+    'name.select(HumanName { family: family, given: given.first() })',
   ],
   observation: [
     "component.where(code.coding.code = '8480-6').value.value",
     "code.coding.display.join(' / ')",
     'component.count()',
     'effective',
+    'component.code.coding.select(Coding { system: system, code: code })',
   ],
-  custom: [],
+  custom: ["Coding { system: 'http://loinc.org', code: '8480-6' }"],
 };
 
 export const DEFAULT_EXPRESSION = EXAMPLE_EXPRESSIONS.patient[0];
