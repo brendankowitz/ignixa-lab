@@ -141,7 +141,7 @@ function currentSortFields(query: string): SortField[] {
  * real, individually toggleable fragment that combines with any other. Every value offered here was run
  * against the real compiler first (see `SEARCH_TERMS`/`SORTABLE_FIELDS`/`INCLUDABLE`/`REVINCLUDABLE`
  * above), so toggling a chip on should never land on a Failed/Ignored outcome. `_count` is deliberately not
- * offered: `SearchCompiler.CompileAsync` doesn't wire `MaxItemCount` through to `Lower.Run`, so it has no
+ * offered: the query-string compiler flow doesn't wire `MaxItemCount` through to `Lower.Run`, so it has no
  * visible effect on the plan/SQL this bench traces. */
 export function SearchQueryBuilder({
   resourceType,

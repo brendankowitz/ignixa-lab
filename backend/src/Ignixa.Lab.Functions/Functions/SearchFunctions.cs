@@ -4,7 +4,7 @@ using Ignixa.Lab.Functions.Services.Search;
 using Ignixa.Search.Exceptions;
 using Ignixa.Search.Expressions;
 using Ignixa.Search.Parsing;
-using Ignixa.Search.Sql.Tracing;
+using Ignixa.Search.Sql;
 using Ignixa.Serialization.Abstractions;
 using Ignixa.Specification.ValueSets.Normative;
 using Microsoft.AspNetCore.Http;
@@ -16,10 +16,10 @@ namespace Ignixa.Lab.Functions.Functions;
 
 /// <summary>
 /// Search-trace endpoints powering the Expression Benches "Search" bench. Given a FHIR search query, it
-/// traces the query through parse → typed expression → lowered SQL plan → generated SQL via
-/// <see cref="SearchCompiler"/>, returning the cross-referenced provenance as plain JSON (not a FHIR
-/// resource — this is bench tooling, so no OperationOutcome wrapping). Supports the same FHIR version set
-/// as <see cref="Services.FhirPath.SchemaProviderFactory"/> (STU3, R4, R4B, R5, R6) via
+/// traces the query through parse → typed expression → lowered SQL plan → generated SQL via the
+/// request-scoped <see cref="SearchSqlCompiler"/>, returning the cross-referenced provenance as plain JSON
+/// (not a FHIR resource — this is bench tooling, so no OperationOutcome wrapping). Supports the same FHIR
+/// version set as <see cref="Services.FhirPath.SchemaProviderFactory"/> (STU3, R4, R4B, R5, R6) via
 /// <see cref="SearchEngineFactory.Get"/>, which defaults an unrecognized value to R4 rather than rejecting
 /// the request — same permissive fallback the rest of this app uses for FHIR version strings. The version
 /// actually used comes back as <see cref="SearchTraceResponse.FhirVersion"/> so that fallback is visible
@@ -336,7 +336,7 @@ public sealed partial class SearchFunctions(ILogger<SearchFunctions> logger, Sea
         return true;
     }
 
-    // SearchCompiler.CompileAsync never validates the top-level resourceType itself -- it only rejects an
+    // SearchSqlCompiler never validates the top-level resourceType itself -- it only rejects an
     // unknown resource type when one appears as a chain/_has target (via SearchKeyBinder resolving a
     // ReferenceSearchParameter's target types). Given a resource type nothing recognizes, it happily
     // compiles a full plan and SQL against `dbo.Resource WHERE ResourceTypeId = @p0` for an ID that will
@@ -345,9 +345,9 @@ public sealed partial class SearchFunctions(ILogger<SearchFunctions> logger, Sea
     // rejected per-parameter deeper in the pipeline. Shared by every route above (type/compartment/
     // $everything all pass the resource type they're compiling against).
     /// <param name="parameterSource">The request whose query string supplies the FHIR search parameters, or
-    /// null for an operation that takes none ($everything). Parsed inside the try below rather than by the
-    /// caller so a parser throw is classified by the same 400/500 split as a compiler throw instead of
-    /// escaping to the host as a bare 500.</param>
+    /// null for an operation that takes none ($everything). Parsing inside the try lets the catches below
+    /// classify parser failures alongside compiler failures instead of letting them escape to the host as a bare
+    /// 500.</param>
     private async Task<IActionResult> CompileAndRespondAsync(
         string fhirVersion,
         string resourceType,
@@ -355,30 +355,48 @@ public sealed partial class SearchFunctions(ILogger<SearchFunctions> logger, Sea
         Expression? operationExpression,
         CancellationToken cancellationToken)
     {
-        var engine = engineFactory.Get(fhirVersion);
         var resolvedVersion = SearchEngineFactory.Resolve(fhirVersion);
 
-        if (!engine.SearchParameters.TryGetSearchParameters(resourceType, out _))
-        {
-            return new BadRequestObjectResult(new { error = $"'{resourceType}' is not a supported FHIR resource type for {resolvedVersion}." });
-        }
-
-        var resolver = new InMemorySymbolResolver();
-
-        SearchTrace trace;
+        SearchCompilationResult compiled;
         try
         {
-            var parameters = parameterSource is null ? [] : ParseQuery(parameterSource);
+            cancellationToken.ThrowIfCancellationRequested();
+            var engine = engineFactory.Get(fhirVersion);
+            if (!engine.SearchParameters.TryGetSearchParameters(resourceType, out _))
+            {
+                return new BadRequestObjectResult(new { error = $"'{resourceType}' is not a supported FHIR resource type for {resolvedVersion}." });
+            }
 
-            trace = await SearchCompiler.CompileAsync(
-                resourceType,
-                parameters,
+            var compiler = new SearchSqlCompiler(
+                new InMemorySymbolResolver(),
                 engine.Builder,
-                resolver,
                 engine.Compartments,
                 engine.SearchParameters,
-                operationExpression,
-                cancellationToken: cancellationToken);
+                TimeProvider.System);
+
+            var parameters = parameterSource is null ? [] : ParseQuery(parameterSource);
+            var planOptions = new SearchPlanOptions
+            {
+                OperationExpression = operationExpression,
+                DiagnosticsLevel = SearchDiagnosticsLevel.Full,
+            };
+
+            var plan = await compiler.CreatePlanAsync(
+                resourceType,
+                parameters,
+                planOptions,
+                cancellationToken);
+
+            compiled = plan.TryCompile();
+            if (!compiled.Succeeded)
+            {
+                logger.LogWarning(
+                    compiled.Failure!.Exception,
+                    "Search trace compilation produced a structured failure at {Stage} for {FhirVersion}/{ResourceType}",
+                    compiled.Failure.Stage,
+                    resolvedVersion,
+                    resourceType);
+            }
         }
         catch (OperationCanceledException)
         {
@@ -402,6 +420,17 @@ public sealed partial class SearchFunctions(ILogger<SearchFunctions> logger, Sea
             logger.LogInformation(ex, "Rejected search trace for {FhirVersion}/{ResourceType}", resolvedVersion, resourceType);
             return new BadRequestObjectResult(new { error = ex.Message });
         }
+        catch (SearchCompilationException ex)
+        {
+            // Preserve expected compiler failures as trace data instead of returning a generic 500.
+            logger.LogWarning(
+                ex,
+                "Search trace planning produced a structured failure at {Stage} for {FhirVersion}/{ResourceType}",
+                ex.Failure.Stage,
+                resolvedVersion,
+                resourceType);
+            compiled = SearchCompilationResult.Failed(ex.Failure);
+        }
         catch (NotSupportedException ex)
         {
             // A query shape the alpha SQL compiler has not implemented yet. Still the caller's input, so 400
@@ -424,6 +453,16 @@ public sealed partial class SearchFunctions(ILogger<SearchFunctions> logger, Sea
             };
         }
 
+        if (compiled.Succeeded && compiled.Compiled?.Diagnostics?.PlanTraceFailure is { } planTraceFailure)
+        {
+            logger.LogWarning(
+                planTraceFailure.Exception,
+                "Search trace plan diagnostics were unavailable at {Stage} for {FhirVersion}/{ResourceType}",
+                planTraceFailure.Stage,
+                resolvedVersion,
+                resourceType);
+        }
+
         // Mapped in its own try, not the one above: SearchTraceMapper throws NotSupportedException for a
         // ParameterOutcome it does not model, and this PR adding KnownMiss is the proof that outcome types do
         // get added -- inside the block above, that mapper gap would be reported to the caller as "this query
@@ -432,7 +471,26 @@ public sealed partial class SearchFunctions(ILogger<SearchFunctions> logger, Sea
         // other failure path here attaches.
         try
         {
-            return new OkObjectResult(SearchTraceMapper.ToResponse(trace, resolvedVersion, resourceType));
+            if (compiled.Succeeded)
+            {
+                var compiledSearch = compiled.Compiled!;
+                var diagnostics = compiledSearch.Diagnostics
+                    ?? throw new InvalidOperationException("Full search diagnostics were not produced.");
+                if (diagnostics.PlanTrace is null && diagnostics.PlanTraceFailure is null)
+                {
+                    throw new InvalidOperationException("Search plan diagnostics were not produced.");
+                }
+
+                return new OkObjectResult(SearchTraceMapper.ToResponse(compiledSearch, resolvedVersion, resourceType));
+            }
+
+            var failure = compiled.Failure!;
+            if (failure.Diagnostics is null)
+            {
+                throw new InvalidOperationException("Full search failure diagnostics were not produced.");
+            }
+
+            return new OkObjectResult(SearchTraceMapper.ToResponse(failure, resolvedVersion, resourceType));
         }
         catch (Exception ex)
         {

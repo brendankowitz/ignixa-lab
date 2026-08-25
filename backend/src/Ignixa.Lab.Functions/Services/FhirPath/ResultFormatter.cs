@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -388,9 +389,26 @@ public sealed class ResultFormatter
 
     private static void SetTypedValue(ParametersParameter param, string instanceType, object value)
     {
-        // Ignixa returns values in the correct FHIR format, just pass through
         var valueTypeName = $"value{char.ToUpperInvariant(instanceType[0])}{instanceType[1..]}";
-        param.SetValue(valueTypeName, JsonValue.Create(value));
+        param.SetValue(valueTypeName, CreateJsonValueFromPrimitive(value));
+    }
+
+    private static JsonNode CreateJsonValueFromPrimitive(object value)
+    {
+        return value switch
+        {
+            string text => JsonValue.Create(text),
+            int integer => JsonValue.Create(integer),
+            long longInteger => JsonValue.Create(longInteger),
+            bool boolean => JsonValue.Create(boolean),
+            decimal decimalValue => JsonValue.Create(decimalValue),
+            double doubleValue => JsonValue.Create(doubleValue),
+            float floatValue => JsonValue.Create(floatValue),
+            DateTime dateTime => JsonValue.Create(dateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.FFFFFFFK", CultureInfo.InvariantCulture)),
+            DateTimeOffset dateTimeOffset => JsonValue.Create(dateTimeOffset.ToString("yyyy-MM-dd'T'HH:mm:ss.FFFFFFFK", CultureInfo.InvariantCulture)),
+            FhirTemporal temporal => JsonValue.Create(temporal.Literal),
+            _ => JsonNode.Parse(JsonSerializer.Serialize(value)),
+        } ?? throw new InvalidOperationException("Primitive FHIRPath values must serialize to JSON.");
     }
 
     private static void AddPathExtension(ParametersParameter param, string path)
@@ -442,7 +460,7 @@ public sealed class ResultFormatter
                 var child = children[0];
                 if (child.Value != null)
                 {
-                    target[child.Name] = JsonValue.Create(child.Value);
+                    target[child.Name] = CreateJsonValueFromPrimitive(child.Value);
                 }
                 else
                 {
@@ -458,7 +476,7 @@ public sealed class ResultFormatter
                 {
                     if (child.Value != null)
                     {
-                        array.Add(JsonValue.Create(child.Value));
+                        array.Add(CreateJsonValueFromPrimitive(child.Value));
                     }
                     else
                     {

@@ -56,17 +56,19 @@ public class JsonAstVisitor : IFhirPathExpressionVisitor<AnalysisResult?, JsonOb
         var valueStr = expression.Value?.ToString() ?? "null";
         // UI expects "ConstantExpression"
         var node = CreateNode(expression, "ConstantExpression", valueStr, context);
-        // Set return type based on the actual value type
-        var typeName = expression.Value?.GetType().Name?.ToLowerInvariant() switch
-        {
-            "string" => "string",
-            "int32" or "int64" => "integer",
-            "single" or "double" or "decimal" => "decimal",
-            "boolean" => "boolean",
-            "datetime" or "datetimeoffset" => "dateTime",
-            null => "null",
-            _ => expression.Value?.GetType().Name ?? "unknown"
-        };
+        // TemporalConstantExpression retains the FHIRPath type even though its value is a string.
+        var typeName = expression is TemporalConstantExpression temporal
+            ? temporal.TemporalTypeName
+            : expression.Value?.GetType().Name?.ToLowerInvariant() switch
+            {
+                "string" => "string",
+                "int32" or "int64" => "integer",
+                "single" or "double" or "decimal" => "decimal",
+                "boolean" => "boolean",
+                "datetime" or "datetimeoffset" => "dateTime",
+                null => "null",
+                _ => expression.Value?.GetType().Name ?? "unknown"
+            };
         node["ReturnType"] = typeName;
         return node;
     }
@@ -118,6 +120,31 @@ public class JsonAstVisitor : IFhirPathExpressionVisitor<AnalysisResult?, JsonOb
             expression.Collection.AcceptVisitor(this, context),
             expression.Index.AcceptVisitor(this, context)
         );
+        return node;
+    }
+
+    public JsonObject VisitInstanceSelector(InstanceSelectorExpression expression, AnalysisResult? context)
+    {
+        var node = CreateNode(expression, "InstanceSelectorExpression", expression.FullTypeName, context);
+        node["TypeName"] = expression.TypeName;
+
+        if (expression.NamespacePrefix is not null)
+        {
+            node["NamespacePrefix"] = expression.NamespacePrefix;
+        }
+
+        node["IsEmpty"] = expression.IsEmpty;
+        node["Arguments"] = new JsonArray(
+            expression.Elements.Select(element =>
+            {
+                // ElementAssignment does not expose its own source span in the restored API.
+                // Anchor the node to the nested value expression, which is the only source
+                // metadata available for this assignment element.
+                var assignment = CreateNode(element.ValueExpression, "ElementAssignment", element.ElementName, context);
+                assignment["Arguments"] = new JsonArray(element.ValueExpression.AcceptVisitor(this, context));
+                return assignment;
+            }).ToArray());
+
         return node;
     }
 

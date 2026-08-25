@@ -2,42 +2,79 @@ using Ignixa.Lab.Functions.Models.Search;
 using Ignixa.Search.Expressions;
 using Ignixa.Search.Expressions.Parsers;
 using Ignixa.Search.Parsing;
-using Ignixa.Search.Sql.Tracing;
+using Ignixa.Search.Sql;
+using Ignixa.Search.Sql.Ast;
+using Ignixa.Search.Sql.Builders;
 
 namespace Ignixa.Lab.Functions.Services.Search;
 
-/// <summary>Maps a <see cref="SearchTrace"/> to the serializable <see cref="SearchTraceResponse"/>. Thin by
-/// design: <see cref="IrProjector"/>, <see cref="SyntaxNode"/>, and <see cref="Ignixa.Search.Sql.Ast.PlanExplainer"/>
-/// already do the flattening and the structural discrimination (kind, canonical label, referenced CTEs), so
-/// this only translates shapes and projects the two non-serializable pieces.</summary>
+/// <summary>Maps Search.Sql diagnostics into the serializable <see cref="SearchTraceResponse"/>. Thin by
+/// design: <see cref="IrProjector"/>, <see cref="SyntaxNode"/>, and
+/// <see cref="Ignixa.Search.Sql.Ast.PlanExplainer"/> already do the flattening and the structural
+/// discrimination (kind, canonical label, referenced CTEs), so this only translates shapes and projects the
+/// non-serializable pieces.</summary>
 public static class SearchTraceMapper
 {
+    private const string CompilationFailureMessage = "The search compiler could not process this query.";
+    private const string ParameterFailureMessage = "The search parameter could not be compiled.";
+    private const string PlanTraceFailureMessage = "The search plan explanation is unavailable.";
+
     /// <param name="fhirVersion">The version actually compiled against (<see cref="SearchEngineFactory.Resolve"/>),
     /// not the caller's raw route value — see <see cref="SearchTraceResponse.FhirVersion"/>.</param>
-    /// <param name="requestedResourceType">The type passed to <c>SearchCompiler.CompileAsync</c>. Only used
-    /// if the trace comes back without one, which the <c>CompileAsync</c> entry point this app uses should
-    /// never do (it null-checks its <c>resourceType</c> and echoes it unmodified; only the
-    /// <c>CompileFromOptionsAsync</c> overload normalizes empty to null to mark a system-level search). Kept
-    /// as a defensive echo of an already-validated value rather than emitting a null resource type.</param>
-    public static SearchTraceResponse ToResponse(SearchTrace trace, string fhirVersion, string requestedResourceType)
+    /// <param name="requestedResourceType">The type passed to the compiler. Used as the response resource type
+    /// because the route value is already validated upstream and the bench contract keeps that echo stable.</param>
+    public static SearchTraceResponse ToResponse(CompiledSearch compiled, string fhirVersion, string requestedResourceType)
     {
-        ArgumentNullException.ThrowIfNull(trace);
+        ArgumentNullException.ThrowIfNull(compiled);
+
+        return ToResponse(
+            fhirVersion,
+            requestedResourceType,
+            compiled.Diagnostics,
+            compiled.Sql,
+            compiled.Parameters,
+            failure: null);
+    }
+
+    /// <param name="fhirVersion">The version actually compiled against (<see cref="SearchEngineFactory.Resolve"/>),
+    /// not the caller's raw route value — see <see cref="SearchTraceResponse.FhirVersion"/>.</param>
+    /// <param name="requestedResourceType">The type passed to the compiler.</param>
+    public static SearchTraceResponse ToResponse(SearchCompilationFailure failure, string fhirVersion, string requestedResourceType)
+    {
+        ArgumentNullException.ThrowIfNull(failure);
+
+        return ToResponse(
+            fhirVersion,
+            requestedResourceType,
+            failure.Diagnostics,
+            sql: null,
+            sqlParameters: [],
+            failure: ToFailureDto(failure, "Compilation"));
+    }
+
+    private static SearchTraceResponse ToResponse(
+        string fhirVersion,
+        string requestedResourceType,
+        SearchCompilationDiagnostics? diagnostics,
+        string? sql,
+        IReadOnlyList<EmittedSqlParameter> sqlParameters,
+        TraceFailureDto? failure)
+    {
+        var traceFailure = failure ?? (diagnostics?.PlanTraceFailure is not null
+            ? ToFailureDto(diagnostics.PlanTraceFailure, "PlanTrace")
+            : null);
 
         return new SearchTraceResponse(
             fhirVersion,
-            trace.ResourceType ?? requestedResourceType,
-            trace.Parameters.Select(ToParameterDto).ToList(),
-            trace.Plan is null ? null : ToPlanDto(trace.Plan),
-            // Parameters as well as Ranges: every value the caller supplied -- the compartment id, the
-            // $everything window instants this app parses invariant-culture specifically so they bind
-            // identically everywhere -- reaches the SQL only as @pN. Without projecting them the pane shows
-            // bind markers with nothing behind them, which is the one thing a provenance view must not do.
-            trace.Sql is null ? null : new EmittedSqlDto(
-                trace.Sql.Sql,
-                trace.Sql.Parameters.Select(p => new SqlParameterDto(p.Name, p.Value?.ToString())).ToList(),
-                trace.Sql.Ranges.Select(r => new SqlTextRangeDto(r.Label, r.Kind, r.Start, r.Length)).ToList()),
-            trace.Implicit.Select(i => new ImplicitParameterDto(i.Name, i.Value, i.Reason)).ToList(),
-            trace.Failure is null ? null : new TraceFailureDto(trace.Failure.Stage.ToString(), trace.Failure.Message, ToSpanDto(trace.Failure.Span)));
+            requestedResourceType,
+            (diagnostics?.Parameters ?? []).Select(ToParameterDto).ToList(),
+            diagnostics?.PlanTrace is null ? null : ToPlanDto(diagnostics.PlanTrace),
+            sql is null ? null : new EmittedSqlDto(
+                sql,
+                sqlParameters.Select(p => new SqlParameterDto(p.Name, p.Value?.ToString())).ToList(),
+                (diagnostics?.SqlTextRanges ?? []).Select(ToSqlTextRangeDto).ToList()),
+            (diagnostics?.Implicit ?? []).Select(p => new ImplicitParameterDto(p.Name, p.Value, p.Reason)).ToList(),
+            traceFailure);
     }
 
     private static ParameterTraceDto ToParameterDto(ParameterTrace p)
@@ -97,7 +134,7 @@ public static class SearchTraceMapper
         // only as a "1 = 0" buried in the emitted SQL.
         ParameterOutcome.KnownMiss knownMiss => new ParameterOutcomeDto("KnownMiss", knownMiss.Reason, null, ToSpanDto(knownMiss.Span)),
         ParameterOutcome.Ignored ignored => new ParameterOutcomeDto("Ignored", ignored.Reason, null, ToSpanDto(ignored.Span)),
-        ParameterOutcome.Failed failed => new ParameterOutcomeDto("Failed", failed.Message, failed.Stage.ToString(), ToSpanDto(failed.Span)),
+        ParameterOutcome.Failed failed => new ParameterOutcomeDto("Failed", ParameterFailureMessage, failed.Stage.ToString(), ToSpanDto(failed.Span)),
         _ => throw new NotSupportedException($"Unknown ParameterOutcome: {outcome.GetType().Name}."),
     };
 
@@ -106,7 +143,17 @@ public static class SearchTraceMapper
         plan.Rows.Select(r => new PlanExplainRowDto(r.Label, r.CanonicalLabel, r.Kind, r.Body, r.ReferencedCteIndexes)).ToList(),
         plan.Ctes.Select(c => new CteProvenanceDto(c.CteIndex, c.ParameterOrdinal, c.ContributingOrdinals, ToSpanDto(c.Span))).ToList());
 
+    private static TraceFailureDto ToFailureDto(SearchCompilationFailure failure, string scope) =>
+        new(
+            scope,
+            failure.Stage.ToString(),
+            scope == "PlanTrace" ? PlanTraceFailureMessage : CompilationFailureMessage,
+            failure.ParameterCode,
+            ToSpanDto(failure.Span));
+
     private static SpanDto ToSpanDto(SourceSpan span) => new(span.Origin.ToString(), span.Start, span.Length);
 
     private static SpanDto? ToSpanDto(SourceSpan? span) => span is { } s ? ToSpanDto(s) : null;
+
+    private static SqlTextRangeDto ToSqlTextRangeDto(SqlTextRange range) => new(range.Label, range.Kind, range.Start, range.Length);
 }

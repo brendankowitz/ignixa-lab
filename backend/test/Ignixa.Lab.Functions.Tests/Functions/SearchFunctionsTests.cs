@@ -23,7 +23,7 @@ public sealed class SearchFunctionsTests
     }
 
     [Fact]
-    public async Task Trace_PatientNameSmith_CompilesToPlanAndSql()
+    public async Task Trace_PatientNameSmith_UsesPlanAndCompileDiagnostics()
     {
         var functions = CreateFunctions();
 
@@ -36,10 +36,12 @@ public sealed class SearchFunctionsTests
         response.Parameters.Should().ContainSingle(p => p.Key.StartsWith("name"));
         response.Parameters.Single().Outcome.Kind.Should().Be("Compiled");
         response.Plan.Should().NotBeNull();
+        response.Plan!.Rows.Should().NotBeEmpty();
         response.Sql.Should().NotBeNull();
+        response.Sql!.Parameters.Should().NotBeEmpty();
         // The lineage join the UI depends on: a CTE attributed to the parameter, and a SQL range labelled for it.
-        var cte = response.Plan!.Ctes.Should().Contain(c => c.ParameterOrdinal == 0).Subject;
-        response.Sql!.Ranges.Should().Contain(r => r.Label == $"cte{cte.CteIndex}");
+        var cte = response.Plan.Ctes.Should().Contain(c => c.ParameterOrdinal == 0).Subject;
+        response.Sql.Ranges.Should().Contain(r => r.Label == $"cte{cte.CteIndex}");
     }
 
     [Fact]
@@ -136,7 +138,7 @@ public sealed class SearchFunctionsTests
     [Fact]
     public async Task Trace_UnknownResourceType_ReturnsBadRequestRatherThanACompiledPlanForNothing()
     {
-        // Confirmed live against the real compiler: SearchCompiler.CompileAsync never validates the
+        // Confirmed live against the real compiler: SearchSqlCompiler never validates the
         // top-level resourceType itself (only a chain/_has TARGET resource type is validated) -- given a
         // resourceType nothing recognizes, it happily compiles a full plan/SQL against
         // `WHERE ResourceTypeId = @p0` for an ID that matches nothing. That's a confidently wrong 200 for a
@@ -150,10 +152,10 @@ public sealed class SearchFunctionsTests
     }
 
     [Fact]
-    public async Task Trace_MalformedDateValue_ReturnsBadRequestCarryingTheCompilerMessage()
+    public async Task Trace_MalformedDateValue_RemainsBadRequestAfterPlanMigration()
     {
         // Confirmed live: an unparseable date value throws BadSearchRequestException (a FhirException) out of
-        // SearchCompiler.CompileAsync itself -- parsing happens too early to be caught and recorded as a
+        // SearchSqlCompiler itself -- parsing happens too early to be caught and recorded as a
         // per-parameter Ignored/Failed outcome the way an unrecognized parameter name is. This is the
         // library's own "the caller's request is bad" signal, so it maps to a 400 whose body is the
         // compiler's message; anything outside that family is our fault and maps to a 500 instead.
@@ -163,6 +165,32 @@ public sealed class SearchFunctionsTests
 
         result.Should().BeOfType<BadRequestObjectResult>()
             .Subject.Value.Should().BeEquivalentTo(new { error = "The date time string 'notadate' is not in a correct format." });
+    }
+
+    [Fact]
+    public async Task Trace_CompilerFailure_ReturnsStructuredFailureInsteadOfInternalServerError()
+    {
+        var functions = CreateFunctions();
+
+        var result = await functions.Trace(
+            BuildGetRequest("?_sort=name,birthdate,gender,active"), "R4", "Patient", CancellationToken.None);
+
+        var response = result.Should().BeOfType<OkObjectResult>().Subject.Value
+            .Should().BeOfType<SearchTraceResponse>().Subject;
+        response.Failure.Should().NotBeNull();
+        response.Failure!.Stage.Should().Be("Lower");
+        response.Failure.Message.Should().Be("The search compiler could not process this query.");
+    }
+
+    [Fact]
+    public async Task Trace_Cancellation_PropagatesInsteadOfBecomingAnErrorResponse()
+    {
+        var functions = CreateFunctions();
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            functions.Trace(BuildGetRequest("?name=Smith"), "R4", "Patient", cancellation.Token));
     }
 
     [Theory]
@@ -200,7 +228,7 @@ public sealed class SearchFunctionsTests
         response.Parameters.Should().ContainSingle().Which.Outcome.Kind.Should().Be("Compiled");
     }
 
-    // Confirmed live against the real compiler (0.6.28-alpha, no per-parameter Ignored/Failed outcome, no
+    // Confirmed live against the real compiler (0.6.68-alpha, no per-parameter Ignored/Failed outcome, no
     // page-level Failure), the same way every SearchQueryBuilder chip is verified before being added --
     // these back the `sa`/`eb`/`:missing`/`_id`/plain-quantity chips that ship there.
     [Theory]
@@ -435,6 +463,7 @@ public sealed class SearchFunctionsTests
         var filteredResponse = filtered.Should().BeOfType<OkObjectResult>().Subject.Value.Should().BeOfType<SearchTraceResponse>().Subject;
         filteredResponse.Failure.Should().BeNull();
         filteredResponse.Plan!.Ctes.Count.Should().BeLessThan(bareResponse.Plan!.Ctes.Count);
+        filteredResponse.Plan.Explain.Should().NotContain("ReferencedTypeExpansion");
     }
 
     [Fact]

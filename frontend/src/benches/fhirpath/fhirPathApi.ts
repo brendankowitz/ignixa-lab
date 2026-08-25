@@ -118,6 +118,9 @@ interface RawAstNode {
   Name: string;
   ReturnType?: string;
   Arguments?: RawAstNode[];
+  TypeName?: string;
+  NamespacePrefix?: string;
+  IsEmpty?: boolean;
   Position?: number;
   Length?: number;
   Line?: number;
@@ -130,6 +133,9 @@ function parseAstNode(raw: RawAstNode): FpAstNode {
     name: raw.Name,
     returnType: raw.ReturnType ?? null,
     arguments: Array.isArray(raw.Arguments) ? raw.Arguments.map(parseAstNode) : [],
+    typeName: raw.TypeName ?? null,
+    namespacePrefix: raw.NamespacePrefix ?? null,
+    isEmpty: raw.IsEmpty ?? null,
     position: raw.Position,
     length: raw.Length,
     line: raw.Line,

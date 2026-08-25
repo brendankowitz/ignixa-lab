@@ -151,6 +151,73 @@ public sealed class FhirPathServiceTests
         error.Should().NotBeNull();
     }
 
+    [Fact]
+    public void Evaluate_ContainedReferenceResolve_ReturnsContainedResource()
+    {
+        const string observationJson = """
+        {
+          "resourceType": "Observation",
+          "id": "obs",
+          "subject": { "reference": "#patient1" },
+          "contained": [
+            {
+              "resourceType": "Patient",
+              "id": "patient1"
+            }
+          ]
+        }
+        """;
+
+        var request = new FhirPathRequest
+        {
+            Resource = ResourceJsonNode.Parse(observationJson),
+            Expression = "subject.resolve().id",
+            FhirVersion = "R4"
+        };
+
+        var result = CreateService(new ThrowingHttpClientFactory(), allowPrivateTargets: true).Evaluate(request);
+
+        result.IsSuccess.Should().BeTrue();
+        var values = result.Results.SelectMany(group => group.OutputValues).ToList();
+        values.Should().ContainSingle();
+        values[0].Value?.ToString().Should().Be("patient1");
+    }
+
+    [Fact]
+    public void Evaluate_BundleEntryReferenceResolve_ReturnsSiblingResource()
+    {
+        const string bundleJson = """
+        {
+          "resourceType": "Bundle",
+          "type": "collection",
+          "entry": [
+            { "resource": { "resourceType": "Patient", "id": "example", "name": [{ "family": "Sibling" }] } },
+            {
+              "resource": {
+                "resourceType": "Observation",
+                "id": "obs",
+                "subject": { "reference": "Patient/example" }
+              }
+            }
+          ]
+        }
+        """;
+
+        var request = new FhirPathRequest
+        {
+            Resource = ResourceJsonNode.Parse(bundleJson),
+            Expression = "entry[1].resource.subject.resolve().name.family",
+            FhirVersion = "R4"
+        };
+
+        var result = CreateService(new ThrowingHttpClientFactory(), allowPrivateTargets: true).Evaluate(request);
+
+        result.IsSuccess.Should().BeTrue();
+        var values = result.Results.SelectMany(group => group.OutputValues).ToList();
+        values.Should().ContainSingle();
+        values[0].Value?.ToString().Should().Be("Sibling");
+    }
+
     private static FhirPathService CreateService(IHttpClientFactory httpClientFactory, bool allowPrivateTargets, int httpTimeoutSeconds = 100)
     {
         var schemaFactory = new SchemaProviderFactory();
