@@ -243,7 +243,7 @@ private static ParameterOutcomeDto ToOutcomeDto(ParameterOutcome outcome) => out
     ParameterOutcome.Compiled => new("Compiled", null, null, null),
     ParameterOutcome.KnownMiss value => new("KnownMiss", value.Reason, null, ToSpanDto(value.Span)),
     ParameterOutcome.Ignored value => new("Ignored", value.Reason, null, ToSpanDto(value.Span)),
-    ParameterOutcome.Failed value => new("Failed", value.Message, value.Stage.ToString(), ToSpanDto(value.Span)),
+    ParameterOutcome.Failed value => new("Failed", ParameterFailureMessage, value.Stage.ToString(), ToSpanDto(value.Span)),
     _ => throw new NotSupportedException($"Unknown ParameterOutcome: {outcome.GetType().Name}."),
 };
 ```
