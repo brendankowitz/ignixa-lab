@@ -25,6 +25,9 @@ export interface FpAstNode {
   name: string;
   returnType: string | null;
   arguments: FpAstNode[];
+  typeName?: string | null;
+  namespacePrefix?: string | null;
+  isEmpty?: boolean | null;
   /** Character offset of this node's source span in the expression text, when the backend's parser recorded a location for it (synthetic nodes like the implicit expression scope have none). */
   position?: number;
   /** Length in characters of this node's source span. */

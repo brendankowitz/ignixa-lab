@@ -206,6 +206,7 @@ public sealed class SearchTraceMapperTests
         var response = SearchTraceMapper.ToResponse(failure, "R4", "Patient");
 
         response.Failure!.Stage.Should().Be("Resolve");
+        response.Failure.Scope.Should().Be("Compilation");
         response.Failure.Message.Should().Be("could not be resolved");
         response.Failure.ParameterCode.Should().Be("unknown");
         response.Failure.Span!.Origin.Should().Be("Value");
@@ -238,6 +239,33 @@ public sealed class SearchTraceMapperTests
         response.Implicit.Should().ContainSingle(p => p.Name == "_count" && p.Value == "10");
         response.Sql.Should().BeNull();
         response.Failure!.Stage.Should().Be("Lower");
+        response.Failure.Scope.Should().Be("Compilation");
+    }
+
+    [Fact]
+    public async Task Trace_PlanTraceFailure_IsMarkedNonFatalWhileSqlRemainsAvailable()
+    {
+        var compiled = await CompileAsync("?name=Smith");
+        var planFailure = new SearchCompilationFailure(
+            CompilationStage.Emit,
+            "plan explanation unavailable",
+            ParameterCode: null,
+            Span: null,
+            Exception: new NotSupportedException("explain shape"));
+        var diagnostics = CloneDiagnostics(compiled.Diagnostics!, compiled.Diagnostics!.Parameters)
+            with
+            {
+                PlanTraceFailure = planFailure,
+            };
+
+        var response = SearchTraceMapper.ToResponse(WithDiagnostics(compiled, diagnostics), "R4", "Patient");
+
+        response.Failure.Should().NotBeNull();
+        response.Failure!.Scope.Should().Be("PlanTrace");
+        response.Failure.Stage.Should().Be("Emit");
+        response.Failure.Message.Should().Be("plan explanation unavailable");
+        response.Plan.Should().NotBeNull();
+        response.Sql.Should().NotBeNull();
     }
 
     [Fact]

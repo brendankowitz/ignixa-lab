@@ -950,7 +950,11 @@ export function SearchBench() {
       </Card>
 
       {error !== null ? <ErrorBanner message={error} /> : null}
-      {result?.failure ? <ErrorBanner message={`${result.failure.stage}: ${result.failure.message}`} /> : null}
+      {result?.failure ? (
+        <ErrorBanner
+          message={`${result.failure.scope} ${result.failure.stage}${result.failure.parameterCode ? ` (${result.failure.parameterCode})` : ''}: ${result.failure.message}`}
+        />
+      ) : null}
       {/* The backend answers an unrecognized FHIR version with an R4 trace rather than a 400, and reports the
           version it actually compiled against. Unreachable from the version pills alone, but the response
           carries the field precisely so a substitution can't pass as the version that was asked for — so say

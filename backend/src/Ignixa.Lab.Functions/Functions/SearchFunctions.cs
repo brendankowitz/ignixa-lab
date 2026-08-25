@@ -453,6 +453,16 @@ public sealed partial class SearchFunctions(ILogger<SearchFunctions> logger, Sea
             };
         }
 
+        if (compiled.Succeeded && compiled.Compiled?.Diagnostics?.PlanTraceFailure is { } planTraceFailure)
+        {
+            logger.LogWarning(
+                planTraceFailure.Exception,
+                "Search trace plan diagnostics were unavailable at {Stage} for {FhirVersion}/{ResourceType}",
+                planTraceFailure.Stage,
+                resolvedVersion,
+                resourceType);
+        }
+
         // Mapped in its own try, not the one above: SearchTraceMapper throws NotSupportedException for a
         // ParameterOutcome it does not model, and this PR adding KnownMiss is the proof that outcome types do
         // get added -- inside the block above, that mapper gap would be reported to the caller as "this query

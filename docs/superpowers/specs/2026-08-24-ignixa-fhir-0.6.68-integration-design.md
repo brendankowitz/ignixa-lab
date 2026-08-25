@@ -16,7 +16,7 @@ The lab's Search bench is intentionally SQL-server-free. It uses an in-memory sy
   - stable packages: `0.6.68`
   - Search.Sql: `0.6.68-alpha`
   - TestScript packages: `0.6.68-beta`
-- Keep the existing Search bench response JSON contract so the frontend visualization, lineage, span, and SQL highlighting code remains compatible.
+- Keep the existing Search bench response JSON contract so the frontend visualization, lineage, span, and SQL highlighting code remains compatible; add only backward-compatible diagnostic metadata for failure scope and parameter attribution.
 - Replace the removed `SearchCompiler.CompileAsync` and tracing types with the `ISearchSqlCompiler` two-phase flow.
 - Surface plan and compilation diagnostics through the existing trace DTOs, including explicit handling for new diagnostic outcome values and failures.
 - Serialize FHIRPath instance-selector nodes in the AST shape expected by the frontend.
@@ -50,11 +50,11 @@ Retain `SearchEngineFactory` as the per-FHIR-version cache for the options build
 4. Call `SearchPlan.TryCompile()` and read the resulting `SearchCompilationResult`.
 5. Map `SearchPlan.Diagnostics`, `CompiledSearch.Diagnostics`, and `SearchCompilationFailure` into the current response DTOs.
 
-The response mapper will preserve the current top-level fields (`fhirVersion`, `resourceType`, `parameters`, `plan`, `sql`, `implicit`, and `failure`). New upstream fields such as CTE provenance and SQL ranges will be included only where they map cleanly to existing DTO fields; otherwise they remain available in backend diagnostics without inventing a frontend contract. Query parse errors and caller-invalid search values remain 400 responses, while compiler or mapper defects remain explicit 500 responses with server-side logging.
+The response mapper will preserve the current top-level fields (`fhirVersion`, `resourceType`, `parameters`, `plan`, `sql`, `implicit`, and `failure`). The `failure` object adds backward-compatible `scope` and `parameterCode` metadata so the UI can distinguish a fatal compilation failure from a non-fatal plan-explainer failure and identify the owning parameter. New upstream fields such as CTE provenance and SQL ranges will be included only where they map cleanly to existing DTO fields; otherwise they remain available in backend diagnostics without inventing a frontend contract. Query parse errors and caller-invalid search values remain 400 responses, while expected compiler diagnostics remain structured and logged, and unexpected compiler or mapper defects remain explicit 500 responses with server-side logging.
 
 ### FHIRPath AST and value handling
 
-Add `VisitInstanceSelector` to `JsonAstVisitor`. It will emit the existing node envelope and serialize the selector's type name, optional namespace, element assignments, and child expressions as structured JSON. Existing node naming and inferred return-type behavior remain unchanged.
+Add `VisitInstanceSelector` to `JsonAstVisitor`. It will emit the existing node envelope and serialize the selector's type name, optional namespace, element assignments, and child expressions as structured JSON. The frontend parser and inverted AST preserve the selector metadata. Existing node naming and inferred return-type behavior remain unchanged.
 
 Audit the FHIRPath evaluator and result formatter for assumptions that primitive `IElement.Value` values are strings. Use the temporal value's canonical FHIR representation when producing JSON, display text, parameters, and trace output. Keep non-temporal primitive and complex-element behavior unchanged.
 
@@ -76,4 +76,4 @@ If an upstream diagnostic or parameter outcome is not representable, fail the ma
 
 ## Rollout and compatibility
 
-The change is a package-and-adapter migration. The frontend receives the same route shapes and response fields, so deployment does not require a coordinated frontend feature flag. If the package upgrade exposes an incompatibility that cannot be represented without changing the frontend contract, stop at the backend adapter boundary and document the required contract change rather than silently changing output.
+The change is a package-and-adapter migration. The frontend receives the same route shapes and top-level response fields, with additive diagnostic metadata on `failure`, so deployment does not require a coordinated frontend feature flag. If the package upgrade exposes an incompatibility that cannot be represented without changing the frontend contract, stop at the backend adapter boundary and document the required contract change rather than silently changing output.

@@ -2,6 +2,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { invertAstTree } from './astInvert.ts';
 import { parseFhirPathResponse } from './fhirPathApi.ts';
 import type { FhirParameters } from './fhirPathTypes.ts';
 
@@ -18,6 +19,9 @@ test('parseFhirPathResponse preserves nested instance-selector AST nodes', () =>
               ExpressionType: 'InstanceSelectorExpression',
               Name: 'FHIR.Identifier',
               ReturnType: 'Identifier',
+              TypeName: 'Identifier',
+              NamespacePrefix: 'FHIR',
+              IsEmpty: false,
               Arguments: [
                 {
                   ExpressionType: 'ElementAssignment',
@@ -46,7 +50,16 @@ test('parseFhirPathResponse preserves nested instance-selector AST nodes', () =>
     assert.fail('expected a parsed AST');
   }
   assert.equal(ast.expressionType, 'InstanceSelectorExpression');
+  assert.equal(ast.typeName, 'Identifier');
+  assert.equal(ast.namespacePrefix, 'FHIR');
+  assert.equal(ast.isEmpty, false);
   assert.equal(ast.arguments[0]?.expressionType, 'ElementAssignment');
   assert.equal(ast.arguments[0]?.name, 'system');
   assert.equal(ast.arguments[0]?.arguments[0]?.name, 'http://example.org');
+
+  const inverted = invertAstTree(ast);
+  const invertedSelector = inverted.at(-1);
+  assert.equal(invertedSelector?.typeName, 'Identifier');
+  assert.equal(invertedSelector?.namespacePrefix, 'FHIR');
+  assert.equal(invertedSelector?.isEmpty, false);
 });

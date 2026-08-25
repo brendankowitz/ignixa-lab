@@ -85,6 +85,7 @@ public sealed record SqlTextRangeDto(string Label, string Kind, int Start, int L
 
 public sealed record ImplicitParameterDto(string Name, string Value, string Reason);
 
-/// <summary>A compilation or plan-trace diagnostic failure. <see cref="ParameterCode"/> identifies the owning
-/// search parameter when the compiler can attribute the failure; it is null for failures owned by the whole plan.</summary>
-public sealed record TraceFailureDto(string Stage, string Message, string? ParameterCode, SpanDto? Span);
+/// <summary>A compilation or plan-trace diagnostic failure. <see cref="Scope"/> distinguishes a fatal compilation
+/// failure from a non-fatal plan-explainer failure. <see cref="ParameterCode"/> identifies the owning search
+/// parameter when the compiler can attribute the failure; it is null for failures owned by the whole plan.</summary>
+public sealed record TraceFailureDto(string Scope, string Stage, string Message, string? ParameterCode, SpanDto? Span);

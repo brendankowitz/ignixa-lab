@@ -56,17 +56,19 @@ public class JsonAstVisitor : IFhirPathExpressionVisitor<AnalysisResult?, JsonOb
         var valueStr = expression.Value?.ToString() ?? "null";
         // UI expects "ConstantExpression"
         var node = CreateNode(expression, "ConstantExpression", valueStr, context);
-        // Set return type based on the actual value type
-        var typeName = expression.Value?.GetType().Name?.ToLowerInvariant() switch
-        {
-            "string" => "string",
-            "int32" or "int64" => "integer",
-            "single" or "double" or "decimal" => "decimal",
-            "boolean" => "boolean",
-            "datetime" or "datetimeoffset" => "dateTime",
-            null => "null",
-            _ => expression.Value?.GetType().Name ?? "unknown"
-        };
+        // TemporalConstantExpression retains the FHIRPath type even though its value is a string.
+        var typeName = expression is TemporalConstantExpression temporal
+            ? temporal.TemporalTypeName
+            : expression.Value?.GetType().Name?.ToLowerInvariant() switch
+            {
+                "string" => "string",
+                "int32" or "int64" => "integer",
+                "single" or "double" or "decimal" => "decimal",
+                "boolean" => "boolean",
+                "datetime" or "datetimeoffset" => "dateTime",
+                null => "null",
+                _ => expression.Value?.GetType().Name ?? "unknown"
+            };
         node["ReturnType"] = typeName;
         return node;
     }

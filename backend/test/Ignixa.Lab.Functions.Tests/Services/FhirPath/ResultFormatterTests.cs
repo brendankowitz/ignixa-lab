@@ -558,6 +558,18 @@ public class ResultFormatterTests
         resultPart["valueCode"]!.GetValue<string>().Should().Be("male");
     }
 
+    [Theory]
+    [InlineData("@1970", "date")]
+    [InlineData("@1970-01-01T12:34:56Z", "dateTime")]
+    [InlineData("@T12:34:56", "time")]
+    public void TemporalConstantAst_PreservesItsFhirPathType(string literal, string expectedType)
+    {
+        var node = new TemporalConstantExpression(literal)
+            .AcceptVisitor<AnalysisResult?, JsonObject>(new JsonAstVisitor(), null);
+
+        node["ReturnType"]!.GetValue<string>().Should().Be(expectedType);
+    }
+
     [Fact]
     public void VisitInstanceSelector_EmitsTypeNamespaceAssignmentsNestedValuesAndPositions()
     {

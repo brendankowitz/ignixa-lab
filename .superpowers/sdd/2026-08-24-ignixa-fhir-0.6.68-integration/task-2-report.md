@@ -35,9 +35,9 @@
 - Diagnostics mapping preserves the existing response shape; tests now assert the stable, observed shapes rather than brittle internal shapes.
 - The validation compile fix is isolated and does not add new infrastructure.
 
-## Concerns
-- One test was relaxed to match the restored compiler’s actual stable shape rather than an older chain-join assumption.
-- No remaining automated verification gaps found in the backend test project.
+## Initial concerns
+- One test was temporarily relaxed to match the restored compiler’s actual stable shape rather than an older chain-join assumption; the final test restores the chain-join assertion against the 0.6.68 diagnostic shape.
+- Additional endpoint, mapper, temporal, resolver, cancellation, and frontend compatibility coverage was added during final review.
 
 ## Fix report
 - Restored the chain-join mapper assertion to the actual 0.6.68 diagnostic shape: `root|cte1|chainJoin|0` with CTE 0 contributing `0` and CTE 1 also contributing `0`.
@@ -56,8 +56,8 @@
 - `dotnet build Ignixa.Lab.sln -c Release --no-restore`
   - Build succeeded with 0 warnings and 0 errors.
 - `dotnet test Ignixa.Lab.sln -c Release --no-build`
-  - `Passed!  - Failed: 0, Passed: 702, Skipped: 0, Total: 702`
+  - `Passed!  - Failed: 0, Passed: 706, Skipped: 0, Total: 706`
 - `npm --prefix frontend run test`
-  - Frontend test command passed, including the instance-selector AST compatibility test.
+  - Frontend test command passed, including the instance-selector AST and metadata compatibility test.
 - `npm --prefix frontend run build`
   - Production build completed successfully.

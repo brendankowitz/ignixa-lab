@@ -45,7 +45,7 @@ public static class SearchTraceMapper
             failure.Diagnostics,
             sql: null,
             sqlParameters: [],
-            failure: ToFailureDto(failure));
+            failure: ToFailureDto(failure, "Compilation"));
     }
 
     private static SearchTraceResponse ToResponse(
@@ -56,7 +56,9 @@ public static class SearchTraceMapper
         IReadOnlyList<EmittedSqlParameter> sqlParameters,
         TraceFailureDto? failure)
     {
-        var traceFailure = failure ?? (diagnostics?.PlanTraceFailure is not null ? ToFailureDto(diagnostics.PlanTraceFailure) : null);
+        var traceFailure = failure ?? (diagnostics?.PlanTraceFailure is not null
+            ? ToFailureDto(diagnostics.PlanTraceFailure, "PlanTrace")
+            : null);
 
         return new SearchTraceResponse(
             fhirVersion,
@@ -137,8 +139,8 @@ public static class SearchTraceMapper
         plan.Rows.Select(r => new PlanExplainRowDto(r.Label, r.CanonicalLabel, r.Kind, r.Body, r.ReferencedCteIndexes)).ToList(),
         plan.Ctes.Select(c => new CteProvenanceDto(c.CteIndex, c.ParameterOrdinal, c.ContributingOrdinals, ToSpanDto(c.Span))).ToList());
 
-    private static TraceFailureDto ToFailureDto(SearchCompilationFailure failure) =>
-        new(failure.Stage.ToString(), failure.Message, failure.ParameterCode, ToSpanDto(failure.Span));
+    private static TraceFailureDto ToFailureDto(SearchCompilationFailure failure, string scope) =>
+        new(scope, failure.Stage.ToString(), failure.Message, failure.ParameterCode, ToSpanDto(failure.Span));
 
     private static SpanDto ToSpanDto(SourceSpan span) => new(span.Origin.ToString(), span.Start, span.Length);
 

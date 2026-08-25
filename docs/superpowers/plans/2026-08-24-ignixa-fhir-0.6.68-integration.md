@@ -1,6 +1,6 @@
 # Ignixa FHIR 0.6.68 integration Implementation Plan
 
-> **Historical implementation record:** The plan was executed in PR #43. Its checkbox steps are retained to preserve the original task breakdown; final validation is recorded below.
+> **Historical implementation record:** The plan was executed in PR #43. Its checkbox steps are retained to preserve the original task breakdown; final validation is recorded in [the task report](../../.superpowers/sdd/2026-08-24-ignixa-fhir-0.6.68-integration/task-2-report.md).
 
 **Goal:** Upgrade `ignixa-lab` to the released Ignixa FHIR `0.6.68` package family and preserve the lab's Search and FHIRPath behavior across the release's breaking API and value-model changes.
 
@@ -248,7 +248,7 @@ private static ParameterOutcomeDto ToOutcomeDto(ParameterOutcome outcome) => out
 };
 ```
 
-Map `PlanTraceFailure` or a `SearchCompilationFailure` into the current `failure` DTO for stage/message/parameterCode/span, while preserving the available parameter, plan, and implicit diagnostics. If a future diagnostic has no representable DTO slot, throw `NotSupportedException` from the mapper and let the endpoint's mapper-only catch return the existing logged 500 response. Do not silently drop diagnostic evidence.
+Map `PlanTraceFailure` or a `SearchCompilationFailure` into the current `failure` DTO for scope/stage/message/parameterCode/span, while preserving the available parameter, plan, and implicit diagnostics. If a future diagnostic has no representable DTO slot, throw `NotSupportedException` from the mapper and let the endpoint's mapper-only catch return the existing logged 500 response. Do not silently drop diagnostic evidence.
 
 - [ ] **Step 6: Preserve the request error split**
 
@@ -538,7 +538,7 @@ private static JsonNode CreateJsonValueFromPrimitive(object value) => value swit
 } ?? throw new InvalidOperationException("Primitive FHIRPath values must serialize to JSON.");
 ```
 
-Use it for primitive JSON value fields, parameter/display output, trace output, and constant serialization. Keep existing type-specific keys (`valueDate`, `valueDateTime`, `valueInstant`, `valueTime`) and complex-child array rules unchanged. The fallback remains for Ignixa's non-JSON CLR primitive wrappers; do not convert JSON scalars through a serialize/parse round trip.
+Use it for primitive JSON value fields and nested complex-element leaves. Keep existing type-specific keys (`valueDate`, `valueDateTime`, `valueInstant`, `valueTime`), display formatting, constant text formatting, and complex-child array rules unchanged. The fallback remains for Ignixa's non-JSON CLR primitive wrappers; do not convert JSON scalars through a serialize/parse round trip.
 
 - [ ] **Step 5: Adapt resolver lookups only at the custom boundary**
 
