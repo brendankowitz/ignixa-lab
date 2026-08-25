@@ -516,6 +516,15 @@ public class ResultFormatterTests
     }
 
     [Fact]
+    public void NonTemporalPrimitive_PreservesItsTypedJsonValue()
+    {
+        var (_, json) = EvaluateAndFormat("gender", TestPatientJson, "R4");
+
+        var resultPart = FindSingleResultPart(json);
+        resultPart["valueCode"]!.GetValue<string>().Should().Be("male");
+    }
+
+    [Fact]
     public void VisitInstanceSelector_EmitsTypeNamespaceAssignmentsNestedValuesAndPositions()
     {
         var analyzer = new ExpressionAnalyzer(new SchemaProviderFactory());

@@ -355,24 +355,24 @@ public sealed partial class SearchFunctions(ILogger<SearchFunctions> logger, Sea
         Expression? operationExpression,
         CancellationToken cancellationToken)
     {
-        var engine = engineFactory.Get(fhirVersion);
         var resolvedVersion = SearchEngineFactory.Resolve(fhirVersion);
-
-        if (!engine.SearchParameters.TryGetSearchParameters(resourceType, out _))
-        {
-            return new BadRequestObjectResult(new { error = $"'{resourceType}' is not a supported FHIR resource type for {resolvedVersion}." });
-        }
-
-        var compiler = new SearchSqlCompiler(
-            new InMemorySymbolResolver(),
-            engine.Builder,
-            engine.Compartments,
-            engine.SearchParameters,
-            TimeProvider.System);
 
         SearchCompilationResult compiled;
         try
         {
+            var engine = engineFactory.Get(fhirVersion);
+            if (!engine.SearchParameters.TryGetSearchParameters(resourceType, out _))
+            {
+                return new BadRequestObjectResult(new { error = $"'{resourceType}' is not a supported FHIR resource type for {resolvedVersion}." });
+            }
+
+            var compiler = new SearchSqlCompiler(
+                new InMemorySymbolResolver(),
+                engine.Builder,
+                engine.Compartments,
+                engine.SearchParameters,
+                TimeProvider.System);
+
             var parameters = parameterSource is null ? [] : ParseQuery(parameterSource);
             var planOptions = new SearchPlanOptions
             {

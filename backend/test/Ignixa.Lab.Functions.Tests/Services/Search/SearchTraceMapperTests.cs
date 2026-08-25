@@ -1,5 +1,6 @@
 using System.Reflection;
 using FluentAssertions;
+using Ignixa.Lab.Functions.Models.Search;
 using Ignixa.Lab.Functions.Services.FhirPath;
 using Ignixa.Lab.Functions.Services.Search;
 using Ignixa.Search.Expressions;
@@ -207,6 +208,42 @@ public sealed class SearchTraceMapperTests
         response.Failure!.Stage.Should().Be("Resolve");
         response.Failure.Message.Should().Be("could not be resolved");
         response.Failure.Span!.Origin.Should().Be("Value");
+    }
+
+    [Fact]
+    public async Task Trace_KnownMiss_CarriesReasonAndSpan()
+    {
+        var compiled = await CompileAsync("?name=Smith");
+        var span = new SourceSpan(SourceOrigin.Value, 2, 5);
+        var diagnostics = CloneDiagnostics(
+            compiled.Diagnostics!,
+            [Trace(0, "name", "Smith", new ParameterOutcome.KnownMiss("no matching symbol", span))]);
+
+        var outcome = SearchTraceMapper.ToResponse(WithDiagnostics(compiled, diagnostics), "R4", "Patient")
+            .Parameters.Single().Outcome;
+
+        outcome.Kind.Should().Be("KnownMiss");
+        outcome.Reason.Should().Be("no matching symbol");
+        outcome.Stage.Should().BeNull();
+        outcome.Span.Should().BeEquivalentTo(new SpanDto("Value", 2, 5));
+    }
+
+    [Fact]
+    public async Task Trace_FailedOutcome_CarriesMessageStageAndSpan()
+    {
+        var compiled = await CompileAsync("?name=Smith");
+        var span = new SourceSpan(SourceOrigin.Value, 2, 5);
+        var diagnostics = CloneDiagnostics(
+            compiled.Diagnostics!,
+            [Trace(0, "name", "Smith", new ParameterOutcome.Failed(TraceStage.Lower, "lowering failed", span))]);
+
+        var outcome = SearchTraceMapper.ToResponse(WithDiagnostics(compiled, diagnostics), "R4", "Patient")
+            .Parameters.Single().Outcome;
+
+        outcome.Kind.Should().Be("Failed");
+        outcome.Reason.Should().Be("lowering failed");
+        outcome.Stage.Should().Be("Lower");
+        outcome.Span.Should().BeEquivalentTo(new SpanDto("Value", 2, 5));
     }
 
     [Fact]

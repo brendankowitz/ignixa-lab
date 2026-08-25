@@ -26,7 +26,7 @@
     <!-- FHIR search parser/indexer, powering the Search bench's parse + typed-expression stages -->
     <PackageVersion Include="Ignixa.Search" Version="0.6.68" />
 
-    <!-- Search-to-SQL compiler (alpha/experimental per its own README) — powers the Search bench's lowered-plan + emitted-SQL stages and the SearchCompiler tracing entry point -->
+    <!-- Search-to-SQL compiler (alpha/experimental per its own README) — powers the Search bench's lowered-plan + emitted-SQL stages -->
     <PackageVersion Include="Ignixa.Search.Sql" Version="0.6.68-alpha" />
 
     <!-- Validates the CapabilityStatement's declared fhirVersion as real semver before trusting it for engine gating -->

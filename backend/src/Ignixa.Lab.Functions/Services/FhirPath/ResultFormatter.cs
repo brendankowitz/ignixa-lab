@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -394,13 +395,20 @@ public sealed class ResultFormatter
 
     private static JsonNode CreateJsonValueFromPrimitive(object value)
     {
-        if (value is FhirTemporal temporal)
+        return value switch
         {
-            value = temporal.ToString();
-        }
-
-        return JsonNode.Parse(JsonSerializer.Serialize(value, value.GetType()))
-            ?? throw new InvalidOperationException("Primitive FHIRPath values must serialize to JSON.");
+            string text => JsonValue.Create(text),
+            int integer => JsonValue.Create(integer),
+            long longInteger => JsonValue.Create(longInteger),
+            bool boolean => JsonValue.Create(boolean),
+            decimal decimalValue => JsonValue.Create(decimalValue),
+            double doubleValue => JsonValue.Create(doubleValue),
+            float floatValue => JsonValue.Create(floatValue),
+            DateTime dateTime => JsonValue.Create(dateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.FFFFFFFK", CultureInfo.InvariantCulture)),
+            DateTimeOffset dateTimeOffset => JsonValue.Create(dateTimeOffset.ToString("yyyy-MM-dd'T'HH:mm:ss.FFFFFFFK", CultureInfo.InvariantCulture)),
+            FhirTemporal temporal => JsonValue.Create(temporal.Literal),
+            _ => JsonNode.Parse(JsonSerializer.Serialize(value)),
+        } ?? throw new InvalidOperationException("Primitive FHIRPath values must serialize to JSON.");
     }
 
     private static void AddPathExtension(ParametersParameter param, string path)

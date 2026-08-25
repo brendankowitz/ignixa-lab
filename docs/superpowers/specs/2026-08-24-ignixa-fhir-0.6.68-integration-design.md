@@ -77,4 +77,3 @@ If an upstream diagnostic or parameter outcome is not representable, fail the ma
 ## Rollout and compatibility
 
 The change is a package-and-adapter migration. The frontend receives the same route shapes and response fields, so deployment does not require a coordinated frontend feature flag. If the package upgrade exposes an incompatibility that cannot be represented without changing the frontend contract, stop at the backend adapter boundary and document the required contract change rather than silently changing output.
-
