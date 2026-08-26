@@ -10,9 +10,8 @@
 const GITHUB_REPO = 'brendankowitz/ignixa-fhir';
 
 /** Fallback ref when the backend's `testScriptsRevision` (from `GET /api/health`,
- * stamped into the packed `Ignixa.TestScript.Suites` NuGet
- * package) hasn't loaded yet or the request failed — a moving `main` link
- * beats no link at all. */
+ * stamped into the packed `Ignixa.TestScript.Suites` NuGet package) hasn't loaded,
+ * is unavailable, or the request failed — a moving `main` link beats no link at all. */
 const GITHUB_DEFAULT_REF = 'main';
 
 /** Suite root the `file` field on a {@link ConformanceResult} is relative to. */

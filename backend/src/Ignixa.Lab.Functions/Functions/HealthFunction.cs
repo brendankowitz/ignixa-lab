@@ -11,7 +11,7 @@ public sealed class HealthFunction
     /// <summary>
     /// Commit the packaged testscripts fixtures came from, written into the
     /// <c>Ignixa.TestScript.Suites</c> package at pack time and copied into this
-    /// app's output alongside <c>testscripts/</c>. Returns <c>null</c> when the
+    /// app's output inside <c>testscripts/</c>. Returns <c>null</c> when the
     /// revision can't be determined (missing, unreadable, or empty) so the
     /// frontend falls back to linking against <c>main</c> instead of a
     /// guaranteed-404 URL.
